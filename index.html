@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="くらしの手帳">
+<meta name="theme-color" content="#17233A">
+<title>くらしの手帳｜支払いと履修</title>
+<style>
+  :root{
+    --paper:#F3F5F1; --card:#fff; --ink:#17233A; --sub:#6B7686; --rule:#DDE3DC;
+    --smbc:#00873C; --smbcbg:#EAF4EE; --rakuten:#BF0000; --rakutenbg:#FBECEC;
+    --risyu:#4B4494; --risyubg:#ECEBF6; --warn:#B4530A; --warnbg:#FDF0E6;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic Medium",sans-serif;
+    font-size:15px; line-height:1.5; -webkit-text-size-adjust:100%;
+  }
+  .num{font-variant-numeric:tabular-nums; letter-spacing:.01em}
+  header{background:var(--ink); color:#fff; padding:calc(env(safe-area-inset-top) + 16px) 16px 0}
+  header h1{margin:0; font-size:16px; letter-spacing:.04em}
+  header p{margin:4px 0 12px; font-size:12px; color:#B9C4D4}
+  #apps{display:flex; gap:6px; max-width:560px; margin:0 auto; padding-bottom:0}
+  #apps button{flex:1; border:0; background:rgba(255,255,255,.12); color:#C7D2E0; font:inherit; font-size:13px;
+    padding:9px 0; border-radius:8px 8px 0 0; font-weight:600}
+  #apps button.on{background:var(--card); color:var(--ink)}
+  nav{display:flex; background:var(--card); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:5}
+  nav button{flex:1; border:0; background:none; padding:12px 0; font:inherit; font-size:12px; color:var(--sub); border-bottom:2px solid transparent}
+  nav button.on{color:var(--ink); font-weight:700; border-bottom-color:var(--ink)}
+  nav.hide{display:none}
+  main{max-width:560px; margin:0 auto; padding:20px 16px}
+  footer{max-width:560px; margin:0 auto; padding:0 16px calc(env(safe-area-inset-bottom) + 32px); font-size:11.5px; color:var(--sub); line-height:1.7}
+  section{margin-bottom:20px}
+  .head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px; gap:10px}
+  .head h2{margin:0; font-size:13px; font-weight:700}
+  .head span{font-size:12px; color:var(--sub); text-align:right}
+  .box{background:var(--card); border-radius:10px; padding:16px; box-shadow:0 1px 2px rgba(23,35,58,.06)}
+  .row{display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--rule); width:100%; text-align:left; background:none; border-left:0; border-right:0; border-top:0; font:inherit; color:inherit}
+  .row:last-child{border-bottom:0}
+  .tick{width:4px; height:34px; border-radius:2px; flex:none}
+  .grow{flex:1; min-width:0}
+  .t{font-size:14px}
+  .s{font-size:12px; color:var(--sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .amt{font-size:15px; font-weight:600}
+  .big{font-size:38px; font-weight:700; line-height:1.1}
+  .accbar{display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-radius:6px; font-size:12px; font-weight:700; margin-bottom:2px}
+  .smbc{color:var(--smbc)} .bg-smbc{background:var(--smbcbg)}
+  .rakuten{color:var(--rakuten)} .bg-rakuten{background:var(--rakutenbg)}
+  .chk{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--rule);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex:none}
+  .done .t{color:var(--sub); text-decoration:line-through}
+  button.btn{display:block; width:100%; padding:11px; border-radius:8px; border:0; font:inherit; font-size:14px; font-weight:600; background:var(--ink); color:#fff}
+  button.btn.ghost{background:var(--paper); color:var(--ink); border:1px solid var(--rule)}
+  button.btn[disabled]{background:var(--rule); color:#fff}
+  .pair{display:flex; gap:8px; align-items:stretch}
+  .pair>*{flex:1 1 0; min-width:0}
+  .pair>button.btn{width:auto; white-space:nowrap}
+  label.f{display:block; font-size:12px; color:var(--sub); margin:0 0 4px}
+  input,textarea,select{width:100%; padding:9px 10px; border:1px solid var(--rule); border-radius:6px; background:var(--paper); font:inherit; font-size:14px; color:var(--ink)}
+  textarea{min-height:90px; font-size:12px}
+  .field{margin-bottom:12px}
+  .pick{display:flex; gap:8px; margin-bottom:12px}
+  .pick button{flex:1; padding:8px; border-radius:8px; border:1px solid var(--rule); background:var(--paper); font:inherit; color:var(--sub)}
+  .pick button.on{font-weight:700}
+  .pick button.on.smbc{background:var(--smbcbg); border-color:var(--smbc); color:var(--smbc)}
+  .pick button.on.rakuten{background:var(--rakutenbg); border-color:var(--rakuten); color:var(--rakuten)}
+  .pick .b{display:block; font-size:14px}
+  .pick .c{display:block; font-size:11px; opacity:.75}
+  .chips{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
+  .chips button{padding:6px 12px; border-radius:999px; border:1px solid var(--rule); background:var(--paper); font:inherit; font-size:12px; color:var(--sub)}
+  .chips button.on{background:var(--ink); border-color:var(--ink); color:#fff}
+  .note{font-size:12px; color:var(--sub); line-height:1.7; margin-top:8px}
+  .msg{border-radius:8px; padding:11px; font-size:13px; margin-bottom:16px}
+  .ok{background:var(--smbcbg); color:var(--smbc)}
+  .ng{background:var(--warnbg); color:var(--warn)}
+  .mini{font-size:11px; padding:5px 8px; border-radius:6px; border:1px solid var(--rule); background:none; color:var(--sub); font-family:inherit}
+  .hide{display:none}
+  img.shot{width:100%; max-height:200px; object-fit:cover; border-radius:8px; margin-bottom:12px}
+  #lightbox{position:fixed; inset:0; background:rgba(23,35,58,.88); display:flex; align-items:center; justify-content:center; padding:24px; z-index:30}
+  #lightbox img{max-width:100%; max-height:80vh; border-radius:10px}
+  .dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px}
+  code{background:var(--paper); padding:1px 5px; border-radius:4px; font-size:12px}
+
+  /* ---------- 履修 ---------- */
+  .met{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px dotted var(--rule)}
+  .met:last-child{border-bottom:0}
+  .met-n{flex:0 0 40%; font-size:13px}
+  .met-n small{display:block; color:var(--sub); font-size:11px}
+  .bar{flex:1; height:9px; background:var(--paper); border-radius:5px; overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--risyu); border-radius:5px}
+  .bar i.done{background:var(--smbc)}
+  .bar i.over{background:var(--rakuten)}
+  .met-v{flex:0 0 70px; text-align:right; font-size:12px; color:var(--sub); font-variant-numeric:tabular-nums}
+  .met-v b{color:var(--ink); font-size:14px}
+  .earn-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px}
+  .earn-grid label{font-size:12px; color:var(--sub); display:flex; flex-direction:column; gap:3px}
+  .scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--rule); border-radius:10px; background:var(--card)}
+  table.tt{border-collapse:collapse; width:100%; min-width:600px; table-layout:fixed}
+  table.tt th,table.tt td{border:1px solid var(--rule); padding:0; vertical-align:top}
+  table.tt thead th{background:var(--risyubg); font-size:12px; font-weight:600; padding:6px 0; text-align:center}
+  table.tt th.pd{width:32px; background:var(--risyubg); font-size:12px; text-align:center; vertical-align:middle}
+  .cell{width:100%; min-height:50px; border:0; background:transparent; font:inherit; text-align:left; padding:6px; display:block; color:inherit}
+  .cell .nm{font-size:11px; line-height:1.3; word-break:break-word; display:block}
+  .cell .tag{font-size:10px; color:var(--sub); display:block; margin-top:2px}
+  .cell.free{color:var(--sub); font-size:12px}
+  .cell.none{color:#C4C0B0}
+  td.fx{background:var(--paper)}
+  td.fx .nm{color:var(--sub)}
+  td.sel{background:var(--risyubg)}
+  td.sel .nm{color:var(--risyu); font-weight:700}
+  .cell .x{float:right; font-size:11px; color:var(--risyu); border:1px solid var(--risyu); border-radius:4px; padding:2px 7px; margin-left:4px; background:#fff}
+  .veil{position:fixed; inset:0; background:rgba(23,35,58,.45); display:none; z-index:40}
+  .veil.on{display:block}
+  .sheet{position:fixed; left:0; right:0; bottom:0; max-height:88vh; background:var(--paper);
+    border-radius:14px 14px 0 0; z-index:41; display:none; flex-direction:column; box-shadow:0 -6px 24px rgba(23,35,58,.25)}
+  .sheet.on{display:flex}
+  @media(min-width:700px){.sheet{max-width:600px; margin:0 auto; border-radius:14px; bottom:3vh}}
+  .sheet-hd{padding:12px 14px 10px; border-bottom:1px solid var(--rule); background:var(--card); border-radius:14px 14px 0 0}
+  .sheet-hd .rowline{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .sheet-hd h3{margin:0; font-size:16px}
+  .sheet-bd{overflow-y:auto; padding:10px 14px 24px; -webkit-overflow-scrolling:touch}
+  .crs{background:var(--card); border:1px solid var(--rule); border-radius:9px; padding:10px 11px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start}
+  .crs.dis{opacity:.5}
+  .crs .body{flex:1; min-width:0}
+  .crs .ct{font-size:14px; font-weight:600; line-height:1.35}
+  .crs .cm{font-size:11px; color:var(--sub); margin-top:3px; line-height:1.5}
+  .badges{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px}
+  .b{font-size:10.5px; padding:2px 7px; border-radius:4px; white-space:nowrap}
+  .b.cat{background:var(--risyubg); color:var(--risyu)}
+  .b.cr{background:var(--paper); color:var(--sub)}
+  .b.r0{background:#E3F1E6; color:#1F6B3E}
+  .b.r1{background:#EEF5E9; color:#4A6B33}
+  .b.r2{background:var(--warnbg); color:var(--warn)}
+  .b.r3{background:var(--rakutenbg); color:var(--rakuten)}
+  .b.warn{background:var(--rakutenbg); color:var(--rakuten)}
+  .b.en{background:#E6EFF7; color:#2B5580}
+  .add{flex:0 0 auto; border:1px solid var(--risyu); background:var(--risyu); color:#fff; border-radius:7px; font:inherit; font-size:13px; font-weight:600; padding:7px 12px; align-self:center}
+  .add.rm{background:#fff; color:var(--rakuten); border-color:var(--rakuten)}
+  .add[disabled]{background:var(--rule); border-color:var(--rule); color:#fff}
+  .empty{color:var(--sub); font-size:13px; padding:14px 2px}
+  .plancard{background:var(--card); border:1px solid var(--rule); border-radius:9px; padding:11px 12px; margin-bottom:8px}
+  .plancard h3{margin:0; font-size:14px; display:flex; gap:7px; align-items:baseline}
+  .plancard h3 em{font-style:normal; color:var(--risyu); font-weight:700; font-size:12px; background:var(--risyubg); border-radius:4px; padding:1px 6px}
+  .plancard p{margin:5px 0 7px; font-size:12px; color:var(--sub); line-height:1.5}
+  .plancard .codes{font-size:11.5px; color:var(--sub); line-height:1.6; font-variant-numeric:tabular-nums}
+  .codebox{width:100%; font-size:13px; font-variant-numeric:tabular-nums; min-height:64px; margin-top:9px; background:var(--card)}
+  label.tg{display:flex; align-items:flex-start; gap:7px; font-size:12px; color:var(--sub); margin-top:9px; line-height:1.45}
+  label.tg input{width:auto; margin-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="apptitle">分割払い 支払い管理</h1>
+  <p id="synctag">口座別のご用意額と明細をひとまとめに</p>
+  <div id="apps"></div>
+</header>
+<nav id="nav"></nav>
+<main id="app"></main>
+<footer id="foot"></footer>
+
+<div class="veil" id="veil"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <div class="sheet-hd">
+    <div class="rowline"><h3 id="shTitle">月曜1限</h3><button type="button" class="mini" id="shClose">閉じる</button></div>
+    <div class="chips" id="shDays" style="margin:10px 0 0"></div>
+    <div class="chips" id="shPeriods" style="margin:8px 0 0"></div>
+    <input type="search" id="shSearch" placeholder="科目名・先生名でしぼりこむ" style="margin-top:8px">
+    <div class="chips" id="shCats" style="margin:8px 0 0"></div>
+  </div>
+  <div class="sheet-bd" id="shBody"></div>
+</div>
+
+<script>
+/*DATA-START*/
+var DAYS = ["月","火","水","木","金","土"];
+var PERIODS = [1,2,3,4,5,6,7];
+
+function parseSlots(s){
+  var out = [], last = "月";
+  s.split(",").forEach(function(t){
+    t = t.trim();
+    var m = t.match(/^([月火水木金土])?([1-7])$/);
+    if(!m) return;
+    var d = m[1] || last; last = d;
+    out.push({d:d, p:parseInt(m[2],10)});
+  });
+  return out;
+}
+
+function mk(code, slots, name, teacher, cap, apps, cat, opt){
+  opt = opt || {};
+  var sl = parseSlots(slots);
+  return {
+    code:code, slotText:slots, slots:sl, name:name, teacher:teacher,
+    cap:cap, apps:apps, cat:cat,
+    cr: opt.cr || (sl.length > 1 ? 2 : 1),
+    en: !!opt.en,
+    ratio: cap > 0 ? apps/cap : 99
+  };
+}
+
+/* 登録済み（MUSES時間割より） */
+var FIXED = [
+  {name:"臨床病態栄養学",        slotText:"火1", slots:parseSlots("火1")},
+  {name:"初期演習Ⅱ（生活と看護）", slotText:"火2", slots:parseSlots("火2")},
+  {name:"成人看護学概論",        slotText:"火3", slots:parseSlots("火3")},
+  {name:"医学英語",              slotText:"火4", slots:parseSlots("火4")},
+  {name:"母性看護学概論",        slotText:"水2", slots:parseSlots("水2")},
+  {name:"基礎看護技術演習Ⅰ",     slotText:"木1,2", slots:parseSlots("木1,2")},
+  {name:"基礎看護技術演習Ⅱ",     slotText:"木3,4", slots:parseSlots("木3,4")},
+  {name:"看護応用統計学",        slotText:"金1", slots:parseSlots("金1")},
+  {name:"小児看護学概論",        slotText:"金2", slots:parseSlots("金2")},
+  {name:"データリテラシー・ＡＩの基礎(21)", slotText:"木6", slots:parseSlots("木6"), cat:"情報", cr:2}
+];
+
+var COURSES = [
+  /* 人文科学科目 */
+  mk("10048","月1","SNSから日本語を見る(4)","岸本 千秋",100,126,"人文"),
+  mk("10008","月2","芭蕉と旅","富山 高至",100,112,"人文"),
+  mk("10035","月2","日本舞踊に学ぶ着付けと作法(3)","安田 由基子",50,39,"人文"),
+  mk("10049","月2","SNSから日本語を見る(5)","岸本 千秋",100,116,"人文"),
+  mk("10059","月2","インテリア空間のデザイン","黒田 智子",40,46,"人文"),
+  mk("10002","月3","神話・伝説の世界から(3)","武部 智子",100,27,"人文"),
+  mk("10009","月3","「心中天網島」の女房「おさん」","富山 高至",100,42,"人文"),
+  mk("10021","月3","フランスの音楽と芸術文化(2)","永島 茜",100,103,"人文"),
+  mk("10023","月3","ヨーロッパの名歌歌唱法(2)","坂口 裕子ほか",60,4,"人文"),
+  mk("10026","月3","先端芸術表現(2)","藤井 達矢",48,5,"人文"),
+  mk("10036","月3","日本舞踊に学ぶ着付けと作法(4)","安田 由基子",50,21,"人文"),
+  mk("10037","月3","歌舞伎鑑賞入門(1)","大槻 福子",100,28,"人文"),
+  mk("10040","月3","ミュージカル表現の基礎(2)","青山 裕次",20,18,"人文"),
+  mk("10053","月3","日本語の歴史(2)","郡 千寿子",100,13,"人文"),
+  mk("10003","月4","神話・伝説の世界から(4)","武部 智子",100,14,"人文"),
+  mk("10015","月4","日常生活からの哲学入門(2)","城阪 真治",100,19,"人文"),
+  mk("10017","月4","現代フランスの音楽事情(2)","永島 茜",100,49,"人文"),
+  mk("10019","月4","音楽の科学(2)","長谷川 裕紀",100,18,"人文"),
+  mk("10024","月4","合唱表現","岡本 尚子",60,13,"人文"),
+  mk("10038","月4","歌舞伎鑑賞入門(2)","大槻 福子",100,8,"人文"),
+  mk("10057","月4","心理学入門(3)","寺井 朋子",40,434,"人文"),
+  mk("10028","水4","自己発見アート(2)","鈴木 貴博",48,37,"人文"),
+  mk("10030","水5","未来造形(2)","鈴木 貴博",48,6,"人文"),
+  mk("10044","水5","遊びの人類学","渡邉 昌史",100,635,"人文"),
+  mk("10011","木3","英語圏の文学・文化(2)","前原 澄子",100,209,"人文"),
+  mk("10042","木3","日本の文化Ⅱ","S.D.バーチュ",30,5,"人文"),
+  mk("10013","木4","歴史文化トピックスⅡ","竹内 亮ほか",100,13,"人文"),
+  mk("10050","木4","SNSから日本語を見る(6)","岸本 千秋",100,105,"人文"),
+  mk("10051","木4","日本語の世界","設樂 馨",100,8,"人文"),
+
+  /* 社会科学科目 */
+  mk("10067","月1","現代の教育・保育事情(3)","大和 晴行ほか",100,604,"社会"),
+  mk("10072","月1","実践カウンセリング(1)","中島 弘美",55,30,"社会"),
+  mk("10076","月1","生涯福祉論(2)","中村 和子",100,4,"社会"),
+  mk("10064","月2","ヒロシマ　被爆体験伝承者の挑戦(2)","小国 美弥子",100,18,"社会"),
+  mk("10068","月2","現代の教育・保育事情(4)","大和 晴行ほか",100,502,"社会"),
+  mk("10073","月2","実践カウンセリング(2)","中島 弘美",55,24,"社会"),
+  mk("10078","月2","社会福祉とボランティア(2)","中村 和子",100,2,"社会"),
+  mk("10081","月2","聴覚障害者の理解と手話言語(2)","橋本（外部専門講師D）",40,51,"社会"),
+  mk("10085","月2","現代社会と憲法(2)","米田 紀子",100,43,"社会"),
+  mk("10089","月2","まちづくりと地方自治の役割(1)","山本 晶子",100,273,"社会"),
+  mk("10062","月3","メディア技術と文字デザイン(3)","肥後 有紀子",100,4,"社会"),
+  mk("10074","月3","実践カウンセリング(3)","中島 弘美",55,21,"社会"),
+  mk("10090","月3","まちづくりと地方自治の役割(2)","山本 晶子",100,251,"社会"),
+  mk("10590","月4","メディア技術と文字デザイン(4)","肥後 有紀子",100,7,"社会"),
+  mk("10079","水4","福祉レクリエーションの実際","山崎 清治",100,19,"社会"),
+
+  /* 自然科学科目 */
+  mk("10098","月1","数や図形の科学(4)","伊藤 博章",100,174,"自然"),
+  mk("10108","月1","薬の歴史と未来","萩森 政頼ほか",40,2,"自然"),
+  mk("10102","月2","生活の中の物理学","真貝 寿明",100,9,"自然"),
+  mk("10106","月2","薬とからだ","麓 加菜",100,64,"自然"),
+  mk("10109","月2","身近にある科学","竹石 友紀ほか",100,60,"自然"),
+  mk("10099","月3","数や図形の科学(5)","伊藤 博章",100,144,"自然"),
+  mk("10103","月3","最先端物理学が描く宇宙","真貝 寿明",100,21,"自然"),
+  mk("10100","月4","数や図形の科学(6)","伊藤 博章",100,138,"自然"),
+  mk("10110","木3","発達障害の理解とリエゾン支援","中井 昭夫",100,45,"自然"),
+
+  /* 国際理解科目 */
+  mk("10123","月1","言語習得と異文化理解(3)","木村 麻衣子",100,497,"国際"),
+  mk("10113","月2","韓国文化の理解(2)","金 宝英",100,84,"国際"),
+  mk("10117","月2","韓流ブームから考える韓国文化(2)","木村 麻衣子",100,117,"国際"),
+  mk("10111","月4","音楽から見る人と世界","一ノ瀬 智子",100,66,"国際"),
+  mk("10115","月4","中国文化論(2)","蒋 海波",100,43,"国際"),
+  mk("10119","水5","International PerspectivesⅡ","A.L.エイデン",40,2,"国際"),
+
+  /* 現代トピック科目 */
+  mk("10131","月2","現代社会と保健医療","徳重 あつ子ほか",100,423,"トピック"),
+  mk("10581","月2","ウェブ広告の技術と表現","肥後 有紀子",50,26,"トピック"),
+  mk("10130","月3","心理学トピックス","竹島 克典ほか",100,605,"トピック"),
+  mk("10132","月3","社会福祉の学び","野上 恵美ほか",100,369,"トピック"),
+  mk("10127","月6","大学生活入門(2)","寺井 朋子ほか",150,445,"トピック"),
+  mk("10586","水5","モラルジレンマから考える私（2）","寺井 朋子",40,9,"トピック"),
+  mk("10133","木3","スポーツツーリズムと地域創生","工藤 康宏",100,221,"トピック"),
+  mk("10578","木3","ＤＶ・子ども虐待の理解と支援(2)","増井 香名子",50,33,"トピック"),
+  mk("10580","木3","教育と格差(2)","田中 祐児",100,39,"トピック"),
+  mk("10129","木4","Current Affairs in Japan Ⅱ","S.D.バーチュ",30,0,"トピック"),
+
+  /* ジェンダー科目群 */
+  mk("10142","月1","ジェンダーとアイデンティティー(3)","西尾 亜希子",100,527,"ジェンダー"),
+  mk("10143","月2","ジェンダーとアイデンティティー(4)","西尾 亜希子",100,472,"ジェンダー"),
+  mk("10138","月3","女性と教育(3)","西尾 亜希子",100,41,"ジェンダー"),
+  mk("10139","月4","女性と教育(4)","西尾 亜希子",100,39,"ジェンダー"),
+  mk("10146","木3","ジェンダーと社会(3)","西尾 亜希子",40,9,"ジェンダー"),
+  mk("10149","木3","女性の身体とセクシュアリティ(2)","松並 知子",100,18,"ジェンダー"),
+  mk("10135","木4","セクシュアリティ入門Ⅱ","中尾 賀要子",100,209,"ジェンダー"),
+  mk("10147","木4","ジェンダーと社会(4)","西尾 亜希子",40,15,"ジェンダー"),
+  mk("10151","木4","メディアに見るジェンダー(2)","松並 知子",40,23,"ジェンダー"),
+
+  /* キャリアデザイン科目群 */
+  mk("10154","月1","教員から見た社会人基礎力(3)","濵﨑 伸樹ほか",50,6,"キャリア"),
+  mk("10161","月2","女性のためのライフプランニング(2)","田和 真希",100,69,"キャリア"),
+  mk("10170","月2","企業の見方(2)","内田 正博",40,6,"キャリア"),
+  mk("10185","月2","大学生のための文章表現入門(3)","橋本（外部専門講師C）",60,5,"キャリア"),
+  mk("10179","月3","就活に学ぶ(2)","内田 正博",50,4,"キャリア"),
+  mk("10182","月3","キャリア基礎概論","井口 徹郎",100,5,"キャリア"),
+  mk("10191","月3","大学生のための文章表現（基礎）(3)","岸本 千秋",100,13,"キャリア"),
+  mk("10171","月4","卒業生が語る仕事と人生","内田 正博",100,6,"キャリア"),
+  mk("10194","月4","大学生のための文章表現（実践）(2)","岸本 千秋",100,5,"キャリア"),
+  mk("10188","火6","文章表現の第一歩(2)","橋本（外部専門講師A）",200,375,"キャリア"),
+  mk("10164","水4","自己アピールトレーニング(3)","秋田 久子",50,16,"キャリア"),
+  mk("10177","水4","ビジネスプラン構築概論","湯川 カナ",100,231,"キャリア"),
+  mk("10165","水5","自己アピールトレーニング(4)","秋田 久子",50,1,"キャリア"),
+  mk("10174","水5","キャリアビジョンと人物評価(2)","藤井 善仁",100,21,"キャリア"),
+  mk("10591","水5","SOAR 人生100年をきり拓く力(3)","中村 明美ほか",150,409,"キャリア"),
+  mk("10587","水6","プレゼンテーションの第一歩","橋本（外部専門講師B）",100,199,"キャリア"),
+  mk("10192","木3","大学生のための文章表現（基礎）(4)","岸本 千秋",100,14,"キャリア"),
+  mk("10181","木4","サステナビリティと地域","谷口 浩二",100,202,"キャリア"),
+  mk("10592","金6","SOAR 人生100年をきり拓く力(4)","中村 明美ほか",150,425,"キャリア"),
+
+  /* 言語リテラシー科目 */
+  mk("10226","月1,水3","英語コミュニケーションⅠ(11)","木村（外国人講師A）",30,40,"言語",{en:true}),
+  mk("10227","月1,水4","英語コミュニケーションⅠ(12)","木村（外国人講師B）",30,39,"言語",{en:true}),
+  mk("10228","月1,水5","英語コミュニケーションⅠ(13)","木村（外国人講師C）",30,17,"言語",{en:true}),
+  mk("10239","月1,水3","英語コミュニケーションⅡ(5)","木村（外国人講師D）",30,9,"言語",{en:true}),
+  mk("10240","月1,水4","英語コミュニケーションⅡ(6)","木村（外国人講師E）",30,11,"言語",{en:true}),
+  mk("10245","月1","英語リーディングⅠ(4)","田和 真希",40,121,"言語",{en:true}),
+  mk("10269","月1","ＴＯＥＩＣ演習Ⅰ(14)","木村（外部専門講師A）",40,35,"言語",{en:true}),
+  mk("10270","月1","ＴＯＥＩＣ演習Ⅰ(15)","木村（外部専門講師B）",40,21,"言語",{en:true}),
+  mk("10352","月1,水3","中国語Ⅰ(7)","何 景琳",40,55,"言語"),
+  mk("10389","月1,2","ハングルⅡ(2)","松井 聖一郎",40,59,"言語"),
+  mk("10229","月2,水3","英語コミュニケーションⅠ(14)","木村（外国人講師B）",30,60,"言語",{en:true}),
+  mk("10230","月2,水4","英語コミュニケーションⅠ(15)","木村（外国人講師A）",30,49,"言語",{en:true}),
+  mk("10271","月2","ＴＯＥＩＣ演習Ⅰ(16)","木村（外部専門講師B）",40,74,"言語",{en:true}),
+  mk("10287","月2","ＴＯＥＩＣ演習Ⅱ(6)","木村（外部専門講師C）",40,38,"言語",{en:true}),
+  mk("10335","月2,水3","ドイツ語Ⅰ(5)","橋木 郁子",40,40,"言語"),
+  mk("10341","月2,水5","フランス語Ⅰ(4)","近藤 由佳",40,14,"言語"),
+  mk("10353","月2,水4","中国語Ⅰ(8)","劉 燕子",40,64,"言語"),
+  mk("10358","月2,水4","中国語Ⅱ(2)","何 景琳",40,23,"言語"),
+  mk("10377","月2,水3","スペイン語Ⅰ(2)","坪井 幸栄",40,69,"言語"),
+  mk("10383","月2,水3","ハングルⅠ(4)","木村（外部専門講師A）",40,101,"言語"),
+  mk("10231","月3,水3","英語コミュニケーションⅠ(16)","木村（外国人講師C）",30,53,"言語",{en:true}),
+  mk("10232","月3,水4","英語コミュニケーションⅠ(17)","木村（外国人講師D）",30,36,"言語",{en:true}),
+  mk("10241","月3,水3","英語コミュニケーションⅡ(7)","木村（外国人講師E）",30,15,"言語",{en:true}),
+  mk("10246","月3","英語リーディングⅠ(5)","田和 真希",40,130,"言語",{en:true}),
+  mk("10272","月3","ＴＯＥＩＣ演習Ⅰ(17)","木村（外部専門講師B）",40,36,"言語",{en:true}),
+  mk("10273","月3","ＴＯＥＩＣ演習Ⅰ(18)","木村（外部専門講師C）",40,27,"言語",{en:true}),
+  mk("10288","月3","ＴＯＥＩＣ演習Ⅱ(7)","木村（外部専門講師D）",40,26,"言語",{en:true}),
+  mk("10294","月3","ＴＯＥＩＣ演習Ⅲ(3)","木村（外部専門講師E）",20,12,"言語",{en:true}),
+  mk("10321","月3","英語リーディングⅢ(2)","桂 敦子",20,6,"言語",{en:true}),
+  mk("10323","月3","留学準備演習(2)","木村（外部専門講師F）",30,4,"言語",{en:true}),
+  mk("10336","月3,水4","ドイツ語Ⅰ(6)","近藤 悟",40,38,"言語"),
+  mk("10337","月3,水4","ドイツ語Ⅱ","橋木 郁子",40,2,"言語"),
+  mk("10342","月3,水4","フランス語Ⅰ(5)","井高 浩一",40,61,"言語"),
+  mk("10354","月3,水4","中国語Ⅰ(9)","木村（外部専門講師A）",40,35,"言語"),
+  mk("10355","月3,水4","中国語Ⅰ(10)","市成 直子",40,33,"言語"),
+  mk("10359","月3,水5","中国語Ⅱ(3)","劉 燕子",40,7,"言語"),
+  mk("10379","月3,水4","スペイン語Ⅱ(2)","坪井 幸栄",40,5,"言語"),
+  mk("10382","月3,4","ハングルⅠ(3)","松井 聖一郎",40,177,"言語"),
+  mk("10403","月3","ハングルⅠA(4)","木村（外部専門講師G）",40,88,"言語"),
+  mk("10233","月4,水4","英語コミュニケーションⅠ(18)","木村（外国人講師C）",30,25,"言語",{en:true}),
+  mk("10234","月4,木4","英語コミュニケーションⅠ(19)","木村（外国人講師A）",30,10,"言語",{en:true}),
+  mk("10247","月4","英語リーディングⅠ(6)","田和 真希",40,86,"言語",{en:true}),
+  mk("10274","月4","ＴＯＥＩＣ演習Ⅰ(19)","木村（外部専門講師A）",40,19,"言語",{en:true}),
+  mk("10275","月4","ＴＯＥＩＣ演習Ⅰ(20)","木村（外部専門講師C）",40,12,"言語",{en:true}),
+  mk("10289","月4","ＴＯＥＩＣ演習Ⅱ(8)","木村（外部専門講師D）",40,9,"言語",{en:true}),
+  mk("10343","月4,水3","フランス語Ⅱ","井高 浩一",40,12,"言語"),
+  mk("10356","月4,水3","中国語Ⅰ(11)","市成 直子",40,24,"言語"),
+  mk("10210","水3","Trends in Society(2)","A.L.エイデン",20,9,"言語",{en:true}),
+  mk("10215","水3","Successful English Discussion","G.C.デニソン",20,6,"言語",{en:true}),
+  mk("10276","水3","ＴＯＥＩＣ演習Ⅰ(21)","木村（外部専門講師D）",40,58,"言語",{en:true}),
+  mk("10277","水3","ＴＯＥＩＣ演習Ⅰ(22)","木村（外部専門講師E）",40,48,"言語",{en:true}),
+  mk("10295","水3","ＴＯＥＩＣ演習Ⅲ(4)","木村（外部専門講師F）",20,6,"言語",{en:true}),
+  mk("10373","水3","イタリア語ⅠA(2)","M.マンニーノ",40,73,"言語"),
+  mk("10251","水4","英語リーディングⅡ(4)","岩井 麻紀",30,34,"言語",{en:true}),
+  mk("10278","水4","ＴＯＥＩＣ演習Ⅰ(23)","木村（外部専門講師B）",40,34,"言語",{en:true}),
+  mk("10279","水4","ＴＯＥＩＣ演習Ⅰ(24)","木村（外部専門講師C）",40,24,"言語",{en:true}),
+  mk("10290","水4","ＴＯＥＩＣ演習Ⅱ(9)","木村（外部専門講師D）",40,37,"言語",{en:true}),
+  mk("10375","水4","イタリア語ⅠB(2)","M.マンニーノ",40,19,"言語"),
+  mk("10406","水4","ハングルⅠB(2)","木村（外部専門講師E）",40,50,"言語"),
+  mk("10254","木3","英語ライティングⅠ(3)","山本 恵子",30,41,"言語",{en:true}),
+  mk("10280","木3","ＴＯＥＩＣ演習Ⅰ(25)","木村（外部専門講師A）",40,33,"言語",{en:true}),
+  mk("10291","木3","ＴＯＥＩＣ演習Ⅱ(10)","木村（外部専門講師B）",40,20,"言語",{en:true}),
+  mk("10407","木3","ハングルⅠB(3)","木村（外部専門講師C）",40,21,"言語"),
+  mk("10208","木4","English for Studying Abroad(2)","A.L.エイデン",20,0,"言語",{en:true}),
+  mk("10250","木4","英語リーディングⅡ(3)","山本 恵子",30,19,"言語",{en:true}),
+  mk("10255","木4","英語ライティングⅡ","D.P.アンドレジェスキ",20,3,"言語",{en:true}),
+  mk("10281","木4","ＴＯＥＩＣ演習Ⅰ(26)","木村（外部専門講師A）",40,19,"言語",{en:true}),
+  mk("10345","木4","フランス語ⅠB","服部 悦子",40,14,"言語"),
+  mk("10404","木4","ハングルⅠA(5)","木村（外部専門講師B）",40,61,"言語"),
+
+  /* 情報リテラシー科目 */
+  mk("10573","月1","デジタル社会入門(2)","宗平 順己",100,255,"情報"),
+  mk("10421","月2","Ａｃｃｅｓｓデータベース基礎(2)","川本 俊行",55,3,"情報"),
+  mk("10425","月2","Ｗｅｂデザイン基礎(2)","甲斐 隆浩",55,39,"情報"),
+  mk("10575","月2","協働型デジタル社会論(2)","宗平 順己",50,1,"情報"),
+  mk("10423","月3","情報社会を生きる技術(2)","川本 俊行",55,16,"情報"),
+  mk("10427","月3","Ｗｅｂデザイン応用(2)","甲斐 隆浩",55,11,"情報"),
+  mk("10461","月3","データサイエンスのためのPython(3)","中村 勝則",55,25,"情報"),
+  mk("10429","月4","Ｓｃｒａｔｃｈによるプログラミング(2)","川本 俊行",55,11,"情報"),
+  mk("10430","月4","グラフィックデザイン基礎","甲斐 隆浩",55,34,"情報"),
+  mk("10464","月4","実用的ITリテラシー(3)","中村 勝則",55,22,"情報"),
+
+  /* 健康・スポーツ科学科目 */
+  mk("10472","月1","運動と健康の科学(3)","宇野 博武",100,221,"健スポ"),
+  mk("10468","月3","スポーツと栄養(3)","成田 厚子",100,50,"健スポ"),
+  mk("10507","月3","マッサージ実習","武岡 健次",30,35,"健スポ"),
+  mk("10510","月3","からだと気づきと姿勢法(3)","東出 益代",50,21,"健スポ"),
+  mk("10469","月4","スポーツと栄養(4)","成田 厚子",100,15,"健スポ"),
+  mk("10473","月4","運動と健康の科学(4)","宇野 博武",100,197,"健スポ"),
+  mk("10475","木3","スポーツと現代社会(2)","檥原 寿識",100,215,"健スポ"),
+
+  /* スポーツ実技科目 */
+  mk("10481","月1","スポーツ実技（テニス）(3)","吉川 小百合",40,7,"実技"),
+  mk("10488","月1","スポーツ実技（バレーボール）(2)","足立 学",50,25,"実技"),
+  mk("10514","月1","スポーツ実技（バンジーエクササイズ）(2)","東出 益代",18,34,"実技"),
+  mk("10482","月2","スポーツ実技（テニス）(4)","吉川 小百合",40,8,"実技"),
+  mk("10489","月2","スポーツ実技（バレーボール）(3)","足立 学",50,24,"実技"),
+  mk("10492","月2","スポーツ実技（バドミントン）(3)","高橋 美佳",40,61,"実技"),
+  mk("10500","月2","スポーツ実技（水泳）","髙橋 淳一郎",50,4,"実技"),
+  mk("10515","月2","スポーツ実技（バンジーエクササイズ）(3)","東出 益代",18,49,"実技"),
+  mk("10485","月3","スポーツ実技（ゴルフ）(3)","松村 公美子",30,23,"実技"),
+  mk("10493","月3","スポーツ実技（バドミントン）(4)","高橋 美佳",40,32,"実技"),
+  mk("10498","月3","スポーツ実技（エアロビクス）(3)","坂田 純子",50,14,"実技"),
+  mk("10505","月3","スポーツ実技（ヨガ）(1)","雄谷 昌子",30,65,"実技"),
+  mk("10521","月3","スポーツ実技（フットサル）","宇野 博武",50,12,"実技"),
+  mk("10486","月4","スポーツ実技（ゴルフ）(4)","松村 公美子",30,12,"実技"),
+  mk("10499","月4","スポーツ実技（エアロビクス）(4)","坂田 純子",50,15,"実技"),
+  mk("10506","月4","スポーツ実技（ヨガ）(2)","雄谷 昌子",30,46,"実技"),
+  mk("10512","水4","スポーツ実技（スリムエアロ）(2)","三浦 栄紀",50,18,"実技"),
+  mk("10518","水4","スポーツ実技（エアリアルワーク）(1)","雄谷 昌子",16,42,"実技"),
+  mk("10523","水4","スポーツ実技（パラスポーツ）","小西 暢子",40,18,"実技"),
+  mk("10519","水5","スポーツ実技（エアリアルワーク）(2)","雄谷 昌子",16,17,"実技"),
+  mk("10495","木3","スポーツ実技（ジャズダンス）(2)","浅賀 園恵",50,16,"実技")
+];
+
+var CAT_INFO = {
+  "人文":   {label:"人文科学",       group:"kyoyo"},
+  "社会":   {label:"社会科学",       group:"kyoyo"},
+  "自然":   {label:"自然科学",       group:"kyoyo"},
+  "国際":   {label:"国際理解",       group:"kyoyo"},
+  "トピック":{label:"現代トピック",   group:"topic"},
+  "ジェンダー":{label:"ジェンダー",   group:"topic"},
+  "キャリア":{label:"キャリアデザイン",group:"topic"},
+  "言語":   {label:"言語リテラシー",  group:"lang"},
+  "情報":   {label:"情報リテラシー",  group:"info"},
+  "健スポ": {label:"健康・スポーツ科学",group:"health"},
+  "実技":   {label:"スポーツ実技",    group:"pe"}
+};
+
+var RISYU_PLANS = [
+  {id:"A", name:"安全第一：落ちにくい科目で固める",
+   note:"4科目すべて倍率1倍未満。抽選でほぼ確実に通したいならこれ。",
+   codes:["10108","10078","10321","10469"]},
+  {id:"B", name:"英語を一気に進める",
+   note:"英語だけで4単位。外国語8単位の要件を今学期でほぼ片付ける形。",
+   codes:["10239","10288","10469","10279"]},
+  {id:"C", name:"バランス型：教養＋ジェンダー＋健康",
+   note:"区分をまんべんなく埋める。月曜4コマ＋水5の5科目。",
+   codes:["10072","10102","10138","10469","10586"]},
+  {id:"D", name:"看護に活きる：福祉・薬・心理",
+   note:"基礎教養科目群4単位をこの学期で完結できる組み合わせ。",
+   codes:["10076","10106","10074","10469","10079"]},
+  {id:"E", name:"キャリア・就活準備",
+   note:"3年次の就活を見据えた構成。どれも倍率が低い。",
+   codes:["10154","10161","10182","10171","10174"]},
+  {id:"F", name:"中国語Ⅱを継続する",
+   note:"中国語Ⅱ(3)は月3＋水5の週2コマで2単位。倍率0.18倍と穴場。",
+   codes:["10108","10078","10359","10469"]},
+  {id:"G", name:"情報・デザインを増やす",
+   note:"データリテラシーで情報2単位が足りている人には不要。趣味で取るなら。",
+   codes:["10575","10468","10429","10164"]},
+  {id:"H", name:"月曜を全休にする",
+   note:"水曜だけに寄せる案。ただし健康・スポーツ科学は月曜にしかないので取れない。",
+   codes:["10215","10079","10119","10587"]},
+  {id:"I", name:"ゆとり：2科目だけ",
+   note:"実習が重い学期向け。月3・月4だけ登校すれば済む。",
+   codes:["10321","10469"]},
+  {id:"J", name:"チャレンジ：人気科目を狙う",
+   note:"倍率4〜6倍。落ちる前提で、第2希望を必ず別に用意すること。",
+   codes:["10131","10130","10057"]}
+];
+/*DATA-END*/
+
+/* ============================== 支払いの定数 ============================== */
+var ACCOUNTS = {
+  smbc:    { id:'smbc',    bank:'三井住友銀行', card:'オリコ',     cls:'smbc' },
+  rakuten: { id:'rakuten', bank:'楽天銀行',     card:'楽天カード', cls:'rakuten' }
+};
+var SEED = [
+  { id:'p_futon',  name:'ふとん', accountId:'smbc',    count:6,  monthly:32321, firstAmount:null, start:'2026-09' },
+  { id:'p_ipad',   name:'iPad',   accountId:'smbc',    count:6,  monthly:15300, firstAmount:null, start:'2026-10' },
+  { id:'p_iphone', name:'iPhone', accountId:'rakuten', count:24, monthly:8116,  firstAmount:8132, start:'2026-09' }
+];
+var KEY = 'shiharai:v1';
+var imgKey = function(id){ return 'shiharai:img:' + id; };
+
+/* ============================== 小道具 ============================== */
+var yen = function(n){ return '¥' + Math.round(n).toLocaleString('ja-JP'); };
+var pad = function(n){ return String(n).padStart(2,'0'); };
+var toYm = function(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1); };
+var thisYm = function(){ return toYm(new Date()); };
+var addMonths = function(ym,n){ var a=ym.split('-').map(Number); return toYm(new Date(a[0], a[1]-1+n, 1)); };
+var ymLabel = function(ym){ var a=ym.split('-'); return a[0]+'年'+Number(a[1])+'月'; };
+var ymShort = function(ym){ var a=ym.split('-'); return a[0].slice(2)+'/'+a[1]; };
+var isYm = function(s){ return /^\d{4}-\d{2}$/.test(s||''); };
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+var el = function(h){ var d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstChild; };
+var randCode = function(){ var s='', a='abcdefghijkmnpqrstuvwxyz23456789'; for(var i=0;i<16;i++) s+=a[Math.floor(Math.random()*a.length)]; return s; };
+function norm(s){ s=String(s); try{ s=s.normalize('NFKC'); }catch(e){} return s.toLowerCase(); }
+
+function planRows(p){
+  var out=[], start = isYm(p.start) ? p.start : thisYm();
+  for(var i=0;i<p.count;i++) out.push({
+    planId:p.id, name:p.name, accountId:p.accountId,
+    month:addMonths(start,i), index:i+1, count:p.count,
+    amount:(i===0 && p.firstAmount) ? p.firstAmount : p.monthly
+  });
+  return out;
+}
+function daysUntil(day){
+  var now=new Date(), today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  var t=new Date(now.getFullYear(),now.getMonth(),day);
+  if(t<today) t=new Date(now.getFullYear(),now.getMonth()+1,day);
+  return Math.round((t-today)/86400000);
+}
+async function resizeImage(file,maxSide,quality){
+  var dataUrl = await new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){res(r.result);}; r.onerror=function(){rej(new Error('read'));}; r.readAsDataURL(file); });
+  var img = await new Promise(function(res,rej){ var i=new Image(); i.onload=function(){res(i);}; i.onerror=function(){rej(new Error('img'));}; i.src=dataUrl; });
+  var sc=Math.min(1,maxSide/Math.max(img.width,img.height));
+  var cv=document.createElement('canvas');
+  cv.width=Math.round(img.width*sc); cv.height=Math.round(img.height*sc);
+  cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+  return cv.toDataURL('image/jpeg',quality);
+}
+
+/* ============================== 状態 ============================== */
+var RISYU_DEFAULT = {
+  selected: [],
+  earned: { kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0 },
+  otherCr: 16,
+  updatedAt: 0
+};
+var S = {
+  plans: SEED.slice(), statements: [], paid: {}, deleted: [],
+  risyu: JSON.parse(JSON.stringify(RISYU_DEFAULT)),
+  settings: { smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'' }
+};
+var appId = 'pay', payTab = 'home', risyuTab = 'tt';
+var draft = null, notice = null, showPlanForm = false, hidePast = true, chartRange = 12;
+var rIncludeOcc = false;
+var pick = { d:'月', p:1, cat:'all', q:'' };
+
+try{
+  var raw = localStorage.getItem(KEY);
+  if(raw){
+    var d0 = JSON.parse(raw);
+    S = Object.assign({}, S, d0);
+    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'' }, d0.settings||{});
+    S.risyu = Object.assign(JSON.parse(JSON.stringify(RISYU_DEFAULT)), d0.risyu||{});
+    S.risyu.earned = Object.assign({ kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0 }, (d0.risyu&&d0.risyu.earned)||{});
+    if(!Array.isArray(S.risyu.selected)) S.risyu.selected = [];
+  }
+}catch(e){}
+
+function persist(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ notice={type:'ng',text:'この端末に保存できませんでした。明細の写真を減らすと直ることがあります。'}; }
+}
+if(!S.settings.room){ S.settings.room = randCode(); persist(); }
+
+function commit(){ persist(); pushRemote(); render(); }
+
+/* 支払い済みは「値＋更新時刻」で持ち、同期では新しいほうを採用する */
+function normPaid(p){
+  if(p === true) return { v:1, t:0 };
+  if(p === false || p == null) return null;
+  if(typeof p === 'object') return { v: p.v ? 1 : 0, t: Number(p.t)||0 };
+  return { v:1, t:0 };
+}
+function isPaid(k){ var p = normPaid(S.paid[k]); return !!(p && p.v); }
+function setPaid(k, on){ S.paid[k] = { v: on?1:0, t: Date.now() }; }
+
+/* ============================== 集計（支払い） ============================== */
+function derive(){
+  var rows = S.plans.reduce(function(a,p){ return a.concat(planRows(p)); }, []);
+  var set = {};
+  rows.forEach(function(r){ set[r.month]=1; });
+  S.statements.forEach(function(s){ if(s.billingMonth) set[s.billingMonth]=1; });
+  set[thisYm()]=1;
+  var months = Object.keys(set).sort();
+  var byMonth = {};
+  months.forEach(function(m){ byMonth[m] = { smbc:{plan:0,stmt:0,rows:[],stmts:[]}, rakuten:{plan:0,stmt:0,rows:[],stmts:[]} }; });
+  rows.forEach(function(r){ var g=byMonth[r.month]; if(!g||!g[r.accountId]) return; g[r.accountId].plan+=r.amount; g[r.accountId].rows.push(r); });
+  S.statements.forEach(function(s){ var g=byMonth[s.billingMonth]; if(!g||!g[s.accountId]) return; g[s.accountId].stmt += Number(s.amount)||0; g[s.accountId].stmts.push(s); });
+  var monthTotal = function(m){ var g=byMonth[m]; return g.smbc.plan+g.smbc.stmt+g.rakuten.plan+g.rakuten.stmt; };
+  return { rows:rows, months:months, byMonth:byMonth, monthTotal:monthTotal };
+}
+
+/* ============================== 同期（Firestore） ============================== */
+var syncState = { on:false, msg:'', ref:null, setDoc:null, unsub:null, timer:null, last:'', connecting:false };
+
+async function initSync(){
+  var room = S.settings.room, fbConfig = S.settings.fbConfig;
+  if(!room || !fbConfig) return;
+  if(syncState.connecting) return;
+  syncState.connecting = true;
+  try{
+    var cfg = JSON.parse(fbConfig);
+    var fa = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    var fs = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    /* 待っている間に別の接続要求が割り込んでいたら、こちらは中断する */
+    if(room !== S.settings.room || fbConfig !== S.settings.fbConfig){ syncState.connecting=false; return; }
+    if(syncState.unsub){ try{ syncState.unsub(); }catch(e){} syncState.unsub = null; }
+    var app = fa.initializeApp(cfg, 'kurashi-' + Date.now());
+    var ref = fs.doc(fs.getFirestore(app), 'shiharai', room);
+    syncState.ref = ref; syncState.setDoc = fs.setDoc; syncState.on = true; syncState.msg = '';
+    syncState.unsub = fs.onSnapshot(ref, function(snap){
+      if(snap.exists()) mergeRemote(snap.data());
+      else pushRemote(true);
+    }, function(err){ syncState.on=false; syncState.msg='つながりませんでした：'+err.message; render(); });
+    render();
+  }catch(e){
+    syncState.on=false; syncState.msg='設定を読み取れませんでした：'+e.message; render();
+  }finally{
+    syncState.connecting = false;
+  }
+}
+function payload(){
+  return {
+    plans: S.plans,
+    statements: S.statements.map(function(s){
+      return { id:s.id, accountId:s.accountId, billingMonth:s.billingMonth, amount:s.amount, memo:s.memo||'', createdAt:s.createdAt||0 };
+    }),
+    paid: S.paid,
+    deleted: S.deleted||[],
+    risyu: { selected:S.risyu.selected, earned:S.risyu.earned, otherCr:S.risyu.otherCr, updatedAt:S.risyu.updatedAt||0 },
+    days: { smbc:S.settings.smbcDay, rakuten:S.settings.rakutenDay },
+    updatedAt: Date.now()
+  };
+}
+function pushRemote(now){
+  if(!syncState.on || !syncState.ref) return;
+  clearTimeout(syncState.timer);
+  var go = async function(){
+    var body = payload();
+    var sig = JSON.stringify(Object.assign({}, body, {updatedAt:0}));
+    if(sig === syncState.last) return;
+    try{ await syncState.setDoc(syncState.ref, body); syncState.last = sig; }
+    catch(e){ syncState.msg = '送信できませんでした：'+e.message; }
+  };
+  now ? go() : (syncState.timer = setTimeout(go, 600));
+}
+function mergeRemote(d){
+  var before = JSON.stringify([S.plans, S.statements, S.paid, S.deleted, S.risyu]);
+  var dead = {};
+  (S.deleted||[]).concat(d.deleted||[]).forEach(function(x){ dead[x]=1; });
+
+  var pm = {}; S.plans.forEach(function(p){ pm[p.id]=p; });
+  (d.plans||[]).forEach(function(p){ if(!pm[p.id]) pm[p.id]=p; });
+  var sm = {}; S.statements.forEach(function(s){ sm[s.id]=s; });
+  (d.statements||[]).forEach(function(s){ if(!sm[s.id]) sm[s.id]=Object.assign({}, s, {hasImage:false}); });
+
+  S.deleted = Object.keys(dead);
+  S.plans = Object.keys(pm).map(function(k){ return pm[k]; }).filter(function(p){ return !dead[p.id]; });
+  S.statements = Object.keys(sm).map(function(k){ return sm[k]; })
+    .filter(function(s){ return !dead[s.id]; })
+    .sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
+
+  var rp = d.paid || {};
+  var planIdOf = function(k){ var i = k.indexOf(':'); return i < 0 ? k : k.slice(0, i); };
+  Object.keys(rp).forEach(function(k){
+    if(dead[planIdOf(k)]) return;               /* 削除済みプランの記録は取り込まない */
+    var r = normPaid(rp[k]), l = normPaid(S.paid[k]);
+    if(r && (!l || r.t > l.t)) S.paid[k] = r;
+  });
+  /* 手元に残っている削除済みプランの記録も掃除する */
+  Object.keys(S.paid).forEach(function(k){ if(dead[planIdOf(k)]) delete S.paid[k]; });
+
+  if(d.risyu && (Number(d.risyu.updatedAt)||0) > (Number(S.risyu.updatedAt)||0)){
+    S.risyu.selected = Array.isArray(d.risyu.selected) ? d.risyu.selected.slice() : [];
+    S.risyu.earned = Object.assign({ kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0 }, d.risyu.earned||{});
+    S.risyu.otherCr = Number(d.risyu.otherCr)||0;
+    S.risyu.updatedAt = Number(d.risyu.updatedAt)||0;
+  }
+  if(d.days){
+    S.settings.smbcDay = d.days.smbc || S.settings.smbcDay;
+    S.settings.rakutenDay = d.days.rakuten || S.settings.rakutenDay;
+  }
+  persist();
+  if(before !== JSON.stringify([S.plans, S.statements, S.paid, S.deleted, S.risyu])) render();
+  pushRemote();
+}
+
+/* ============================== 設定画面 ============================== */
+function section(title, note, inner){
+  return '<section><div class="head"><h2>'+esc(title)+'</h2>'+(note?'<span>'+esc(note)+'</span>':'')+'</div><div class="box">'+inner+'</div></section>';
+}
+function viewSettings(){
+  return section('端末どうしの同期', syncState.on?'接続中':'未設定',
+    '<div class="field"><label class="f">合言葉（両方の端末で同じものを入れる）</label><input id="sy_room" value="'+esc(S.settings.room)+'"></div>'+
+    '<div class="field"><label class="f">Firebaseの設定（firebaseConfig の中身を貼り付け）</label>'+
+    '<textarea id="sy_cfg" placeholder=\'{"apiKey":"…","projectId":"…","appId":"…"}\'>'+esc(S.settings.fbConfig)+'</textarea></div>'+
+    '<button class="btn" data-act="save-sync">同期を開始する</button>'+
+    (syncState.msg?'<div class="note">'+esc(syncState.msg)+'</div>':'')+
+    '<div class="note">支払いの金額・プラン・支払い済みの記録と、履修の選択科目・単位数がまとめて同期されます。明細の写真とAPIキーは端末に残ります。</div>')
+  + section('引き落とし日', null,
+    '<div class="pair" style="margin-bottom:12px">'+
+    '<div><label class="f">三井住友</label><input id="sy_smbc" inputmode="numeric" value="'+S.settings.smbcDay+'"></div>'+
+    '<div><label class="f">楽天</label><input id="sy_rakuten" inputmode="numeric" value="'+S.settings.rakutenDay+'"></div></div>'+
+    '<button class="btn ghost" data-act="save-days">保存する</button>')
+  + section('明細写真の自動読み取り（任意）', S.settings.apiKey?'登録済み':'未登録',
+    '<div class="field"><label class="f">Anthropic APIキー</label>'+
+    '<input id="sy_key" type="password" value="'+esc(S.settings.apiKey)+'" placeholder="sk-ant-…"></div>'+
+    '<button class="btn ghost" data-act="save-key">保存する</button>'+
+    '<div class="note">この端末だけに保存され、同期されません。未登録でも金額の手入力で使えます。</div>')
+  + section('バックアップ', null,
+    '<div class="pair"><button class="btn ghost" data-act="export">ファイルに保存</button>'+
+    '<button class="btn ghost" data-act="import">読み込む</button></div>'+
+    '<input type="file" accept="application/json,.json" id="imp" class="hide">'+
+    '<div class="note">機種変更のときはこれで移せます。履修の選択も一緒に入ります。</div>');
+}
+
+function makeIcs(){
+  var d = derive(), cur = thisYm(), lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//kurashi//JP'];
+  d.months.filter(function(m){ return m>=cur; }).forEach(function(m){
+    [['smbc',S.settings.smbcDay],['rakuten',S.settings.rakutenDay]].forEach(function(pair){
+      var g=d.byMonth[m][pair[0]], amt=g.plan+g.stmt; if(amt<=0) return;
+      var a=m.split('-');
+      lines.push('BEGIN:VEVENT','UID:'+pair[0]+'-'+m+'@kurashi','DTSTART;VALUE=DATE:'+a[0]+a[1]+pad(pair[1]),
+        'SUMMARY:'+ACCOUNTS[pair[0]].bank+' 引落 '+yen(amt),'DESCRIPTION:前日までに入金','END:VEVENT');
+    });
+  });
+  lines.push('END:VCALENDAR');
+  download(new Blob([lines.join('\r\n')],{type:'text/calendar'}), 'hikiotoshi.ics');
+}
+function download(blob, name){
+  var url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+/* ============================== 支払い：画面 ============================== */
+function accRow(acc, amount, sub, label){
+  var a=ACCOUNTS[acc];
+  return '<div class="row"><div class="tick" style="background:var(--'+a.cls+')"></div>'+
+    '<div class="grow"><div class="t">'+esc(label||a.bank)+'</div><div class="s">'+esc(sub||(a.card+'引落'))+'</div></div>'+
+    '<div class="amt num">'+yen(amount)+'</div></div>';
+}
+
+function viewHome(d){
+  var cur=thisYm(), g=d.byMonth[cur];
+  var smbc=g.smbc.plan+g.smbc.stmt, rakuten=g.rakuten.plan+g.rakuten.stmt;
+  var peak=null;
+  d.months.forEach(function(m){ if(m<cur) return; var t=d.monthTotal(m); if(!peak||t>peak.t) peak={m:m,t:t}; });
+  var remain = S.plans.reduce(function(a,p){ return a.concat(planRows(p)); },[])
+    .filter(function(r){ return !isPaid(r.planId+':'+r.month); })
+    .reduce(function(s,r){ return s+r.amount; },0);
+  var next3 = d.months.filter(function(m){ return m>cur; }).slice(0,3);
+
+  return section(ymLabel(cur)+'のご用意額', (g.smbc.stmt+g.rakuten.stmt)>0?'明細ぶん加算済み':null,
+    '<div style="padding-bottom:12px;border-bottom:1px solid var(--rule)">'+
+      '<div class="big num">'+yen(smbc+rakuten)+'</div>'+
+      '<div class="s" style="margin-top:4px">2口座の合計</div></div>'+
+    accRow('smbc', smbc, 'オリコ引落・'+S.settings.smbcDay+'日 / あと'+daysUntil(S.settings.smbcDay)+'日')+
+    accRow('rakuten', rakuten, '楽天カード引落・'+S.settings.rakutenDay+'日 / あと'+daysUntil(S.settings.rakutenDay)+'日')+
+    '<div class="pair" style="margin-top:12px">'+
+      '<button class="btn" data-act="go-stmt">明細を追加</button>'+
+      '<button class="btn ghost" data-act="ics" style="flex:0 0 auto;padding:11px 14px">カレンダー</button></div>')
+  + section('この先の見通し', null,
+    '<div class="row"><div class="grow s">いちばん重い月</div><div class="amt num">'+(peak?ymLabel(peak.m)+'　'+yen(peak.t):'—')+'</div></div>'+
+    '<div class="row"><div class="grow s">未払いの残り総額</div><div class="amt num">'+yen(remain)+'</div></div>'+
+    next3.map(function(m){ return '<div class="row"><div class="grow s">'+ymLabel(m)+'</div><div class="t num">'+yen(d.monthTotal(m))+'</div></div>'; }).join(''));
+}
+
+function viewSchedule(d){
+  var cur=thisYm();
+  var html = section('支払いプラン', S.plans.length+'件',
+    S.plans.map(function(p){
+      var done=planRows(p).filter(function(r){ return isPaid(p.id+':'+r.month); }).length, a=ACCOUNTS[p.accountId];
+      return '<div class="row"><div class="tick" style="background:var(--'+a.cls+')"></div>'+
+        '<div class="grow"><div class="t" style="font-weight:600">'+esc(p.name)+'</div>'+
+        '<div class="s">'+a.card+'・'+yen(p.monthly)+' × '+p.count+'回　残り'+(p.count-done)+'回</div></div>'+
+        '<button class="mini" data-act="del-plan" data-id="'+p.id+'">削除</button></div>';
+    }).join('')+
+    '<button class="btn ghost" style="margin-top:12px" data-act="toggle-plan-form">'+(showPlanForm?'閉じる':'分割払いを追加')+'</button>'+
+    (showPlanForm?planForm():''));
+
+  html += '<div class="chips" style="justify-content:flex-end"><button data-act="toggle-past">'+(hidePast?'過去の月も表示':'今月以降だけ表示')+'</button></div>';
+
+  (hidePast?d.months.filter(function(m){ return m>=cur; }):d.months).forEach(function(m){
+    var total=d.monthTotal(m); if(total===0) return;
+    var inner = ['smbc','rakuten'].map(function(acc){
+      var g=d.byMonth[m][acc], sum=g.plan+g.stmt; if(sum===0) return '';
+      var a=ACCOUNTS[acc];
+      return '<div style="margin-bottom:10px">'+
+        '<div class="accbar bg-'+a.cls+' '+a.cls+'"><span>'+a.bank+'</span><span class="num">'+yen(sum)+'</span></div>'+
+        g.rows.map(function(r){
+          var k=r.planId+':'+r.month, on=isPaid(k);
+          return '<button class="row '+(on?'done':'')+'" data-act="paid" data-key="'+k+'">'+
+            '<span class="chk" style="'+(on?'background:var(--'+a.cls+');border-color:var(--'+a.cls+')':'')+'">'+(on?'✓':'')+'</span>'+
+            '<span class="grow"><span class="t" style="display:block">'+esc(r.name)+'</span>'+
+            '<span class="s" style="display:block">'+r.index+'/'+r.count+'回目</span></span>'+
+            '<span class="t num">'+yen(r.amount)+'</span></button>';
+        }).join('')+
+        g.stmts.map(function(s){
+          return '<div class="row"><span style="width:20px;text-align:center;color:var(--sub);font-size:12px">＋</span>'+
+            '<span class="grow"><span class="t" style="display:block">明細ぶん</span>'+
+            '<span class="s" style="display:block">'+esc(s.memo||(s.hasImage?'写真から追加':'手入力'))+'</span></span>'+
+            '<span class="t num">'+yen(s.amount)+'</span></div>';
+        }).join('')+'</div>';
+    }).join('');
+    html += section(ymLabel(m), m===cur?'今月':null, inner +
+      '<div class="row" style="border-bottom:0"><div class="grow s">月額総合計</div>'+
+      '<div class="num" style="font-size:16px;font-weight:700">'+yen(total)+'</div></div>');
+  });
+  return html;
+}
+function planForm(){
+  return '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--rule)" id="planform">'+
+    '<div class="field"><label class="f">品物の名前</label><input id="pf_name" placeholder="例：洗濯機"></div>'+
+    '<label class="f">引き落とし口座</label>'+
+    '<div class="pick">'+Object.keys(ACCOUNTS).map(function(k,i){ var a=ACCOUNTS[k];
+      return '<button class="'+a.cls+' '+(i===0?'on':'')+'" data-act="pf-acc" data-id="'+a.id+'">'+
+        '<span class="b">'+a.bank+'</span><span class="c">'+a.card+'引落</span></button>'; }).join('')+'</div>'+
+    '<div class="pair" style="margin-bottom:12px">'+
+      '<div><label class="f">総額（円）</label><input id="pf_total" inputmode="numeric"></div>'+
+      '<div style="flex:0 0 90px"><label class="f">回数</label><input id="pf_count" inputmode="numeric" value="6"></div></div>'+
+    '<div class="field"><label class="f">初回請求月</label><input id="pf_start" type="month" value="'+addMonths(thisYm(),1)+'"></div>'+
+    '<button class="btn" data-act="add-plan">追加する</button></div>';
+}
+
+function viewChart(d){
+  var cur=thisYm(), future=d.months.filter(function(m){ return m>=cur; });
+  var use = chartRange===0?d.months:future.slice(0,chartRange);
+  var data = use.map(function(m){ var g=d.byMonth[m]; return { m:m, a:g.smbc.plan+g.smbc.stmt, b:g.rakuten.plan+g.rakuten.stmt }; });
+  var max = Math.max(1, Math.max.apply(null, data.map(function(x){ return x.a+x.b; })));
+  var W=340, H=190, bottom=H-24, top=8, gap=3;
+  var bw = Math.max(4, (W-8)/data.length - gap);
+  var unit = Math.ceil(max/10000)*10000 || 1;
+  var scale = function(v){ return (bottom-top) * v / unit; };
+  var bars = data.map(function(x,i){
+    var px = 4 + i*((W-8)/data.length);
+    var ha = scale(x.a), hb = scale(x.b);
+    var showLabel = data.length<=8 || i%2===0;
+    return '<rect x="'+px.toFixed(1)+'" y="'+(bottom-ha).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ha.toFixed(1)+'" fill="var(--smbc)"/>'+
+      '<rect x="'+px.toFixed(1)+'" y="'+(bottom-ha-hb).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+hb.toFixed(1)+'" fill="var(--rakuten)"/>'+
+      (showLabel?'<text x="'+(px+bw/2).toFixed(1)+'" y="'+(H-8)+'" font-size="9" fill="var(--sub)" text-anchor="middle">'+ymShort(x.m)+'</text>':'');
+  }).join('');
+  var manLabel = function(v){
+    var man = v/10000;
+    if(man === 0) return '0';
+    return (man < 1 || man % 1 !== 0) ? man.toFixed(1) : String(man);
+  };
+  var grid = [0,.5,1].map(function(f){ var y=bottom-(bottom-top)*f;
+    return '<line x1="0" y1="'+y+'" x2="'+W+'" y2="'+y+'" stroke="var(--rule)"/>'+
+      '<text x="0" y="'+(y-3)+'" font-size="9" fill="var(--sub)">'+manLabel(unit*f)+'万</text>'; }).join('');
+
+  return section('口座別の必要額', data.length+'ヶ月',
+    '<div class="chips">'+[[6,'6ヶ月'],[12,'12ヶ月'],[0,'全期間']].map(function(v){
+      return '<button data-act="range" data-v="'+v[0]+'" class="'+(chartRange===v[0]?'on':'')+'">'+v[1]+'</button>'; }).join('')+'</div>'+
+    '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">'+grid+bars+'</svg>'+
+    '<div class="s" style="margin-top:6px"><span class="dot" style="background:var(--smbc)"></span>三井住友　<span class="dot" style="background:var(--rakuten)"></span>楽天</div>')
+  + section('口座ごとの残り総額', null, ['smbc','rakuten'].map(function(acc){
+      var sum = future.reduce(function(s,m){ return s+d.byMonth[m][acc].plan+d.byMonth[m][acc].stmt; },0);
+      return accRow(acc, sum, '今月以降の合計');
+    }).join(''));
+}
+
+function viewStmt(){
+  var hasKey = !!S.settings.apiKey;
+  return section('明細を追加', '写真の金額は合計に加算されます',
+    '<input type="file" accept="image/*" capture="environment" id="cam" class="hide">'+
+    '<input type="file" accept="image/*" id="pickf" class="hide">'+
+    '<div class="pair"><button class="btn" data-act="cam">カメラで撮る</button>'+
+    '<button class="btn ghost" data-act="pick">写真・ファイルから</button></div>'+
+    '<button class="btn ghost" style="margin-top:8px" data-act="manual">金額を手で入力</button>'+
+    (hasKey?'':'<div class="note">写真からの自動読み取りは、設定タブでAPIキーを登録すると使えます。未登録でも写真は保存され、金額は手で入れられます。</div>')+
+    (draft?draftForm():''))
+  + section('保存した明細', S.statements.length+'件', S.statements.length===0
+      ? '<div class="s" style="text-align:center;padding:20px 0">まだ明細がありません。追加すると、その月の合計に足されます。</div>'
+      : S.statements.map(function(s){ var a=ACCOUNTS[s.accountId]||ACCOUNTS.smbc;
+          return '<div class="row"><div class="tick" style="background:var(--'+a.cls+')"></div>'+
+            '<button class="grow" style="background:none;border:0;padding:0;text-align:left;font:inherit;color:inherit" data-act="view-img" data-id="'+s.id+'">'+
+            '<div class="t">'+ymLabel(s.billingMonth)+'・'+a.bank+'</div>'+
+            '<div class="s">'+esc(s.memo||(s.hasImage?'写真から追加':'手入力'))+'</div></button>'+
+            '<div class="amt num">'+yen(s.amount)+'</div>'+
+            '<button class="mini" data-act="del-stmt" data-id="'+s.id+'">削除</button></div>';
+        }).join(''));
+}
+function draftForm(){
+  return '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--rule)">'+
+    (draft.thumb?'<img class="shot" src="'+draft.thumb+'" alt="明細">':'')+
+    '<div class="note" style="margin:0 0 12px">'+(draft.thumb?'読み取った内容を確認して、必要なら直してください。':'口座・請求月・金額を入力してください。')+'</div>'+
+    '<label class="f">引き落とし口座</label>'+
+    '<div class="pick">'+Object.keys(ACCOUNTS).map(function(k){ var a=ACCOUNTS[k];
+      return '<button class="'+a.cls+' '+(draft.accountId===a.id?'on':'')+'" data-act="df-acc" data-id="'+a.id+'">'+
+        '<span class="b">'+a.bank+'</span><span class="c">'+a.card+'引落</span></button>'; }).join('')+'</div>'+
+    '<div class="pair" style="margin-bottom:12px">'+
+      '<div><label class="f">請求月</label><input type="month" id="df_month" value="'+draft.billingMonth+'"></div>'+
+      '<div><label class="f">金額（円）</label><input id="df_amount" inputmode="numeric" value="'+esc(draft.amount)+'"></div></div>'+
+    '<div class="field"><label class="f">メモ</label><input id="df_memo" value="'+esc(draft.memo)+'" placeholder="例：9月分の利用"></div>'+
+    '<div class="pair"><button class="btn" data-act="save-stmt">合計に反映する</button>'+
+    '<button class="btn ghost" style="flex:0 0 auto;padding:11px 16px" data-act="cancel-stmt">やめる</button></div></div>';
+}
+
+/* ============================== 明細の写真読み取り ============================== */
+async function readStatement(dataUrl){
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key':S.settings.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({
+      model:'claude-sonnet-5', max_tokens:1000,
+      messages:[{ role:'user', content:[
+        { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:dataUrl.split(',')[1] } },
+        { type:'text', text:'これはクレジットカードの利用明細の写真です。次のJSONだけを返してください。前置きやコードフェンスは不要です。\n{"issuer":"三井住友カード|楽天カード|不明","billing_month":"YYYY-MM または null","total_amount":請求合計の数値,"items":[{"name":"店名など","amount":数値}]}\ntotal_amount はその月の請求合計。読み取れない値は null に。' }
+      ]}]
+    })
+  });
+  if(!res.ok) throw new Error('API ' + res.status);
+  var data = await res.json();
+  var text = (data.content||[]).map(function(c){ return c.type==='text'?c.text:''; }).join('\n').replace(/```json|```/g,'').trim();
+  return JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}')+1));
+}
+async function handlePhoto(file){
+  notice = { type:'ok', text:'写真を読み込んでいます…' }; render();
+  try{
+    var thumb = await resizeImage(file, 480, 0.5);
+    var parsed = {};
+    if(S.settings.apiKey){
+      try{
+        var big = await resizeImage(file, 1400, 0.8);
+        parsed = await readStatement(big);
+        notice = null;
+      }catch(e){ notice = { type:'ng', text:'金額を読み取れませんでした。手で入力してください。' }; }
+    }else{ notice = null; }
+    draft = {
+      id:'s_'+Date.now(),
+      accountId:(parsed.issuer||'').indexOf('楽天')>=0 ? 'rakuten' : 'smbc',
+      billingMonth: isYm(parsed.billing_month) ? parsed.billing_month : thisYm(),
+      amount: parsed.total_amount ? String(parsed.total_amount) : '',
+      memo: (Array.isArray(parsed.items) ? parsed.items : []).slice(0,2)
+              .map(function(i){ return i && i.name ? String(i.name) : ''; })
+              .filter(Boolean).join('、'),
+      thumb: thumb
+    };
+  }catch(e){ notice = { type:'ng', text:'写真を読み込めませんでした。別の写真で試してください。' }; }
+  render();
+}
+function readDraftFields(){
+  var m=document.getElementById('df_month'), a=document.getElementById('df_amount'), me=document.getElementById('df_memo');
+  if(m && isYm(m.value)) draft.billingMonth=m.value;
+  if(a) draft.amount=a.value.replace(/[^0-9]/g,'');
+  if(me) draft.memo=me.value;
+}
+
+/* ============================== 支払い：操作 ============================== */
+function payAction(act, t){
+  if(act==='go-stmt'){ payTab='stmt'; render(); window.scrollTo(0,0); }
+  else if(act==='paid'){ var k=t.dataset.key; setPaid(k, !isPaid(k)); commit(); }
+  else if(act==='toggle-past'){ hidePast=!hidePast; render(); }
+  else if(act==='range'){ chartRange=Number(t.dataset.v); render(); }
+  else if(act==='toggle-plan-form'){ showPlanForm=!showPlanForm; render(); }
+  else if(act==='pf-acc'){ Array.prototype.forEach.call(t.parentNode.querySelectorAll('button'), function(b){ b.classList.remove('on'); }); t.classList.add('on'); }
+  else if(act==='del-plan'){
+    var id=t.dataset.id;
+    S.deleted=(S.deleted||[]).concat([id]);
+    S.plans=S.plans.filter(function(p){ return p.id!==id; });
+    Object.keys(S.paid).forEach(function(key){ if(key.indexOf(id+':')===0) delete S.paid[key]; });
+    commit();
+  }
+  else if(act==='add-plan'){
+    var name=document.getElementById('pf_name').value.trim();
+    var total=Number(document.getElementById('pf_total').value.replace(/[^0-9]/g,''));
+    var count=Number(document.getElementById('pf_count').value.replace(/[^0-9]/g,''));
+    var start=document.getElementById('pf_start').value;
+    var accBtn=document.querySelector('#planform .pick button.on');
+    if(!name||!total||!count){ notice={type:'ng',text:'名前・総額・回数を入れてください。'}; render(); return; }
+    if(!isYm(start)) start=addMonths(thisYm(),1);
+    var monthly=Math.floor(total/count), rem=total-monthly*count;
+    S.plans.push({ id:'p_'+Date.now(), name:name, accountId:accBtn?accBtn.dataset.id:'smbc', count:count, monthly:monthly, firstAmount:rem>0?monthly+rem:null, start:start });
+    showPlanForm=false; notice={type:'ok',text:name+' を追加しました。月々 '+yen(monthly)+'。'}; commit();
+  }
+  else if(act==='cam'){ document.getElementById('cam').click(); }
+  else if(act==='pick'){ document.getElementById('pickf').click(); }
+  else if(act==='manual'){ draft={ id:'s_'+Date.now(), accountId:'smbc', billingMonth:thisYm(), amount:'', memo:'', thumb:null }; notice=null; render(); }
+  else if(act==='df-acc'){ readDraftFields(); draft.accountId=t.dataset.id; render(); }
+  else if(act==='cancel-stmt'){ draft=null; render(); }
+  else if(act==='save-stmt'){
+    readDraftFields();
+    if(!draft.amount){ notice={type:'ng',text:'金額を入れてください。'}; render(); return; }
+    var s={ id:draft.id, accountId:draft.accountId, billingMonth:draft.billingMonth, amount:Number(draft.amount), memo:draft.memo, hasImage:!!draft.thumb, createdAt:Date.now() };
+    if(draft.thumb){ try{ localStorage.setItem(imgKey(s.id), draft.thumb); }catch(err){ s.hasImage=false; } }
+    S.statements.unshift(s); draft=null;
+    notice={type:'ok',text:ymLabel(s.billingMonth)+'に '+yen(s.amount)+' を加算しました。'}; commit();
+  }
+  else if(act==='del-stmt'){
+    var sid=t.dataset.id;
+    S.deleted=(S.deleted||[]).concat([sid]);
+    S.statements=S.statements.filter(function(x){ return x.id!==sid; });
+    try{ localStorage.removeItem(imgKey(sid)); }catch(err){}
+    commit();
+  }
+  else if(act==='view-img'){
+    var src=null; try{ src=localStorage.getItem(imgKey(t.dataset.id)); }catch(err){}
+    if(!src){ notice={type:'ok',text:'この端末に写真は保存されていません。'}; render(); return; }
+    var box=el('<div id="lightbox"><img src="'+src+'" alt="明細"></div>');
+    box.addEventListener('click',function(){ box.remove(); });
+    document.body.appendChild(box);
+  }
+  else if(act==='ics'){ makeIcs(); }
+  else return false;
+  return true;
+}
+/* ============================== 履修：索引 ============================== */
+var byCode = {};
+COURSES.forEach(function(c){
+  byCode[c.code] = c;
+  c.key = norm(c.name + ' ' + c.teacher + ' ' + c.code);
+});
+var fixedMap = {};
+FIXED.forEach(function(f){ f.slots.forEach(function(s){ fixedMap[s.d + s.p] = f; }); });
+var slotHas = {};
+COURSES.forEach(function(c){ c.slots.forEach(function(s){ var k=s.d+s.p; slotHas[k]=(slotHas[k]||0)+1; }); });
+
+function rSelected(){ return S.risyu.selected.map(function(code){ return byCode[code]; }).filter(Boolean); }
+function rIsSelected(code){ return S.risyu.selected.indexOf(code) >= 0; }
+function selectedSlotMap(exceptCode){
+  var m = {};
+  rSelected().forEach(function(c){
+    if(c.code === exceptCode) return;
+    c.slots.forEach(function(s){ m[s.d + s.p] = c; });
+  });
+  return m;
+}
+function hardBlockers(c){
+  var out = [];
+  c.slots.forEach(function(s){
+    var k = s.d + s.p;
+    if(fixedMap[k] && !rIncludeOcc) out.push(k + '「' + fixedMap[k].name + '」と重複');
+  });
+  return out;
+}
+function swapTargets(c){
+  var m = selectedSlotMap(c.code), out = [];
+  c.slots.forEach(function(s){
+    var o = m[s.d + s.p];
+    if(o && out.indexOf(o) < 0) out.push(o);
+  });
+  return out;
+}
+function conflicts(c){
+  return hardBlockers(c).concat(swapTargets(c).map(function(o){ return '「' + o.name + '」と重複'; }));
+}
+function ratioClass(r){ return r < 0.5 ? 'r0' : r < 1 ? 'r1' : r < 2 ? 'r2' : 'r3'; }
+function ratioText(r){
+  var t = r < 0.5 ? '◎ 余裕' : r < 1 ? '○ 定員内' : r < 2 ? '△ 半々' : '▲ 激戦';
+  return t + ' ' + r.toFixed(2) + '倍';
+}
+
+/* ============================== 履修：単位集計 ============================== */
+function tally(){
+  var t = { kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0, term:0 };
+  FIXED.forEach(function(f){
+    if(!f.cat) return;
+    var g = CAT_INFO[f.cat] ? CAT_INFO[f.cat].group : null;
+    if(g) t[g] += f.cr;
+  });
+  rSelected().forEach(function(c){
+    t[CAT_INFO[c.cat].group] += c.cr;
+    if(c.en) t.langEn += c.cr;
+    t.term += c.cr;
+  });
+  return t;
+}
+var REQS = [
+  {key:'total',  name:'共通教育科目 合計',  sub:'3区分あわせて127単位のうち', need:21},
+  {key:'kyoyo',  name:'基礎教養科目群',     sub:'人文・社会・自然・国際理解', need:4},
+  {key:'topic',  name:'トピック等4群',      sub:'現代トピック／ジェンダー／キャリア', need:6},
+  {key:'lang',   name:'言語リテラシー',     sub:'外国語8単位の中心', need:5},
+  {key:'langEn', name:'　うち英語',         sub:'言語5単位のうち3単位は英語', need:3},
+  {key:'info',   name:'情報リテラシー',     sub:'データリテラシー・ＡＩの基礎を含む', need:2},
+  {key:'health', name:'健康・スポーツ科学', sub:'実技ではなく講義のほう', need:1}
+];
+function metersHtml(){
+  var t = tally(), e = S.risyu.earned, html = '';
+  var got = {
+    kyoyo:t.kyoyo+e.kyoyo, topic:t.topic+e.topic, lang:t.lang+e.lang, langEn:t.langEn+e.langEn,
+    info:t.info+e.info, health:t.health+e.health, pe:t.pe+e.pe
+  };
+  got.total = got.kyoyo+got.topic+got.lang+got.info+got.health+got.pe;
+  REQS.forEach(function(r){
+    var g = got[r.key], pct = Math.min(100, Math.round(g / r.need * 100));
+    html += '<div class="met"><div class="met-n">'+esc(r.name)+'<small>'+esc(r.sub)+'</small></div>'+
+      '<div class="bar"><i class="'+(g>=r.need?'done':'')+'" style="width:'+pct+'%"></i></div>'+
+      '<div class="met-v"><b>'+g+'</b> / '+r.need+'</div></div>';
+  });
+  var term = t.term + (Number(S.risyu.otherCr)||0) + 2;
+  html += '<div class="met"><div class="met-n">今学期の登録単位<small>キャップ制は25単位以下</small></div>'+
+    '<div class="bar"><i class="'+(term>25?'over':'done')+'" style="width:'+Math.min(100,Math.round(term/25*100))+'%"></i></div>'+
+    '<div class="met-v"><b>'+term+'</b> / 25</div></div>';
+  return html;
+}
+function warnsHtml(){
+  var cs = rSelected(), out = '';
+  var term = tally().term + (Number(S.risyu.otherCr)||0) + 2;
+  if(term > 25) out += '<div class="msg ng">今学期の登録が'+term+'単位になります。キャップ制の上限は25単位なので、'+(term-25)+'単位ぶん減らしてください。</div>';
+  var dup = cs.filter(function(c){ return conflicts(c).length; }).map(function(c){ return c.name; });
+  if(dup.length) out += '<div class="msg ng">時間割が重なっています：'+esc(dup.join('、'))+'</div>';
+  var hi = cs.filter(function(c){ return c.ratio >= 2; });
+  if(hi.length) out += '<div class="msg ng">倍率2倍以上が'+hi.length+'件あります（'+esc(hi.map(function(c){return c.name;}).join('、'))+'）。落ちたときの代わりも決めておくと安心です。</div>';
+  return out;
+}
+
+/* ============================== 履修：画面 ============================== */
+function courseRow(c){
+  var hard = hardBlockers(c), swap = swapTargets(c), sel = rIsSelected(c.code);
+  var b = '<span class="b cat">'+esc(CAT_INFO[c.cat].label)+'</span>'+
+          '<span class="b cr">'+c.cr+'単位</span>'+
+          '<span class="b '+ratioClass(c.ratio)+'">'+ratioText(c.ratio)+'</span>'+
+          (c.en ? '<span class="b en">英語</span>' : '');
+  if(sel && conflicts(c).length) b += '<span class="b warn">重複あり</span>';
+  else if(!sel && hard.length) b += '<span class="b warn">'+esc(hard[0])+'</span>';
+  else if(!sel && swap.length) b += '<span class="b r2">'+esc(swap.map(function(o){return o.name;}).join('・'))+'と差し替え</span>';
+
+  return '<div class="crs'+(!sel && hard.length ? ' dis' : '')+'">'+
+    '<div class="body"><div class="ct">'+esc(c.name)+'</div>'+
+    '<div class="cm">'+esc(c.slotText)+'\u3000'+esc(c.teacher)+'<br>コード '+c.code+'\u3000定員'+c.cap+'／申込'+c.apps+'</div>'+
+    '<div class="badges">'+b+'</div></div>'+
+    '<button type="button" class="add'+(sel?' rm':'')+'" data-act="r-toggle" data-code="'+c.code+'"'+
+      (!sel && hard.length ? ' disabled' : '')+'>'+(sel?'外す':(swap.length?'差し替え':'入れる'))+'</button></div>';
+}
+
+function gridHtml(){
+  var selMap = selectedSlotMap(null);
+  var h = '<thead><tr><th class="pd"></th>';
+  DAYS.forEach(function(d){ h += '<th>'+d+'</th>'; });
+  h += '</tr></thead><tbody>';
+  PERIODS.forEach(function(p){
+    h += '<tr><th class="pd">'+p+'</th>';
+    DAYS.forEach(function(d){
+      var k = d + p, f = fixedMap[k], s = selMap[k];
+      if(f){
+        h += '<td class="fx"><span class="cell none"><span class="nm">'+esc(f.name)+'</span><span class="tag">登録済み</span></span></td>';
+      }else if(s){
+        h += '<td class="sel"><button type="button" class="cell" data-act="r-slot" data-slot="'+k+'">'+
+             '<span class="x" data-x="1">外す</span><span class="nm">'+esc(s.name)+'</span>'+
+             '<span class="tag">'+esc(s.code)+'・'+s.cr+'単位</span></button></td>';
+      }else if(slotHas[k]){
+        h += '<td><button type="button" class="cell free" data-act="r-slot" data-slot="'+k+'">＋ '+slotHas[k]+'件</button></td>';
+      }else{
+        h += '<td><span class="cell none free">—</span></td>';
+      }
+    });
+    h += '</tr>';
+  });
+  return h + '</tbody>';
+}
+
+function selListHtml(){
+  var cs = rSelected();
+  if(!cs.length) return '<div class="empty">まだ何も選んでいません。上の時間割のマスをタップするか、「履修案」から読み込んでください。</div>';
+  var order = {'月':0,'火':1,'水':2,'木':3,'金':4,'土':5};
+  cs = cs.slice().sort(function(a,b){
+    var A=a.slots[0], B=b.slots[0];
+    return (order[A.d]-order[B.d]) || (A.p-B.p);
+  });
+  return cs.map(courseRow).join('');
+}
+function codeText(){
+  return rSelected().map(function(c){ return c.code + '  ' + c.slotText + '  ' + c.name; }).join('\n');
+}
+
+function viewRisyuTt(){
+  var cs = rSelected();
+  var e = S.risyu.earned;
+  return section('卒業要件の埋まりぐあい', '選択中の科目を足した状態',
+      '<div id="meters">'+metersHtml()+'</div>'+
+      '<details style="margin-top:10px;border-top:1px solid var(--rule);padding-top:10px">'+
+      '<summary style="font-size:13px;color:var(--risyu);font-weight:600">すでに修得した単位を入力する</summary>'+
+      '<div class="earn-grid">'+
+        earnInput('基礎教養科目群','kyoyo',e.kyoyo)+earnInput('トピック等4群','topic',e.topic)+
+        earnInput('言語リテラシー','lang',e.lang)+earnInput('うち英語','langEn',e.langEn)+
+        earnInput('情報リテラシー','info',e.info)+earnInput('健康・スポーツ科学','health',e.health)+
+        earnInput('スポーツ実技ほか','pe',e.pe)+earnInput('今学期の専門・基礎教育','otherCr',S.risyu.otherCr)+
+      '</div><p class="note">「今学期の専門・基礎教育」はキャップ制（25単位以下）の計算に使います。</p></details>')
+    + '<section><div class="head"><h2>時間割</h2><span>マスをタップして講座を選ぶ</span></div>'+
+      '<div class="scroll"><table class="tt" id="tt">'+gridHtml()+'</table></div>'+
+      '<p class="note">横にスクロールすると木・金・土が見えます。入れた科目は「外す」で削除、マス本体をタップすると差し替えられます。</p>'+
+      '<label class="tg"><input type="checkbox" id="tgOcc"'+(rIncludeOcc?' checked':'')+'>登録済み科目と重なる講座も選べるようにする（隔週・半期科目の確認用）</label></section>'
+    + section('選択中の科目', cs.length ? cs.length+'科目 / 計'+cs.reduce(function(a,c){return a+c.cr;},0)+'単位' : null,
+      '<div id="warns">'+warnsHtml()+'</div><div id="selList">'+selListHtml()+'</div>'+
+      '<div class="pair" style="margin-top:12px"><button class="btn ghost" data-act="r-clear">すべて外す</button>'+
+      '<button class="btn ghost" data-act="r-copy">コードをコピー</button></div>'+
+      '<textarea class="codebox" id="codebox" readonly>'+esc(codeText())+'</textarea>'+
+      '<p class="note">MUSESの抽選登録は「時間割コード」で申し込みます。</p>');
+}
+function earnInput(label, key, val){
+  return '<label>'+esc(label)+'<input type="number" min="0" step="1" data-earn="'+key+'" value="'+(Number(val)||0)+'"></label>';
+}
+
+function viewRisyuPlans(){
+  return '<section><div class="head"><h2>履修案</h2><span>タップで時間割に読み込み</span></div>'+
+    RISYU_PLANS.map(function(p){
+      var cs = p.codes.map(function(c){ return byCode[c]; }).filter(Boolean);
+      var cr = cs.reduce(function(a,c){ return a+c.cr; },0);
+      var worst = cs.reduce(function(a,c){ return Math.max(a,c.ratio); },0);
+      return '<div class="plancard"><h3><em>案'+p.id+'</em>'+esc(p.name)+'</h3>'+
+        '<p>'+esc(p.note)+'</p>'+
+        '<div class="codes">'+cs.map(function(c){
+          return c.slotText+'　'+esc(c.name)+'（'+c.code+'・'+c.ratio.toFixed(2)+'倍）'; }).join('<br>')+'</div>'+
+        '<div class="badges" style="margin-top:7px"><span class="b cr">'+cs.length+'科目・'+cr+'単位</span>'+
+        '<span class="b '+ratioClass(worst)+'">いちばん高い倍率 '+worst.toFixed(2)+'倍</span></div>'+
+        '<button class="btn ghost" style="margin-top:10px" data-act="r-plan" data-plan="'+p.id+'">この案を読み込む</button></div>';
+    }).join('')+'</section>';
+}
+
+/* ============================== 履修：選択シート ============================== */
+function openPicker(k){
+  var m = k.match(/^([月火水木金土])([1-7])$/);
+  if(!m) return;
+  pick.d = m[1]; pick.p = parseInt(m[2],10); pick.cat = 'all'; pick.q = '';
+  document.getElementById('shSearch').value = '';
+  document.getElementById('veil').classList.add('on');
+  document.getElementById('sheet').classList.add('on');
+  renderPicker();
+}
+function closePicker(){
+  document.getElementById('veil').classList.remove('on');
+  document.getElementById('sheet').classList.remove('on');
+}
+function sheetOpen(){ return document.getElementById('sheet').classList.contains('on'); }
+
+function renderPicker(){
+  document.getElementById('shTitle').textContent = pick.d + '曜 ' + pick.p + '限';
+  document.getElementById('shDays').innerHTML = DAYS.map(function(d){
+    return '<button type="button" class="'+(d===pick.d?'on':'')+'" data-day="'+d+'">'+d+'</button>'; }).join('');
+  document.getElementById('shPeriods').innerHTML = PERIODS.map(function(p){
+    return '<button type="button" class="'+(p===pick.p?'on':'')+'" data-period="'+p+'">'+p+'限</button>'; }).join('');
+
+  var all = COURSES.filter(function(c){
+    return c.slots.some(function(s){ return s.d===pick.d && s.p===pick.p; });
+  });
+  var cats = [];
+  all.forEach(function(c){ if(cats.indexOf(c.cat)<0) cats.push(c.cat); });
+  var ch = '<button type="button" class="'+(pick.cat==='all'?'on':'')+'" data-cat="all">すべて '+all.length+'</button>';
+  cats.forEach(function(ct){
+    var n = all.filter(function(c){ return c.cat===ct; }).length;
+    ch += '<button type="button" class="'+(pick.cat===ct?'on':'')+'" data-cat="'+ct+'">'+esc(CAT_INFO[ct].label)+' '+n+'</button>';
+  });
+  document.getElementById('shCats').innerHTML = ch;
+
+  var q = norm(pick.q.trim());
+  var list = all.filter(function(c){
+    if(pick.cat !== 'all' && c.cat !== pick.cat) return false;
+    if(!q) return true;
+    return c.key.indexOf(q) >= 0;
+  });
+  list.sort(function(a,b){
+    var ba = hardBlockers(a).length?1:0, bb = hardBlockers(b).length?1:0;
+    if(rIsSelected(a.code)) ba = -1;
+    if(rIsSelected(b.code)) bb = -1;
+    return (ba-bb) || (a.ratio-b.ratio);
+  });
+
+  var body = '';
+  var cur = selectedSlotMap(null)[pick.d + pick.p];
+  if(cur) body += '<div class="msg ok">この枠には「'+esc(cur.name)+'」が入っています。別の講座の「差し替え」を押すと入れ替わります。</div>';
+  var fk = fixedMap[pick.d + pick.p];
+  if(fk) body += '<div class="msg ng">この枠は「'+esc(fk.name)+'」で埋まっています。'+
+    (rIncludeOcc ? '重複を許可する設定なので選べますが、実際に登録できるか必ず確認してください。' : '下の科目は週2コマ科目の片方としてこの枠を使うものです。')+'</div>';
+  if(!list.length) body += '<div class="empty">この条件に合う講座はありません。</div>';
+  body += list.map(courseRow).join('');
+  var bd = document.getElementById('shBody');
+  bd.innerHTML = body;
+  bd.scrollTop = 0;
+}
+
+/* ============================== 履修：操作 ============================== */
+function touchRisyu(){ S.risyu.updatedAt = Date.now(); }
+function rToggle(code){
+  var c = byCode[code];
+  if(!c) return;
+  var i = S.risyu.selected.indexOf(code);
+  if(i >= 0){
+    S.risyu.selected.splice(i,1);
+  }else{
+    if(hardBlockers(c).length) return;
+    swapTargets(c).forEach(function(o){
+      var j = S.risyu.selected.indexOf(o.code);
+      if(j >= 0) S.risyu.selected.splice(j,1);
+    });
+    S.risyu.selected.push(code);
+  }
+  touchRisyu();
+  commit();
+  if(sheetOpen()) renderPicker();
+}
+function risyuAction(act, t, ev){
+  if(act==='r-slot'){
+    var k = t.dataset.slot;
+    var selMap = selectedSlotMap(null);
+    if(selMap[k] && ev.target.closest('[data-x]')){ rToggle(selMap[k].code); return true; }
+    openPicker(k); return true;
+  }
+  if(act==='r-toggle'){ if(!t.disabled) rToggle(t.dataset.code); return true; }
+  if(act==='r-clear'){ S.risyu.selected = []; touchRisyu(); commit(); return true; }
+  if(act==='r-plan'){
+    var p = RISYU_PLANS.filter(function(x){ return x.id === t.dataset.plan; })[0];
+    if(!p) return true;
+    S.risyu.selected = p.codes.filter(function(c){ return byCode[c]; });
+    touchRisyu(); closePicker(); risyuTab = 'tt'; commit(); window.scrollTo(0,0);
+    return true;
+  }
+  if(act==='r-copy'){
+    var box = document.getElementById('codebox');
+    if(box){ box.focus(); box.select(); }
+    var manual = function(){
+      notice = {type:'ok', text:'下の欄が選択されています。長押しか右クリックで「コピー」を選んでください。'};
+      render();
+    };
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(codeText()).then(function(){
+          notice = {type:'ok', text:'時間割コードをコピーしました。'};
+          render();
+        })['catch'](manual);
+      }else{ manual(); }
+    }catch(e){ manual(); }
+    return true;
+  }
+  return false;
+}
+/* ============================== 画面の切り替え ============================== */
+var APPS = [['pay','支払い'],['risyu','履修'],['set','設定']];
+var PAY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ'],['stmt','明細']];
+var RISYU_TABS = [['tt','時間割'],['plans','履修案']];
+var TITLES = { pay:'分割払い 支払い管理', risyu:'後期 履修シミュレーター', set:'設定' };
+var FOOTS = {
+  pay:'金額に分割手数料（金利）は含まれていません。引き落とし日の前日までに入金しておくと安心です。',
+  risyu:'単位数は「週1コマ＝1単位／週2コマ＝2単位」での推定です。申込者数は9月7日17時00分時点。正確な単位数と科目区分はシラバスと履修便覧で確認してください。',
+  set:'合言葉は他人に教えないでください。Firestoreのセキュリティルールを必ず設定してください。'
+};
+
+function render(){
+  document.getElementById('apps').innerHTML = APPS.map(function(a){
+    return '<button data-app="'+a[0]+'" class="'+(appId===a[0]?'on':'')+'">'+a[1]+'</button>';
+  }).join('');
+
+  var nav = document.getElementById('nav');
+  var tabs = appId==='pay' ? PAY_TABS : appId==='risyu' ? RISYU_TABS : null;
+  if(tabs){
+    var cur = appId==='pay' ? payTab : risyuTab;
+    nav.className = '';
+    nav.innerHTML = tabs.map(function(t){
+      return '<button data-tab="'+t[0]+'" class="'+(cur===t[0]?'on':'')+'">'+t[1]+'</button>';
+    }).join('');
+  }else{
+    nav.className = 'hide'; nav.innerHTML = '';
+  }
+
+  var html = notice ? '<div class="msg '+notice.type+'">'+esc(notice.text)+'</div>' : '';
+  if(appId==='pay'){
+    var d = derive();
+    html += ({ home:viewHome, schedule:viewSchedule, chart:viewChart, stmt:viewStmt })[payTab](d);
+  }else if(appId==='risyu'){
+    html += risyuTab==='plans' ? viewRisyuPlans() : viewRisyuTt();
+  }else{
+    html += viewSettings();
+  }
+  document.getElementById('app').innerHTML = html;
+  document.getElementById('apptitle').textContent = TITLES[appId];
+  document.getElementById('foot').textContent = FOOTS[appId];
+  document.getElementById('synctag').textContent = syncState.on
+    ? '同期中・合言葉 ' + S.settings.room
+    : '支払いと履修をひとつに。同期は設定タブから';
+}
+
+/* ============================== イベント ============================== */
+document.getElementById('apps').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-app]'); if(!b) return;
+  appId = b.dataset.app; notice = null; closePicker(); render(); window.scrollTo(0,0);
+});
+document.getElementById('nav').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-tab]'); if(!b) return;
+  if(appId==='pay') payTab = b.dataset.tab; else risyuTab = b.dataset.tab;
+  notice = null; render(); window.scrollTo(0,0);
+});
+
+document.getElementById('app').addEventListener('click', function(e){
+  var t = e.target.closest('[data-act]'); if(!t) return;
+  var act = t.dataset.act;
+  if(act.indexOf('r-') === 0){ risyuAction(act, t, e); return; }
+  if(payAction(act, t)) return;
+  settingsAction(act, t);
+});
+
+function settingsAction(act, t){
+  if(act==='save-sync'){
+    S.settings.room = document.getElementById('sy_room').value.trim();
+    S.settings.fbConfig = document.getElementById('sy_cfg').value.trim();
+    persist();
+    if(!S.settings.room || !S.settings.fbConfig){
+      syncState.on=false;
+      syncState.msg='合言葉とFirebaseの設定の両方を入れてから押してください。';
+      render();
+      return;
+    }
+    syncState.on=false; syncState.msg='接続しています…'; render(); initSync();
+  }
+  else if(act==='save-days'){
+    S.settings.smbcDay = Math.min(31, Math.max(1, Number(document.getElementById('sy_smbc').value)||27));
+    S.settings.rakutenDay = Math.min(31, Math.max(1, Number(document.getElementById('sy_rakuten').value)||27));
+    notice={type:'ok',text:'引き落とし日を保存しました。'}; commit();
+  }
+  else if(act==='save-key'){
+    S.settings.apiKey = document.getElementById('sy_key').value.trim();
+    persist(); notice={type:'ok',text:'保存しました。'}; render();
+  }
+  else if(act==='export'){
+    download(new Blob([JSON.stringify(Object.assign({ app:'kurashi', version:2 }, payload()))],{type:'application/json'}),
+      'kurashi_'+thisYm()+'.json');
+  }
+  else if(act==='import'){ document.getElementById('imp').click(); }
+}
+
+document.getElementById('app').addEventListener('change', async function(e){
+  var id = e.target.id;
+  if(id==='cam' || id==='pickf'){ var f=e.target.files[0]; e.target.value=''; if(f) handlePhoto(f); }
+  if(id==='tgOcc'){ rIncludeOcc = e.target.checked; render(); if(sheetOpen()) renderPicker(); }
+  if(id==='imp'){
+    var g=e.target.files[0]; e.target.value=''; if(!g) return;
+    try{
+      var txt = await g.text();
+      var d = JSON.parse(txt);
+      if(d.app!=='kurashi' && d.app!=='shiharai') throw new Error('形式');
+      if(d.risyu) d.risyu.updatedAt = Date.now();
+      mergeRemote(d);
+      notice={type:'ok',text:'読み込みました。'}; render();
+    }catch(err){ notice={type:'ng',text:'読み込めませんでした。書き出したファイルを選んでください。'}; render(); }
+  }
+});
+
+/* 既修得単位は打っている途中で全体を描き直さない（入力欄からカーソルが外れるため） */
+document.getElementById('app').addEventListener('input', function(e){
+  var k = e.target.getAttribute('data-earn');
+  if(!k) return;
+  var v = parseInt(e.target.value, 10);
+  if(isNaN(v) || v < 0) v = 0;
+  if(k==='otherCr') S.risyu.otherCr = v; else S.risyu.earned[k] = v;
+  touchRisyu();
+  var m = document.getElementById('meters'); if(m) m.innerHTML = metersHtml();
+  var w = document.getElementById('warns'); if(w) w.innerHTML = warnsHtml();
+  persist(); pushRemote();
+});
+
+/* 選択シート */
+document.getElementById('shBody').addEventListener('click', function(e){
+  var b = e.target.closest('[data-act]');
+  if(b && !b.disabled) risyuAction(b.dataset.act, b, e);
+});
+document.getElementById('shDays').addEventListener('click', function(e){
+  var b = e.target.closest('[data-day]'); if(!b) return;
+  pick.d = b.dataset.day; pick.cat='all'; renderPicker();
+});
+document.getElementById('shPeriods').addEventListener('click', function(e){
+  var b = e.target.closest('[data-period]'); if(!b) return;
+  pick.p = parseInt(b.dataset.period,10); pick.cat='all'; renderPicker();
+});
+document.getElementById('shCats').addEventListener('click', function(e){
+  var b = e.target.closest('[data-cat]'); if(!b) return;
+  pick.cat = b.dataset.cat; renderPicker();
+});
+document.getElementById('shSearch').addEventListener('input', function(e){ pick.q = e.target.value; renderPicker(); });
+document.getElementById('shClose').addEventListener('click', closePicker);
+document.getElementById('veil').addEventListener('click', closePicker);
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closePicker(); });
+
+render();
+initSync();
+</script>
+</body>
+</html>
