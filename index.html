@@ -613,13 +613,29 @@ function derive(){
 /* ============================== 同期（Firestore） ============================== */
 var syncState = { on:false, msg:'', ref:null, setDoc:null, unsub:null, timer:null, last:'', connecting:false };
 
+/* Firebaseコンソールの表示は JSON ではなく JavaScript の書き方なので、
+   波かっこ無し・const付き・キーに引用符無しなど、どの貼り方でも読めるようにする */
+function parseFbConfig(txt){
+  var s = String(txt == null ? '' : txt).trim();
+  if(!s) throw new Error('EMPTY');
+  s = s.replace(/^\s*\/\/.*$/gm, '');                 /* 行頭のコメントを除去 */
+  var a = s.indexOf('{'), b = s.lastIndexOf('}');
+  s = (a >= 0 && b > a) ? s.slice(a, b + 1) : '{' + s + '}';
+  s = s.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":'); /* キーに引用符を補う */
+  s = s.replace(/'([^'\\]*)'/g, '"$1"');               /* シングルクォートを直す */
+  s = s.replace(/,\s*([}\]])/g, '$1');                  /* 末尾のカンマを除去 */
+  var cfg = JSON.parse(s);
+  if(!cfg || !cfg.apiKey || !cfg.projectId) throw new Error('MISSING');
+  return cfg;
+}
+
 async function initSync(){
   var room = S.settings.room, fbConfig = S.settings.fbConfig;
   if(!room || !fbConfig) return;
   if(syncState.connecting) return;
   syncState.connecting = true;
   try{
-    var cfg = JSON.parse(fbConfig);
+    var cfg = parseFbConfig(fbConfig);
     var fa = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
     var fs = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     /* 待っている間に別の接続要求が割り込んでいたら、こちらは中断する */
@@ -634,7 +650,12 @@ async function initSync(){
     }, function(err){ syncState.on=false; syncState.msg='つながりませんでした：'+err.message; render(); });
     render();
   }catch(e){
-    syncState.on=false; syncState.msg='設定を読み取れませんでした：'+e.message; render();
+    syncState.on=false;
+    syncState.msg = (e.message === 'EMPTY')   ? 'Firebaseの設定が空です。コンソールの firebaseConfig を貼り付けてください。'
+                  : (e.message === 'MISSING') ? 'apiKey と projectId が見当たりません。firebaseConfig 全体を貼り付けてください。'
+                  : /Failed to fetch|dynamically imported/.test(e.message) ? 'ネットにつながらないか、ファイルを直接開いています。https:// のURLから開いてください。'
+                  : '設定を読み取れませんでした。firebaseConfig の { から } までを貼り付けてください。';
+    render();
   }finally{
     syncState.connecting = false;
   }
@@ -712,7 +733,7 @@ function section(title, note, inner){
 function viewSettings(){
   return section('端末どうしの同期', syncState.on?'接続中':'未設定',
     '<div class="field"><label class="f">合言葉（両方の端末で同じものを入れる）</label><input id="sy_room" value="'+esc(S.settings.room)+'"></div>'+
-    '<div class="field"><label class="f">Firebaseの設定（firebaseConfig の中身を貼り付け）</label>'+
+    '<div class="field"><label class="f">Firebaseの設定（firebaseConfig をそのまま貼り付け）</label>'+
     '<textarea id="sy_cfg" placeholder=\'{"apiKey":"…","projectId":"…","appId":"…"}\'>'+esc(S.settings.fbConfig)+'</textarea></div>'+
     '<button class="btn" data-act="save-sync">同期を開始する</button>'+
     (syncState.msg?'<div class="note">'+esc(syncState.msg)+'</div>':'')+
