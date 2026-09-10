@@ -16,11 +16,13 @@
   --ok:#1F7A46; --okbg:#E8F3EC;
   --e1:#E2664B; --e2:#E08A2E; --e3:#C79A18; --e4:#4E9A5B; --e5:#3FA89A;
   --e6:#3D8FC4; --e7:#4C68C0; --e8:#8163B8; --e9:#D25F94; --e10:#7A8290;
+  --todaybg:#FDECEF; --holi:#C2334D;
   --shadow:0 1px 2px rgba(23,35,58,.06), 0 4px 14px rgba(23,35,58,.05);
   --shadow-lg:0 2px 6px rgba(23,35,58,.08), 0 12px 30px rgba(23,35,58,.10);
   --fs:15px;
 }
 body[data-theme="dark"]{
+  --todaybg:#3A2630; --holi:#F2879B;
   --paper:#171A21; --card:#212632; --ink:#E9ECF2; --sub:#9AA3B2; --rule:#333A48; --soft:#2A303D;
   --smbc:#4FBE7E; --smbcbg:#1F3129; --rakuten:#F2726F; --rakutenbg:#332224;
   --risyu:#9E97E0; --risyubg:#282640; --warn:#E6A567; --warnbg:#33291F;
@@ -28,18 +30,22 @@ body[data-theme="dark"]{
   --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 10px 30px rgba(0,0,0,.5);
 }
 body[data-theme="sakura"]{
+  --todaybg:#FBE2E8; --holi:#B4325A;
   --paper:#FBF2F4; --card:#fff; --ink:#4A2B36; --sub:#8B6E77; --rule:#EEDCE2; --soft:#F7E9ED;
   --risyu:#B4577E; --risyubg:#F8E5EC; --ink-head:#7A3A55;
 }
 body[data-theme="mint"]{
+  --todaybg:#FCEAEE;
   --paper:#F0F6F1; --card:#fff; --ink:#1E3629; --sub:#657A6C; --rule:#D7E5DA; --soft:#E7F0E9;
   --risyu:#2E7D62; --risyubg:#E2F0EA;
 }
 body[data-theme="ocean"]{
+  --todaybg:#FBE9EC;
   --paper:#EFF4F8; --card:#fff; --ink:#123049; --sub:#5E7689; --rule:#D6E2EC; --soft:#E5EDF4;
   --risyu:#1C6E9C; --risyubg:#E1EEF6;
 }
 body[data-theme="cream"]{
+  --todaybg:#F9E7DC;
   --paper:#F8F4EA; --card:#FFFDF7; --ink:#3B3222; --sub:#7D735F; --rule:#E6DFCE; --soft:#F1EADA;
   --risyu:#8A6A2F; --risyubg:#F2E9D6;
 }
@@ -235,49 +241,240 @@ label.tg{display:flex; align-items:flex-start; gap:7px; font-size:.78em; color:v
 label.tg input{width:auto; margin-top:2px}
 
 /* ================= カレンダー ================= */
-.cal{width:100%; border-collapse:collapse; table-layout:fixed; background:var(--card); border-radius:12px; overflow:hidden; box-shadow:var(--shadow)}
-.cal th{font-size:.72em; font-weight:600; color:var(--sub); padding:7px 0; background:var(--soft)}
-.cal th.sun{color:var(--rakuten)} .cal th.sat{color:var(--e6)}
-.cal td{border:1px solid var(--rule); padding:0; height:60px; vertical-align:top}
-.cal td.out{background:var(--soft); opacity:.55}
-.cal .day{width:100%; height:100%; min-height:58px; border:0; background:none; font:inherit; color:inherit; padding:4px 3px; display:block; text-align:left}
-.cal .dn{font-size:.76em; font-variant-numeric:tabular-nums}
-.cal td.today .dn{background:var(--ink); color:var(--card); border-radius:50%; width:1.6em; height:1.6em; display:inline-flex; align-items:center; justify-content:center; font-weight:700}
-body[data-theme="dark"] .cal td.today .dn{color:#111}
-.cal td.sel{outline:2px solid var(--risyu); outline-offset:-2px}
-.cal .dots{display:flex; flex-wrap:wrap; gap:2px; margin-top:3px}
-.cal .dots i{width:6px; height:6px; border-radius:50%; display:block}
-.cal .day{overflow:hidden}
-  .cal .mini-ev{display:block; max-width:100%; font-size:.62em; line-height:1.3; border-radius:3px; padding:1px 3px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff}
-.swatch{display:grid; grid-template-columns:repeat(10,1fr); gap:6px; margin-bottom:11px}
-.swatch button{aspect-ratio:1; border-radius:50%; border:2px solid transparent; padding:0; cursor:pointer}
-.swatch button.on{border-color:var(--ink); transform:scale(1.14)}
-.evrow{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--rule)}
-.evrow:last-child{border-bottom:0}
-.evrow .cbar{width:5px; align-self:stretch; min-height:30px; border-radius:3px; flex:none}
+  .cal{width:100%; border-collapse:collapse; table-layout:fixed; background:var(--card);
+    border-radius:12px; overflow:hidden; box-shadow:var(--shadow)}
+  .cal th{font-size:.68em; font-weight:600; color:var(--sub); padding:6px 0; background:var(--soft)}
+  .cal th.sun{color:var(--rakuten)} .cal th.sat{color:var(--e6)}
+  .cal td{border:1px solid var(--rule); padding:0; vertical-align:top; width:14.28%}
+  .cal .day{width:100%; min-height:78px; border:0; background:none; font:inherit; color:inherit;
+    padding:3px 2px 4px; display:block; text-align:left; overflow:hidden}
+  .cal td.out .day{opacity:.35}
+  .cal td.today{background:var(--todaybg)}
+  .cal td.sel{outline:2px solid var(--risyu); outline-offset:-2px}
+  .cal .dhead{display:flex; align-items:center; gap:2px; width:100%; overflow:hidden;
+    height:17px; line-height:17px}
+  .cal .dn{font-size:.72em; font-variant-numeric:tabular-nums; font-weight:600; padding:0 3px; flex:none}
+  .cal .holname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .cal td.sunday .dn,.cal td.holi .dn{color:var(--holi)}
+  .cal td.saturday .dn{color:var(--e6)}
+  .cal td.today .dn{background:var(--holi); color:#fff; border-radius:999px; padding:0 6px; line-height:15px}
+  .cal .holname{font-size:.54em; color:var(--holi)}
+  .cal .evs{display:flex; flex-direction:column; align-items:stretch; margin-top:2px; width:100%}
+  .cal .ev{display:block; width:100%; box-sizing:border-box; font-size:.56em; line-height:1.4;
+    padding:0 2px; border-radius:3px; margin-bottom:1px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left}
+  .cal .ev.dot{position:relative; padding-left:9px}
+  .cal .ev.dot::before{content:''; position:absolute; left:1px; top:50%; width:5px; height:5px;
+    border-radius:50%; transform:translateY(-50%); background:var(--c)}
+  .cal .ev.band{color:#fff; border-radius:0; margin-left:-2px; margin-right:-2px; padding-left:5px; background:var(--c)}
+  .cal .ev.band.s{border-radius:3px 0 0 3px; margin-left:0; padding-left:4px}
+  .cal .ev.band.e{border-radius:0 3px 3px 0; margin-right:0}
+  .cal .ev.done{text-decoration:line-through; opacity:.55}
+  .cal .more{font-size:.52em; color:var(--sub); padding-left:3px; display:block}
+  .fab{position:fixed; right:16px; bottom:calc(env(safe-area-inset-bottom) + 18px);
+    width:54px; height:54px; border-radius:50%; border:0; background:var(--ink); color:var(--card);
+    font-size:1.7em; line-height:1; box-shadow:var(--shadow-lg); z-index:35}
+  body[data-theme="dark"] .fab{color:#111}
+  .swatch{display:grid; grid-template-columns:repeat(10,1fr); gap:6px; margin-bottom:11px}
+  .swatch button{aspect-ratio:1; border-radius:50%; border:2px solid transparent; padding:0}
+  .swatch button.on{border-color:var(--ink); transform:scale(1.14)}
+  .evrow{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--rule)}
+  .evrow:last-child{border-bottom:0}
+  .evrow .cbar{width:5px; align-self:stretch; min-height:30px; border-radius:3px; flex:none}
   .evrow .t,.evrow .s{display:block}
   .tline .t,.tline .s{display:block}
-.pillrow{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
-.pillrow button{padding:5px 11px; border-radius:999px; border:1px solid var(--rule); background:var(--soft); font:inherit; font-size:.76em; color:var(--sub)}
-.pillrow button.on{background:var(--risyu); border-color:var(--risyu); color:#fff}
-.grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
-.grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
-  .grid2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pillrow{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
+  .pillrow button{padding:5px 11px; border-radius:999px; border:1px solid var(--rule); background:var(--soft); font:inherit; font-size:.76em; color:var(--sub)}
+  .pillrow button.on{background:var(--risyu); border-color:var(--risyu); color:#fff}
+  .grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
+  .grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
   .grid3>*,.grid2>*{min-width:0}
   .grid3 input,.grid2 input{min-width:0}
   @media (max-width:400px){ .grid3{grid-template-columns:repeat(2,minmax(0,1fr))} }
-.stat{background:var(--soft); border-radius:10px; padding:10px 11px}
-.stat .k{font-size:.72em; color:var(--sub)}
-.stat .v{font-size:1.05em; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px}
-.tline{display:flex; align-items:center; gap:9px; padding:8px 0; border-bottom:1px solid var(--rule)}
-.tline:last-child{border-bottom:0}
-.pd-badge{flex:none; width:26px; height:26px; border-radius:8px; background:var(--risyubg); color:var(--risyu);
-  font-size:.76em; font-weight:700; display:flex; align-items:center; justify-content:center}
-.due{font-size:.72em; padding:2px 7px; border-radius:5px; white-space:nowrap; font-weight:600}
-.due.d0{background:var(--rakutenbg); color:var(--rakuten)}
-.due.d1{background:var(--warnbg); color:var(--warn)}
-.due.d2{background:var(--okbg); color:var(--ok)}
-.due.d3{background:var(--soft); color:var(--sub)}
+  .grid3.keep3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid3.keep3 .stat{padding:8px 9px}
+  .grid3.keep3 .v{font-size:.95em}
+  .stat{background:var(--soft); border-radius:10px; padding:10px 11px}
+  .stat .k{font-size:.72em; color:var(--sub)}
+  .stat .v{font-size:1.05em; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px}
+  .tline{display:flex; align-items:center; gap:9px; padding:8px 0; border-bottom:1px solid var(--rule)}
+  .tline:last-child{border-bottom:0}
+  .pd-badge{flex:none; width:26px; height:26px; border-radius:8px; background:var(--risyubg); color:var(--risyu);
+    font-size:.76em; font-weight:700; display:flex; align-items:center; justify-content:center}
+  .due{font-size:.72em; padding:2px 7px; border-radius:5px; white-space:nowrap; font-weight:600}
+  .due.d0{background:var(--rakutenbg); color:var(--rakuten)}
+  .due.d1{background:var(--warnbg); color:var(--warn)}
+  .due.d2{background:var(--okbg); color:var(--ok)}
+  .due.d3{background:var(--soft); color:var(--sub)}
+  @media (prefers-reduced-motion:reduce){#splash svg,#splash .ttl{animation:none; opacity:1}}
+
+header{background:var(--ink); color:var(--paper); padding:calc(env(safe-area-inset-top) + 14px) 16px 0}
+body[data-theme="dark"] header{background:#0F1218; color:#E9ECF2}
+header h1{margin:0; font-size:1.05em; letter-spacing:.04em; display:flex; align-items:center; gap:8px}
+header p{margin:3px 0 10px; font-size:.78em; opacity:.72}
+#apps{display:flex; gap:5px; max-width:620px; margin:0 auto; overflow-x:auto; scrollbar-width:none}
+#apps::-webkit-scrollbar{display:none}
+#apps button{flex:1 0 auto; min-width:66px; border:0; background:rgba(255,255,255,.13); color:inherit; opacity:.75;
+  font:inherit; font-size:.82em; padding:9px 10px; border-radius:9px 9px 0 0; font-weight:600}
+#apps button.on{background:var(--card); color:var(--ink); opacity:1}
+nav{display:flex; background:var(--card); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:5;
+  overflow-x:auto; scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:1 0 auto; min-width:64px; border:0; background:none; padding:11px 8px; font:inherit; font-size:.78em;
+  color:var(--sub); border-bottom:2px solid transparent; white-space:nowrap}
+nav button.on{color:var(--ink); font-weight:700; border-bottom-color:var(--ink)}
+nav.hide{display:none}
+main{max-width:620px; margin:0 auto; padding:18px 14px}
+footer{max-width:620px; margin:0 auto; padding:0 16px calc(env(safe-area-inset-bottom) + 34px); font-size:.74em; color:var(--sub); line-height:1.7}
+section{margin-bottom:18px}
+.head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:7px; gap:10px}
+.head h2{margin:0; font-size:.85em; font-weight:700; letter-spacing:.02em}
+.head span{font-size:.76em; color:var(--sub); text-align:right}
+.box{background:var(--card); border-radius:12px; padding:15px; box-shadow:var(--shadow)}
+.row{display:flex; align-items:center; gap:11px; padding:10px 0; border-bottom:1px solid var(--rule);
+  width:100%; text-align:left; background:none; border-left:0; border-right:0; border-top:0; font:inherit; color:inherit}
+.row:last-child{border-bottom:0}
+.tick{width:4px; height:32px; border-radius:2px; flex:none}
+.grow{flex:1; min-width:0}
+.t{font-size:.93em}
+.s{font-size:.78em; color:var(--sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .s.wrap{white-space:normal; overflow:visible; text-overflow:clip}
+.s2{font-size:.78em; color:var(--sub)}
+.amt{font-size:1em; font-weight:600}
+.big{font-size:2.4em; font-weight:700; line-height:1.1}
+.mid{font-size:1.5em; font-weight:700}
+.accbar{display:flex; align-items:center; justify-content:space-between; padding:6px 9px; border-radius:7px; font-size:.78em; font-weight:700; margin-bottom:2px}
+.smbc{color:var(--smbc)} .bg-smbc{background:var(--smbcbg)}
+.rakuten{color:var(--rakuten)} .bg-rakuten{background:var(--rakutenbg)}
+.chk{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--rule);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75em;flex:none}
+.done .t{color:var(--sub); text-decoration:line-through}
+button.btn{display:block; width:100%; padding:11px; border-radius:9px; border:0; font:inherit; font-size:.92em; font-weight:600; background:var(--ink); color:var(--card)}
+body[data-theme="dark"] button.btn{color:#111}
+button.btn.ghost{background:var(--soft); color:var(--ink); border:1px solid var(--rule)}
+button.btn[disabled]{background:var(--rule); color:var(--card)}
+.pair{display:flex; gap:8px; align-items:stretch}
+.pair>*{flex:1 1 0; min-width:0}
+.pair>button.btn{width:auto; white-space:nowrap}
+label.f{display:block; font-size:.78em; color:var(--sub); margin:0 0 4px}
+input,textarea,select{width:100%; padding:9px 10px; border:1px solid var(--rule); border-radius:7px;
+  background:var(--soft); font:inherit; font-size:.92em; color:var(--ink)}
+textarea{min-height:80px; font-size:.8em}
+.field{margin-bottom:11px}
+.pick{display:flex; gap:8px; margin-bottom:11px}
+.pick button{flex:1; padding:8px; border-radius:9px; border:1px solid var(--rule); background:var(--soft); font:inherit; color:var(--sub)}
+.pick button.on{font-weight:700}
+.pick button.on.smbc{background:var(--smbcbg); border-color:var(--smbc); color:var(--smbc)}
+.pick button.on.rakuten{background:var(--rakutenbg); border-color:var(--rakuten); color:var(--rakuten)}
+.pick .b{display:block; font-size:.92em}
+.pick .c{display:block; font-size:.72em; opacity:.75}
+.chips{display:flex; gap:7px; margin-bottom:11px; flex-wrap:wrap}
+.chips button{padding:6px 12px; border-radius:999px; border:1px solid var(--rule); background:var(--soft); font:inherit; font-size:.78em; color:var(--sub)}
+.chips button.on{background:var(--ink); border-color:var(--ink); color:var(--card)}
+body[data-theme="dark"] .chips button.on{color:#111}
+.note{font-size:.78em; color:var(--sub); line-height:1.7; margin-top:8px}
+.msg{border-radius:9px; padding:10px 12px; font-size:.83em; margin-bottom:12px; line-height:1.5}
+.ok{background:var(--okbg); color:var(--ok)}
+.ng{background:var(--warnbg); color:var(--warn)}
+.mini{font-size:.72em; padding:5px 9px; border-radius:7px; border:1px solid var(--rule); background:none; color:var(--sub); font-family:inherit}
+.hide{display:none}
+img.shot{width:100%; max-height:190px; object-fit:cover; border-radius:9px; margin-bottom:11px}
+#lightbox{position:fixed; inset:0; background:rgba(10,14,22,.9); display:flex; align-items:center; justify-content:center; padding:24px; z-index:60}
+#lightbox img{max-width:100%; max-height:80vh; border-radius:10px}
+.dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px}
+code{background:var(--soft); padding:1px 5px; border-radius:4px; font-size:.8em}
+
+/* ================= トースト ================= */
+#toast{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 22px); transform:translate(-50%,20px);
+  background:var(--ink); color:var(--card); padding:11px 18px; border-radius:999px; font-size:.83em; font-weight:600;
+  box-shadow:var(--shadow-lg); z-index:70; opacity:0; visibility:hidden; transition:.25s; max-width:88vw; text-align:center}
+body[data-theme="dark"] #toast{background:#E9ECF2; color:#111}
+#toast.on{opacity:1; visibility:visible; transform:translate(-50%,0)}
+#toast.bad{background:var(--rakuten); color:#fff}
+
+/* ================= バナー ================= */
+.bn{display:flex; gap:10px; align-items:flex-start; border-radius:11px; padding:11px 13px; margin-bottom:8px; font-size:.83em; line-height:1.5}
+.bn .ic{flex:none; font-size:1.05em; line-height:1.3}
+.bn.red{background:var(--rakutenbg); color:var(--rakuten)}
+.bn.amber{background:var(--warnbg); color:var(--warn)}
+.bn.green{background:var(--okbg); color:var(--ok)}
+.bn.blue{background:var(--risyubg); color:var(--risyu)}
+.bn b{font-weight:700}
+
+/* ================= イラスト ================= */
+.illus{display:block; margin:0 auto}
+.hero{background:linear-gradient(180deg, var(--card), var(--card)); border-radius:14px; padding:16px 16px 10px;
+  box-shadow:var(--shadow); margin-bottom:16px; position:relative; overflow:hidden}
+.hero .date{font-size:.78em; color:var(--sub)}
+.hero .greet{font-size:1.25em; font-weight:700; margin-top:2px}
+.hero .art{position:absolute; right:8px; bottom:0; opacity:.9; pointer-events:none; z-index:0}
+  .hero .date,.hero .greet,.hero .wx{position:relative; z-index:1; padding-right:86px}
+
+/* ================= 履修 ================= */
+.met{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px dotted var(--rule)}
+.met:last-child{border-bottom:0}
+.met-n{flex:0 0 40%; font-size:.85em}
+.met-n small{display:block; color:var(--sub); font-size:.72em}
+.bar{flex:1; height:9px; background:var(--soft); border-radius:5px; overflow:hidden}
+.bar i{display:block; height:100%; background:var(--risyu); border-radius:5px; transition:width .3s}
+.bar i.done{background:var(--smbc)}
+.bar i.over{background:var(--rakuten)}
+.met-v{flex:0 0 66px; text-align:right; font-size:.78em; color:var(--sub); font-variant-numeric:tabular-nums}
+.met-v b{color:var(--ink); font-size:.95em}
+.earn-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px}
+.earn-grid label{font-size:.78em; color:var(--sub); display:flex; flex-direction:column; gap:3px}
+.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--rule); border-radius:11px; background:var(--card)}
+table.tt{border-collapse:collapse; width:100%; min-width:600px; table-layout:fixed}
+table.tt th,table.tt td{border:1px solid var(--rule); padding:0; vertical-align:top}
+table.tt thead th{background:var(--risyubg); font-size:.78em; font-weight:600; padding:6px 0; text-align:center}
+table.tt th.pd{width:30px; background:var(--risyubg); font-size:.78em; text-align:center; vertical-align:middle}
+.cell{width:100%; min-height:48px; border:0; background:transparent; font:inherit; text-align:left; padding:6px; display:block; color:inherit}
+.cell .nm{font-size:.72em; line-height:1.3; word-break:break-word; display:block}
+.cell .tag{font-size:.68em; color:var(--sub); display:block; margin-top:2px}
+.cell.free{color:var(--sub); font-size:.78em}
+.cell.none{color:var(--rule)}
+td.fx{background:var(--soft)}
+td.fx .nm{color:var(--sub)}
+td.sel{background:var(--risyubg)}
+td.sel .nm{color:var(--risyu); font-weight:700}
+.cell .x{float:right; font-size:.7em; color:var(--risyu); border:1px solid var(--risyu); border-radius:4px; padding:2px 7px; margin-left:4px; background:var(--card)}
+.veil{position:fixed; inset:0; background:rgba(10,14,22,.5); display:none; z-index:40}
+.veil.on{display:block}
+.sheet{position:fixed; left:0; right:0; bottom:0; max-height:88vh; background:var(--paper);
+  border-radius:16px 16px 0 0; z-index:41; display:none; flex-direction:column; box-shadow:var(--shadow-lg)}
+.sheet.on{display:flex}
+@media(min-width:700px){.sheet{max-width:620px; margin:0 auto; border-radius:16px; bottom:3vh}}
+.sheet-hd{padding:12px 14px 10px; border-bottom:1px solid var(--rule); background:var(--card); border-radius:16px 16px 0 0}
+.sheet-hd .rowline{display:flex; align-items:center; justify-content:space-between; gap:10px}
+.sheet-hd h3{margin:0; font-size:1em}
+.sheet-bd{overflow-y:auto; padding:10px 14px 24px; -webkit-overflow-scrolling:touch}
+.crs{background:var(--card); border:1px solid var(--rule); border-radius:10px; padding:10px 11px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start}
+.crs.dis{opacity:.5}
+.crs .body{flex:1; min-width:0}
+.crs .ct{font-size:.93em; font-weight:600; line-height:1.35}
+.crs .cm{font-size:.72em; color:var(--sub); margin-top:3px; line-height:1.5}
+.badges{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px}
+.b{font-size:.68em; padding:2px 7px; border-radius:5px; white-space:nowrap}
+.b.cat{background:var(--risyubg); color:var(--risyu)}
+.b.cr{background:var(--soft); color:var(--sub)}
+.b.r0{background:var(--okbg); color:var(--ok)}
+.b.r1{background:var(--okbg); color:var(--ok)}
+.b.r2{background:var(--warnbg); color:var(--warn)}
+.b.r3{background:var(--rakutenbg); color:var(--rakuten)}
+.b.warn{background:var(--rakutenbg); color:var(--rakuten)}
+.b.en{background:var(--risyubg); color:var(--risyu)}
+.add{flex:0 0 auto; border:1px solid var(--risyu); background:var(--risyu); color:#fff; border-radius:8px; font:inherit; font-size:.85em; font-weight:600; padding:7px 12px; align-self:center}
+.add.rm{background:var(--card); color:var(--rakuten); border-color:var(--rakuten)}
+.add[disabled]{background:var(--rule); border-color:var(--rule); color:var(--card)}
+.empty{color:var(--sub); font-size:.83em; padding:16px 2px; text-align:center}
+.plancard{background:var(--card); border:1px solid var(--rule); border-radius:10px; padding:11px 12px; margin-bottom:8px}
+.plancard h3{margin:0; font-size:.93em; display:flex; gap:7px; align-items:baseline}
+.plancard h3 em{font-style:normal; color:var(--risyu); font-weight:700; font-size:.8em; background:var(--risyubg); border-radius:5px; padding:1px 6px}
+.plancard p{margin:5px 0 7px; font-size:.78em; color:var(--sub); line-height:1.5}
+.plancard .codes{font-size:.76em; color:var(--sub); line-height:1.6; font-variant-numeric:tabular-nums}
+.codebox{width:100%; font-size:.83em; font-variant-numeric:tabular-nums; min-height:60px; margin-top:9px; background:var(--card)}
+label.tg{display:flex; align-items:flex-start; gap:7px; font-size:.78em; color:var(--sub); margin-top:9px; line-height:1.45}
+label.tg input{width:auto; margin-top:2px}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 </style>
 </head>
@@ -303,6 +500,7 @@ body[data-theme="dark"] .cal td.today .dn{color:#111}
 <main id="app"></main>
 <footer id="foot"></footer>
 
+<button class="fab hide" id="fab" aria-label="予定を追加">＋</button>
 <div id="toast"></div>
 
 <div class="veil" id="veil"></div>
@@ -679,6 +877,55 @@ var THEMES = [
 ];
 var FONTS = [{id:'s',name:'小'},{id:'m',name:'標準'},{id:'l',name:'大'},{id:'xl',name:'特大'}];
 var WDAY = ['日','月','火','水','木','金','土'];
+
+/* ============================== 日本の祝日 ============================== */
+var _holCache = {};
+function nthMonday(y, m, n){            /* m は 1〜12 */
+  var d = new Date(y, m-1, 1);
+  var first = 1 + ((8 - d.getDay()) % 7);   /* その月の最初の月曜 */
+  return new Date(y, m-1, first + (n-1)*7);
+}
+function holidaysOf(y){
+  if(_holCache[y]) return _holCache[y];
+  var h = {};
+  var put = function(d, name){ h[toYmd(d)] = name; };
+  var fixed = [[1,1,'元日'],[2,11,'建国記念の日'],[2,23,'天皇誕生日'],[4,29,'昭和の日'],
+    [5,3,'憲法記念日'],[5,4,'みどりの日'],[5,5,'こどもの日'],[8,11,'山の日'],
+    [11,3,'文化の日'],[11,23,'勤労感謝の日']];
+  fixed.forEach(function(f){ put(new Date(y, f[0]-1, f[1]), f[2]); });
+  put(nthMonday(y,1,2),  '成人の日');
+  put(nthMonday(y,7,3),  '海の日');
+  put(nthMonday(y,9,3),  '敬老の日');
+  put(nthMonday(y,10,2), 'スポーツの日');
+  /* 春分・秋分（1980〜2099年で使える式） */
+  var t = y - 1980;
+  put(new Date(y, 2, Math.floor(20.8431 + 0.242194*t - Math.floor(t/4))), '春分の日');
+  put(new Date(y, 8, Math.floor(23.2488 + 0.242194*t - Math.floor(t/4))), '秋分の日');
+
+  /* 振替休日：日曜と重なったら、次の祝日でない日 */
+  Object.keys(h).slice().sort().forEach(function(k){
+    var a = k.split('-'), d = new Date(+a[0], +a[1]-1, +a[2]);
+    if(d.getDay() !== 0) return;
+    var n = new Date(d); var guard = 0;
+    do { n.setDate(n.getDate()+1); guard++; } while(h[toYmd(n)] && guard < 10);
+    if(!h[toYmd(n)]) h[toYmd(n)] = '振替休日';
+  });
+  /* 国民の休日：祝日と祝日にはさまれた平日 */
+  Object.keys(h).slice().sort().forEach(function(k){
+    var a = k.split('-'), d = new Date(+a[0], +a[1]-1, +a[2]);
+    var mid = new Date(d); mid.setDate(mid.getDate()+1);
+    var nxt = new Date(d); nxt.setDate(nxt.getDate()+2);
+    if(h[toYmd(mid)] || !h[toYmd(nxt)]) return;
+    if(mid.getDay() === 0 || mid.getDay() === 6) return;
+    h[toYmd(mid)] = '国民の休日';
+  });
+  _holCache[y] = h;
+  return h;
+}
+function holidayName(ymd){
+  if(!isYmd(ymd)) return '';
+  return holidaysOf(+ymd.slice(0,4))[ymd] || '';
+}
 
 /* ============================== 小道具 ============================== */
 var yen = function(n){ return '¥' + Math.round(n||0).toLocaleString('ja-JP'); };
@@ -2297,8 +2544,9 @@ function normItems(){
       time:s.start||'', color:s.color||'c9', rid:s.rid, edit:1 });
   });
   S.events.forEach(function(e){
-    out.push({ src:e.kind==='imp'?'imp':'other', id:e.id, date:e.date, title:e.title,
-      sub:e.memo||'', time:e.time||'', color:e.color||(e.kind==='imp'?'c1':'c7'), rid:e.rid, edit:1 });
+    var end = (isYmd(e.dateEnd) && e.dateEnd > e.date) ? e.dateEnd : e.date;
+    out.push({ src:e.kind==='imp'?'imp':'other', id:e.id, date:e.date, end:end, span:(end>e.date)?1:0,
+      title:e.title, sub:e.memo||'', time:e.time||'', color:e.color||(e.kind==='imp'?'c1':'c7'), rid:e.rid, edit:1 });
   });
   S.health.forEach(function(h){
     if(!isYmd(h.next)) return;
@@ -2331,11 +2579,18 @@ function matchQ(x){
   if(!q) return true;
   return norm((x.title||'') + ' ' + (x.sub||'')).indexOf(q) >= 0;
 }
+function coversDay(x, ymd){
+  var e = x.end || x.date;
+  return x.date <= ymd && ymd <= e;
+}
 function itemsOn(ymd){
-  var out = normItems().filter(function(x){ return x.date === ymd && calFilter[x.src] && matchQ(x); });
+  var out = normItems().filter(function(x){ return coversDay(x, ymd) && calFilter[x.src] && matchQ(x); });
   if(calFilter.pay) out = out.concat(payItemsOn(ymd).filter(matchQ));
   if(calFilter.cls) out = out.concat(classItemsOn(ymd).filter(matchQ));
   return out.sort(function(a,b){
+    /* 期間の予定を先に並べると、帯が横につながって見える */
+    if((b.span?1:0) !== (a.span?1:0)) return (b.span?1:0) - (a.span?1:0);
+    if(a.span && b.span) return String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id));
     var ta = a.time || '99:99', tb = b.time || '99:99';
     return ta.localeCompare(tb);
   });
@@ -2344,7 +2599,7 @@ function itemColor(x){ return x.colorRaw || colorOf(x.color); }
 
 /* ============================== 入力フォーム ============================== */
 function newDraft(date){
-  return { kind:'other', title:'', date:date||calSel, time:'', end:'', wage:'',
+  return { kind:'other', title:'', date:date||calSel, dateEnd:'', time:'', end:'', wage:'',
            color:kindOf('other').color, memo:'', rep:0, subject:'' };
 }
 function readEvForm(){
@@ -2353,6 +2608,7 @@ function readEvForm(){
   var v;
   if((v=g('ev_title'))!==null) evDraft.title = v;
   if((v=g('ev_date'))!==null) evDraft.date = v;
+  if((v=g('ev_dateend'))!==null) evDraft.dateEnd = v;
   if((v=g('ev_time'))!==null) evDraft.time = v;
   if((v=g('ev_end'))!==null) evDraft.end = v;
   if((v=g('ev_wage'))!==null) evDraft.wage = v;
@@ -2391,6 +2647,10 @@ function evForm(){
     '<div><label class="f">'+(isTask?'締切日':'日付')+'</label><input type="date" id="ev_date" value="'+esc(evDraft.date)+'"></div>'+
     '<div style="flex:0 0 108px"><label class="f">'+(isWork?'開始':'時刻（任意）')+'</label><input type="time" id="ev_time" value="'+esc(evDraft.time)+'"></div></div>';
 
+  if(evDraft.kind === 'other' || evDraft.kind === 'imp'){
+    h += '<div class="field"><label class="f">終了日（何日も続く予定のときだけ）</label>'+
+      '<input type="date" id="ev_dateend" value="'+esc(evDraft.dateEnd||'')+'"></div>';
+  }
   if(isWork){
     h += '<div class="pair" style="margin-bottom:11px">'+
       '<div><label class="f">終了</label><input type="time" id="ev_end" value="'+esc(evDraft.end)+'"></div>'+
@@ -2436,7 +2696,8 @@ function createOne(kind, d, rid){
     S.shifts.push({ id:uid('wk'), title:d.title, date:d.date, start:d.time||'', end:d.end||'',
       wage:toNum(d.wage), memo:d.memo||'', color:d.color, rid:rid, mt:now });
   }else{
-    S.events.push({ id:uid('ev'), date:d.date, title:d.title, time:d.time||'', color:d.color,
+    S.events.push({ id:uid('ev'), date:d.date, dateEnd:(isYmd(d.dateEnd)&&d.dateEnd>d.date)?d.dateEnd:'',
+      title:d.title, time:d.time||'', color:d.color,
       memo:d.memo||'', kind:(kind==='imp'?'imp':'other'), rid:rid, mt:now });
   }
 }
@@ -2462,7 +2723,8 @@ function updateOne(src, id, d){
   if(src==='task'){ o.title=d.title; o.subject=d.subject||''; o.due=d.date; o.time=d.time||''; o.color=d.color; o.memo=d.memo||''; }
   else if(src==='quiz'){ o.subject=d.title; o.date=d.date; o.time=d.time||''; o.room=d.memo||''; o.color=d.color; }
   else if(src==='work'){ o.title=d.title; o.date=d.date; o.start=d.time||''; o.end=d.end||''; o.wage=toNum(d.wage); o.memo=d.memo||''; o.color=d.color; }
-  else { o.date=d.date; o.title=d.title; o.time=d.time||''; o.color=d.color; o.memo=d.memo||''; o.kind=(d.kind==='imp'?'imp':'other'); }
+  else { o.date=d.date; o.dateEnd=(isYmd(d.dateEnd)&&d.dateEnd>d.date)?d.dateEnd:'';
+         o.title=d.title; o.time=d.time||''; o.color=d.color; o.memo=d.memo||''; o.kind=(d.kind==='imp'?'imp':'other'); }
   o.mt = Date.now();
 }
 function saveEvent(){
@@ -2496,7 +2758,8 @@ function loadForEdit(src, id){
   if(src==='task') evDraft = { kind:'task', title:o.title, subject:o.subject||'', date:o.due, time:o.time||'', end:'', wage:'', color:o.color||'c2', memo:o.memo||'', rep:0 };
   else if(src==='quiz') evDraft = { kind:'quiz', title:o.subject||'', subject:'', date:o.date, time:o.time||'', end:'', wage:'', color:o.color||'c8', memo:o.room||'', rep:0 };
   else if(src==='work') evDraft = { kind:'work', title:o.title||'バイト', subject:'', date:o.date, time:o.start||'', end:o.end||'', wage:o.wage?String(o.wage):'', color:o.color||'c9', memo:o.memo||'', rep:0 };
-  else evDraft = { kind:(o.kind==='imp'?'imp':'other'), title:o.title, subject:'', date:o.date, time:o.time||'', end:'', wage:'', color:o.color||'c7', memo:o.memo||'', rep:0 };
+  else evDraft = { kind:(o.kind==='imp'?'imp':'other'), title:o.title, subject:'', date:o.date,
+    dateEnd:o.dateEnd||'', time:o.time||'', end:'', wage:'', color:o.color||'c7', memo:o.memo||'', rep:0 };
   calEdit = { src:src, id:id };
   if(isYmd(evDraft.date)){ calSel = evDraft.date; calYm = evDraft.date.slice(0,7); }
 }
@@ -2516,38 +2779,68 @@ function itemRow(x, withButtons){
     '<span class="grow"><span class="t">'+esc(x.title)+'</span>'+
     (x.sub?'<span class="s">'+esc(x.sub)+'</span>':'')+'</span>'+
     (x.time?'<span class="s2 num">'+esc(x.time)+'</span>':'')+
-    (withButtons && x.edit ? '<button class="mini" data-act="ev-edit" data-src="'+x.src+'" data-id="'+x.id+'">直す</button>'+
+    (withButtons && x.edit ? '<button class="mini" data-act="ev-move" data-src="'+x.src+'" data-id="'+x.id+'" data-n="1">＋1日</button>'+
+      '<button class="mini" data-act="ev-move" data-src="'+x.src+'" data-id="'+x.id+'" data-n="7">＋1週</button>'+
+      '<button class="mini" data-act="ev-edit" data-src="'+x.src+'" data-id="'+x.id+'">直す</button>'+
       '<button class="mini" data-act="ev-del" data-src="'+x.src+'" data-id="'+x.id+'">削除</button>' : '')+'</div>';
 }
 function monthGrid(){
   var a = calYm.split('-'), y = +a[0], mo = +a[1];
-  var startDow = new Date(y, mo-1, 1).getDay();
-  var lastDay = new Date(y, mo, 0).getDate();
+  var first = new Date(y, mo-1, 1);
+  var startDow = first.getDay();
   var td = today();
+
+  /* 前後の月の日も薄く出して、マスを埋める */
   var cells = [];
-  for(var i=0;i<startDow;i++) cells.push(null);
-  for(var dn=1;dn<=lastDay;dn++) cells.push(y+'-'+pad(mo)+'-'+pad(dn));
-  while(cells.length % 7 !== 0) cells.push(null);
+  for(var i=startDow-1;i>=0;i--){
+    var d0 = new Date(y, mo-1, -i);
+    cells.push({ ymd:toYmd(d0), out:1 });
+  }
+  var lastDay = new Date(y, mo, 0).getDate();
+  for(var dn=1;dn<=lastDay;dn++) cells.push({ ymd:y+'-'+pad(mo)+'-'+pad(dn), out:0 });
+  var extra = 1;
+  while(cells.length % 7 !== 0 || cells.length < 35){
+    cells.push({ ymd:toYmd(new Date(y, mo, extra++)), out:1 });
+  }
 
   var h = '<table class="cal" id="calgrid"><thead><tr>'+
     WDAY.map(function(w,i){ return '<th class="'+(i===0?'sun':i===6?'sat':'')+'">'+w+'</th>'; }).join('')+
     '</tr></thead><tbody>';
+
   for(var r=0;r<cells.length/7;r++){
     h += '<tr>';
     for(var c=0;c<7;c++){
-      var ymd = cells[r*7+c];
-      if(!ymd){ h += '<td class="out"></td>'; continue; }
+      var cell = cells[r*7+c], ymd = cell.ymd;
       var its = itemsOn(ymd);
+      var hol = holidayName(ymd);
+      var dow = new Date(+ymd.slice(0,4), +ymd.slice(5,7)-1, +ymd.slice(8,10)).getDay();
       var cls = [];
+      if(cell.out) cls.push('out');
       if(ymd === td) cls.push('today');
       if(ymd === calSel) cls.push('sel');
+      if(hol) cls.push('holi');
+      else if(dow === 0) cls.push('sunday');
+      else if(dow === 6) cls.push('saturday');
+
       h += '<td class="'+cls.join(' ')+'"><button class="day" data-act="cal-day" data-d="'+ymd+'">'+
-        '<span class="dn">'+Number(ymd.slice(8,10))+'</span>';
+        '<span class="dhead"><span class="dn">'+Number(ymd.slice(8,10))+'</span>'+
+        (hol ? '<span class="holname">'+esc(hol)+'</span>' : '')+'</span>';
+
       if(its.length){
-        h += '<span class="dots">'+its.slice(0,5).map(function(x){
-          return '<i style="background:'+itemColor(x)+'"></i>'; }).join('')+'</span>';
-        h += '<span class="mini-ev" style="background:'+itemColor(its[0])+'">'+esc(its[0].title)+'</span>';
-        if(its.length>1) h += '<span class="s2" style="font-size:.6em">ほか'+(its.length-1)+'件</span>';
+        h += '<span class="evs">';
+        var show = its.slice(0, 4);
+        show.forEach(function(x){
+          var col = itemColor(x);
+          if(x.span){
+            var isStart = x.date === ymd, isEnd = (x.end||x.date) === ymd;
+            var label = (isStart || dow === 0) ? esc(x.title) : '&nbsp;';
+            h += '<span class="ev band'+(isStart?' s':'')+(isEnd?' e':'')+'" style="--c:'+col+'">'+label+'</span>';
+          }else{
+            h += '<span class="ev dot'+(x.done?' done':'')+'" style="--c:'+col+'">'+esc(x.title)+'</span>';
+          }
+        });
+        if(its.length > 4) h += '<span class="more">+'+(its.length-4)+'</span>';
+        h += '</span>';
       }
       h += '</button></td>';
     }
@@ -2574,21 +2867,54 @@ function weekList(){
   }
   return h;
 }
-function upcomingList(){
+/* 同じ日で時間が重なっていないか調べる */
+function clashOn(ymd){
+  var list = itemsOn(ymd).filter(function(x){ return minutesOf(x.time) != null; });
+  var out = [];
+  for(var i=0;i<list.length;i++){
+    for(var j=i+1;j<list.length;j++){
+      var a=list[i], b=list[j];
+      var as=minutesOf(a.time), ae=as+60, bs=minutesOf(b.time), be=bs+60;
+      if(a.src==='work'){ var w=S.shifts.filter(function(z){return z.id===a.id;})[0]; if(w) ae=as+shiftHours(w)*60; }
+      if(b.src==='work'){ var w2=S.shifts.filter(function(z){return z.id===b.id;})[0]; if(w2) be=bs+shiftHours(w2)*60; }
+      if(as < be && bs < ae) out.push(a.title+' と '+b.title);
+    }
+  }
+  return out;
+}
+/* ToDo：やること・テスト・大事な予定を締切順に */
+function todoList(){
   var td = today();
-  var all = normItems().filter(function(x){ return isYmd(x.date) && x.date >= td && calFilter[x.src] && matchQ(x); })
-    .sort(function(a,b){ return a.date.localeCompare(b.date) || String(a.time).localeCompare(String(b.time)); });
-  if(!all.length) return '<div class="box"><div class="empty">'+ART.empty+'<div style="margin-top:8px">これからの予定はありません。</div></div></div>';
-  var byDate = {}, order = [];
-  all.forEach(function(x){ if(!byDate[x.date]){ byDate[x.date]=[]; order.push(x.date); } byDate[x.date].push(x); });
-  return order.slice(0,40).map(function(dt){
-    var n = daysFromToday(dt);
-    return '<div class="box" style="margin-bottom:8px">'+
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">'+
-        '<button class="mini" data-act="cal-day" data-d="'+dt+'" style="border:0;padding:0;font-size:.9em;font-weight:700;color:var(--ink)">'+ymdLabel(dt)+'</button>'+
-        '<span class="due '+dueClass(n)+'">'+dueText(n)+'</span></div>'+
-      byDate[dt].map(function(x){ return itemRow(x, true); }).join('')+'</div>';
-  }).join('');
+  var all = normItems().filter(function(x){
+    if(!isYmd(x.date) || !calFilter[x.src] || !matchQ(x)) return false;
+    if(x.src === 'task') return !x.done;
+    return ['quiz','imp','health'].indexOf(x.src) >= 0 && (x.end||x.date) >= td;
+  }).sort(function(a,b){ return a.date.localeCompare(b.date); });
+
+  var late = all.filter(function(x){ return x.date < td; });
+  var soon = all.filter(function(x){ return x.date >= td; });
+  var rowOf = function(x){
+    var n = daysFromToday(x.date);
+    return '<div class="evrow"><span class="cbar" style="background:'+itemColor(x)+'"></span>'+
+      (x.src==='task' ? '<button class="chk" data-act="task-done" data-id="'+x.id+'" aria-label="完了"></button>' : '')+
+      '<span class="grow"><span class="t">'+esc(x.title)+'</span>'+
+      '<span class="s">'+ymdLabel(x.date)+(x.sub?'・'+esc(x.sub):'')+'</span></span>'+
+      '<span class="due '+dueClass(n)+'">'+dueText(n)+'</span>'+
+      (x.edit?'<button class="mini" data-act="ev-edit" data-src="'+x.src+'" data-id="'+x.id+'">直す</button>':'')+'</div>';
+  };
+  var h = '';
+  if(late.length) h += section('期限が過ぎているもの', late.length+'件', late.map(rowOf).join(''));
+  h += section('やること・大事な予定', soon.length?soon.length+'件':null,
+    soon.length ? soon.map(rowOf).join('')
+      : '<div class="empty">'+ART.empty+'<div style="margin-top:8px">やることは片付いています。</div></div>');
+  var doneTasks = S.tasks.filter(function(t){ return t.done; });
+  if(doneTasks.length) h += section('終わったもの', doneTasks.length+'件',
+    doneTasks.slice(-12).reverse().map(function(t){
+      return '<div class="evrow"><span class="cbar" style="background:'+colorOf(t.color||'c2')+'"></span>'+
+        '<button class="chk" style="background:var(--smbc);border-color:var(--smbc)" data-act="task-undone" data-id="'+t.id+'">✓</button>'+
+        '<span class="grow"><span class="t" style="text-decoration:line-through;color:var(--sub)">'+esc(t.title)+'</span></span></div>';
+    }).join(''));
+  return h;
 }
 function monthSummary(){
   var ym = calYm;
@@ -2598,7 +2924,7 @@ function monthSummary(){
   var shifts = S.shifts.filter(function(s){ return String(s.date).slice(0,7)===ym; });
   var hours = shifts.reduce(function(a,s){ return a + shiftHours(s); }, 0);
   var pay = shifts.reduce(function(a,s){ return a + shiftPay(s); }, 0);
-  return '<div class="grid3" style="margin-bottom:12px">'+
+  return '<div class="grid3 keep3" style="margin-bottom:12px">'+
     '<div class="stat"><div class="k">課題</div><div class="v">'+nTask+'</div></div>'+
     '<div class="stat"><div class="k">テスト</div><div class="v">'+nQuiz+'</div></div>'+
     '<div class="stat"><div class="k">バイト</div><div class="v">'+(Math.round(hours*10)/10)+'h</div></div>'+
@@ -2611,7 +2937,7 @@ function viewCalendar(){
     '<button class="mini" data-act="cal-today">今日</button> '+
     '<button class="mini" data-act="cal-next">次 ›</button></span></div>';
 
-  h += '<div class="pillrow">'+[['month','月'],['week','週'],['list','これから']].map(function(v){
+  h += '<div class="pillrow">'+[['month','月'],['week','週'],['todo','ToDo']].map(function(v){
     return '<button data-act="cal-view" data-v="'+v[0]+'" class="'+(calView===v[0]?'on':'')+'">'+v[1]+'</button>';
   }).join('')+'</div>';
   h += '<input type="search" id="cal_q" placeholder="予定を名前で探す" value="'+esc(calQ)+'" style="margin-bottom:11px">';
@@ -2624,11 +2950,12 @@ function viewCalendar(){
 
   if(calView === 'month') h += monthSummary() + monthGrid();
   else if(calView === 'week') h += weekList();
-  else h += upcomingList();
+  else h += todoList();
 
-  if(calView !== 'list'){
+  if(calView !== 'todo'){
     var sel = itemsOn(calSel);
     h += '<div style="margin-top:16px">' + section(ymdLabel(calSel), sel.length?sel.length+'件':null,
+      (clashOn(calSel).length ? '<div class="msg ng">時間が重なっています：'+esc(clashOn(calSel).join('／'))+'</div>' : '')+
       (sel.length ? sel.map(function(x){ return itemRow(x, true); }).join('')
                   : '<div class="empty">この日の予定はありません。</div>')
       + evForm()) + '</div>';
@@ -2636,7 +2963,7 @@ function viewCalendar(){
     h += '<div style="margin-top:16px">' + section('予定を追加', null, evForm()) + '</div>';
   }
 
-  h += '<p class="note">種類を選ぶと、課題は「履修 › 課題」、小テストは「履修 › テスト」、バイトは「お金 › バイト」、重要は「予定 › 重要」にも出ます。色は自由に変えられます。月表示は左右にはらうと月が移ります。</p>';
+  h += '<p class="note">マスの中に予定名がそのまま出ます。種類を選ぶと、課題は「履修 › 課題」、小テストは「履修 › テスト」、バイトは「お金 › バイト」、重要は「予定 › 重要」にも出ます。「終了日」を入れると、何日も続く予定を帯で表示します。月表示は左右にはらうと月が移ります。</p>';
   return '<section>'+h+'</section>';
 }
 
@@ -2721,13 +3048,25 @@ function calAction(act, t){
     t.classList.add('on');
     return true;
   }
+  if(act==='ev-move'){
+    var f3 = findOne(t.dataset.src, t.dataset.id);
+    if(!f3) return true;
+    var o3 = f3.obj, n3 = toNum(t.dataset.n);
+    var key = (t.dataset.src==='task') ? 'due' : 'date';
+    if(!isYmd(o3[key])) { toast('日付が入っていません', true); return true; }
+    o3[key] = shiftDate(o3[key], n3);
+    if(o3.dateEnd && isYmd(o3.dateEnd)) o3.dateEnd = shiftDate(o3.dateEnd, n3);
+    o3.mt = Date.now();
+    calSel = o3[key]; calYm = calSel.slice(0,7);   /* 動かした先を表示する */
+    toast(ymdLabel(o3[key])+'にずらしました'); commit(); return true;
+  }
   if(act==='ev-save'){ saveEvent(); return true; }
   if(act==='ev-cancel'){ calEdit = null; evDraft = newDraft(calSel); render(); return true; }
   if(act==='ev-edit'){
     readEvForm();
     loadForEdit(t.dataset.src, t.dataset.id);
     appId='cal'; calTab='cal';
-    if(calView==='list') calView='month';
+    if(calView==='todo') calView='month';
     render();
     var f = document.getElementById('evform');
     if(f) f.scrollIntoView({block:'center'});
@@ -2898,6 +3237,8 @@ function render(){
   document.getElementById('app').innerHTML = html;
   document.getElementById('apptitle').textContent = TITLES[appId];
   document.getElementById('foot').textContent = FOOTS[appId];
+  var fab = document.getElementById('fab');
+  if(fab) fab.className = (appId==='cal' && calTab==='cal') ? 'fab' : 'fab hide';
   document.getElementById('synctag').textContent = syncState.on
     ? '同期中・合言葉 ' + S.settings.room
     : '支払い・履修・予定をひとつに';
@@ -3012,6 +3353,19 @@ document.getElementById('shSearch').addEventListener('input', function(e){ pick.
 document.getElementById('shClose').addEventListener('click', closePicker);
 document.getElementById('veil').addEventListener('click', closePicker);
 document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closePicker(); });
+
+/* 右下の「＋」ボタン */
+document.getElementById('fab').addEventListener('click', function(){
+  readEvForm();
+  calEdit = null;
+  evDraft = newDraft(calSel);
+  if(calView === 'todo') calView = 'month';
+  render();
+  var f = document.getElementById('evform');
+  if(f) f.scrollIntoView({block:'center'});
+  var ti = document.getElementById('ev_title');
+  if(ti) ti.focus();
+});
 
 /* カレンダーを左右にはらって月を移す */
 (function(){
