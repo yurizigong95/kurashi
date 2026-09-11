@@ -16,13 +16,19 @@
   --ok:#1F7A46; --okbg:#E8F3EC;
   --e1:#E2664B; --e2:#E08A2E; --e3:#C79A18; --e4:#4E9A5B; --e5:#3FA89A;
   --e6:#3D8FC4; --e7:#4C68C0; --e8:#8163B8; --e9:#D25F94; --e10:#7A8290;
-  --todaybg:#FDECEF; --holi:#C2334D;
+  --todaybg:rgba(253,236,239,.85); --holi:#C2334D;
+  --glass:rgba(255,255,255,.60); --glass2:rgba(255,255,255,.42); --edge:rgba(255,255,255,.75);
+  --blur:saturate(180%) blur(22px); --tint1:rgba(120,150,255,.20); --tint2:rgba(255,150,190,.18);
+  --pill:rgba(255,255,255,.55); --pillbrd:rgba(255,255,255,.85);
   --shadow:0 1px 2px rgba(23,35,58,.06), 0 4px 14px rgba(23,35,58,.05);
   --shadow-lg:0 2px 6px rgba(23,35,58,.08), 0 12px 30px rgba(23,35,58,.10);
   --fs:15px;
 }
 body[data-theme="dark"]{
-  --todaybg:#3A2630; --holi:#F2879B;
+  --todaybg:rgba(58,38,48,.85); --holi:#F2879B;
+  --glass:rgba(46,51,63,.62); --glass2:rgba(46,51,63,.42); --edge:rgba(255,255,255,.14);
+  --tint1:rgba(90,120,220,.28); --tint2:rgba(180,90,140,.22);
+  --pill:rgba(255,255,255,.16); --pillbrd:rgba(255,255,255,.28);
   --paper:#171A21; --card:#212632; --ink:#E9ECF2; --sub:#9AA3B2; --rule:#333A48; --soft:#2A303D;
   --smbc:#4FBE7E; --smbcbg:#1F3129; --rakuten:#F2726F; --rakutenbg:#332224;
   --risyu:#9E97E0; --risyubg:#282640; --warn:#E6A567; --warnbg:#33291F;
@@ -30,22 +36,26 @@ body[data-theme="dark"]{
   --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-lg:0 10px 30px rgba(0,0,0,.5);
 }
 body[data-theme="sakura"]{
-  --todaybg:#FBE2E8; --holi:#B4325A;
+  --todaybg:rgba(251,226,232,.85); --holi:#B4325A;
+  --tint1:rgba(255,170,200,.28); --tint2:rgba(255,215,170,.22);
   --paper:#FBF2F4; --card:#fff; --ink:#4A2B36; --sub:#8B6E77; --rule:#EEDCE2; --soft:#F7E9ED;
   --risyu:#B4577E; --risyubg:#F8E5EC; --ink-head:#7A3A55;
 }
 body[data-theme="mint"]{
-  --todaybg:#FCEAEE;
+  --todaybg:rgba(252,234,238,.85);
+  --tint1:rgba(130,220,180,.26); --tint2:rgba(200,230,140,.20);
   --paper:#F0F6F1; --card:#fff; --ink:#1E3629; --sub:#657A6C; --rule:#D7E5DA; --soft:#E7F0E9;
   --risyu:#2E7D62; --risyubg:#E2F0EA;
 }
 body[data-theme="ocean"]{
-  --todaybg:#FBE9EC;
+  --todaybg:rgba(251,233,236,.85);
+  --tint1:rgba(110,180,240,.28); --tint2:rgba(150,220,230,.22);
   --paper:#EFF4F8; --card:#fff; --ink:#123049; --sub:#5E7689; --rule:#D6E2EC; --soft:#E5EDF4;
   --risyu:#1C6E9C; --risyubg:#E1EEF6;
 }
 body[data-theme="cream"]{
-  --todaybg:#F9E7DC;
+  --todaybg:rgba(249,231,220,.85);
+  --tint1:rgba(240,200,140,.28); --tint2:rgba(220,180,200,.20);
   --paper:#F8F4EA; --card:#FFFDF7; --ink:#3B3222; --sub:#7D735F; --rule:#E6DFCE; --soft:#F1EADA;
   --risyu:#8A6A2F; --risyubg:#F2E9D6;
 }
@@ -56,10 +66,20 @@ body[data-fs="xl"]{--fs:18px}
 
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 body{
-  margin:0; background:var(--paper); color:var(--ink); font-size:var(--fs);
+  margin:0; color:var(--ink); font-size:var(--fs);
   font-family:"Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic Medium",sans-serif;
   line-height:1.55; -webkit-text-size-adjust:100%;
-  transition:background .25s, color .25s;
+  transition:color .25s;
+  background:var(--paper);
+  min-height:100vh;
+}
+body::before{
+  content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(58vw 42vh at 12% 4%,  var(--tint1), transparent 65%),
+    radial-gradient(52vw 38vh at 92% 22%, var(--tint2), transparent 62%),
+    radial-gradient(60vw 45vh at 50% 96%, var(--tint1), transparent 68%);
+  opacity:.9;
 }
 .num{font-variant-numeric:tabular-nums; letter-spacing:.01em}
 
@@ -73,29 +93,58 @@ body{
 @keyframes rise{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
 @media (prefers-reduced-motion:reduce){#splash svg,#splash .ttl{animation:none; opacity:1}}
 
-header{background:var(--ink); color:var(--paper); padding:calc(env(safe-area-inset-top) + 14px) 16px 0}
-body[data-theme="dark"] header{background:#0F1218; color:#E9ECF2}
+header{
+  background:linear-gradient(180deg, rgba(23,35,58,.92), rgba(23,35,58,.78));
+  -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+  color:#F2F5FA; padding:calc(env(safe-area-inset-top) + 14px) 16px 0;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+body[data-theme="dark"] header{background:linear-gradient(180deg, rgba(12,15,21,.92), rgba(12,15,21,.74))}
 header h1{margin:0; font-size:1.05em; letter-spacing:.04em; display:flex; align-items:center; gap:8px}
 header p{margin:3px 0 10px; font-size:.78em; opacity:.72}
-#apps{display:flex; gap:5px; max-width:620px; margin:0 auto; overflow-x:auto; scrollbar-width:none}
+/* 上のアプリ切替：透明な丸がすべる */
+#apps{position:relative; display:flex; gap:2px; max-width:620px; margin:0 auto 10px;
+  overflow-x:auto; scrollbar-width:none; padding:4px; border-radius:999px;
+  background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.14)}
 #apps::-webkit-scrollbar{display:none}
-#apps button{flex:1 0 auto; min-width:66px; border:0; background:rgba(255,255,255,.13); color:inherit; opacity:.75;
-  font:inherit; font-size:.82em; padding:9px 10px; border-radius:9px 9px 0 0; font-weight:600}
-#apps button.on{background:var(--card); color:var(--ink); opacity:1}
-nav{display:flex; background:var(--card); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:5;
-  overflow-x:auto; scrollbar-width:none}
+#apps .pill{position:absolute; top:4px; left:0; height:calc(100% - 8px); border-radius:999px;
+  background:rgba(255,255,255,.24); border:1px solid rgba(255,255,255,.38);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  box-shadow:0 2px 10px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.45);
+  transition:transform .34s cubic-bezier(.34,1.2,.4,1), width .34s cubic-bezier(.34,1.2,.4,1);
+  pointer-events:none; z-index:0}
+#apps button{position:relative; z-index:1; flex:1 0 auto; min-width:62px; border:0; background:none;
+  color:#F2F5FA; opacity:.62; font:inherit; font-size:.82em; padding:8px 10px; border-radius:999px;
+  font-weight:600; transition:opacity .25s}
+#apps button.on{opacity:1}
+
+/* 下のタブ：同じく丸がすべる */
+nav{position:relative; display:flex; gap:2px; z-index:5; overflow-x:auto; scrollbar-width:none;
+  max-width:620px; margin:10px auto 0; padding:4px; border-radius:999px;
+  background:var(--glass2); border:1px solid var(--edge);
+  -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+  box-shadow:0 1px 2px rgba(23,35,58,.05), inset 0 1px 0 rgba(255,255,255,.5)}
 nav::-webkit-scrollbar{display:none}
-nav button{flex:1 0 auto; min-width:64px; border:0; background:none; padding:11px 8px; font:inherit; font-size:.78em;
-  color:var(--sub); border-bottom:2px solid transparent; white-space:nowrap}
-nav button.on{color:var(--ink); font-weight:700; border-bottom-color:var(--ink)}
+nav .pill{position:absolute; top:4px; left:0; height:calc(100% - 8px); border-radius:999px;
+  background:var(--pill); border:1px solid var(--pillbrd);
+  box-shadow:0 2px 8px rgba(23,35,58,.10), inset 0 1px 0 rgba(255,255,255,.6);
+  transition:transform .34s cubic-bezier(.34,1.2,.4,1), width .34s cubic-bezier(.34,1.2,.4,1);
+  pointer-events:none; z-index:0}
+nav button{position:relative; z-index:1; flex:1 0 auto; min-width:60px; border:0; background:none;
+  padding:8px 10px; font:inherit; font-size:.78em; color:var(--sub); white-space:nowrap;
+  border-radius:999px; transition:color .25s}
+nav button.on{color:var(--ink); font-weight:700}
 nav.hide{display:none}
+@media (prefers-reduced-motion:reduce){ #apps .pill, nav .pill{transition:none} }
 main{max-width:620px; margin:0 auto; padding:18px 14px}
 footer{max-width:620px; margin:0 auto; padding:0 16px calc(env(safe-area-inset-bottom) + 34px); font-size:.74em; color:var(--sub); line-height:1.7}
 section{margin-bottom:18px}
 .head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:7px; gap:10px}
 .head h2{margin:0; font-size:.85em; font-weight:700; letter-spacing:.02em}
 .head span{font-size:.76em; color:var(--sub); text-align:right}
-.box{background:var(--card); border-radius:12px; padding:15px; box-shadow:var(--shadow)}
+.box{background:var(--glass); border:1px solid var(--edge); border-radius:20px; padding:16px;
+    -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:0 1px 2px rgba(23,35,58,.05), 0 10px 28px rgba(23,35,58,.07), inset 0 1px 0 rgba(255,255,255,.55)}
 .row{display:flex; align-items:center; gap:11px; padding:10px 0; border-bottom:1px solid var(--rule);
   width:100%; text-align:left; background:none; border-left:0; border-right:0; border-top:0; font:inherit; color:inherit}
 .row:last-child{border-bottom:0}
@@ -113,16 +162,21 @@ section{margin-bottom:18px}
 .rakuten{color:var(--rakuten)} .bg-rakuten{background:var(--rakutenbg)}
 .chk{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--rule);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75em;flex:none}
 .done .t{color:var(--sub); text-decoration:line-through}
-button.btn{display:block; width:100%; padding:11px; border-radius:9px; border:0; font:inherit; font-size:.92em; font-weight:600; background:var(--ink); color:var(--card)}
+button.btn{display:block; width:100%; padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,.18);
+    font:inherit; font-size:.92em; font-weight:600; background:var(--ink); color:var(--card);
+    box-shadow:0 4px 14px rgba(23,35,58,.16), inset 0 1px 0 rgba(255,255,255,.22)}
 body[data-theme="dark"] button.btn{color:#111}
-button.btn.ghost{background:var(--soft); color:var(--ink); border:1px solid var(--rule)}
+button.btn.ghost{background:var(--glass2); color:var(--ink); border:1px solid var(--edge);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 button.btn[disabled]{background:var(--rule); color:var(--card)}
 .pair{display:flex; gap:8px; align-items:stretch}
 .pair>*{flex:1 1 0; min-width:0}
 .pair>button.btn{width:auto; white-space:nowrap}
 label.f{display:block; font-size:.78em; color:var(--sub); margin:0 0 4px}
-input,textarea,select{width:100%; padding:9px 10px; border:1px solid var(--rule); border-radius:7px;
-  background:var(--soft); font:inherit; font-size:.92em; color:var(--ink)}
+input,textarea,select{width:100%; padding:10px 12px; border:1px solid var(--edge); border-radius:12px;
+  background:var(--glass2); font:inherit; font-size:.92em; color:var(--ink);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
 textarea{min-height:80px; font-size:.8em}
 .field{margin-bottom:11px}
 .pick{display:flex; gap:8px; margin-bottom:11px}
@@ -133,14 +187,16 @@ textarea{min-height:80px; font-size:.8em}
 .pick .b{display:block; font-size:.92em}
 .pick .c{display:block; font-size:.72em; opacity:.75}
 .chips{display:flex; gap:7px; margin-bottom:11px; flex-wrap:wrap}
-.chips button{padding:6px 12px; border-radius:999px; border:1px solid var(--rule); background:var(--soft); font:inherit; font-size:.78em; color:var(--sub)}
+.chips button{padding:6px 13px; border-radius:999px; border:1px solid var(--edge); background:var(--glass2); font:inherit; font-size:.78em; color:var(--sub); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
 .chips button.on{background:var(--ink); border-color:var(--ink); color:var(--card)}
 body[data-theme="dark"] .chips button.on{color:#111}
 .note{font-size:.78em; color:var(--sub); line-height:1.7; margin-top:8px}
 .msg{border-radius:9px; padding:10px 12px; font-size:.83em; margin-bottom:12px; line-height:1.5}
 .ok{background:var(--okbg); color:var(--ok)}
 .ng{background:var(--warnbg); color:var(--warn)}
-.mini{font-size:.72em; padding:5px 9px; border-radius:7px; border:1px solid var(--rule); background:none; color:var(--sub); font-family:inherit}
+.mini{font-size:.72em; padding:5px 10px; border-radius:999px; border:1px solid var(--edge);
+    background:var(--glass2); color:var(--sub); font-family:inherit;
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
 .hide{display:none}
 img.shot{width:100%; max-height:190px; object-fit:cover; border-radius:9px; margin-bottom:11px}
 #lightbox{position:fixed; inset:0; background:rgba(10,14,22,.9); display:flex; align-items:center; justify-content:center; padding:24px; z-index:60}
@@ -149,7 +205,7 @@ img.shot{width:100%; max-height:190px; object-fit:cover; border-radius:9px; marg
 code{background:var(--soft); padding:1px 5px; border-radius:4px; font-size:.8em}
 
 /* ================= トースト ================= */
-#toast{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 22px); transform:translate(-50%,20px);
+#toast{-webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur); position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 22px); transform:translate(-50%,20px);
   background:var(--ink); color:var(--card); padding:11px 18px; border-radius:999px; font-size:.83em; font-weight:600;
   box-shadow:var(--shadow-lg); z-index:70; opacity:0; visibility:hidden; transition:.25s; max-width:88vw; text-align:center}
 body[data-theme="dark"] #toast{background:#E9ECF2; color:#111}
@@ -187,7 +243,7 @@ body[data-theme="dark"] #toast{background:#E9ECF2; color:#111}
 .met-v b{color:var(--ink); font-size:.95em}
 .earn-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px}
 .earn-grid label{font-size:.78em; color:var(--sub); display:flex; flex-direction:column; gap:3px}
-.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--rule); border-radius:11px; background:var(--card)}
+.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--edge); border-radius:18px; background:var(--glass); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur)}
 table.tt{border-collapse:collapse; width:100%; min-width:600px; table-layout:fixed}
 table.tt th,table.tt td{border:1px solid var(--rule); padding:0; vertical-align:top}
 table.tt thead th{background:var(--risyubg); font-size:.78em; font-weight:600; padding:6px 0; text-align:center}
@@ -208,11 +264,11 @@ td.sel .nm{color:var(--risyu); font-weight:700}
   border-radius:16px 16px 0 0; z-index:41; display:none; flex-direction:column; box-shadow:var(--shadow-lg)}
 .sheet.on{display:flex}
 @media(min-width:700px){.sheet{max-width:620px; margin:0 auto; border-radius:16px; bottom:3vh}}
-.sheet-hd{padding:12px 14px 10px; border-bottom:1px solid var(--rule); background:var(--card); border-radius:16px 16px 0 0}
+.sheet-hd{padding:12px 14px 10px; border-bottom:1px solid var(--edge); background:var(--glass2); border-radius:24px 24px 0 0}
 .sheet-hd .rowline{display:flex; align-items:center; justify-content:space-between; gap:10px}
 .sheet-hd h3{margin:0; font-size:1em}
 .sheet-bd{overflow-y:auto; padding:10px 14px 24px; -webkit-overflow-scrolling:touch}
-.crs{background:var(--card); border:1px solid var(--rule); border-radius:10px; padding:10px 11px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start}
+.crs{background:var(--glass2); border:1px solid var(--edge); border-radius:16px; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); padding:10px 11px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start}
 .crs.dis{opacity:.5}
 .crs .body{flex:1; min-width:0}
 .crs .ct{font-size:.93em; font-weight:600; line-height:1.35}
@@ -231,7 +287,7 @@ td.sel .nm{color:var(--risyu); font-weight:700}
 .add.rm{background:var(--card); color:var(--rakuten); border-color:var(--rakuten)}
 .add[disabled]{background:var(--rule); border-color:var(--rule); color:var(--card)}
 .empty{color:var(--sub); font-size:.83em; padding:16px 2px; text-align:center}
-.plancard{background:var(--card); border:1px solid var(--rule); border-radius:10px; padding:11px 12px; margin-bottom:8px}
+.plancard{background:var(--glass2); border:1px solid var(--edge); border-radius:16px; padding:11px 12px; margin-bottom:8px}
 .plancard h3{margin:0; font-size:.93em; display:flex; gap:7px; align-items:baseline}
 .plancard h3 em{font-style:normal; color:var(--risyu); font-weight:700; font-size:.8em; background:var(--risyubg); border-radius:5px; padding:1px 6px}
 .plancard p{margin:5px 0 7px; font-size:.78em; color:var(--sub); line-height:1.5}
@@ -241,26 +297,29 @@ label.tg{display:flex; align-items:flex-start; gap:7px; font-size:.78em; color:v
 label.tg input{width:auto; margin-top:2px}
 
 /* ================= カレンダー ================= */
-  .cal{width:100%; border-collapse:collapse; table-layout:fixed; background:var(--card);
-    border-radius:12px; overflow:hidden; box-shadow:var(--shadow)}
-  .cal th{font-size:.68em; font-weight:600; color:var(--sub); padding:6px 0; background:var(--soft)}
+  .cal{width:100%; border-collapse:collapse; table-layout:fixed; background:var(--glass);
+    border:1px solid var(--edge); border-radius:20px; overflow:hidden;
+    -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:0 10px 28px rgba(23,35,58,.08), inset 0 1px 0 rgba(255,255,255,.5)}
+  .cal th{font-size:.68em; font-weight:600; color:var(--sub); padding:7px 0; background:var(--glass2)}
   .cal th.sun{color:var(--rakuten)} .cal th.sat{color:var(--e6)}
-  .cal td{border:1px solid var(--rule); padding:0; vertical-align:top; width:14.28%}
-  .cal .day{width:100%; min-height:78px; border:0; background:none; font:inherit; color:inherit;
-    padding:3px 2px 4px; display:block; text-align:left; overflow:hidden}
+  .cal td{border:1px solid var(--edge); padding:0; vertical-align:top; width:14.28%}
+  .cal .day{width:100%; min-height:96px; border:0; background:none; font:inherit; color:inherit;
+    padding:2px 2px 4px; display:flex; flex-direction:column; align-items:flex-start;
+    justify-content:flex-start; text-align:left; overflow:hidden}
   .cal td.out .day{opacity:.35}
   .cal td.today{background:var(--todaybg)}
   .cal td.sel{outline:2px solid var(--risyu); outline-offset:-2px}
-  .cal .dhead{display:flex; align-items:center; gap:2px; width:100%; overflow:hidden;
-    height:17px; line-height:17px}
-  .cal .dn{font-size:.72em; font-variant-numeric:tabular-nums; font-weight:600; padding:0 3px; flex:none}
+  .cal .dhead{display:flex; align-items:center; justify-content:flex-start; gap:3px;
+    width:100%; overflow:hidden; height:17px; line-height:17px}
+  .cal .dn{font-size:.74em; font-variant-numeric:tabular-nums; font-weight:700; padding:0 1px 0 2px; flex:none}
   .cal .holname{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .cal td.sunday .dn,.cal td.holi .dn{color:var(--holi)}
   .cal td.saturday .dn{color:var(--e6)}
-  .cal td.today .dn{background:var(--holi); color:#fff; border-radius:999px; padding:0 6px; line-height:15px}
+  .cal td.today .dn{background:var(--holi); color:#fff; border-radius:999px; padding:0 5px; margin-left:0; line-height:15px}
   .cal .holname{font-size:.54em; color:var(--holi)}
   .cal .evs{display:flex; flex-direction:column; align-items:stretch; margin-top:2px; width:100%}
-  .cal .ev{display:block; width:100%; box-sizing:border-box; font-size:.56em; line-height:1.4;
+  .cal .ev{display:block; width:100%; box-sizing:border-box; font-size:.58em; line-height:1.45;
     padding:0 2px; border-radius:3px; margin-bottom:1px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left}
   .cal .ev.dot{position:relative; padding-left:9px}
@@ -272,9 +331,11 @@ label.tg input{width:auto; margin-top:2px}
   .cal .ev.done{text-decoration:line-through; opacity:.55}
   .cal .more{font-size:.52em; color:var(--sub); padding-left:3px; display:block}
   .fab{position:fixed; right:16px; bottom:calc(env(safe-area-inset-bottom) + 18px);
-    width:54px; height:54px; border-radius:50%; border:0; background:var(--ink); color:var(--card);
-    font-size:1.7em; line-height:1; box-shadow:var(--shadow-lg); z-index:35}
-  body[data-theme="dark"] .fab{color:#111}
+    width:58px; height:58px; border-radius:50%; border:1px solid var(--edge);
+    background:var(--glass); color:var(--ink); font-size:1.7em; line-height:1; z-index:35;
+    -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:0 8px 26px rgba(23,35,58,.20), inset 0 1px 0 rgba(255,255,255,.65)}
+  
   .swatch{display:grid; grid-template-columns:repeat(10,1fr); gap:6px; margin-bottom:11px}
   .swatch button{aspect-ratio:1; border-radius:50%; border:2px solid transparent; padding:0}
   .swatch button.on{border-color:var(--ink); transform:scale(1.14)}
@@ -284,7 +345,7 @@ label.tg input{width:auto; margin-top:2px}
   .evrow .t,.evrow .s{display:block}
   .tline .t,.tline .s{display:block}
   .pillrow{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px}
-  .pillrow button{padding:5px 11px; border-radius:999px; border:1px solid var(--rule); background:var(--soft); font:inherit; font-size:.76em; color:var(--sub)}
+  .pillrow button{padding:6px 13px; border-radius:999px; border:1px solid var(--edge); background:var(--glass2); font:inherit; font-size:.76em; color:var(--sub); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
   .pillrow button.on{background:var(--risyu); border-color:var(--risyu); color:#fff}
   .grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
   .grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
@@ -294,7 +355,7 @@ label.tg input{width:auto; margin-top:2px}
   .grid3.keep3{grid-template-columns:repeat(3,minmax(0,1fr))}
   .grid3.keep3 .stat{padding:8px 9px}
   .grid3.keep3 .v{font-size:.95em}
-  .stat{background:var(--soft); border-radius:10px; padding:10px 11px}
+  .stat{background:var(--glass2); border:1px solid var(--edge); border-radius:14px; padding:10px 11px; box-shadow:inset 0 1px 0 rgba(255,255,255,.45)}
   .stat .k{font-size:.72em; color:var(--sub)}
   .stat .v{font-size:1.05em; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px}
   .tline{display:flex; align-items:center; gap:9px; padding:8px 0; border-bottom:1px solid var(--rule)}
@@ -308,29 +369,58 @@ label.tg input{width:auto; margin-top:2px}
   .due.d3{background:var(--soft); color:var(--sub)}
   @media (prefers-reduced-motion:reduce){#splash svg,#splash .ttl{animation:none; opacity:1}}
 
-header{background:var(--ink); color:var(--paper); padding:calc(env(safe-area-inset-top) + 14px) 16px 0}
-body[data-theme="dark"] header{background:#0F1218; color:#E9ECF2}
+header{
+  background:linear-gradient(180deg, rgba(23,35,58,.92), rgba(23,35,58,.78));
+  -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+  color:#F2F5FA; padding:calc(env(safe-area-inset-top) + 14px) 16px 0;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+body[data-theme="dark"] header{background:linear-gradient(180deg, rgba(12,15,21,.92), rgba(12,15,21,.74))}
 header h1{margin:0; font-size:1.05em; letter-spacing:.04em; display:flex; align-items:center; gap:8px}
 header p{margin:3px 0 10px; font-size:.78em; opacity:.72}
-#apps{display:flex; gap:5px; max-width:620px; margin:0 auto; overflow-x:auto; scrollbar-width:none}
+/* 上のアプリ切替：透明な丸がすべる */
+#apps{position:relative; display:flex; gap:2px; max-width:620px; margin:0 auto 10px;
+  overflow-x:auto; scrollbar-width:none; padding:4px; border-radius:999px;
+  background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.14)}
 #apps::-webkit-scrollbar{display:none}
-#apps button{flex:1 0 auto; min-width:66px; border:0; background:rgba(255,255,255,.13); color:inherit; opacity:.75;
-  font:inherit; font-size:.82em; padding:9px 10px; border-radius:9px 9px 0 0; font-weight:600}
-#apps button.on{background:var(--card); color:var(--ink); opacity:1}
-nav{display:flex; background:var(--card); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:5;
-  overflow-x:auto; scrollbar-width:none}
+#apps .pill{position:absolute; top:4px; left:0; height:calc(100% - 8px); border-radius:999px;
+  background:rgba(255,255,255,.24); border:1px solid rgba(255,255,255,.38);
+  -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  box-shadow:0 2px 10px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.45);
+  transition:transform .34s cubic-bezier(.34,1.2,.4,1), width .34s cubic-bezier(.34,1.2,.4,1);
+  pointer-events:none; z-index:0}
+#apps button{position:relative; z-index:1; flex:1 0 auto; min-width:62px; border:0; background:none;
+  color:#F2F5FA; opacity:.62; font:inherit; font-size:.82em; padding:8px 10px; border-radius:999px;
+  font-weight:600; transition:opacity .25s}
+#apps button.on{opacity:1}
+
+/* 下のタブ：同じく丸がすべる */
+nav{position:relative; display:flex; gap:2px; z-index:5; overflow-x:auto; scrollbar-width:none;
+  max-width:620px; margin:10px auto 0; padding:4px; border-radius:999px;
+  background:var(--glass2); border:1px solid var(--edge);
+  -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+  box-shadow:0 1px 2px rgba(23,35,58,.05), inset 0 1px 0 rgba(255,255,255,.5)}
 nav::-webkit-scrollbar{display:none}
-nav button{flex:1 0 auto; min-width:64px; border:0; background:none; padding:11px 8px; font:inherit; font-size:.78em;
-  color:var(--sub); border-bottom:2px solid transparent; white-space:nowrap}
-nav button.on{color:var(--ink); font-weight:700; border-bottom-color:var(--ink)}
+nav .pill{position:absolute; top:4px; left:0; height:calc(100% - 8px); border-radius:999px;
+  background:var(--pill); border:1px solid var(--pillbrd);
+  box-shadow:0 2px 8px rgba(23,35,58,.10), inset 0 1px 0 rgba(255,255,255,.6);
+  transition:transform .34s cubic-bezier(.34,1.2,.4,1), width .34s cubic-bezier(.34,1.2,.4,1);
+  pointer-events:none; z-index:0}
+nav button{position:relative; z-index:1; flex:1 0 auto; min-width:60px; border:0; background:none;
+  padding:8px 10px; font:inherit; font-size:.78em; color:var(--sub); white-space:nowrap;
+  border-radius:999px; transition:color .25s}
+nav button.on{color:var(--ink); font-weight:700}
 nav.hide{display:none}
+@media (prefers-reduced-motion:reduce){ #apps .pill, nav .pill{transition:none} }
 main{max-width:620px; margin:0 auto; padding:18px 14px}
 footer{max-width:620px; margin:0 auto; padding:0 16px calc(env(safe-area-inset-bottom) + 34px); font-size:.74em; color:var(--sub); line-height:1.7}
 section{margin-bottom:18px}
 .head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:7px; gap:10px}
 .head h2{margin:0; font-size:.85em; font-weight:700; letter-spacing:.02em}
 .head span{font-size:.76em; color:var(--sub); text-align:right}
-.box{background:var(--card); border-radius:12px; padding:15px; box-shadow:var(--shadow)}
+.box{background:var(--glass); border:1px solid var(--edge); border-radius:20px; padding:16px;
+    -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+    box-shadow:0 1px 2px rgba(23,35,58,.05), 0 10px 28px rgba(23,35,58,.07), inset 0 1px 0 rgba(255,255,255,.55)}
 .row{display:flex; align-items:center; gap:11px; padding:10px 0; border-bottom:1px solid var(--rule);
   width:100%; text-align:left; background:none; border-left:0; border-right:0; border-top:0; font:inherit; color:inherit}
 .row:last-child{border-bottom:0}
@@ -348,16 +438,21 @@ section{margin-bottom:18px}
 .rakuten{color:var(--rakuten)} .bg-rakuten{background:var(--rakutenbg)}
 .chk{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--rule);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75em;flex:none}
 .done .t{color:var(--sub); text-decoration:line-through}
-button.btn{display:block; width:100%; padding:11px; border-radius:9px; border:0; font:inherit; font-size:.92em; font-weight:600; background:var(--ink); color:var(--card)}
+button.btn{display:block; width:100%; padding:12px; border-radius:14px; border:1px solid rgba(255,255,255,.18);
+    font:inherit; font-size:.92em; font-weight:600; background:var(--ink); color:var(--card);
+    box-shadow:0 4px 14px rgba(23,35,58,.16), inset 0 1px 0 rgba(255,255,255,.22)}
 body[data-theme="dark"] button.btn{color:#111}
-button.btn.ghost{background:var(--soft); color:var(--ink); border:1px solid var(--rule)}
+button.btn.ghost{background:var(--glass2); color:var(--ink); border:1px solid var(--edge);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 button.btn[disabled]{background:var(--rule); color:var(--card)}
 .pair{display:flex; gap:8px; align-items:stretch}
 .pair>*{flex:1 1 0; min-width:0}
 .pair>button.btn{width:auto; white-space:nowrap}
 label.f{display:block; font-size:.78em; color:var(--sub); margin:0 0 4px}
-input,textarea,select{width:100%; padding:9px 10px; border:1px solid var(--rule); border-radius:7px;
-  background:var(--soft); font:inherit; font-size:.92em; color:var(--ink)}
+input,textarea,select{width:100%; padding:10px 12px; border:1px solid var(--edge); border-radius:12px;
+  background:var(--glass2); font:inherit; font-size:.92em; color:var(--ink);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
 textarea{min-height:80px; font-size:.8em}
 .field{margin-bottom:11px}
 .pick{display:flex; gap:8px; margin-bottom:11px}
@@ -368,14 +463,16 @@ textarea{min-height:80px; font-size:.8em}
 .pick .b{display:block; font-size:.92em}
 .pick .c{display:block; font-size:.72em; opacity:.75}
 .chips{display:flex; gap:7px; margin-bottom:11px; flex-wrap:wrap}
-.chips button{padding:6px 12px; border-radius:999px; border:1px solid var(--rule); background:var(--soft); font:inherit; font-size:.78em; color:var(--sub)}
+.chips button{padding:6px 13px; border-radius:999px; border:1px solid var(--edge); background:var(--glass2); font:inherit; font-size:.78em; color:var(--sub); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
 .chips button.on{background:var(--ink); border-color:var(--ink); color:var(--card)}
 body[data-theme="dark"] .chips button.on{color:#111}
 .note{font-size:.78em; color:var(--sub); line-height:1.7; margin-top:8px}
 .msg{border-radius:9px; padding:10px 12px; font-size:.83em; margin-bottom:12px; line-height:1.5}
 .ok{background:var(--okbg); color:var(--ok)}
 .ng{background:var(--warnbg); color:var(--warn)}
-.mini{font-size:.72em; padding:5px 9px; border-radius:7px; border:1px solid var(--rule); background:none; color:var(--sub); font-family:inherit}
+.mini{font-size:.72em; padding:5px 10px; border-radius:999px; border:1px solid var(--edge);
+    background:var(--glass2); color:var(--sub); font-family:inherit;
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px)}
 .hide{display:none}
 img.shot{width:100%; max-height:190px; object-fit:cover; border-radius:9px; margin-bottom:11px}
 #lightbox{position:fixed; inset:0; background:rgba(10,14,22,.9); display:flex; align-items:center; justify-content:center; padding:24px; z-index:60}
@@ -384,7 +481,7 @@ img.shot{width:100%; max-height:190px; object-fit:cover; border-radius:9px; marg
 code{background:var(--soft); padding:1px 5px; border-radius:4px; font-size:.8em}
 
 /* ================= トースト ================= */
-#toast{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 22px); transform:translate(-50%,20px);
+#toast{-webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur); position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 22px); transform:translate(-50%,20px);
   background:var(--ink); color:var(--card); padding:11px 18px; border-radius:999px; font-size:.83em; font-weight:600;
   box-shadow:var(--shadow-lg); z-index:70; opacity:0; visibility:hidden; transition:.25s; max-width:88vw; text-align:center}
 body[data-theme="dark"] #toast{background:#E9ECF2; color:#111}
@@ -422,7 +519,7 @@ body[data-theme="dark"] #toast{background:#E9ECF2; color:#111}
 .met-v b{color:var(--ink); font-size:.95em}
 .earn-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px}
 .earn-grid label{font-size:.78em; color:var(--sub); display:flex; flex-direction:column; gap:3px}
-.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--rule); border-radius:11px; background:var(--card)}
+.scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--edge); border-radius:18px; background:var(--glass); -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur)}
 table.tt{border-collapse:collapse; width:100%; min-width:600px; table-layout:fixed}
 table.tt th,table.tt td{border:1px solid var(--rule); padding:0; vertical-align:top}
 table.tt thead th{background:var(--risyubg); font-size:.78em; font-weight:600; padding:6px 0; text-align:center}
@@ -443,11 +540,11 @@ td.sel .nm{color:var(--risyu); font-weight:700}
   border-radius:16px 16px 0 0; z-index:41; display:none; flex-direction:column; box-shadow:var(--shadow-lg)}
 .sheet.on{display:flex}
 @media(min-width:700px){.sheet{max-width:620px; margin:0 auto; border-radius:16px; bottom:3vh}}
-.sheet-hd{padding:12px 14px 10px; border-bottom:1px solid var(--rule); background:var(--card); border-radius:16px 16px 0 0}
+.sheet-hd{padding:12px 14px 10px; border-bottom:1px solid var(--edge); background:var(--glass2); border-radius:24px 24px 0 0}
 .sheet-hd .rowline{display:flex; align-items:center; justify-content:space-between; gap:10px}
 .sheet-hd h3{margin:0; font-size:1em}
 .sheet-bd{overflow-y:auto; padding:10px 14px 24px; -webkit-overflow-scrolling:touch}
-.crs{background:var(--card); border:1px solid var(--rule); border-radius:10px; padding:10px 11px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start}
+.crs{background:var(--glass2); border:1px solid var(--edge); border-radius:16px; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); padding:10px 11px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start}
 .crs.dis{opacity:.5}
 .crs .body{flex:1; min-width:0}
 .crs .ct{font-size:.93em; font-weight:600; line-height:1.35}
@@ -466,7 +563,7 @@ td.sel .nm{color:var(--risyu); font-weight:700}
 .add.rm{background:var(--card); color:var(--rakuten); border-color:var(--rakuten)}
 .add[disabled]{background:var(--rule); border-color:var(--rule); color:var(--card)}
 .empty{color:var(--sub); font-size:.83em; padding:16px 2px; text-align:center}
-.plancard{background:var(--card); border:1px solid var(--rule); border-radius:10px; padding:11px 12px; margin-bottom:8px}
+.plancard{background:var(--glass2); border:1px solid var(--edge); border-radius:16px; padding:11px 12px; margin-bottom:8px}
 .plancard h3{margin:0; font-size:.93em; display:flex; gap:7px; align-items:baseline}
 .plancard h3 em{font-style:normal; color:var(--risyu); font-weight:700; font-size:.8em; background:var(--risyubg); border-radius:5px; padding:1px 6px}
 .plancard p{margin:5px 0 7px; font-size:.78em; color:var(--sub); line-height:1.5}
@@ -972,6 +1069,58 @@ function hhmmOf(min){
   return pad(Math.floor(min/60)) + ':' + pad(min%60);
 }
 
+/* その日の時給（平日か土日かで自動で変わる） */
+function isWeekend(ymd){
+  if(!isYmd(ymd)) return false;
+  var a = ymd.split('-'), w = new Date(+a[0], +a[1]-1, +a[2]).getDay();
+  return w === 0 || w === 6;
+}
+function autoWage(ymd){
+  return isWeekend(ymd) ? (toNum(S.settings.wageWeekend)||0) : (toNum(S.settings.wageWeekday)||0);
+}
+/* 月と日だけから、いちばん近い年を選ぶ */
+function guessYear(m, d){
+  var now = new Date();
+  var t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var best = now.getFullYear(), score = Infinity;
+  [now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1].forEach(function(yy){
+    var dt = new Date(yy, m-1, d);
+    if(dt.getMonth() !== m-1) return;
+    var diff = Math.abs((dt - t0) / 86400000);
+    var sc = (dt < t0) ? diff * 1.8 : diff;   /* これからの日を優先する */
+    if(sc < score){ score = sc; best = yy; }
+  });
+  return best;
+}
+function mdToYmd(m, d){
+  m = toNum(m); d = toNum(d);
+  if(m < 1 || m > 12 || d < 1 || d > 31) return '';
+  var y = guessYear(m, d);
+  var dt = new Date(y, m-1, d);
+  if(dt.getMonth() !== m-1) return '';
+  return toYmd(dt);
+}
+/* 月・日だけを選ぶ入力欄 */
+function mdPicker(idBase, ymd, label, allowEmpty){
+  var m = isYmd(ymd) ? +ymd.slice(5,7) : 0;
+  var d = isYmd(ymd) ? +ymd.slice(8,10) : 0;
+  var mo = '', da = '', i;
+  if(allowEmpty) mo += '<option value="">—</option>';
+  for(i=1;i<=12;i++) mo += '<option value="'+i+'"'+(m===i?' selected':'')+'>'+i+'月</option>';
+  if(allowEmpty) da += '<option value="">—</option>';
+  for(i=1;i<=31;i++) da += '<option value="'+i+'"'+(d===i?' selected':'')+'>'+i+'日</option>';
+  return '<label class="f">'+esc(label)+'</label>'+
+    '<div class="pair" style="margin-bottom:11px">'+
+      '<select id="'+idBase+'_m">'+mo+'</select>'+
+      '<select id="'+idBase+'_d">'+da+'</select>'+
+    '</div>';
+}
+function readMd(idBase){
+  var m = val(idBase+'_m'), d = val(idBase+'_d');
+  if(!m || !d) return '';
+  return mdToYmd(m, d);
+}
+
 function planRows(p){
   var out=[], start = isYm(p.start) ? p.start : thisYm();
   for(var i=0;i<p.count;i++) out.push({
@@ -1014,7 +1163,7 @@ var S = {
   commute: JSON.parse(JSON.stringify(COMMUTE_DEFAULT)),
   ui: JSON.parse(JSON.stringify(UI_DEFAULT)),
   meta: { attend:0, terms:0, commute:0, ui:0 },
-  settings: { smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'', regDeadline:'', wage:1100 }
+  settings: { smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'', regDeadline:'', wageWeekday:1116, wageWeekend:1400 }
 };
 var appId='today', payTab='home', risyuTab='tt', calTab='cal';
 var draft=null, notice=null, showPlanForm=false, hidePast=true, chartRange=12;
@@ -1030,7 +1179,7 @@ try{
   if(raw){
     var d0 = JSON.parse(raw);
     S = Object.assign({}, S, d0);
-    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'', regDeadline:'', wage:1100 }, d0.settings||{});
+    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'', regDeadline:'', wageWeekday:1116, wageWeekend:1400 }, d0.settings||{});
     S.risyu = Object.assign(JSON.parse(JSON.stringify(RISYU_DEFAULT)), d0.risyu||{});
     S.risyu.earned = Object.assign({ kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0 }, (d0.risyu&&d0.risyu.earned)||{});
     if(!Array.isArray(S.risyu.selected)) S.risyu.selected = [];
@@ -1044,6 +1193,7 @@ try{
     if(!Array.isArray(S.commute.periods) || S.commute.periods.length!==7) S.commute.periods = COMMUTE_DEFAULT.periods.slice();
     S.ui = Object.assign(JSON.parse(JSON.stringify(UI_DEFAULT)), d0.ui||{});
     S.meta = Object.assign({ attend:0, terms:0, commute:0, ui:0 }, d0.meta||{});
+    if(d0.settings && d0.settings.wage && !d0.settings.wageWeekday) S.settings.wageWeekday = toNum(d0.settings.wage);
   }
 }catch(e){}
 
@@ -1102,15 +1252,18 @@ function budget(){
   var fx  = sumBy(S.fixed, function(x){ return x.amount; });
   var inc = sumBy(S.income, function(x){ return x.amount; });
   var bal = sumBy(S.balances, function(x){ return x.amount; });
-  var free = inc - pay - fx;
-  var rate = inc > 0 ? free / inc : (free >= 0 ? 1 : -1);
+  var have = bal + inc;                 /* 口座にあるお金＋今月入るお金 */
+  var out  = pay + fx;                  /* 今月出ていくお金 */
+  var free = have - out;
+  var rate = have > 0 ? free / have : (free >= 0 ? 1 : -1);
   var level, word;
-  if(inc === 0){ level='none'; word='収入を登録すると判定できます'; }
+  if(have === 0){ level='none'; word='口座残高か収入を登録すると判定できます'; }
   else if(free < 0){ level='bad';  word='今月は足りません'; }
   else if(rate < .12){ level='warn'; word='かなりギリギリです'; }
   else if(rate < .3){ level='ok';   word='やりくりすれば大丈夫'; }
   else { level='good'; word='余裕があります'; }
-  return { pay:pay, fixed:fx, income:inc, balance:bal, free:free, level:level, word:word, month:cur };
+  return { pay:pay, fixed:fx, income:inc, balance:bal, have:have, free:free,
+           level:level, word:word, month:cur };
 }
 
 /* ============================== 同期 ============================== */
@@ -1172,7 +1325,8 @@ function payload(){
     attend: S.attend, terms: S.terms, commute: S.commute, ui: S.ui, meta: S.meta,
     days: { smbc:S.settings.smbcDay, rakuten:S.settings.rakutenDay },
     regDeadline: S.settings.regDeadline || '',
-    wage: toNum(S.settings.wage) || 0, wage: S.settings.wage || 0,
+    wageWeekday: toNum(S.settings.wageWeekday) || 0,
+    wageWeekend: toNum(S.settings.wageWeekend) || 0, wage: S.settings.wage || 0,
     wage: toNum(S.settings.wage)||1100,
     updatedAt: Date.now()
   };
@@ -1251,7 +1405,8 @@ function mergeRemote(d){
     S.settings.rakutenDay = d.days.rakuten || S.settings.rakutenDay;
   }
   if(typeof d.regDeadline === 'string') S.settings.regDeadline = d.regDeadline;
-  if(d.wage != null) S.settings.wage = toNum(d.wage);
+  if(d.wageWeekday != null) S.settings.wageWeekday = toNum(d.wageWeekday);
+  if(d.wageWeekend != null) S.settings.wageWeekend = toNum(d.wageWeekend);
   if(typeof d.wage === 'number') S.settings.wage = d.wage;
 
   persist();
@@ -1271,39 +1426,64 @@ function download(blob, name){
   var url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 }
+function icsStamp(ymd, hhmm){
+  var a = ymd.split('-');
+  return a[0]+a[1]+a[2]+'T'+hhmm.replace(':','')+'00';
+}
+function icsEsc(t){
+  return String(t==null?'':t).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/[\r\n]+/g,' ');
+}
 function makeIcs(){
-  var d = derive(), cur = thisYm(), lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//kurashi//JP'];
+  var lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//kurashi//JP','CALSCALE:GREGORIAN','METHOD:PUBLISH',
+    'X-WR-CALNAME:くらしの手帳',
+    'BEGIN:VTIMEZONE','TZID:Asia/Tokyo','BEGIN:STANDARD','DTSTART:19700101T000000',
+    'TZOFFSETFROM:+0900','TZOFFSETTO:+0900','TZNAME:JST','END:STANDARD','END:VTIMEZONE'];
+
+  /* 時刻つきなら時間の予定、なければ終日の予定として書き出す */
+  var ev = function(uid, title, ymd, hhmm, minutes, endYmd, note){
+    if(!isYmd(ymd)) return;
+    lines.push('BEGIN:VEVENT', 'UID:'+uid+'@kurashi', 'SUMMARY:'+icsEsc(title));
+    if(hhmm && minutesOf(hhmm) != null){
+      var endMin = minutesOf(hhmm) + (minutes || 60);
+      var endDay = ymd;
+      if(endMin >= 1440){ endMin -= 1440; endDay = shiftDate(ymd, 1); }
+      lines.push('DTSTART;TZID=Asia/Tokyo:'+icsStamp(ymd, hhmm),
+                 'DTEND;TZID=Asia/Tokyo:'+icsStamp(endDay, hhmmOf(endMin)));
+    }else{
+      var last = (isYmd(endYmd) && endYmd > ymd) ? endYmd : ymd;
+      var a = ymd.split('-'), b = shiftDate(last, 1).split('-');   /* 終日は翌日が終わり */
+      lines.push('DTSTART;VALUE=DATE:'+a[0]+a[1]+a[2], 'DTEND;VALUE=DATE:'+b[0]+b[1]+b[2]);
+    }
+    if(note) lines.push('DESCRIPTION:'+icsEsc(note));
+    lines.push('END:VEVENT');
+  };
+
+  S.events.forEach(function(e){
+    ev('ev-'+e.id, (e.kind==='imp'?'★ ':'')+(e.title||'予定'), e.date, e.time, 60, e.dateEnd, e.memo);
+  });
+  S.tasks.forEach(function(t){
+    if(!t.done) ev('tk-'+t.id, '締切 '+(t.title||''), t.due, t.time, 60, '', t.subject);
+  });
+  S.exams.forEach(function(x){
+    ev('ex-'+x.id, (x.kind==='quiz'?'小テスト ':'テスト ')+(x.subject||''), x.date, x.time, 60, '', x.room);
+  });
+  S.shifts.forEach(function(w){
+    var mins = Math.round(shiftHours(w)*60) || 60;
+    ev('wk-'+w.id, 'バイト '+(w.title||''), w.date, w.start, mins, '', w.memo);
+  });
+  S.health.forEach(function(h){
+    ev('hl-'+h.id, (h.name||'')+' の期限', h.next, '', 0, '', h.memo);
+  });
+  var d = derive(), cur = thisYm();
   d.months.filter(function(m){ return m>=cur; }).forEach(function(m){
     [['smbc',S.settings.smbcDay],['rakuten',S.settings.rakutenDay]].forEach(function(pair){
       var g=d.byMonth[m][pair[0]], amt=g.plan+g.stmt; if(amt<=0) return;
-      var a=m.split('-');
-      lines.push('BEGIN:VEVENT','UID:'+pair[0]+'-'+m+'@kurashi','DTSTART;VALUE=DATE:'+a[0]+a[1]+pad(pair[1]),
-        'SUMMARY:'+ACCOUNTS[pair[0]].bank+' 引落 '+yen(amt),'DESCRIPTION:前日までに入金','END:VEVENT');
+      ev(pair[0]+'-'+m, ACCOUNTS[pair[0]].bank+' 引落 '+yen(amt), m+'-'+pad(pair[1]), '', 0, '', '前日までに入金');
     });
   });
-  var icsLine = function(id, ymd, label){
-    if(!isYmd(ymd)) return;
-    var a = ymd.split('-');
-    lines.push('BEGIN:VEVENT','UID:'+id+'@kurashi','DTSTART;VALUE=DATE:'+a[0]+a[1]+a[2],
-      'SUMMARY:'+String(label||'').replace(/[\r\n]/g,' '),'END:VEVENT');
-  };
-  S.events.forEach(function(e){
-    icsLine('ev-'+e.id, e.date, (e.kind==='imp'?'重要 ':'')+(e.title||'予定'));
-  });
-  S.tasks.forEach(function(t){
-    if(!t.done) icsLine('tk-'+t.id, t.due, '締切 '+(t.title||''));
-  });
-  S.exams.forEach(function(x){
-    icsLine('ex-'+x.id, x.date, (x.kind==='quiz'?'小テスト ':'テスト ')+(x.subject||''));
-  });
-  S.shifts.forEach(function(w){
-    icsLine('wk-'+w.id, w.date, 'バイト '+(w.title||'')+(w.start?' '+w.start:''));
-  });
-  S.health.forEach(function(h){
-    icsLine('hl-'+h.id, h.next, (h.name||'')+' の期限');
-  });
+
   lines.push('END:VCALENDAR');
-  download(new Blob([lines.join('\r\n')],{type:'text/calendar'}), 'kurashi.ics');
+  download(new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'}), 'kurashi.ics');
 }
 /* ============================== イラスト ============================== */
 var ART = {
@@ -1506,7 +1686,7 @@ function banners(){
   /* お金の状態 */
   var b = budget();
   if(b.level === 'bad') out.push({c:'red', ic:'¥', t:'<b>今月は'+yen(-b.free)+'足りません。</b>収入と支払いの登録を見直してください。'});
-  else if(b.level === 'warn') out.push({c:'amber', ic:'¥', t:'今月の自由に使えるお金は'+yen(b.free)+'。かなりギリギリです。'});
+  else if(b.level === 'warn') out.push({c:'amber', ic:'¥', t:'口座と収入を合わせても、今月自由に使えるのは'+yen(b.free)+'。かなりギリギリです。'});
 
   return out;
 }
@@ -1555,13 +1735,17 @@ function viewToday(){
   html += section('今日の授業', dch+'曜日', inner);
 
   /* 今日の予定 */
-  var evs = S.events.filter(function(e){ return e.date === td; })
+  var evs = S.events.filter(function(e){
+      var end = (isYmd(e.dateEnd) && e.dateEnd > e.date) ? e.dateEnd : e.date;
+      return e.date <= td && td <= end;          /* 何日も続く予定も今日に出す */
+    })
     .sort(function(a,b){ return String(a.time||'').localeCompare(String(b.time||'')); });
   html += section('今日の予定', evs.length ? evs.length+'件' : null,
     evs.length ? evs.map(function(e){
       return '<div class="evrow"><span class="cbar" style="background:'+colorOf(e.color)+'"></span>'+
         '<span class="grow"><span class="t">'+esc(e.title)+'</span>'+
-        (e.memo?'<span class="s">'+esc(e.memo)+'</span>':'')+'</span>'+
+        ((e.dateEnd && e.dateEnd>e.date) ? '<span class="s">'+ymdLabel(e.date)+' 〜 '+ymdLabel(e.dateEnd)+'</span>' :
+          (e.memo?'<span class="s">'+esc(e.memo)+'</span>':''))+'</span>'+
         (e.time?'<span class="s2 num">'+esc(e.time)+'</span>':'')+'</div>';
     }).join('') : '<div class="empty">今日の予定はありません。</div>');
 
@@ -1572,7 +1756,7 @@ function viewToday(){
     '<div class="msg '+lv+'" style="margin-bottom:12px">'+esc(b.word)+'</div>'+
     '<div class="grid2">'+
       '<div class="stat"><div class="k">自由に使えるお金</div><div class="v num">'+yen(b.free)+'</div></div>'+
-      '<div class="stat"><div class="k">口座の残高合計</div><div class="v num">'+yen(b.balance)+'</div></div>'+
+      '<div class="stat"><div class="k">うち口座の残高</div><div class="v num">'+yen(b.balance)+'</div></div>'+
       '<div class="stat"><div class="k">今月の支払い</div><div class="v num">'+yen(b.pay)+'</div></div>'+
       '<div class="stat"><div class="k">固定費・サブスク</div><div class="v num">'+yen(b.fixed)+'</div></div>'+
     '</div>'+
@@ -1611,10 +1795,10 @@ function viewHome(d){
 
   + section('自由に使えるお金', b.word,
     '<div class="big num" style="color:'+(b.free<0?'var(--rakuten)':'var(--ink)')+'">'+yen(b.free)+'</div>'+
-    '<div class="s" style="margin:4px 0 12px">収入 '+yen(b.income)+' − 支払い '+yen(b.pay)+' − 固定費 '+yen(b.fixed)+'</div>'+
+    '<div class="s" style="margin:4px 0 12px">口座 '+yen(b.balance)+' ＋ 収入 '+yen(b.income)+' − 支払い '+yen(b.pay)+' − 固定費 '+yen(b.fixed)+'</div>'+
     '<div class="grid2">'+
-      '<div class="stat"><div class="k">今月の収入</div><div class="v num">'+yen(b.income)+'</div></div>'+
       '<div class="stat"><div class="k">口座残高の合計</div><div class="v num">'+yen(b.balance)+'</div></div>'+
+      '<div class="stat"><div class="k">今月の収入</div><div class="v num">'+yen(b.income)+'</div></div>'+
     '</div>'+
     '<button class="btn ghost" style="margin-top:12px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>')
 
@@ -2013,7 +2197,7 @@ function viewShifts(){
     }).join('') : '<div class="empty">'+ART.empty+'<div style="margin-top:8px">カレンダーで種類を「バイト」にすると、ここに集まります。</div></div>')+
     (pay ? '<button class="btn ghost" style="margin-top:12px" data-act="shift-to-income">この見込み額を収入に入れる</button>' : '')+
     '<button class="btn ghost" style="margin-top:8px" data-act="go" data-app="cal" data-tab="cal">カレンダーでシフトを追加</button>'+
-    '<p class="note">時給は設定タブで変えられます。1回ごとに違う時給を入れることもできます。</p>');
+    '<p class="note">時給は平日'+yen(toNum(S.settings.wageWeekday))+'／土日'+yen(toNum(S.settings.wageWeekend))+'で自動計算しています。設定タブで変えられます。</p>');
 }
 /* ============================== 履修：索引 ============================== */
 var byCode = {};
@@ -2190,6 +2374,11 @@ function viewRisyuTt(){
       '<div class="scroll"><table class="tt" id="tt">'+gridHtml()+'</table></div>'+
       '<p class="note">横にスクロールすると木・金・土が見えます。入れた科目は「外す」で削除、マス本体をタップすると差し替えられます。</p>'+
       '<label class="tg"><input type="checkbox" id="tgOcc"'+(rIncludeOcc?' checked':'')+'>登録済み科目と重なる講座も選べるようにする（隔週・半期科目の確認用）</label></section>'
+    + section('科目から追加する', '課題や小テストをすぐ登録できます',
+      '<div class="chips">'+courseList().map(function(c){
+        return '<button data-act="course-add" data-name="'+esc(c.name)+'">'+esc(c.name)+'</button>';
+      }).join('')+'</div>'+
+      '<p class="note">科目をタップすると、その科目の課題としてカレンダーの入力欄が開きます。種類を「小テスト」に変えればテストとして登録できます。</p>')
     + section('選択中の科目', cs.length ? cs.length+'科目 / 計'+cs.reduce(function(a,c){return a+c.cr;},0)+'単位' : null,
       '<div id="warns">'+warnsHtml()+'</div><div id="selList">'+selListHtml()+'</div>'+
       '<div class="pair" style="margin-top:12px"><button class="btn ghost" data-act="r-clear">すべて外す</button>'+
@@ -2252,7 +2441,7 @@ function viewTasks(){
     '<div class="field"><label class="f">やること・課題名</label><input id="tk_title" placeholder="例：レポート提出"></div>'+
     '<div class="pair" style="margin-bottom:11px">'+
       '<div><label class="f">科目</label><select id="tk_subject">'+subjectOptions('')+'</select></div>'+
-      '<div style="flex:0 0 148px"><label class="f">締切</label><input type="date" id="tk_due" value="'+today()+'"></div></div>'+
+      '<div style="flex:0 0 152px">'+mdPicker('tk_due', today(), '締切', false)+'</div></div>'+
     '<button class="btn" data-act="add-task">追加する</button>'+
     '<button class="btn ghost" style="margin-top:8px" data-act="go" data-app="cal" data-tab="cal">カレンダーで色を選んで追加</button></div>')
   + (done.length ? section('終わったもの', done.length+'件',
@@ -2293,7 +2482,7 @@ function viewExams(){
       '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)">'+
       '<div class="field"><label class="f">科目</label><select id="ex_subject">'+subjectOptions('')+'</select></div>'+
       '<div class="pair" style="margin-bottom:11px">'+
-        '<div><label class="f">日付</label><input type="date" id="ex_date" value="'+today()+'"></div>'+
+        '<div>'+mdPicker('ex_date', today(), '日付', false)+'</div>'+
         '<div style="flex:0 0 110px"><label class="f">時刻</label><input type="time" id="ex_time"></div></div>'+
       '<div class="field"><label class="f">教室・メモ</label><input id="ex_room" placeholder="例：中央図書館ホール"></div>'+
       '<button class="btn" data-act="add-exam">定期テストを追加</button></div>')
@@ -2466,10 +2655,26 @@ function risyuAction(act, t, ev){
     }catch(e){ manual(); }
     return true;
   }
+  if(act==='course-add'){
+    evDraft = newDraft(today());
+    evDraft.kind = 'task';
+    evDraft.color = kindOf('task').color;
+    evDraft.subject = t.dataset.name;
+    evDraft.title = '';
+    calEdit = null;
+    appId = 'cal'; calTab = 'cal'; if(calView === 'todo') calView = 'month';
+    render();
+    var f = document.getElementById('evform');
+    if(f) f.scrollIntoView({block:'center'});
+    var ti = document.getElementById('ev_title');
+    if(ti) ti.focus();
+    toast(t.dataset.name+' の課題を追加します');
+    return true;
+  }
   if(act==='add-task'){
     var ti = val('tk_title').trim();
     if(!ti){ toast('やることの名前を入れてください', true); return true; }
-    S.tasks.push({ id:uid('tk'), title:ti, subject:val('tk_subject'), due:val('tk_due'), done:0, memo:'', color:'c2', mt:Date.now() });
+    S.tasks.push({ id:uid('tk'), title:ti, subject:val('tk_subject'), due:readMd('tk_due'), done:0, memo:'', color:'c2', mt:Date.now() });
     toast('追加しました'); commit(); return true;
   }
   if(act==='task-done' || act==='task-undone'){
@@ -2479,7 +2684,7 @@ function risyuAction(act, t, ev){
   }
   if(act==='del-task'){ removeItem('tasks', t.dataset.id); toast('削除しました'); commit(); return true; }
   if(act==='add-exam'){
-    var sb = val('ex_subject'), dt = val('ex_date');
+    var sb = val('ex_subject'), dt = readMd('ex_date');
     if(!sb && !val('ex_room')){ toast('科目か教室を入れてください', true); return true; }
     if(!isYmd(dt)){ toast('日付を選んでください', true); return true; }
     S.exams.push({ id:uid('ex'), subject:sb, date:dt, time:val('ex_time'), room:val('ex_room'), memo:'', quiz:0, color:'c8', mt:Date.now() });
@@ -2522,7 +2727,7 @@ function shiftHours(s){
   return Math.round(m / 6) / 10;
 }
 function shiftPay(s){
-  var w = toNum(s.wage) || toNum(S.settings.wage) || 0;
+  var w = toNum(s.wage) || autoWage(s.date);
   return Math.round(shiftHours(s) * w);
 }
 function normItems(){
@@ -2607,8 +2812,11 @@ function readEvForm(){
   var g = function(id){ var e=document.getElementById(id); return e ? e.value : null; };
   var v;
   if((v=g('ev_title'))!==null) evDraft.title = v;
-  if((v=g('ev_date'))!==null) evDraft.date = v;
-  if((v=g('ev_dateend'))!==null) evDraft.dateEnd = v;
+  if(document.getElementById('ev_date_m')){
+    var dd = readMd('ev_date');
+    if(dd) evDraft.date = dd;
+  }
+  if(document.getElementById('ev_dateend_m')) evDraft.dateEnd = readMd('ev_dateend');
   if((v=g('ev_time'))!==null) evDraft.time = v;
   if((v=g('ev_end'))!==null) evDraft.end = v;
   if((v=g('ev_wage'))!==null) evDraft.wage = v;
@@ -2643,18 +2851,18 @@ function evForm(){
     h += '<div class="field"><label class="f">科目（任意）</label><select id="ev_subject">'+subjectOptions(evDraft.subject)+'</select></div>';
   }
 
-  h += '<div class="pair" style="margin-bottom:11px">'+
-    '<div><label class="f">'+(isTask?'締切日':'日付')+'</label><input type="date" id="ev_date" value="'+esc(evDraft.date)+'"></div>'+
-    '<div style="flex:0 0 108px"><label class="f">'+(isWork?'開始':'時刻（任意）')+'</label><input type="time" id="ev_time" value="'+esc(evDraft.time)+'"></div></div>';
+  h += mdPicker('ev_date', evDraft.date, (isTask?'締切日':'日付'), false);
+  h += '<div class="field"><label class="f">'+(isWork?'開始':'時刻（任意）')+'</label>'+
+       '<input type="time" id="ev_time" value="'+esc(evDraft.time)+'"></div>';
 
   if(evDraft.kind === 'other' || evDraft.kind === 'imp'){
-    h += '<div class="field"><label class="f">終了日（何日も続く予定のときだけ）</label>'+
-      '<input type="date" id="ev_dateend" value="'+esc(evDraft.dateEnd||'')+'"></div>';
+    h += mdPicker('ev_dateend', evDraft.dateEnd||'', '終了日（何日も続く予定のときだけ）', true);
   }
   if(isWork){
     h += '<div class="pair" style="margin-bottom:11px">'+
       '<div><label class="f">終了</label><input type="time" id="ev_end" value="'+esc(evDraft.end)+'"></div>'+
-      '<div><label class="f">時給（空なら'+yen(toNum(S.settings.wage))+'）</label><input id="ev_wage" inputmode="numeric" value="'+esc(evDraft.wage)+'"></div></div>';
+      '<div><label class="f">時給（空なら自動）</label><input id="ev_wage" inputmode="numeric" placeholder="'+autoWage(evDraft.date)+'" value="'+esc(evDraft.wage)+'"></div></div>'+
+      '<p class="note" style="margin:-4px 0 10px">'+(isWeekend(evDraft.date)?'土日なので ':'平日なので ')+yen(autoWage(evDraft.date))+' で計算します。違うときだけ入れてください。</p>';
   }
 
   h += '<label class="f">色</label><div class="swatch">'+
@@ -2963,6 +3171,8 @@ function viewCalendar(){
     h += '<div style="margin-top:16px">' + section('予定を追加', null, evForm()) + '</div>';
   }
 
+  h += '<button class="btn ghost" style="margin-top:14px" data-act="ics">iPhoneのカレンダーに送る</button>';
+  h += '<p class="note" style="margin-top:6px">押すとファイルができます。iPhoneでは「カレンダー」を選ぶと、予定・課題・テスト・バイト・引き落としがまとめて入ります。</p>';
   h += '<p class="note">マスの中に予定名がそのまま出ます。種類を選ぶと、課題は「履修 › 課題」、小テストは「履修 › テスト」、バイトは「お金 › バイト」、重要は「予定 › 重要」にも出ます。「終了日」を入れると、何日も続く予定を帯で表示します。月表示は左右にはらうと月が移ります。</p>';
   return '<section>'+h+'</section>';
 }
@@ -3131,7 +3341,10 @@ function viewSettings(){
     '<div class="pair" style="margin-bottom:11px">'+
       '<div><label class="f">三井住友の引落日</label><input id="sy_smbc" inputmode="numeric" value="'+S.settings.smbcDay+'"></div>'+
       '<div><label class="f">楽天の引落日</label><input id="sy_rakuten" inputmode="numeric" value="'+S.settings.rakutenDay+'"></div></div>'+
-    '<div class="field"><label class="f">バイトの時給（円）</label><input id="st_wage" inputmode="numeric" value="'+toNum(S.settings.wage)+'"></div>'+
+    '<div class="pair" style="margin-bottom:11px">'+
+      '<div><label class="f">平日の時給（円）</label><input id="st_wage1" inputmode="numeric" value="'+toNum(S.settings.wageWeekday)+'"></div>'+
+      '<div><label class="f">土日の時給（円）</label><input id="st_wage2" inputmode="numeric" value="'+toNum(S.settings.wageWeekend)+'"></div></div>'+
+    '<p class="note" style="margin:-4px 0 10px">シフトを入れると、その日の曜日で自動的に使い分けます。</p>'+
     '<button class="btn ghost" data-act="save-days">保存する</button>')
 
   + section('端末どうしの同期', syncState.on?'接続中':'未設定',
@@ -3169,7 +3382,8 @@ function settingsAction(act, t){
     S.settings.smbcDay = Math.min(31, Math.max(1, toNum(val('sy_smbc'))||27));
     S.settings.rakutenDay = Math.min(31, Math.max(1, toNum(val('sy_rakuten'))||27));
     var rg = val('st_reg'); S.settings.regDeadline = isYmd(rg) ? rg : '';
-    S.settings.wage = Math.max(0, toNum(val('st_wage')));
+    S.settings.wageWeekday = Math.max(0, toNum(val('st_wage1')));
+    S.settings.wageWeekend = Math.max(0, toNum(val('st_wage2')));
     toast('保存しました'); commit(); return true;
   }
   if(act==='save-sync'){
@@ -3205,7 +3419,7 @@ var FOOTS = {
 };
 
 function render(){
-  document.getElementById('apps').innerHTML = APPS.map(function(a){
+  document.getElementById('apps').innerHTML = '<span class="pill"></span>' + APPS.map(function(a){
     return '<button data-app="'+a[0]+'" class="'+(appId===a[0]?'on':'')+'">'+a[1]+'</button>';
   }).join('');
 
@@ -3214,7 +3428,7 @@ function render(){
   if(tabs){
     var cur = appId==='money' ? payTab : appId==='risyu' ? risyuTab : calTab;
     nav.className = '';
-    nav.innerHTML = tabs.map(function(t){
+    nav.innerHTML = '<span class="pill"></span>' + tabs.map(function(t){
       return '<button data-tab="'+t[0]+'" class="'+(cur===t[0]?'on':'')+'">'+t[1]+'</button>';
     }).join('');
   }else{
@@ -3242,7 +3456,24 @@ function render(){
   document.getElementById('synctag').textContent = syncState.on
     ? '同期中・合言葉 ' + S.settings.room
     : '支払い・履修・予定をひとつに';
+  movePills();
 }
+
+/* 選ばれているタブの位置に丸をすべらせる */
+function movePill(box){
+  if(!box) return;
+  var pill = box.querySelector('.pill');
+  var on = box.querySelector('button.on');
+  if(!pill || !on){ if(pill) pill.style.width = '0px'; return; }
+  pill.style.width = on.offsetWidth + 'px';
+  pill.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+}
+function movePills(){
+  movePill(document.getElementById('apps'));
+  var nav = document.getElementById('nav');
+  if(nav && !nav.classList.contains('hide')) movePill(nav);
+}
+window.addEventListener('resize', movePills);
 
 /* ============================== イベント ============================== */
 document.getElementById('apps').addEventListener('click', function(e){
@@ -3273,7 +3504,7 @@ document.getElementById('app').addEventListener('click', function(e){
     if(calAction(act, t)) return;
   }
   if(act.indexOf('r-')===0 || ['add-task','task-done','task-undone','del-task','add-exam','del-exam',
-     'ab-plus','ab-minus','late-plus','set-limit','year-edit'].indexOf(act)>=0){
+     'ab-plus','ab-minus','late-plus','set-limit','year-edit','course-add'].indexOf(act)>=0){
     if(risyuAction(act, t, e)) return;
   }
   if(act.indexOf('ev-')===0 || act.indexOf('cal-')===0){
@@ -3396,6 +3627,9 @@ setTimeout(function(){
   var s = document.getElementById('splash');
   if(s) s.classList.add('out');
 }, 700);
+setTimeout(movePills, 60);
+setTimeout(movePills, 400);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(movePills)['catch'](function(){});
 </script>
 </body>
 </html>
