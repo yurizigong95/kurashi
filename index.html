@@ -96,13 +96,13 @@ body::before{
 @keyframes rise{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
 /* ホーム画面のアイコンから開いた時 */
 @media (display-mode: standalone){
-  header{padding-top:calc(env(safe-area-inset-top) + 18px)}
+  header{padding-top:calc(env(safe-area-inset-top) + 8px)}
 }
 /* ================= iPad・パソコン ================= */
 @media (min-width:760px){
   body{font-size:calc(var(--fs) * 1.05)}
   main{max-width:100%; padding:24px 28px 48px}
-  header{padding:calc(env(safe-area-inset-top) + 18px) 28px 0}
+  header{padding:calc(env(safe-area-inset-top) + 10px) 28px 0}
   #apps{max-width:100%; margin-bottom:14px}
   #apps button{font-size:.86em; padding:11px 16px}
   nav{max-width:100%}
@@ -157,16 +157,17 @@ header{
   position:sticky; top:0; z-index:20; color:var(--ink);
   background:linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.34));
   -webkit-backdrop-filter:saturate(180%) blur(30px); backdrop-filter:saturate(180%) blur(30px);
-  padding:calc(env(safe-area-inset-top) + 14px) 14px 0;
+  padding:calc(env(safe-area-inset-top) + 6px) 14px 0;
   border-bottom:1px solid rgba(255,255,255,.6);
   box-shadow:0 6px 22px rgba(0,0,0,.10);
 }
 body[data-theme="dark"] header{background:linear-gradient(180deg, rgba(34,28,38,.95), rgba(34,28,38,.85)); border-bottom-color:rgba(255,255,255,.10)}
-header h1{margin:0; font-size:1.05em; letter-spacing:.04em; font-weight:700; display:flex; align-items:center; gap:8px}
-header p{margin:3px 0 10px; font-size:.76em; color:var(--sub)}
+header h1{margin:0; font-size:1.0em; letter-spacing:.03em; font-weight:700; display:flex; align-items:center; gap:8px; min-height:0}
+header h1 #synctag{font-size:.72em; font-weight:400; color:var(--sub); letter-spacing:0}
+
 /* 上のアプリ切替：ガラスの丸がすべる */
-#apps{position:relative; display:flex; gap:2px; max-width:620px; margin:0 auto 12px;
-  overflow-x:auto; scrollbar-width:none; padding:4px; border-radius:999px;
+#apps{position:relative; display:flex; gap:1px; max-width:620px; margin:6px auto 8px;
+  overflow:hidden; padding:3px; border-radius:999px;
   background:rgba(255,255,255,.26); border:1px solid rgba(255,255,255,.75);
   box-shadow:var(--spec), 0 2px 10px rgba(0,0,0,.10)}
 #apps::-webkit-scrollbar{display:none}
@@ -179,13 +180,13 @@ header p{margin:3px 0 10px; font-size:.76em; color:var(--sub)}
 body[data-theme="dark"] #apps{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.14)}
 body[data-theme="dark"] nav{background:linear-gradient(180deg, rgba(40,34,44,.92), rgba(40,34,44,.80))}
 body[data-theme="dark"] #apps .pill{background:linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.12)); border-color:rgba(255,255,255,.3)}
-#apps button{position:relative; z-index:1; flex:1 0 auto; min-width:62px; border:0; background:none;
-  color:var(--sub); font:inherit; font-size:.82em; padding:9px 12px; border-radius:999px;
-  font-weight:700; transition:color .25s}
+#apps button{position:relative; z-index:1; flex:1 1 0; min-width:0; border:0; background:none;
+  color:var(--sub); font:inherit; font-size:.74em; padding:9px 2px; border-radius:999px;
+  font-weight:700; transition:color .25s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 #apps button.on{color:var(--ink)}
 
 /* 下のタブ：同じく丸がすべる */
-nav{position:relative; display:flex; gap:2px; z-index:15; overflow-x:auto; scrollbar-width:none;
+nav{position:sticky; top:var(--hdrh,104px); display:flex; gap:2px; z-index:15; overflow-x:auto; scrollbar-width:none;
   max-width:620px; margin:10px auto 0; padding:4px; border-radius:999px;
   background:linear-gradient(180deg, rgba(255,255,255,.64), rgba(255,255,255,.36)); border:1px solid var(--edge);
   -webkit-backdrop-filter:saturate(180%) blur(28px); backdrop-filter:saturate(180%) blur(28px);
@@ -204,13 +205,13 @@ nav button.on{color:var(--ink); font-weight:700}
 nav.hide{display:none}
 /* ホーム画面のアイコンから開いた時 */
 @media (display-mode: standalone){
-  header{padding-top:calc(env(safe-area-inset-top) + 18px)}
+  header{padding-top:calc(env(safe-area-inset-top) + 8px)}
 }
 /* ================= iPad・パソコン ================= */
 @media (min-width:760px){
   body{font-size:calc(var(--fs) * 1.05)}
   main{max-width:100%; padding:24px 28px 48px}
-  header{padding:calc(env(safe-area-inset-top) + 18px) 28px 0}
+  header{padding:calc(env(safe-area-inset-top) + 10px) 28px 0}
   #apps{max-width:100%; margin-bottom:14px}
   #apps button{font-size:.86em; padding:11px 16px}
   nav{max-width:100%}
@@ -260,7 +261,7 @@ nav.hide{display:none}
 input, textarea, select{font-size:16px !important}
 input[type="color"]{font-size:16px !important}
 @media (prefers-reduced-motion:reduce){ #apps .pill, nav .pill{transition:none} }
-main{max-width:620px; margin:0 auto; padding:18px 14px}
+main{max-width:620px; margin:0 auto; padding:12px 14px 40px}
 nav+main{padding-top:14px}
 footer{max-width:620px; margin:0 auto; padding:0 16px calc(env(safe-area-inset-bottom) + 34px); font-size:.74em; color:var(--sub); line-height:1.7}
 section{margin-bottom:18px}
@@ -540,39 +541,47 @@ label.tg input{width:auto; margin-top:2px}
 
 /* ================= 時間割（新） ================= */
   table.tt2{min-width:0; width:100%; table-layout:fixed}
-  table.tt2 th{font-weight:600; font-size:.74em; padding:5px 0}
-  table.tt2 th.pd{width:34px; padding:2px 0; background:transparent}
-  table.tt2 th.pd .pdn{display:block; font-size:1.05em; font-weight:700; line-height:1.1}
-  table.tt2 th.pd .pdt{display:block; font-size:.56em; color:var(--sub); line-height:1.2; margin-top:2px; font-weight:400}
+  table.tt2 th{font-weight:600; font-size:.66em; padding:3px 0}
+  table.tt2 th.pd{width:28px; padding:1px 0; background:transparent}
+  table.tt2 th.pd .pdn{display:block; font-size:.92em; font-weight:700; line-height:1.05}
+  table.tt2 th.pd .pdt{display:block; font-size:.48em; color:var(--sub); line-height:1.15; margin-top:1px; font-weight:400}
   table.tt2 thead th .dsub{display:block; font-size:.66em; color:var(--sub); font-weight:400}
   table.tt2 thead th.today{background:var(--todaybg)}
-  table.tt2 td{height:96px; padding:3px; border:0}
+  table.tt2 td{height:auto; padding:2px; border:0}
   table.tt2 td.empty-cell{background:transparent}
-  .cell2{display:flex; flex-direction:column; height:100%; min-height:90px; border-radius:9px; padding:4px 3px 3px;
+  .cell2{display:flex; flex-direction:column; height:100%; min-height:62px; border-radius:9px; padding:3px 3px 2px;
     cursor:pointer; box-sizing:border-box; overflow:hidden}
-  td.reqd .cell2{background:linear-gradient(150deg, rgba(255,224,218,.80), rgba(255,190,182,.46));
-    border:1px solid rgba(255,255,255,.7);
-    -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-    box-shadow:var(--spec), 0 4px 12px rgba(176,49,26,.16)}
-  td.elec .cell2{background:linear-gradient(150deg, rgba(224,232,252,.80), rgba(194,208,248,.46));
-    border:1px solid rgba(255,255,255,.7);
-    -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-    box-shadow:var(--spec), 0 4px 12px rgba(13,43,122,.16)}
+  td.reqd .cell2{position:relative; overflow:hidden;
+    background:linear-gradient(150deg, rgba(255,232,228,.52), rgba(255,196,188,.26));
+    border:1px solid rgba(255,255,255,.78);
+    -webkit-backdrop-filter:saturate(180%) blur(14px); backdrop-filter:saturate(180%) blur(14px);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.9), 0 4px 12px rgba(0,0,0,.10)}
+  td.reqd .cell2::before{content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(160deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 52%)}
+  td.reqd .cell2>*{position:relative}
+  td.elec .cell2{position:relative; overflow:hidden;
+    background:linear-gradient(150deg, rgba(230,238,255,.52), rgba(198,212,250,.26));
+    border:1px solid rgba(255,255,255,.78);
+    -webkit-backdrop-filter:saturate(180%) blur(14px); backdrop-filter:saturate(180%) blur(14px);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.9), 0 4px 12px rgba(0,0,0,.10)}
+  td.elec .cell2::before{content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(160deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 52%)}
+  td.elec .cell2>*{position:relative}
   td.off .cell2{opacity:.45; background-image:repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,0,0,.08) 6px 8px)}
   td.web .cell2{border-style:dashed}
-  .cell2 .nm2{display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
-    font-size:.62em; font-weight:700; line-height:1.25; word-break:break-all; flex:1 1 auto; min-height:0}
+  .cell2 .nm2{display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+    font-size:.56em; font-weight:700; line-height:1.2; word-break:break-all; flex:1 1 auto; min-height:0}
   td.reqd .nm2{color:#8A2412} td.elec .nm2{color:#0D2B7A}
   body[data-theme="dark"] td.reqd .nm2{color:#F4A08F} body[data-theme="dark"] td.elec .nm2{color:#9DB4F5}
-  .cell2 .room2{display:block; margin-top:3px; font-size:.52em; background:rgba(255,255,255,.9); color:var(--sub); box-shadow:var(--spec);
+  .cell2 .room2{display:block; margin-top:2px; font-size:.46em; background:rgba(255,255,255,.9); color:var(--sub); box-shadow:var(--spec);
     border-radius:999px; padding:1px 4px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:none}
-  .cell2 .tag2{display:inline-block; font-size:.5em; color:var(--sub); margin-top:1px; flex:none}
+  .cell2 .tag2{display:inline-block; font-size:.44em; color:var(--sub); margin-top:1px; flex:none}
   .cell2 .tag2.cx{color:var(--rakuten); font-weight:700}
   .cell2 .tag2.ol{color:var(--e6); font-weight:700}
   .cell2 .tag2.mk{color:var(--ok); font-weight:700}
   td.mkup .cell2{border-style:dashed}
   .cell2 .cev{display:flex; gap:3px; align-items:center; margin-top:2px; flex:none}
-  .cell2 .cevd{width:9px; height:9px; border-radius:50%; border:1px solid rgba(255,255,255,.8);
+  .cell2 .cevd{width:7px; height:7px; border-radius:50%; border:1px solid rgba(255,255,255,.8);
     box-shadow:inset 0 1px 1px rgba(255,255,255,.7), 0 1px 3px rgba(0,0,0,.22)}
   .cell2 .cevd.done{background:transparent!important; border-width:2px; opacity:.55; box-shadow:none}
   .fdot.done{background:transparent!important; border-width:2px; border-style:solid; opacity:.6; box-shadow:none}
@@ -609,8 +618,8 @@ label.tg input{width:auto; margin-top:2px}
     background:linear-gradient(180deg, rgba(255,255,255,.58), rgba(255,255,255,.30));
     -webkit-backdrop-filter:saturate(200%) blur(26px); backdrop-filter:saturate(200%) blur(26px);
     border-radius:18px; border:1px solid var(--edge); box-shadow:var(--spec)}
-  .chk.on{background:linear-gradient(160deg, var(--accent2), var(--accent)); border-color:rgba(255,255,255,.75); color:#fff;
-    box-shadow:inset 0 1px 1px rgba(255,255,255,.7), 0 3px 10px rgba(0,0,0,.22)}
+  .chk.on{background:linear-gradient(160deg, #F5A3C0, #D9738F); border-color:rgba(255,255,255,.8); color:#fff;
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.75), 0 3px 10px rgba(0,0,0,.22)}
   .subs{margin:6px 0 0 34px}
   .sub{display:flex; align-items:center; gap:8px; font-size:.82em; padding:3px 0}
   .sub input{width:auto; margin:0}
@@ -659,7 +668,7 @@ label.tg input{width:auto; margin-top:2px}
   .rgc{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%}
   .rgb{width:100%; border-radius:3px 3px 0 0}
   .rgl{font-size:.55em; color:var(--sub); margin-top:2px}
-  #apps button.ico{min-width:44px; flex:0 0 auto; font-size:1em}
+  #apps button.ico{flex:0 0 34px; font-size:.95em; padding:9px 0}
   .cal .ev.chip{position:relative; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
     border:1px solid rgba(255,255,255,.6);
     -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
@@ -727,7 +736,6 @@ label.tg input{width:auto; margin-top:2px}
     -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); box-shadow:var(--spec), 0 3px 10px rgba(0,0,0,.07)}
   .pillrow button.on{background:linear-gradient(180deg, var(--accent2), var(--accent)); border-color:rgba(255,255,255,.6); color:#fff;
     box-shadow:0 5px 14px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.6)}
-  .pillrow button.on{background:var(--risyu); border-color:var(--risyu); color:#fff}
   .grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
   .grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
   .grid3>*,.grid2>*{min-width:0}
@@ -754,13 +762,13 @@ label.tg input{width:auto; margin-top:2px}
   .due.d3{background:var(--soft); color:var(--sub)}
   /* ホーム画面のアイコンから開いた時 */
 @media (display-mode: standalone){
-  header{padding-top:calc(env(safe-area-inset-top) + 18px)}
+  header{padding-top:calc(env(safe-area-inset-top) + 8px)}
 }
 /* ================= iPad・パソコン ================= */
 @media (min-width:760px){
   body{font-size:calc(var(--fs) * 1.05)}
   main{max-width:100%; padding:24px 28px 48px}
-  header{padding:calc(env(safe-area-inset-top) + 18px) 28px 0}
+  header{padding:calc(env(safe-area-inset-top) + 10px) 28px 0}
   #apps{max-width:100%; margin-bottom:14px}
   #apps button{font-size:.86em; padding:11px 16px}
   nav{max-width:100%}
@@ -827,8 +835,7 @@ input[type="color"]{font-size:16px !important}
 </div>
 
 <header>
-  <h1 id="apptitle">今日</h1>
-  <p id="synctag">支払い・履修・予定をひとつに</p>
+  <h1 id="apptitle">今日<span id="synctag"></span></h1>
   <div id="apps"></div>
 </header>
 <nav id="nav"></nav>
@@ -1991,6 +1998,7 @@ try{
     if(!S.ui.subTabs || typeof S.ui.subTabs!=='object') S.ui.subTabs = {};
     if(!Array.isArray(S.ui.myColors)) S.ui.myColors = [];
     if(!S.ui.weekClosed || typeof S.ui.weekClosed!=='object') S.ui.weekClosed = {};
+    if(!S.ui.weekHide || typeof S.ui.weekHide!=='object') S.ui.weekHide = {};
     /* 以前の「今日」の並び設定は「くらし」に引き継ぐ */
     if(S.ui.pageOrder && S.ui.pageOrder.today && !S.ui.pageOrder.life){
       var oldT = S.ui.pageOrder.today.filter(function(id){ return ['weather','banners','money','memo'].indexOf(id)>=0; });
@@ -2739,35 +2747,33 @@ function banners(){
 /* その日にやること・注意・重要を1つにまとめる（カレンダー・時間割から拾う） */
 function focusItemsFor(ymd){
   var out = [];
-  /* 課題（締切が当日）、テスト、重要 — 完了したものも残す */
+  var show = function(src){
+    var h = S.ui.weekHide || {};
+    return !h[src];
+  };
+  /* カレンダーに入れた予定を全部（種類でしぼれる） */
   normItems().forEach(function(x){
     if(!isYmd(x.date)) return;
-    if(['task','quiz','exam','kousa','imp'].indexOf(x.src) < 0) return;
+    if(x.plain) return;                                   /* ToDoで足したものは出さない */
+    if(!show(x.src)) return;
     if(x.date === ymd || (x.span && coversDay(x, ymd))) out.push(x);
   });
   /* 休講・遠隔・補講 */
-  changesOn(ymd).forEach(function(h){
-    var ty = changeType(h), nm = ({cancel:'休講',online:'遠隔',makeup:'補講'})[ty];
-    out.push({ src:'chg', id:h.id, date:ymd, title:(h.course==='*'?'全休':h.course)+'　'+nm,
-      sub:(ty==='makeup'&&h.period?h.period+'限':'')+(h.room?' '+h.room:''), time:'',
-      colorRaw: ty==='cancel'?'var(--rakuten)':ty==='online'?'var(--e6)':'var(--ok)', mt:h.mt||0 });
-  });
-  /* 隔週で今週なし */
-  classesForDate(ymd).forEach(function(c){
-    if(c.off==='biweek') out.push({ src:'chg', id:'bw'+c.name, date:ymd, title:c.name+'　今週なし（隔週）', sub:'', time:'', colorRaw:'var(--sub)', mt:0 });
-  });
-  /* バイト（労働時間を出す） */
-  S.shifts.filter(function(w){ return w.date===ymd; }).forEach(function(w){
-    var h = shiftHours(w), ot = toNum(w.ot);
-    out.push({ src:'work', id:w.id, date:ymd, title:'バイト',
-      sub:(w.start||'')+'〜'+(w.end||'')+(h?'（'+h+'時間'+(ot?'・残業'+ot+'分':'')+'）':''),
-      time:w.start||'', colorRaw:kindHex('work'), edit:1, mt:w.mt||0 });
-  });
+  if(show('chg')){
+    changesOn(ymd).forEach(function(h){
+      var ty = changeType(h), nm = ({cancel:'休講',online:'遠隔',makeup:'補講'})[ty];
+      out.push({ src:'chg', id:h.id, date:ymd, title:(h.course==='*'?'全休':h.course)+'　'+nm,
+        sub:(ty==='makeup'&&h.period?h.period+'限':'')+(h.room?' '+h.room:''), time:'',
+        colorRaw: ty==='cancel'?'var(--rakuten)':ty==='online'?'var(--e6)':'var(--ok)', mt:h.mt||0 });
+    });
+    classesForDate(ymd).forEach(function(c){
+      if(c.off==='biweek') out.push({ src:'chg', id:'bw'+c.name, date:ymd, title:c.name+'　今週なし（隔週）', sub:'', time:'', colorRaw:'var(--sub)', mt:0 });
+    });
+  }
   /* 引き落とし */
-  payItemsOn(ymd).forEach(function(x){ out.push(x); });
+  if(show('pay')) payItemsOn(ymd).forEach(function(x){ out.push(x); });
   /* 健康の期限 */
-  S.health.forEach(function(h){ if(h.next===ymd) out.push({ src:'health', id:h.id, date:ymd, title:h.name+'（期限）', sub:h.memo||'', time:'', colorRaw:colorOf('c5'), mt:h.mt||0 }); });
-  /* 時刻順 → 同じなら追加した順。チェックしても並びは変えない */
+  if(show('health')) S.health.forEach(function(h){ if(h.next===ymd) out.push({ src:'health', id:h.id, date:ymd, title:h.name+'（期限）', sub:h.memo||'', time:'', colorRaw:colorOf('c5'), mt:h.mt||0 }); });
   return out.sort(function(a,b){
     var ta = a.time || '99:99', tb = b.time || '99:99';
     if(ta !== tb) return ta.localeCompare(tb);
@@ -2785,6 +2791,11 @@ function focusRow(x){
   var tl = isTask ? (x.time ? x.time+' まで' : '締切')
          : isTest ? (x.time ? x.time+' 開始' : '')
          : (x.src==='work' ? '' : (x.time ? x.time+' 〜' : '終日'));
+  if(x.src==='work'){
+    var w0 = S.shifts.filter(function(z){ return z.id===x.id; })[0];
+    if(w0){ var hh0 = shiftHours(w0), ot0 = toNum(w0.ot);
+      tl = (w0.start||'')+'〜'+(w0.end||'')+(hh0?'（'+hh0+'時間'+(ot0?'・残業'+ot0+'分':'')+'）':''); sb = ''; }
+  }
   var meta = [label, tl, sb].filter(Boolean).join('・');
   return '<div class="frow'+(isTask&&x.done?' isdone':'')+'">'+
     '<span class="fdot'+(isTask&&x.done?' done':'')+'" style="'+((isTask&&x.done)?'border-color:'+itemColor(x):'background:'+itemColor(x))+'"></span>'+
@@ -2916,9 +2927,10 @@ function viewDay(ymd, pageKey){
 function viewTodayTab(){ return viewDay(today(), 'today'); }
 function viewTomoTab(){ return viewDay(shiftDate(today(),1), 'tomo'); }
 /* 「今週」：月〜日のやること・注意を1画面で */
-var weekOff = 0;
+var weekOff = null;   /* null なら自動（土日は翌週） */
 function viewWeekTab(){
   var now = new Date(), dow = now.getDay();
+  if(weekOff === null) weekOff = (dow===0 || dow===6) ? 1 : 0;
   var mon = new Date(now); mon.setDate(now.getDate() - ((dow+6)%7) + weekOff*7);
   var sun = new Date(mon); sun.setDate(mon.getDate()+6);
   var all = []; for(var i=0;i<7;i++){ all = all.concat(focusItemsFor(toYmd(new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i)))); }
@@ -4148,29 +4160,27 @@ function readEvForm(){
   if((v=g('ev_subject'))!==null) evDraft.subject = v;
 }
 function evForm(){ return '<div id="evform">'+evFormBody()+'</div>'; }
-/* 時と分をスライドして選ぶ（12時を真ん中に、分は10分刻み） */
+/* 時と分をプルダウンで選ぶ（何も選んでいなければ12時から） */
 function timeSelect(id, val_, label, allowEmpty){
   var has = /^\d{1,2}:\d{2}$/.test(val_||'');
-  var hv = has ? String(+val_.split(':')[0]) : '';
+  var hv = has ? val_.split(':')[0] : '';
   var mv = has ? val_.split(':')[1] : '';
-  var hs = '';
+  var ho = allowEmpty ? '<option value="">—</option>' : '';
   for(var hh=0; hh<24; hh++){
-    hs += '<button type="button" class="twi'+(hv===String(hh)?' on':'')+'" data-act="tw-h" data-id="'+id+'" data-v="'+pad(hh)+'">'+hh+'</button>';
+    var H = pad(hh);
+    var sel = has ? (hv===H) : (!allowEmpty && hh===12);
+    ho += '<option value="'+H+'"'+(sel?' selected':'')+'>'+hh+'時</option>';
   }
-  var ms = '';
+  var mo = allowEmpty ? '<option value="">—</option>' : '';
   for(var mm=0; mm<60; mm+=10){
-    ms += '<button type="button" class="twi'+(mv===pad(mm)?' on':'')+'" data-act="tw-m" data-id="'+id+'" data-v="'+pad(mm)+'">'+pad(mm)+'</button>';
+    var M = pad(mm);
+    var sel2 = has ? (mv===M) : (!allowEmpty && mm===0);
+    mo += '<option value="'+M+'"'+(sel2?' selected':'')+'>'+M+'分</option>';
   }
   return '<label class="f">'+esc(label)+'</label>'+
-    '<div class="twrap" id="'+id+'_wrap">'+
-      '<div class="tvals"><span class="tv" id="'+id+'_lab">'+(has?esc(val_):'—')+'</span>'+
-        (allowEmpty?'<button type="button" class="mini" data-act="tw-clear" data-id="'+id+'">消す</button>':'')+'</div>'+
-      '<div class="tcols">'+
-        '<div class="tcol" id="'+id+'_hcol">'+hs+'</div>'+
-        '<div class="tcol" id="'+id+'_mcol">'+ms+'</div>'+
-      '</div>'+
-      '<input type="hidden" id="'+id+'_h" value="'+(has?pad(+hv):'')+'">'+
-      '<input type="hidden" id="'+id+'_m" value="'+(has?mv:'')+'">'+
+    '<div class="pair" style="margin-bottom:11px">'+
+      '<select id="'+id+'_h" data-t12="'+id+'">'+ho+'</select>'+
+      '<select id="'+id+'_m" data-t12="'+id+'">'+mo+'</select>'+
     '</div>';
 }
 function readTime(id){
@@ -4179,33 +4189,12 @@ function readTime(id){
   if(!h.value || !m.value) return '';
   return h.value + ':' + m.value;
 }
-/* 選んだ値を反映して、真ん中に寄せる */
-function twSet(id, which, v){
-  var inp = document.getElementById(id+'_'+which);
-  if(inp) inp.value = v;
-  var col = document.getElementById(id+'_'+which+'col');
-  if(col){
-    Array.prototype.forEach.call(col.querySelectorAll('.twi'), function(b){
-      b.classList.toggle('on', b.dataset.v === v);
-    });
-    var on = col.querySelector('.twi.on');
-    if(on) col.scrollTo({ top: on.offsetTop - col.clientHeight/2 + on.offsetHeight/2, behavior:'smooth' });
-  }
-  var hv = (document.getElementById(id+'_h')||{}).value, mv = (document.getElementById(id+'_m')||{}).value;
-  var lab = document.getElementById(id+'_lab');
-  if(lab) lab.textContent = (hv && mv) ? (hv+':'+mv) : '—';
-}
-/* はじめは12時のあたりを見せる */
+/* 空のプルダウンを開いたときは12時のあたりを見せる */
 function twInit(){
-  Array.prototype.forEach.call(document.querySelectorAll('.twrap'), function(w){
-    var id = w.id.replace(/_wrap$/,'');
-    ['h','m'].forEach(function(which){
-      var col = document.getElementById(id+'_'+which+'col');
-      if(!col) return;
-      var on = col.querySelector('.twi.on');
-      var target = on || col.querySelector('.twi[data-v="'+(which==='h'?'12':'00')+'"]');
-      if(target) col.scrollTop = target.offsetTop - col.clientHeight/2 + target.offsetHeight/2;
-    });
+  Array.prototype.forEach.call(document.querySelectorAll('select[data-t12]'), function(sel){
+    if(sel.value) return;
+    var isH = /_h$/.test(sel.id);
+    sel.dataset.pref = isH ? '12' : '00';
   });
 }
 function readTime(id){
@@ -4809,16 +4798,6 @@ function calAction(act, t){
     setProg(t.dataset.id, (progOf(t.dataset.id) + 1) > max ? 0 : progOf(t.dataset.id) + 1);
     commit(); return true;
   }
-  if(act==='tw-h'){ twSet(t.dataset.id, 'h', t.dataset.v); return true; }
-  if(act==='tw-m'){ twSet(t.dataset.id, 'm', t.dataset.v); return true; }
-  if(act==='tw-clear'){
-    var wid = t.dataset.id;
-    ['h','m'].forEach(function(w){ var i=document.getElementById(wid+'_'+w); if(i) i.value=''; });
-    var col1=document.getElementById(wid+'_hcol'), col2=document.getElementById(wid+'_mcol');
-    [col1,col2].forEach(function(c){ if(c) Array.prototype.forEach.call(c.querySelectorAll('.twi'), function(b){ b.classList.remove('on'); }); });
-    var lab=document.getElementById(wid+'_lab'); if(lab) lab.textContent='—';
-    return true;
-  }
   if(act==='ev-save'){ saveEvent(); return true; }
   if(act==='ev-cancel'){ calEdit = null; evDraft = newDraft(calSel); if(calTab==='add') calTab='cal'; render(); window.scrollTo(0,0); return true; }
   if(act==='ev-edit'){
@@ -4919,7 +4898,7 @@ function viewSettings(){
     '<label class="tg"><input type="checkbox" id="cbWeather"'+(S.ui.weather?' checked':'')+'>三田の天気とバス遅延の注意を表示する</label>')
 
 ;
-  return look + kindSettings() + tabSettings() + pageSettings() + diaSettings()
+  return look + kindSettings() + weekFilterSettings() + tabSettings() + pageSettings() + diaSettings()
   + section('通学の時間', '合計 '+commuteTotal()+'分',
     '<div class="grid3" style="margin-bottom:11px">'+
       '<div><label class="f">家→バス停</label><input id="cm_walk" inputmode="numeric" value="'+toNum(c.walk)+'"></div>'+
@@ -5277,6 +5256,12 @@ function kindAction(act, t){
     if(!confirm(k3.name+' を消しますか？（この種類で登録した予定は残ります）')) return true;
     k3.del = 1; touch('ui'); commit(); return true;
   }
+  if(act==='wf-toggle'){
+    S.ui.weekHide = S.ui.weekHide || {};
+    var kk = t.dataset.k;
+    S.ui.weekHide[kk] = S.ui.weekHide[kk] ? 0 : 1;
+    touch('ui'); commit(); return true;
+  }
   if(act==='kind-add'){
     var nm2 = val('kd_name').trim(), hx2 = val('kd_hex');
     if(!nm2){ toast('名前を入れてください', true); return true; }
@@ -5286,6 +5271,21 @@ function kindAction(act, t){
     touch('ui'); toast('種類を足しました'); commit(); return true;
   }
   return false;
+}
+
+
+/* ===== 今週タブに出す種類 ===== */
+function weekFilterSettings(){
+  var defs = kindsAll().map(function(k){ return [k.id, k.name, k.hex]; })
+    .concat([['chg','休講・遠隔・補講','var(--e6)'],['pay','引き落とし',DEEPGREEN],['health','健康の期限',colorOf('c5')]]);
+  var hide = S.ui.weekHide || {};
+  return section('今週タブに出す予定', '種類でしぼる',
+    '<div class="kindrow">'+defs.map(function(d){
+      var on = !hide[d[0]];
+      return '<button data-act="wf-toggle" data-k="'+d[0]+'" class="kbtn'+(on?' on':'')+'" style="--kc:'+d[2]+';--kf:'+(kindOf(d[0]).fg||'#fff')+'">'+
+        '<span class="kdot2"></span>'+esc(d[1])+'</button>';
+    }).join('')+'</div>'+
+    '<p class="note">選んだ種類だけが「今日 › 今週」に出ます。ToDoで足したものは、もともと出ません。</p>');
 }
 /* ============================== 時間割 ============================== */
 var ttShowAll = false;
@@ -5939,13 +5939,17 @@ function render(){
     html += viewSettings();
   }
   document.getElementById('app').innerHTML = html;
-  document.getElementById('apptitle').textContent = TITLES[appId];
+  var titleEl = document.getElementById('apptitle');
+  titleEl.innerHTML = esc(TITLES[appId]) + '<span id="synctag"></span>';
   document.getElementById('foot').textContent = FOOTS[appId];
   var fab = document.getElementById('fab');
   if(fab) fab.className = (appId==='cal' && calTab!=='add') ? 'fab' : 'fab hide';
-  document.getElementById('synctag').textContent = syncState.on
-    ? '同期中・合言葉 ' + S.settings.room
-    : '支払い・履修・予定をひとつに';
+  var syncEl = document.getElementById('synctag');
+  if(syncEl){
+    /* 同期しているときだけ、部屋の名前を小さく出す */
+    var rm = (S.settings && S.settings.room) ? String(S.settings.room) : '';
+    syncEl.textContent = rm ? '同期中' : '';
+  }
   movePills();
   if(typeof twInit==='function') twInit();
   var hd = document.querySelector('header');
@@ -6039,6 +6043,13 @@ document.getElementById('memoimg').addEventListener('change', async function(e){
   }catch(err){ toast('写真を保存できませんでした（容量が足りないかもしれません）', true); }
 });
 
+document.getElementById('app').addEventListener('focusin', function(e){
+  /* 時刻のプルダウンを空のまま開いたら、12:00 を入れておく */
+  var el = e.target;
+  if(el && el.tagName==='SELECT' && el.dataset && el.dataset.t12 && !el.value && el.dataset.pref){
+    el.value = el.dataset.pref;
+  }
+});
 document.getElementById('app').addEventListener('change', async function(e){
   var id = e.target.id;
   if(e.target.dataset && (e.target.dataset.act==='sub-toggle' || e.target.dataset.act==='note-check')){
@@ -6209,25 +6220,35 @@ document.getElementById('fab').addEventListener('click', function(){
     busy = true;
     clear();
     switchTab(dx < 0 ? 1 : -1);
-    setTimeout(function(){ busy = false; }, 240);
+    setTimeout(function(){ busy = false; }, 380);
   }, {passive:true});
   root.addEventListener('touchcancel', function(){ t0=0; active=false; settle(); }, {passive:true});
 })();
 /* サブタブがあればサブタブ、なければ大きいタブを動かす */
 function switchTab(dir){
-  var play = function(){
-    var a = document.getElementById('app');
-    if(!a) return;
-    a.style.transition = 'none';
-    a.style.transform = 'translateX('+(dir>0?46:-46)+'px)';
-    a.style.opacity = '0.35';
-    requestAnimationFrame(function(){
+  var a = document.getElementById('app');
+  var finish = function(go){
+    if(!a){ go(); return; }
+    /* いまの画面をそっと送り出す */
+    a.style.transition = 'transform .13s ease-in, opacity .13s ease-in';
+    a.style.transform = 'translateX('+(dir>0?-26:26)+'px)';
+    a.style.opacity = '0';
+    setTimeout(function(){
+      go();
+      var b = document.getElementById('app');
+      if(!b) return;
+      b.style.transition = 'none';
+      b.style.transform = 'translateX('+(dir>0?30:-30)+'px)';
+      b.style.opacity = '0';
       requestAnimationFrame(function(){
-        a.style.transition = 'transform .22s cubic-bezier(.25,.9,.35,1), opacity .22s ease';
-        a.style.transform = 'translateX(0)'; a.style.opacity = '1';
-        setTimeout(function(){ a.style.transition=''; a.style.transform=''; a.style.opacity=''; }, 240);
+        requestAnimationFrame(function(){
+          b.style.transition = 'transform .2s cubic-bezier(.22,.9,.3,1), opacity .2s ease-out';
+          b.style.transform = 'translateX(0)';
+          b.style.opacity = '1';
+          setTimeout(function(){ b.style.transition=''; b.style.transform=''; b.style.opacity=''; }, 220);
+        });
       });
-    });
+    }, 130);
   };
   var subs = SUBTAB_DEFS[appId] ? subVisible(appId) : null;
   if(subs && subs.length > 1){
@@ -6236,17 +6257,22 @@ function switchTab(dir){
     var j = i + dir;
     if(j >= 0 && j < subs.length){
       var v = subs[j][0];
-      if(appId==='money') payTab=v; else if(appId==='cal') calTab=v; else if(appId==='todo') todoTab=v;
-      else if(appId==='risyu') risyuTab=v; else if(appId==='today') todayTab=v;
-      render(); window.scrollTo(0,0); play(); return;
+      finish(function(){
+        if(appId==='money') payTab=v; else if(appId==='cal') calTab=v; else if(appId==='todo') todoTab=v;
+        else if(appId==='risyu') risyuTab=v; else if(appId==='today') todayTab=v;
+        render(); window.scrollTo(0,0);
+      });
+      return;
     }
   }
   var apps = APPS_VISIBLE();
   var ai = apps.findIndex(function(a){ return a[0]===appId; });
   var aj = ai + dir;
   if(aj >= 0 && aj < apps.length){
-    appId = apps[aj][0]; courseView=''; noteView='';
-    render(); window.scrollTo(0,0); play();
+    finish(function(){
+      appId = apps[aj][0]; courseView=''; noteView='';
+      render(); window.scrollTo(0,0);
+    });
   }
 }
 
