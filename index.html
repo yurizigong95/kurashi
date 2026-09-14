@@ -534,6 +534,20 @@ label.tg input{width:auto; margin-top:2px}
   .wtl-ev.cls{border-width:1px; border-style:solid; color:var(--ink); cursor:default}
   .wtl-ev span{display:block; overflow:hidden}
 
+/* ================= そうだん ================= */
+  .chatwrap{max-height:52vh; overflow-y:auto; padding:4px 2px;
+    border:1px solid var(--edge); border-radius:22px;
+    background:linear-gradient(150deg, rgba(255,255,255,.52), var(--glasstint), rgba(255,255,255,.26));
+    -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur); box-shadow:var(--spec), var(--lift)}
+  .cmsg{display:flex; margin:8px 10px}
+  .cmsg.me{justify-content:flex-end}
+  .cbub{max-width:84%; padding:10px 14px; border-radius:20px; font-size:.88em; line-height:1.6;
+    border:1px solid rgba(255,255,255,.7); box-shadow:inset 0 1px 1px rgba(255,255,255,.8), 0 3px 10px rgba(0,0,0,.10);
+    -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); white-space:pre-wrap; word-break:break-word}
+  .cmsg.me .cbub{background:linear-gradient(160deg, var(--accent2), var(--accent)); color:#fff; border-bottom-right-radius:6px}
+  .cmsg.ai .cbub{background:linear-gradient(160deg, rgba(255,255,255,.82), rgba(255,255,255,.5)); color:var(--ink); border-bottom-left-radius:6px}
+  body[data-theme="dark"] .cmsg.ai .cbub{background:linear-gradient(160deg, rgba(70,58,74,.8), rgba(50,42,54,.55))}
+
 /* ================= 今日・今週 ================= */
   .hero.slim{padding:14px 18px 12px; margin-bottom:12px}
   .hero.slim .greet{font-size:1.1em}
@@ -1282,7 +1296,7 @@ var SEED = [
   { id:'p_iphone', name:'iPhone', accountId:'rakuten', count:24, monthly:8116,  firstAmount:8132, start:'2026-09' }
 ];
 var KEY = 'shiharai:v1';
-var DATA_VER = 12;
+var DATA_VER = 13;
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -1862,7 +1876,7 @@ var COMMUTE_DEFAULT = {
 };
 var TAB_DEFS = [
   ['today','今日'],['tt','時間割'],['course','授業'],['cal','予定'],['todo','ToDo'],
-  ['money','お金'],['notes','メモ'],['news','お知らせ'],['risyu','履修'],['set','⚙']
+  ['money','お金'],['chat','そうだん'],['notes','メモ'],['news','お知らせ'],['risyu','履修'],['set','⚙']
 ];
 var TODAY_SECTIONS = [
   ['digest','今すぐ確認'],['banners','お知らせ'],['classes','今日の授業'],['transit','行き方・帰り方'],
@@ -1924,7 +1938,7 @@ function pageHidden(page, id){
   return !!(S.ui.pageHide[page] && S.ui.pageHide[page][id]);
 }
 var UI_DEFAULT = { theme:'pink', fs:'m', weather:1,
-  tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['money',1],['notes',1],['news',0],['risyu',0],['set',1]],
+  tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['money',1],['chat',1],['notes',1],['news',0],['risyu',0],['set',1]],
   todayOrder: TODAY_SECTIONS.map(function(x){ return x[0]; }),
   todayClosed: {}, pageOrder:{}, pageHide:{}, subOrder:{}, subHide:{}, customColor:'#E8C8E8' };
 var S = {
@@ -1932,7 +1946,7 @@ var S = {
   risyu: JSON.parse(JSON.stringify(RISYU_DEFAULT)),
   income: [], fixed: [], balances: [], events: [], tasks: [], exams: [], health: [], shifts: [],
   courseMeta: {}, memos: {}, payApplied: {}, progress: {},
-  transitLog: [], taskLog: {}, syllabus: {},
+  transitLog: [], taskLog: {}, syllabus: {}, chat: [],
   attendLog: {}, grades: {}, holidays: [], biweek: {}, notes: [], notices: [],
   termsList: null, termId: '2026-2', termsDone: {},
   transit: { sannomiyaTransfer:10, workBuffer:10, fav:[], custom:{ busGo:[], trainGo:[], trainBack:[], busBack:[], busWork:[] } },
@@ -1941,7 +1955,7 @@ var S = {
   ui: JSON.parse(JSON.stringify(UI_DEFAULT)),
   meta: { attend:0, terms:0, commute:0, ui:0, courseMeta:0, memos:0, transit:0, payApplied:0, attendLog:0, grades:0, biweek:0, termsList:0, termsDone:0, progress:0, transitLog:0, taskLog:0, syllabus:0 },
   ver: DATA_VER,
-  settings: { smbcDay:27, rakutenDay:27, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }
+  settings: { smbcDay:27, rakutenDay:27, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', geminiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }
 };
 var appId='today', payTab='home', risyuTab='tt', calTab='cal';
 var draft=null, notice=null, showPlanForm=false, hidePast=true, chartRange=12;
@@ -1960,7 +1974,7 @@ try{
   if(raw){
     var d0 = JSON.parse(raw);
     S = Object.assign({}, S, d0);
-    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }, d0.settings||{});
+    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', geminiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }, d0.settings||{});
     S.risyu = Object.assign(JSON.parse(JSON.stringify(RISYU_DEFAULT)), d0.risyu||{});
     S.risyu.earned = Object.assign({ kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0 }, (d0.risyu&&d0.risyu.earned)||{});
     if(!Array.isArray(S.risyu.selected)) S.risyu.selected = [];
@@ -2007,6 +2021,7 @@ try{
     S.transitLog = Array.isArray(d0.transitLog) ? d0.transitLog : [];
     S.taskLog = (d0.taskLog && typeof d0.taskLog==='object') ? d0.taskLog : {};
     S.syllabus = (d0.syllabus && typeof d0.syllabus==='object') ? d0.syllabus : {};
+    S.chat = Array.isArray(d0.chat) ? d0.chat : [];
     S.transit = Object.assign({ sannomiyaTransfer:10, workBuffer:10, fav:[], custom:{} }, d0.transit||{});
     if(!Array.isArray(S.transit.fav)) S.transit.fav = [];
     S.transit.custom = Object.assign({ busGo:[], trainGo:[], trainBack:[], busBack:[], busWork:[] }, S.transit.custom||{});
@@ -2021,6 +2036,12 @@ try{
     S.termsDone = (d0.termsDone && typeof d0.termsDone==='object') ? d0.termsDone : {};
     if(!Array.isArray(S.ui.tabs)) S.ui.tabs = UI_DEFAULT.tabs.map(function(x){ return x.slice(); });
     TAB_DEFS.forEach(function(t){ if(!S.ui.tabs.some(function(x){ return x[0]===t[0]; })) S.ui.tabs.push([t[0], t[0]==='news'||t[0]==='risyu' ? 0 : 1]); });
+    /* そうだんタブは、お金のうしろに入れる */
+    (function(){
+      var i = S.ui.tabs.findIndex(function(x){ return x[0]==='chat'; });
+      var j = S.ui.tabs.findIndex(function(x){ return x[0]==='money'; });
+      if(i > j+1 && j >= 0){ var it = S.ui.tabs.splice(i,1)[0]; S.ui.tabs.splice(j+1, 0, it); }
+    })();
     if(!Array.isArray(S.ui.todayOrder)) S.ui.todayOrder = UI_DEFAULT.todayOrder.slice();
     TODAY_SECTIONS.forEach(function(x){ if(S.ui.todayOrder.indexOf(x[0])<0) S.ui.todayOrder.push(x[0]); });
     if(!S.ui.todayClosed || typeof S.ui.todayClosed!=='object') S.ui.todayClosed = {};
@@ -2261,7 +2282,7 @@ function payload(){
     shop: S.settings.shop || '',
     payBankId: S.settings.payBankId || '',
     courseMeta: S.courseMeta, memos: S.memos, transit: S.transit, payApplied: S.payApplied, progress: S.progress,
-    transitLog: S.transitLog, taskLog: S.taskLog, syllabus: S.syllabus,
+    transitLog: S.transitLog, taskLog: S.taskLog, syllabus: S.syllabus, chat: S.chat,
     attendLog: S.attendLog, grades: S.grades, biweek: S.biweek, termsList: S.termsList, termId: S.termId, termsDone: S.termsDone, wage: S.settings.wage || 0,
     wage: toNum(S.settings.wage)||1100,
     ver: DATA_VER,
@@ -2309,7 +2330,7 @@ function mergeList(local, remote, dead, name){
   return Object.keys(m).map(function(k){ return m[k]; }).filter(function(x){ return !dead[x.id]; });
 }
 function mergeRemote(d){
-  var before = JSON.stringify([S.plans,S.statements,S.paid,S.deleted,S.risyu,S.income,S.fixed,S.balances,S.events,S.tasks,S.exams,S.health,S.shifts,S.attend,S.terms,S.commute,S.ui]);
+  var before = JSON.stringify(payload());
   var dead = {};
   (S.deleted||[]).concat(d.deleted||[]).forEach(function(x){ dead[x]=1; });
 
@@ -2369,10 +2390,23 @@ function mergeRemote(d){
   });
   if(typeof d.termId === 'string' && (Number((d.meta||{}).termsList)||0) >= (Number(S.meta.termsList)||0)) S.termId = d.termId;
   if(typeof d.wage === 'number') S.settings.wage = d.wage;
+  if(Array.isArray(d.chat)){
+    var lastLocal = (S.chat||[]).length ? S.chat[S.chat.length-1].mt : 0;
+    var lastRemote = d.chat.length ? d.chat[d.chat.length-1].mt : 0;
+    if(lastRemote > lastLocal) S.chat = d.chat;
+  }
 
   persist();
-  if(before !== JSON.stringify([S.plans,S.statements,S.paid,S.deleted,S.risyu,S.income,S.fixed,S.balances,S.events,S.tasks,S.exams,S.health,S.shifts,S.attend,S.terms,S.commute,S.ui])) render();
+  /* 何か変わっていれば必ず画面を描き直す */
+  if(before !== JSON.stringify(payload())) render();
   pushRemote();
+}
+/* 今すぐ送って、今すぐ受け取り直す */
+function syncNow(){
+  if(!syncState.on){ syncState.retry=0; syncState.connecting=false; fbLoad=null; initSync(); return; }
+  syncState.last = '';          /* 前回と同じでも必ず送る */
+  pushRemote(true);
+  toast('同期しました');
 }
 function removeItem(list, id){
   S.deleted = (S.deleted||[]).concat([id]);
@@ -5231,14 +5265,15 @@ function viewSettings(){
         'この開き方だと同期できません。<b>https://yurizigong95.github.io/kurashi/</b> から開くか、ホーム画面に追加したアイコンを使ってください。'+
         '</span></div>'
       : '')+
-    (!syncState.on ? '<button class="btn ghost" style="margin-bottom:11px" data-act="sync-retry">もう一度つないでみる</button>' : '')+
+    (!syncState.on ? '<button class="btn ghost" style="margin-bottom:11px" data-act="sync-retry">もう一度つないでみる</button>'
+                   : '<button class="btn ghost" style="margin-bottom:11px" data-act="sync-now">今すぐ同期する</button>')+
     '<div class="note">支払い・履修・予定・課題・テスト・バイト・出席・健康の記録・見た目の設定まで、すべて自動でそろいます。明細の写真とAPIキーはこの端末だけに残ります。</div>')
 
-  + section('明細写真の自動読み取り（任意）', S.settings.apiKey?'登録済み':'未登録',
-    '<div class="field"><label class="f">Anthropic APIキー</label>'+
-    '<input id="sy_key" type="password" value="'+esc(S.settings.apiKey)+'" placeholder="sk-ant-…"></div>'+
+  + section('AIそうだん・写真の読み取り', (S.settings.geminiKey?'登録済み':'未登録'),
+    '<div class="field"><label class="f">Gemini APIキー</label>'+
+    '<input id="sy_key" type="password" value="'+esc(S.settings.geminiKey||'')+'" placeholder="AQ.Ab… または AIza…"></div>'+
     '<button class="btn ghost" data-act="save-key">保存する</button>'+
-    '<div class="note">この端末だけに保存され、同期されません。未登録でも金額の手入力で使えます。</div>')
+    '<div class="note">Google AI Studio（aistudio.google.com）で無料でもらえます。いまは <b>AQ.</b> で始まるキーが発行されます（以前の AIza… でも動きます）。「そうだん」タブでAIに相談できるようになります。この端末だけに保存され、同期されません。</div>')
 
   + section('バックアップ', null,
     '<div class="pair"><button class="btn ghost" data-act="export">ファイルに保存</button>'+
@@ -5301,11 +5336,12 @@ function settingsAction(act, t){
     S.transit.sannomiyaTransfer = Math.max(0, toNum(val('st_tr'))); S.transit.workBuffer = Math.max(0, toNum(val('st_wb'))); touch('transit');
     toast('保存しました'); commit(); return true;
   }
+  if(act==='sync-now'){ syncNow(); return true; }
   if(act==='sync-retry'){
     syncState.retry = 0; syncState.connecting = false; fbLoad = null;
     syncState.msg = '接続しています…'; render(); initSync(); return true;
   }
-  if(act==='save-key'){ S.settings.apiKey = val('sy_key').trim(); persist(); toast('保存しました'); render(); return true; }
+  if(act==='save-key'){ S.settings.geminiKey = val('sy_key').trim(); persist(); toast('保存しました'); render(); return true; }
   if(act==='export'){
     download(new Blob([JSON.stringify(Object.assign({ app:'kurashi', version:4 }, payload()))],{type:'application/json'}),
       'kurashi_'+thisYm()+'.json');
@@ -6280,6 +6316,191 @@ function todoAction(act, t){
   }
   return false;
 }
+/* ============================== そうだん（AIチャット） ============================== */
+var chatBusy = false;
+
+/* アプリの中身を、AIが読める形にまとめる */
+function chatContext(){
+  var td = today();
+  var lim = shiftDate(td, 45);
+  var L = [];
+  L.push('【今日】' + td + '（' + WDAY[new Date().getDay()] + '）');
+  L.push('【学期】' + curTerm().label);
+
+  /* 時間割 */
+  var tt = [];
+  DAYS.forEach(function(d){
+    var row = [];
+    termCourses().forEach(function(c){
+      c.slots.forEach(function(sl){
+        if(sl.d === d) row.push(sl.p + '限 ' + c.name + (c.web ? '(遠隔)' : '') + (c.bi ? '(隔週)' : ''));
+      });
+    });
+    row.sort();
+    if(row.length) tt.push(d + '：' + row.join('、'));
+  });
+  L.push('【時間割】\n' + tt.join('\n'));
+  L.push('【授業の時間】' + PERIODS.map(function(p){
+    return p + '限 ' + S.commute.periods[p-1] + '〜' + S.commute.ends[p-1];
+  }).join('、'));
+
+  /* これからの予定 */
+  var items = normItems().filter(function(x){
+    return isYmd(x.date) && x.date >= td && x.date <= lim;
+  }).sort(function(a,b){ return a.date.localeCompare(b.date); });
+  var lines = items.map(function(x){
+    var k = ({task:'課題', quiz:'小テスト', exam:'大テスト', kousa:'考査', work:'バイト', imp:'重要', other:'予定'})[x.src] || x.src;
+    var done = (x.src==='task' && x.done) ? '【済】' : '';
+    var t = x.time ? ' ' + x.time : '';
+    return '・' + x.date + t + ' [' + k + ']' + done + ' ' + x.title + (x.sub ? '（' + x.sub + '）' : '');
+  });
+  L.push('【これからの予定（45日ぶん）】\n' + (lines.length ? lines.join('\n') : 'なし'));
+
+  /* 休講・遠隔・補講 */
+  var chg = S.holidays.filter(function(h){ return h.date >= td; }).map(function(h){
+    return '・' + h.date + ' ' + (h.course==='*'?'全休':h.course) + ' ' +
+      ({cancel:'休講', online:'遠隔', makeup:'補講'})[changeType(h)];
+  });
+  if(chg.length) L.push('【授業の変更】\n' + chg.join('\n'));
+
+  /* バイトとお金 */
+  var ym = openYm(), pp = payPeriod(ym);
+  var inPeriod = shiftsInPeriod(ym);
+  L.push('【バイト】分給 平日' + S.settings.minWeekday + '円／土日' + S.settings.minWeekend + '円、交通費' + S.settings.fare + '円/回、' +
+    '15日締め25日払い。いまの締め期間（' + pp.from + '〜' + pp.to + '）は' + inPeriod.length + '回、見込み' + periodPay(ym) + '円。');
+  var y = new Date().getFullYear();
+  L.push('【扶養】' + y + '年の給与見込み合計 約' + yearPayTotal(y) + '円（上限の目安 ' + (toNum(S.settings.fuyouLimit)||1030000) + '円）');
+  var bal = S.balances.reduce(function(a,b){ return a + toNum(b.amount); }, 0);
+  if(bal) L.push('【口座の残高】合計 約' + bal + '円');
+
+  /* 出欠 */
+  var att = termCourses().map(function(c){
+    var a = attendOf(c.name);
+    return (a.ab || a.late) ? ('・' + c.name + '：欠' + a.ab + '・遅' + a.late + '（評価不可は' + a.limit + '回）') : '';
+  }).filter(Boolean);
+  if(att.length) L.push('【出欠】\n' + att.join('\n'));
+
+  /* 通学 */
+  L.push('【通学】家（三田・弥生ヶ丘五丁目）→ 神姫バス → 三ノ宮 → 阪神電車 → 鳴尾・武庫川女子大前。片道およそ1時間20分。' +
+    'バイト先はイオンモール神戸北（三ノ宮からバス約50分）。');
+
+  return L.join('\n\n');
+}
+
+var CHAT_SYSTEM =
+  'あなたは看護学部1年生の学習と生活をささえる相談相手です。' +
+  '下の「アプリの中身」に書かれた予定・課題・テスト・バイト・お金の情報だけを根拠にして、日本語でやさしく答えてください。\n' +
+  '答え方のきまり：\n' +
+  '・具体的な日付と時間を必ず示す。\n' +
+  '・課題やテストの直前にバイトを入れないよう気をつける。テストの3日前は勉強の時間を空ける。\n' +
+  '・1限がある日の前夜に遅いバイトを入れない（通学に1時間20分かかるため、朝が早い）。\n' +
+  '・扶養の上限に近いときは注意をそえる。\n' +
+  '・情報がないことは推測せず、「アプリに登録がありません」と正直に言う。\n' +
+  '・長くなりすぎない。箇条書きを活かす。\n';
+
+function chatSuggest(){
+  return [
+    '来週バイトを入れるならいつがいい？',
+    '今週いちばん気をつけることは？',
+    'テスト勉強はいつやればいい？',
+    '今月あと何回バイトできる？',
+    '来週の予定をまとめて教えて'
+  ];
+}
+
+function viewChat(){
+  var msgs = S.chat || [];
+  var hasKey = !!(S.settings.geminiKey || '').trim();
+  var h = '';
+  if(!hasKey){
+    h += '<div class="bn amber"><span class="ic">!</span><span>' +
+      'まず設定タブで <b>Gemini APIキー</b> を登録してください。' +
+      'Google AI Studio（aistudio.google.com）で無料でもらえます。いまは <b>AQ.</b> で始まるキーが発行されます。</span></div>';
+  }
+  h += '<div class="chatwrap" id="chatwrap">';
+  if(!msgs.length){
+    h += '<div class="empty" style="padding:18px 0">' + ART.empty +
+      '<div style="margin-top:8px">予定を見ながら相談できます。</div></div>';
+  }
+  msgs.forEach(function(m, i){
+    h += '<div class="cmsg ' + (m.role === 'user' ? 'me' : 'ai') + '">' +
+      '<div class="cbub">' + esc(m.text).replace(/\n/g, '<br>') + '</div></div>';
+  });
+  if(chatBusy) h += '<div class="cmsg ai"><div class="cbub">考えています…</div></div>';
+  h += '</div>';
+
+  h += '<div class="chips" style="margin:10px 0">' + chatSuggest().map(function(q){
+    return '<button data-act="chat-q" data-q="' + esc(q) + '">' + esc(q) + '</button>';
+  }).join('') + '</div>';
+
+  h += '<div class="pair">' +
+    '<input id="chat_in" placeholder="きいてみる（例：来週のバイトいつがいい？）">' +
+    '<button class="btn" style="flex:0 0 auto;padding:13px 20px" data-act="chat-send">送る</button></div>';
+  if(msgs.length) h += '<button class="btn ghost" style="margin-top:10px" data-act="chat-clear">会話を消す</button>';
+  h += '<p class="note">アプリに登録した予定・課題・テスト・バイト・お金の情報をもとに答えます。送った内容はGoogleのAIに送信されます。</p>';
+  return '<section>' + h + '</section>';
+}
+
+async function chatSend(text){
+  var key = (S.settings.geminiKey || '').trim();
+  if(!key){ toast('先に設定タブでGemini APIキーを登録してください', true); return; }
+  if(!text){ return; }
+  S.chat = (S.chat || []).concat([{ role:'user', text:text, mt:Date.now() }]);
+  if(S.chat.length > 40) S.chat = S.chat.slice(-40);
+  chatBusy = true; persist(); render();
+  var box = document.getElementById('chatwrap'); if(box) box.scrollTop = box.scrollHeight;
+
+  try{
+    var history = S.chat.slice(-12).map(function(m){
+      return { role: m.role === 'user' ? 'user' : 'model', parts:[{ text:m.text }] };
+    });
+    var body = {
+      systemInstruction: { parts: [{ text: CHAT_SYSTEM + '\n\n===== アプリの中身 =====\n' + chatContext() }] },
+      contents: history,
+      generationConfig: { temperature: 0.6, maxOutputTokens: 900 }
+    };
+    var res = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      { method:'POST',
+        headers:{ 'Content-Type':'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify(body) });
+    var j = await res.json();
+    if(!res.ok){
+      var em = (j && j.error && j.error.message) ? j.error.message : ('エラー ' + res.status);
+      throw new Error(em);
+    }
+    var out = '';
+    try{ out = j.candidates[0].content.parts.map(function(p){ return p.text || ''; }).join(''); }catch(e){ out = ''; }
+    if(!out) out = 'うまく答えられませんでした。もう一度きいてみてください。';
+    S.chat.push({ role:'ai', text:out, mt:Date.now() });
+  }catch(e){
+    var msg = String(e.message || '');
+    S.chat.push({ role:'ai', text:'つながりませんでした。\n' +
+      (/API key not valid|API_KEY_INVALID|401|invalid_api_key/i.test(msg) ? 'APIキーが正しくないようです。設定タブで入れ直してください。'
+       : /quota|RESOURCE_EXHAUSTED/i.test(msg) ? '今日の無料ぶんを使い切ったかもしれません。'
+       : msg.slice(0, 120)), mt:Date.now() });
+  }finally{
+    chatBusy = false;
+    persist(); pushRemote(); render();
+    var b2 = document.getElementById('chatwrap'); if(b2) b2.scrollTop = b2.scrollHeight;
+  }
+}
+
+function chatAction(act, t){
+  if(act === 'chat-send'){
+    var el = document.getElementById('chat_in');
+    var v = el ? el.value.trim() : '';
+    if(!v){ toast('きくことを入れてください', true); return true; }
+    if(el) el.value = '';
+    chatSend(v); return true;
+  }
+  if(act === 'chat-q'){ chatSend(t.dataset.q); return true; }
+  if(act === 'chat-clear'){
+    if(!confirm('会話を消しますか？')) return true;
+    S.chat = []; persist(); pushRemote(); render(); return true;
+  }
+  return false;
+}
 /* ============================== 画面の切り替え ============================== */
 function APPS_VISIBLE(){
   var names = {}; TAB_DEFS.forEach(function(t){ names[t[0]] = t[1]; });
@@ -6289,7 +6510,7 @@ var MONEY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ
 var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
 var TODAY_TABS = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
 var CAL_TABS = [['cal','カレンダー'],['add','追加'],['imp','重要'],['health','健康']];
-var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', notes:'メモ', news:'お知らせ', set:'設定' };
+var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'そうだん', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', notes:'メモ', news:'お知らせ', set:'設定' };
 var FOOTS = {
   today:'天気は Open-Meteo の予報です。バスや電車の運行状況は各社の公式情報も確認してください。',
   money:'金額に分割手数料（金利）は含まれていません。引き落とし日の前日までに入金しておくと安心です。',
@@ -6298,6 +6519,7 @@ var FOOTS = {
   tt:'必修は赤・選択は青。休講や隔週は自動で反映されます。',
   course:'科目をタップすると出欠・課題・テスト・成績・メモをまとめて見られます。',
   todo:'科目を選んだ課題は、その科目の色になります。',
+  chat:'アプリに登録した予定をもとに、AIが相談に乗ります。',
   notes:'ピン留めしたメモは今日ページにも出ます。',
   news:'今日ページに出たお知らせの履歴です。',
   set:'合言葉は他人に教えないでください。Firestoreのセキュリティルールを必ず設定してください。'
@@ -6340,6 +6562,7 @@ function render(){
   }else if(appId==='tt'){ html += viewTT(); }
   else if(appId==='course'){ html += viewCourse(); }
   else if(appId==='todo'){ html += viewTodo(); }
+  else if(appId==='chat'){ html += viewChat(); }
   else if(appId==='notes'){ html += viewNotes(); }
   else if(appId==='news'){ html += viewNews(); }
   else if(appId==='cal'){
@@ -6411,6 +6634,7 @@ document.getElementById('app').addEventListener('click', function(e){
   if(act.indexOf('cal-')===0 || act.indexOf('ev-')===0 || act==='add-health' || act==='del-health'){
     if(calAction(act, t)) return;
   }
+  if(chatAction(act, t)) return;
   if(kindAction(act, t)) return;
   if(ttAction(act, t, e)) return;
   if(todoAction(act, t)) return;
