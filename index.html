@@ -515,6 +515,25 @@ label.tg input{width:auto; margin-top:2px}
     background:linear-gradient(180deg, var(--accent2), var(--accent));
     border-radius:999px; box-shadow:inset 0 1px 0 rgba(255,255,255,.6), 0 3px 8px rgba(0,0,0,.16)}
 
+/* ================= 週の時間わり ================= */
+  .wtl{border:1px solid var(--edge); border-radius:20px; overflow:hidden;
+    background:linear-gradient(150deg, rgba(255,255,255,.62), var(--glasstint), rgba(255,255,255,.32));
+    -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur); box-shadow:var(--spec), var(--lift)}
+  .wtl-head{display:flex; padding:6px 0; border-bottom:1px solid var(--rule)}
+  .wtl-hcol{flex:0 0 26px}
+  .wtl-d{flex:1; text-align:center; font-size:.6em; color:var(--sub); line-height:1.2}
+  .wtl-d b{display:block; font-size:1.2em; color:var(--ink)}
+  .wtl-d.now b{color:var(--accent)}
+  .wtl-body{position:relative; display:flex; overflow-y:auto}
+  .wtl-hours{flex:0 0 26px; display:flex; flex-direction:column}
+  .wtl-hours span{font-size:.52em; color:var(--sub); text-align:right; padding-right:3px; line-height:1}
+  .wtl-col{flex:1; position:relative; border-left:1px solid var(--rule)}
+  .wtl-ev{position:absolute; left:1px; right:1px; border-radius:5px; overflow:hidden;
+    font-size:.5em; line-height:1.15; padding:1px 2px; border:1px solid rgba(255,255,255,.6);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.7), 0 1px 3px rgba(0,0,0,.16); cursor:pointer}
+  .wtl-ev.cls{border-width:1px; border-style:solid; color:var(--ink); cursor:default}
+  .wtl-ev span{display:block; overflow:hidden}
+
 /* ================= 今日・今週 ================= */
   .hero.slim{padding:14px 18px 12px; margin-bottom:12px}
   .hero.slim .greet{font-size:1.1em}
@@ -1263,7 +1282,7 @@ var SEED = [
   { id:'p_iphone', name:'iPhone', accountId:'rakuten', count:24, monthly:8116,  firstAmount:8132, start:'2026-09' }
 ];
 var KEY = 'shiharai:v1';
-var DATA_VER = 10;
+var DATA_VER = 11;
 var imgKey = function(id){ return 'shiharai:img:' + id; };
 
 var COLORS = [
@@ -1851,15 +1870,17 @@ var WEEK_SECTIONS = [
 ];
 /* 各ページで並べ替え・表示切替ができる項目 */
 var PAGE_SECTIONS = {
-  today: [['weather','天気'],['events','今日の予定'],['classes','今日の授業'],['transit','行き方・帰り方'],['memo','メモ']],
+  today: [['weather','天気'],['events','今日の予定'],['classes','今日の授業'],['transit','行き方・帰り方'],['leave','出発の記録'],['memo','メモ']],
   tomo:  [['weather','天気'],['events','明日の予定'],['classes','明日の授業'],['transit','行き方・帰り方'],['memo','メモ']],
   kind:  [['picker','種類を選ぶ'],['list','予定の一覧']],
   week:  [['days','日ごとの一覧'],['notes','週の連絡事項']],
   life:  [['money','今月のお金'],['banners','お知らせ'],['next10','これから10日間']],
   cal:   [['summary','月のまとめ'],['grid','カレンダー'],['selday','選んだ日の予定'],['ics','カレンダーに送る']],
+  calweek:[['grid','週の予定']],
   tt:    [['grid','時間割'],['notes','週の連絡事項'],['cancel','休講・遠隔・補講の登録']],
   course:[['list','科目一覧'],['add','科目を追加']],
-  money: [['ready','ご用意額'],['free','自由に使えるお金'],['outlook','この先の見通し']],
+  todoitem:[['prog','進みぐあい'],['time','かかった時間'],['how','出し方'],['sub','小項目'],['memo','メモ']],
+  money: [['ready','ご用意額'],['free','自由に使えるお金'],['fuyou','扶養の壁'],['yearchart','年間の給与'],['balchart','残高の推移'],['outlook','この先の見通し']],
   in:    [['income','毎月の収入'],['fixed','固定費・サブスク'],['balance','口座の残高']],
   work:  [['period','今の締め期間'],['next','次の給料の見込み']],
   todo:  [['late','期限切れ'],['open','やること'],['add','追加']]
@@ -1908,13 +1929,14 @@ var S = {
   risyu: JSON.parse(JSON.stringify(RISYU_DEFAULT)),
   income: [], fixed: [], balances: [], events: [], tasks: [], exams: [], health: [], shifts: [],
   courseMeta: {}, memos: {}, payApplied: {}, progress: {},
+  transitLog: [], taskLog: {}, syllabus: {},
   attendLog: {}, grades: {}, holidays: [], biweek: {}, notes: [], notices: [],
   termsList: null, termId: '2026-2', termsDone: {},
   transit: { sannomiyaTransfer:10, workBuffer:10, fav:[], custom:{ busGo:[], trainGo:[], trainBack:[], busBack:[], busWork:[] } },
   attend: {}, terms: { first:{} },
   commute: JSON.parse(JSON.stringify(COMMUTE_DEFAULT)),
   ui: JSON.parse(JSON.stringify(UI_DEFAULT)),
-  meta: { attend:0, terms:0, commute:0, ui:0, courseMeta:0, memos:0, transit:0, payApplied:0, attendLog:0, grades:0, biweek:0, termsList:0, termsDone:0, progress:0 },
+  meta: { attend:0, terms:0, commute:0, ui:0, courseMeta:0, memos:0, transit:0, payApplied:0, attendLog:0, grades:0, biweek:0, termsList:0, termsDone:0, progress:0, transitLog:0, taskLog:0, syllabus:0 },
   ver: DATA_VER,
   settings: { smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }
 };
@@ -1976,6 +1998,9 @@ try{
     S.memos = (d0.memos && typeof d0.memos==='object') ? d0.memos : {};
     S.payApplied = (d0.payApplied && typeof d0.payApplied==='object') ? d0.payApplied : {};
     S.progress = (d0.progress && typeof d0.progress==='object') ? d0.progress : {};
+    S.transitLog = Array.isArray(d0.transitLog) ? d0.transitLog : [];
+    S.taskLog = (d0.taskLog && typeof d0.taskLog==='object') ? d0.taskLog : {};
+    S.syllabus = (d0.syllabus && typeof d0.syllabus==='object') ? d0.syllabus : {};
     S.transit = Object.assign({ sannomiyaTransfer:10, workBuffer:10, fav:[], custom:{} }, d0.transit||{});
     if(!Array.isArray(S.transit.fav)) S.transit.fav = [];
     S.transit.custom = Object.assign({ busGo:[], trainGo:[], trainBack:[], busBack:[], busWork:[] }, S.transit.custom||{});
@@ -2163,6 +2188,7 @@ function payload(){
     shop: S.settings.shop || '',
     payBankId: S.settings.payBankId || '',
     courseMeta: S.courseMeta, memos: S.memos, transit: S.transit, payApplied: S.payApplied, progress: S.progress,
+    transitLog: S.transitLog, taskLog: S.taskLog, syllabus: S.syllabus,
     attendLog: S.attendLog, grades: S.grades, biweek: S.biweek, termsList: S.termsList, termId: S.termId, termsDone: S.termsDone, wage: S.settings.wage || 0,
     wage: toNum(S.settings.wage)||1100,
     ver: DATA_VER,
@@ -2265,7 +2291,7 @@ function mergeRemote(d){
   if(d.fare != null) S.settings.fare = toNum(d.fare);
   if(typeof d.shop === 'string') S.settings.shop = d.shop;
   if(typeof d.payBankId === 'string') S.settings.payBankId = d.payBankId;
-  ['courseMeta','memos','transit','payApplied','attendLog','grades','biweek','termsList','termsDone','progress'].forEach(function(k){
+  ['courseMeta','memos','transit','payApplied','attendLog','grades','biweek','termsList','termsDone','progress','taskLog','syllabus'].forEach(function(k){
     if(d[k] !== undefined && (Number((d.meta||{})[k])||0) > (Number(S.meta[k])||0)){ S[k] = d[k]; S.meta[k] = Number(d.meta[k])||0; }
   });
   if(typeof d.termId === 'string' && (Number((d.meta||{}).termsList)||0) >= (Number(S.meta.termsList)||0)) S.termId = d.termId;
@@ -2625,13 +2651,16 @@ function transitBody(ymd){
   var h = '';
   var rainTomorrow = tomorrowRain();
   var isTomorrow = (ymd === shiftDate(today(),1));
-  if(isTomorrow && rainTomorrow && rainTomorrow.need){
-    h += '<div class="bn amber"><span class="ic">☔</span><span>明日は雨の予報（'+rainTomorrow.pop+'%）。バスが遅れがちなので、15分早めに着く便で出しています。</span></div>';
+  var rn = umbrellaInfo();
+  if((isTomorrow && rainTomorrow && rainTomorrow.need) || (ymd===today() && rn && rn.need)){
+    h += '<div class="bn amber"><span class="ic">☔</span><span>雨の予報です。バスが遅れがちなので、15分早めに着く便を出しています。</span></div>';
   }
   var offs = classesForDate(ymd).filter(function(c){ return c.off; });
 
   if(mode === 'go'){
-    var gos = goPlans(startMin - 30 - (isTomorrow && rainTomorrow && rainTomorrow.need ? 15 : 0), startMin);
+      var rainNow = umbrellaInfo();
+    var early = (isTomorrow && rainTomorrow && rainTomorrow.need) || (ymd===today() && rainNow && rainNow.need);
+    var gos = goPlans(startMin - 30 - (early ? 15 : 0), startMin);
     h += section(isToday ? '大学への行き方' : '次に大学へ行く日の行き方', ymdLabel(ymd),
       '<div class="stat" style="margin-bottom:12px">'+
         '<div class="k">最初は'+first.period+'限 '+S.commute.periods[first.period-1]+'開始（'+esc(first.room||'')+'）</div>'+
@@ -2666,6 +2695,32 @@ function transitBody(ymd){
       '<div class="v">'+hhmmOf(endMin+20)+' に鳴尾を出る</div></div>'+
     (backs.length ? backs.map(function(p){ return line(p,'back'); }).join('') : '<div class="empty">この時間のダイヤは未登録です。</div>'));
   return h;
+}
+
+/* ===== 出発の記録（5・8・13・16）===== */
+function leaveCard(){
+  var td = today();
+  var recs = (S.transitLog||[]).slice(-40);
+  var todayRec = recs.filter(function(r){ return r.date===td; })[0];
+  var avg = null;
+  var arr = recs.filter(function(r){ return r.min != null; });
+  if(arr.length >= 2) avg = Math.round(arr.reduce(function(a,r){ return a+r.min; },0)/arr.length);
+  var fav = (S.transit.fav||[]);
+  return secWrap('leave','出発の記録', avg!=null ? ('いつもは家からバス停まで'+avg+'分') : null,
+    '<div class="pillrow">'+
+      '<button data-act="leave-now" class="'+(todayRec?'on':'')+'">'+(todayRec?'今日は'+todayRec.at+'に出ました':'いま家を出た')+'</button>'+
+      (todayRec?'<button class="mini" data-act="leave-undo">取り消す</button>':'')+
+    '</div>'+
+    (fav.length ? '<div class="s2" style="margin-top:10px">お気に入りの便</div>'+fav.slice(0,3).map(function(k){
+      var a = k.split(':');
+      return '<div class="row"><div class="grow t num">'+(a[0]==='go'?'行き':'帰り')+'　バス'+esc(a[1]||'—')+'／電車'+esc(a[2])+'</div></div>';
+    }).join('') : '')+
+    '<div class="pillrow" style="margin-top:10px">'+
+      '<a class="mini" href="https://transit.yahoo.co.jp/diainfo/area/6" target="_blank" rel="noopener">電車の遅延</a>'+
+      '<a class="mini" href="https://www.shinkibus.co.jp/" target="_blank" rel="noopener">神姫バス</a>'+
+      '<a class="mini" href="https://rail.hanshin.co.jp/" target="_blank" rel="noopener">阪神電車</a>'+
+    '</div>'+
+    (recs.length ? '<p class="note">出た時刻を押しておくと、次からの出発の目安が出ます。（'+recs.length+'回ぶん記録）</p>' : '<p class="note">家を出るときに押すと、かかる時間をおぼえていきます。</p>'));
 }
 
 /* ============================== バナー ============================== */
@@ -2735,6 +2790,22 @@ function banners(){
     if(bank && toNum(bank.amount) < amt)
       out.push({c:'red', ic:'¥', t:'<b>'+esc(bank.name)+'の残高が'+yen(amt-toNum(bank.amount))+'足りません。</b>明日の引き落としまでに入金してください。'});
   });
+  /* 写真の容量 */
+  try{
+    var si = storageInfo();
+    if(si.pct >= 85) out.push({c:'red', ic:'!', t:'<b>写真の保存がいっぱいに近づいています（'+si.pct+'%）。</b>設定から古い写真を消してください。'});
+    else if(si.pct >= 70) out.push({c:'amber', ic:'!', t:'写真の保存が'+si.pct+'%になりました。'});
+  }catch(e){}
+  /* 締切が近い課題（50）*/
+  var lead = toNum(S.ui.dueLead);
+  if(lead > 0){
+    var soon = S.tasks.filter(function(t){
+      if(t.done || !isYmd(t.due)) return false;
+      var n = daysFromToday(t.due);
+      return n >= 0 && n <= lead;
+    });
+    if(soon.length) out.push({c:'amber', ic:'✎', t:'あと'+lead+'日以内の課題が<b>'+soon.length+'件</b>あります。'});
+  }
   /* お金の状態 */
   var b = budget();
   if(b.level === 'bad') out.push({c:'red', ic:'¥', t:'<b>今月は'+yen(-b.free)+'足りません。</b>収入と支払いの登録を見直してください。'});
@@ -2915,6 +2986,7 @@ function viewDay(ymd, pageKey){
         }).join(''));
   };
   parts.transit = function(){ var tr = transitFor(ymd); return tr ? '<div class="tsec">'+tr+'</div>' : ''; };
+  parts.leave = function(){ return isToday ? leaveCard() : ''; };
   parts.memo = function(){
     var pinned = S.notes.filter(function(n){ return n.pinned; }).slice(0,3);
     return secWrap('memo','メモ', pinned.length?'ピン留め '+pinned.length+'件':null,
@@ -3018,6 +3090,9 @@ function viewHome(d){
       '<div class="stat"><div class="k">今月の収入</div><div class="v num">'+yen(b.income)+'</div></div>'+
     '</div>'+
     '<button class="btn ghost" style="margin-top:12px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>'); };
+  partsM.fuyou = function(){ return fuyouCard(); };
+  partsM.yearchart = function(){ return yearPayChart(); };
+  partsM.balchart = function(){ return balanceChart(); };
   partsM.outlook = function(){ return section('この先の見通し', null,
     '<div class="row"><div class="grow s">いちばん重い月</div><div class="amt num">'+(peak?ymLabel(peak.m)+'　'+yen(peak.t):'—')+'</div></div>'+
     '<div class="row"><div class="grow s">未払いの残り総額</div><div class="amt num">'+yen(remain)+'</div></div>'+
@@ -3353,12 +3428,20 @@ function moneyAction(act, t){
     S.balances.push({ id:uid('bl'), name:bn, amount:ba, mt:Date.now() });
     toast('残高を追加しました'); commit();
   }
+  else if(act==='fuyou-set'){ S.settings.fuyouLimit = toNum(t.dataset.v); toast('切り替えました'); commit(); }
   else if(act==='edit-bal'){
     var b=S.balances.filter(function(x){ return x.id===t.dataset.id; })[0];
     if(!b) return true;
     var v=prompt(b.name+' の残高（円）', String(b.amount));
     if(v===null) return true;
-    b.amount=toNum(v); b.mt=Date.now(); toast('更新しました'); commit();
+    b.amount=toNum(v); b.mt=Date.now();
+    /* 月ごとの記録を残す（残高の推移に使う） */
+    b.hist = Array.isArray(b.hist) ? b.hist : [];
+    var ym0 = thisYm();
+    b.hist = b.hist.filter(function(h){ return h.ym !== ym0; });
+    b.hist.push({ ym:ym0, amount:b.amount });
+    if(b.hist.length > 36) b.hist = b.hist.slice(-36);
+    toast('更新しました'); commit();
   }
   else if(act==='del-bal'){ removeWithUndo('balances', t.dataset.id, '削除しました'); commit(); }
   else if(act==='work-prev'){ workYm = addMonths(workYm || openYm(), -1); render(); }
@@ -3478,6 +3561,87 @@ function viewShifts(){
   var h = '';
   pageOrder('work').forEach(function(id){ if(partsW[id] && !pageHidden('work', id)) h += partsW[id](); });
   return h;
+}
+
+
+/* ===== 扶養の壁（91）===== */
+function yearPayTotal(y){
+  /* その年に「支払われた」ぶん（25日払い基準） */
+  var total = 0;
+  Object.keys(S.payApplied||{}).forEach(function(ym){
+    var rec = S.payApplied[ym];
+    var p = payPeriod(ym);
+    if(String(p.payDay).slice(0,4) === String(y)) total += toNum(rec.amount);
+  });
+  /* まだ入れていない期間は見込みで足す */
+  for(var m=1;m<=12;m++){
+    var ym2 = y+'-'+pad(m);
+    if(S.payApplied && S.payApplied[ym2]) continue;
+    var amt = periodPay(ym2);
+    if(amt) total += amt;
+  }
+  return total;
+}
+function fuyouCard(){
+  var y = new Date().getFullYear();
+  var total = yearPayTotal(y);
+  var walls = [[1030000,'103万'],[1300000,'130万']];
+  var limit = toNum(S.settings.fuyouLimit) || 1030000;
+  var pct = Math.min(100, Math.round(total/limit*100));
+  var rest = limit - total;
+  var cls = pct>=90 ? 'over' : pct>=75 ? '' : 'done';
+  var msg = rest > 0
+    ? 'あと '+yen(rest)+' で '+(limit===1030000?'103万':'130万')+' に届きます。'
+    : '<b>'+(limit===1030000?'103万':'130万')+'を超えています。</b>おうちの人に相談してください。';
+  return section('扶養の壁', y+'年の見込み '+yen(total),
+    '<div class="bar" style="margin-bottom:8px"><i class="'+cls+'" style="width:'+pct+'%"></i></div>'+
+    '<div class="msg '+(pct>=90?'ng':'ok')+'" style="margin-bottom:12px">'+msg+'</div>'+
+    '<div class="pillrow">'+walls.map(function(w){
+      return '<button data-act="fuyou-set" data-v="'+w[0]+'" class="'+(limit===w[0]?'on':'')+'">'+w[1]+'で見る</button>';
+    }).join('')+'</div>'+
+    '<p class="note">25日に振り込まれた実際の額と、これからのシフトの見込みを足しています。交通費も含みます。</p>');
+}
+/* ===== 年間の給与（92）===== */
+function yearPayChart(){
+  var y = new Date().getFullYear(), vals = [], labels = [];
+  for(var m=1;m<=12;m++){
+    var ym = y+'-'+pad(m);
+    var rec = (S.payApplied||{})[ym];
+    vals.push(rec ? toNum(rec.amount) : periodPay(ym));
+    labels.push(m);
+  }
+  var max = Math.max.apply(null, vals.concat([1]));
+  var cum = 0;
+  return section('年間の給与', y+'年',
+    '<div class="chart" style="height:120px">'+vals.map(function(v,i){
+      var rec = (S.payApplied||{})[y+'-'+pad(i+1)];
+      return '<div class="col"><div class="bar2" style="height:'+Math.max(2,Math.round(v/max*90))+'px;background:'+(rec?'linear-gradient(180deg,var(--accent2),var(--accent))':'var(--soft)')+'"></div>'+
+        '<div class="lb">'+labels[i]+'</div></div>';
+    }).join('')+'</div>'+
+    '<p class="note">濃い色は実際に入った月、うすい色は見込みです。</p>');
+}
+/* ===== 残高の推移（108）===== */
+function balanceChart(){
+  var hist = [];
+  (S.balances||[]).forEach(function(b){
+    (b.hist||[]).forEach(function(h){ hist.push({ ym:h.ym, amount:toNum(h.amount), name:b.name }); });
+  });
+  if(!hist.length){
+    return section('残高の推移', null,
+      '<div class="empty">残高を直すたびに記録していきます。</div>'+
+      '<p class="note">口座の残高を更新すると、月ごとの動きがグラフになります。</p>');
+  }
+  var byYm = {};
+  hist.forEach(function(h){ byYm[h.ym] = (byYm[h.ym]||0) + h.amount; });
+  var keys = Object.keys(byYm).sort().slice(-12);
+  var vals = keys.map(function(k){ return byYm[k]; });
+  var max = Math.max.apply(null, vals.concat([1]));
+  return section('残高の推移', keys.length+'か月',
+    '<div class="chart" style="height:120px">'+vals.map(function(v,i){
+      return '<div class="col"><div class="bar2" style="height:'+Math.max(2,Math.round(v/max*90))+'px;background:linear-gradient(180deg,var(--accent2),var(--accent))"></div>'+
+        '<div class="lb">'+(+keys[i].slice(5,7))+'</div></div>';
+    }).join('')+'</div>'+
+    '<div class="s2">いま '+yen(vals[vals.length-1])+'</div>');
 }
 /* ============================== 履修：索引 ============================== */
 var byCode = {};
@@ -4139,7 +4303,7 @@ function itemFg(x){ var k=kindOf(x.src); return (x.src==='task'||x.src==='pay'||
 /* ============================== 入力フォーム ============================== */
 function newDraft(date){
   return { kind:'task', title:'', date:date||calSel, dateEnd:'', time:'', end:'', wage:'', ot:'',
-           memo:'', rep:0, subject:'', photos:[] };
+           memo:'', rep:0, subject:'', photos:[], pri:1, how:'', url:'' };
 }
 function readEvForm(){
   if(!evDraft) return;
@@ -4151,6 +4315,7 @@ function readEvForm(){
     if(dd) evDraft.date = dd;
   }
   if(document.getElementById('ev_dateend_m')) evDraft.dateEnd = readMd('ev_dateend');
+  var uv = g('ev_url'); if(uv !== null) evDraft.url = uv;
   var tv = readTime('ev_time'); if(tv !== null) evDraft.time = tv;
   var ev_ = readTime('ev_end');  if(ev_ !== null) evDraft.end = ev_;
   if((v=g('ev_wage'))!==null) evDraft.wage = v;
@@ -4160,6 +4325,12 @@ function readEvForm(){
   if((v=g('ev_subject'))!==null) evDraft.subject = v;
 }
 function evForm(){ return '<div id="evform">'+evFormBody()+'</div>'; }
+/* 入力欄だけ描き直す（画面が飛ばない） */
+function redrawForm(){
+  var fm = document.getElementById('evform');
+  if(fm){ var y=window.scrollY; fm.innerHTML = evFormBody(); window.scrollTo(0,y); if(typeof twInit==='function') twInit(); }
+  else render();
+}
 /* 時と分をプルダウンで選ぶ（何も選んでいなければ12時から） */
 function timeSelect(id, val_, label, allowEmpty){
   var has = /^\d{1,2}:\d{2}$/.test(val_||'');
@@ -4251,6 +4422,17 @@ function evFormBody(){
     h += mdPicker('ev_dateend', evDraft.dateEnd||'', '終了日（何日も続く予定のときだけ）', true);
   }
 
+  if(isTask){
+    h += '<label class="f">大事さ</label><div class="pillrow">'+
+      [['2','高'],['1','ふつう'],['0','低']].map(function(o){
+        return '<button data-act="ev-pri" data-v="'+o[0]+'" class="'+(String(toNum(evDraft.pri))===o[0]?'on':'')+'">'+o[1]+'</button>';
+      }).join('')+'</div>';
+    h += '<label class="f">出し方</label><div class="pillrow">'+
+      [['web','WEB'],['paper','紙'],['mail','メール'],['other','そのほか']].map(function(o){
+        return '<button data-act="ev-how" data-v="'+o[0]+'" class="'+(evDraft.how===o[0]?'on':'')+'">'+o[1]+'</button>';
+      }).join('')+'</div>';
+    h += '<div class="field"><label class="f">提出先のURL（任意）</label><input id="ev_url" value="'+esc(evDraft.url||'')+'" placeholder="https://..."></div>';
+  }
   h += '<div class="field"><label class="f">'+(isTest?'教室・メモ（任意）':'メモ（任意）')+'</label>'+
        '<textarea id="ev_memo" style="min-height:60px" placeholder="'+(isWork?'例：レジ担当':isTest?'例：A館301、持ち物：電卓':'例：持ち物メモ')+'">'+esc(evDraft.memo)+'</textarea></div>';
 
@@ -4281,7 +4463,8 @@ function createOne(kind, d, rid){
   var now = Date.now(), ph = (d.photos||[]).slice();
   if(kind==='task'){
     S.tasks.push({ id:uid('tk'), title:d.title, subject:d.subject||'', due:d.date, time:d.time||'',
-      done:0, memo:d.memo||'', subs:[], photos:ph, rid:rid, mt:now });
+      done:0, memo:d.memo||'', subs:[], photos:ph, rid:rid,
+      pri:toNum(d.pri), how:d.how||'', url:d.url||'', mt:now });
   }else if(kind==='quiz'||kind==='exam'||kind==='kousa'){
     S.exams.push({ id:uid('ex'), subject:d.subject||'', title:d.title||'', date:d.date, time:d.time||'', room:d.memo||'',
       kind:kind, photos:ph, rid:rid, mt:now });
@@ -4313,7 +4496,8 @@ function updateOne(src, id, d){
   }
   var f = findOne(src, id); if(!f) return;
   var o = f.obj, ph = (d.photos||[]).slice();
-  if(src==='task'){ o.title=d.title; o.subject=d.subject||''; o.due=d.date; o.time=d.time||''; o.memo=d.memo||''; o.photos=ph; }
+  if(src==='task'){ o.title=d.title; o.subject=d.subject||''; o.due=d.date; o.time=d.time||''; o.memo=d.memo||''; o.photos=ph;
+    o.pri=toNum(d.pri); o.how=d.how||''; o.url=d.url||''; }
   else if(listNameOf(src)==='exams'){ o.subject=d.subject||''; o.title=d.title||''; o.date=d.date; o.time=d.time||''; o.room=d.memo||''; o.kind=d.kind; o.photos=ph; }
   else if(src==='work'){ o.title='バイト'; o.date=d.date;
     o.start=d.time||''; o.end=d.end||''; o.ot=toNum(d.ot); o.memo=d.memo||''; o.photos=ph; }
@@ -4354,7 +4538,8 @@ function saveEvent(){
 function loadForEdit(src, id){
   var f = findOne(src, id); if(!f) return;
   var o = f.obj, base = { wage:'', ot:'', end:'', dateEnd:'', rep:0, subject:'', photos:(o.photos||[]).slice() };
-  if(src==='task') evDraft = Object.assign(base, { kind:'task', title:o.title, subject:o.subject||'', date:o.due, time:o.time||'', memo:o.memo||'' });
+  if(src==='task') evDraft = Object.assign(base, { kind:'task', title:o.title, subject:o.subject||'', date:o.due, time:o.time||'', memo:o.memo||'',
+    pri:toNum(o.pri), how:o.how||'', url:o.url||'' });
   else if(listNameOf(src)==='exams') evDraft = Object.assign(base, { kind:(o.kind||'exam'), title:o.title||'', subject:o.subject||'', date:o.date, time:o.time||'', memo:o.room||'' });
   else if(src==='work') evDraft = Object.assign(base, { kind:'work', title:o.title||'', date:o.date, time:o.start||'', end:o.end||'', ot:(toNum(o.ot)?String(toNum(o.ot)):''), memo:o.memo||'' });
   else evDraft = Object.assign(base, { kind:(o.kind==='imp'?'imp':'other'), title:o.title, subject:o.subject||'', date:o.date, dateEnd:o.dateEnd||'', time:o.time||'', memo:o.memo||'' });
@@ -4461,7 +4646,9 @@ function monthGrid(){
   }
   return h + '</tbody></table>';
 }
+var weekStyle = 'list';   /* list or time */
 function weekList(){
+  if(weekStyle === 'time') return weekTimeline();
   var start = weekMonday();
   var h = '';
   for(var i=0;i<7;i++){
@@ -4482,12 +4669,17 @@ function weekList(){
 }
 /* 同じ日で時間が重なっていないか調べる */
 function clashOn(ymd){
-  var list = itemsOn(ymd).filter(function(x){ return minutesOf(x.time) != null; });
+  var list = itemsOn(ymd, 1).filter(function(x){ return minutesOf(x.time) != null; });
+  /* 授業とも見比べる */
+  schoolClassesForDate(ymd).forEach(function(c){
+    var st = S.commute.periods[c.period-1], en = S.commute.ends[c.period-1];
+    if(minutesOf(st)!=null) list.push({ src:'cls', id:'c'+c.period, title:c.name, time:st, endMin:minutesOf(en) });
+  });
   var out = [];
   for(var i=0;i<list.length;i++){
     for(var j=i+1;j<list.length;j++){
       var a=list[i], b=list[j];
-      var as=minutesOf(a.time), ae=as+60, bs=minutesOf(b.time), be=bs+60;
+      var as=minutesOf(a.time), ae=(a.endMin!=null?a.endMin:as+60), bs=minutesOf(b.time), be=(b.endMin!=null?b.endMin:bs+60);
       if(a.src==='work'){ var w=S.shifts.filter(function(z){return z.id===a.id;})[0]; if(w) ae=as+shiftHours(w)*60; }
       if(b.src==='work'){ var w2=S.shifts.filter(function(z){return z.id===b.id;})[0]; if(w2) be=bs+shiftHours(w2)*60; }
       if(as < be && bs < ae) out.push(a.title+' と '+b.title);
@@ -4566,7 +4758,13 @@ function viewCalendar(){
 
   var parts = {};
   parts.summary = function(){ return isWeek ? '' : monthSummary(); };
-  parts.grid = function(){ return isWeek ? weekList() : monthGrid(); };
+  parts.grid = function(){
+    if(!isWeek) return monthGrid();
+    return '<div class="pillrow" style="margin-bottom:8px">'+
+        '<button data-act="wstyle" data-v="list" class="'+(weekStyle==='list'?'on':'')+'">一覧</button>'+
+        '<button data-act="wstyle" data-v="time" class="'+(weekStyle==='time'?'on':'')+'">時間わり</button>'+
+      '</div>' + weekList();
+  };
   parts.selday = function(){
     var sel = itemsOn(calSel, 1);
     return '<div style="margin-top:16px">' + section(ymdLabel(calSel)+' の予定', sel.length?sel.length+'件':null,
@@ -4651,6 +4849,11 @@ function openDetail(src, id){
       (o.subject ? '<div class="row"><div class="grow s">科目</div><div class="t">'+esc(o.subject)+'</div></div>' : '')+
       (src==='work' ? '<div class="row"><div class="grow s">お給料</div><div class="amt num">'+yen(shiftPay(o))+'</div></div>'+
                       '<div class="row"><div class="grow s">勤務</div><div class="t">'+esc(o.start||'')+'〜'+esc(o.end||'')+(shiftBreak(o)?'（休憩1時間引き）':'')+(toNum(o.ot)?'・残業'+toNum(o.ot)+'分':'')+'</div></div>' : '')+
+      (src==='task' && o.url ? '<div class="row"><div class="grow s">提出先</div><a class="mini" href="'+esc(o.url)+'" target="_blank" rel="noopener">開く</a></div>' : '')+
+      (src==='task' && (o.how||toNum(o.pri)!==1) ? '<div class="row"><div class="grow s">出し方・大事さ</div><div class="t">'+
+        esc(({web:'WEB',paper:'紙',mail:'メール',other:'そのほか'})[o.how]||'—')+'・'+esc(['低','ふつう','高'][toNum(o.pri)]||'ふつう')+'</div></div>' : '')+
+      (src==='task' ? '<div class="row"><div class="grow s">かかった時間</div><div class="t">'+(taskMinutes(o.id)||0)+'分</div>'+
+        '<button class="mini" data-act="task-timer" data-id="'+o.id+'" style="'+(taskRunning(o.id)?'background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;border-color:rgba(255,255,255,.6)':'')+'">'+(taskRunning(o.id)?'とめる':'はかる')+'</button></div>' : '')+
       (src==='task' ? '<div class="row"><div class="grow s">状態</div><div class="t">'+(o.done?'完了':'未完')+'</div>'+
                       '<button class="mini" data-act="'+(o.done?'task-undone':'task-done')+'" data-id="'+o.id+'">'+(o.done?'未完に戻す':'完了にする')+'</button></div>' : '')+
       ((o.memo||o.room) ? '<div class="row"><div class="grow"><div class="s">メモ</div><div class="t" style="white-space:pre-wrap">'+esc(o.memo||o.room)+'</div></div></div>' : '')+
@@ -4732,6 +4935,7 @@ function calAction(act, t){
     render(); return true;
   }
   if(act==='cal-mode'){ readEvForm(); calTab = t.dataset.v; calView = (t.dataset.v==='week')?'week':'month'; render(); window.scrollTo(0,0); return true; }
+  if(act==='wstyle'){ weekStyle = t.dataset.v; render(); return true; }
   if(act==='cw-off'){ calWeekOff += toNum(t.dataset.v); render(); return true; }
   if(act==='cal-mset'){ calYm = addMonths(thisYm(), toNum(t.dataset.v)); render(); return true; }
   if(act==='cw-set'){ calWeekOff = toNum(t.dataset.v); render(); return true; }
@@ -4746,9 +4950,7 @@ function calAction(act, t){
   if(act==='ev-kind'){
     readEvForm();
     evDraft.kind = t.dataset.k;
-    var fm = document.getElementById('evform');
-    if(fm){ var y=window.scrollY; fm.innerHTML = evFormBody(); window.scrollTo(0,y); }
-    else render();
+    redrawForm();
     return true;
   }
 
@@ -4798,6 +5000,8 @@ function calAction(act, t){
     setProg(t.dataset.id, (progOf(t.dataset.id) + 1) > max ? 0 : progOf(t.dataset.id) + 1);
     commit(); return true;
   }
+  if(act==='ev-pri'){ readEvForm(); evDraft.pri = toNum(t.dataset.v); redrawForm(); return true; }
+  if(act==='ev-how'){ readEvForm(); evDraft.how = (evDraft.how===t.dataset.v ? '' : t.dataset.v); redrawForm(); return true; }
   if(act==='ev-save'){ saveEvent(); return true; }
   if(act==='ev-cancel'){ calEdit = null; evDraft = newDraft(calSel); if(calTab==='add') calTab='cal'; render(); window.scrollTo(0,0); return true; }
   if(act==='ev-edit'){
@@ -4888,6 +5092,15 @@ function viewSettings(){
     '</div>'+
     ((S.ui.myColors||[]).length ? '<div class="pillrow">'+(S.ui.myColors||[]).map(function(c,i){
         return '<button class="mini" data-act="mycolor-del" data-i="'+i+'">'+(i+1)+'を消す</button>'; }).join('')+'</div>' : '')+
+    '<label class="f">締切が近いと知らせる</label>'+
+    '<div class="pillrow">'+[[0,'知らせない'],[1,'1日前'],[3,'3日前'],[7,'7日前']].map(function(o){
+      return '<button data-act="due-lead" data-v="'+o[0]+'" class="'+((toNum(S.ui.dueLead)||0)===o[0]?'on':'')+'">'+o[1]+'</button>';
+    }).join('')+'</div>'+
+    '<label class="f">やることの並び</label>'+
+    '<div class="pillrow">'+
+      '<button data-act="todo-sort" data-v="0" class="'+(!S.ui.todoByPri?'on':'')+'">締切の近い順</button>'+
+      '<button data-act="todo-sort" data-v="1" class="'+(S.ui.todoByPri?'on':'')+'">大事さの順</button>'+
+    '</div>'+
     '<label class="f">テストの進みぐあいの段階</label>'+
     '<div class="pillrow">'+
       '<button data-act="prog-scale" data-v="3" class="'+((S.ui.progScale||3)===3?'on':'')+'">3段階</button>'+
@@ -4971,6 +5184,8 @@ function settingsAction(act, t){
   if(act==='mycolor-del'){
     S.ui.myColors.splice(toNum(t.dataset.i), 1); touch('ui'); toast('消しました'); commit(); return true;
   }
+  if(act==='due-lead'){ S.ui.dueLead = toNum(t.dataset.v); touch('ui'); commit(); return true; }
+  if(act==='todo-sort'){ S.ui.todoByPri = toNum(t.dataset.v) ? 1 : 0; touch('ui'); commit(); return true; }
   if(act==='prog-scale'){ S.ui.progScale = toNum(t.dataset.v); touch('ui'); commit(); return true; }
   if(act==='prog-show'){ S.ui.showProg = (S.ui.showProg===0) ? 1 : 0; touch('ui'); commit(); return true; }
   if(act==='img-clean'){
@@ -5153,6 +5368,22 @@ function settingsAction2(act, t){
   if(act==='wk-off'){ weekOff += toNum(t.dataset.v); render(); window.scrollTo(0,0); return true; }
   if(act==='wk-set'){ weekOff = toNum(t.dataset.v); render(); window.scrollTo(0,0); return true; }
   if(act==='today-toggle'){ var id=t.dataset.id; S.ui.todayClosed[id] = S.ui.todayClosed[id]?0:1; touch('ui'); persist(); pushRemote(); render(); return true; }
+  if(act==='leave-now'){
+    var now = new Date(), td2 = today();
+    S.transitLog = (S.transitLog||[]).filter(function(r){ return r.date!==td2; });
+    var cls = schoolClassesForDate(td2);
+    var target = cls.length ? minutesOf(S.commute.periods[cls[0].period-1]) : null;
+    var nowMin = now.getHours()*60 + now.getMinutes();
+    S.transitLog.push({ date:td2, at:pad(now.getHours())+':'+pad(now.getMinutes()),
+      min:null, target:target, nowMin:nowMin });
+    if(S.transitLog.length > 120) S.transitLog = S.transitLog.slice(-120);
+    touch('transitLog'); toast('出発を記録しました'); commit(); return true;
+  }
+  if(act==='leave-undo'){
+    var td3 = today();
+    S.transitLog = (S.transitLog||[]).filter(function(r){ return r.date!==td3; });
+    touch('transitLog'); commit(); return true;
+  }
   if(act==='tr-fav'){
     var k=t.dataset.key, f=S.transit.fav||[]; var i=f.indexOf(k);
     if(i>=0) f.splice(i,1); else f.push(k);
@@ -5286,6 +5517,49 @@ function weekFilterSettings(){
         '<span class="kdot2"></span>'+esc(d[1])+'</button>';
     }).join('')+'</div>'+
     '<p class="note">選んだ種類だけが「今日 › 今週」に出ます。ToDoで足したものは、もともと出ません。</p>');
+}
+
+
+/* ===== 週を時間軸で見る（121）===== */
+function weekTimeline(){
+  var start = weekMonday();
+  var H0 = 7, H1 = 23;                       /* 7時〜23時 */
+  var rowH = 30;
+  var days = [];
+  for(var i=0;i<7;i++){ var d=new Date(start); d.setDate(start.getDate()+i); days.push(toYmd(d)); }
+  var h = '<div class="wtl"><div class="wtl-head"><span class="wtl-hcol"></span>'+
+    days.map(function(ymd,i){
+      var d = new Date(start); d.setDate(start.getDate()+i);
+      var isT = ymd===today();
+      return '<span class="wtl-d'+(isT?' now':'')+'">'+WDAY[d.getDay()]+'<b>'+d.getDate()+'</b></span>';
+    }).join('')+'</div><div class="wtl-body" style="height:'+((H1-H0)*rowH)+'px">'+
+    '<div class="wtl-hours">'+(function(){
+      var o=''; for(var hh=H0;hh<H1;hh++) o += '<span style="height:'+rowH+'px">'+hh+'</span>'; return o;
+    })()+'</div>';
+  days.forEach(function(ymd){
+    h += '<div class="wtl-col">';
+    /* 授業 */
+    schoolClassesForDate(ymd).forEach(function(c){
+      var st = minutesOf(S.commute.periods[c.period-1]), en = minutesOf(S.commute.ends[c.period-1]);
+      if(st==null||en==null) return;
+      var top = (st - H0*60)/60*rowH, hgt = (en-st)/60*rowH;
+      if(top < -hgt) return;
+      h += '<div class="wtl-ev cls" style="top:'+top+'px;height:'+Math.max(14,hgt)+'px;background:'+courseColor(c.name)+'22;border-color:'+courseColor(c.name)+'" title="'+esc(c.name)+'">'+
+        '<span>'+esc(shortName(c.name))+'</span></div>';
+    });
+    /* 予定 */
+    itemsOn(ymd, 1).forEach(function(x){
+      var st2 = minutesOf(x.time);
+      if(st2==null) return;
+      var dur = 60;
+      if(x.src==='work'){ var w=S.shifts.filter(function(z){return z.id===x.id;})[0]; if(w) dur = Math.max(30, shiftHours(w)*60); }
+      var top2 = (st2 - H0*60)/60*rowH, hgt2 = dur/60*rowH;
+      h += '<div class="wtl-ev" style="top:'+top2+'px;height:'+Math.max(14,hgt2)+'px;background:'+itemColor(x)+';color:'+itemFg(x)+'" '+
+        'data-act="ev-open" data-src="'+x.src+'" data-id="'+x.id+'" title="'+esc(x.title)+'"><span>'+esc(x.title)+'</span></div>';
+    });
+    h += '</div>';
+  });
+  return h + '</div></div>';
 }
 /* ============================== 時間割 ============================== */
 var ttShowAll = false;
@@ -5591,6 +5865,30 @@ function courseDetail(name){
       '<button class="mini" data-act="ev-open" data-src="imp" data-id="'+e.id+'">詳細</button></div>';
   }).join(''));
 
+  /* シラバスと評価方法 */
+  var sy = S.syllabus[name] || {};
+  h += section('シラバス・評価', sy.url ? 'リンクあり' : null,
+    '<div class="field"><label class="f">シラバスのURL</label><input id="sy_url" value="'+esc(sy.url||'')+'" placeholder="https://..."></div>'+
+    (sy.url ? '<a class="btn ghost" style="margin-bottom:11px;display:block;text-align:center;text-decoration:none" href="'+esc(sy.url)+'" target="_blank" rel="noopener">シラバスを開く</a>' : '')+
+    '<label class="f">評価のわりあい（%）</label>'+
+    '<div class="grid2" style="margin-bottom:11px">'+
+      '<div><label class="f">テスト</label><input id="sy_exam" inputmode="numeric" value="'+esc(sy.exam||'')+'"></div>'+
+      '<div><label class="f">レポート</label><input id="sy_rep" inputmode="numeric" value="'+esc(sy.rep||'')+'"></div>'+
+      '<div><label class="f">出席・平常点</label><input id="sy_att" inputmode="numeric" value="'+esc(sy.att||'')+'"></div>'+
+      '<div><label class="f">そのほか</label><input id="sy_other" inputmode="numeric" value="'+esc(sy.other||'')+'"></div>'+
+    '</div>'+
+    (function(){
+      var tot = toNum(sy.exam)+toNum(sy.rep)+toNum(sy.att)+toNum(sy.other);
+      if(!tot) return '';
+      var segs = [['テスト',toNum(sy.exam),'var(--rakuten)'],['レポート',toNum(sy.rep),kindHex('task')],
+                  ['出席',toNum(sy.att),'var(--ok)'],['ほか',toNum(sy.other),'var(--sub)']].filter(function(x){ return x[1]>0; });
+      return '<div class="bar" style="margin-bottom:6px;display:flex;gap:2px;background:none;box-shadow:none">'+
+        segs.map(function(x){ return '<i style="width:'+Math.round(x[1]/tot*100)+'%;background:'+x[2]+'"></i>'; }).join('')+'</div>'+
+        '<div class="s2" style="margin-bottom:10px">'+segs.map(function(x){ return x[0]+' '+x[1]+'%'; }).join('　')+(tot!==100?'（合計'+tot+'%）':'')+'</div>';
+    })()+
+    '<div class="field"><label class="f">評価のメモ</label><textarea id="sy_memo" placeholder="例：出席2/3以上で受験資格">'+esc(sy.memo||'')+'</textarea></div>'+
+    '<button class="btn ghost" data-act="syl-save" data-name="'+esc(name)+'">保存</button>');
+
   /* 成績 */
   h += section('成績', gr.grade ? esc(gr.grade) : null,
     '<div class="pair"><div><label class="f">評価（S/A/B/C/D など）</label><input id="gr_grade" value="'+esc(gr.grade||'')+'" placeholder="A"></div>'+
@@ -5675,6 +5973,12 @@ function ttAction(act, t, ev){
     var nm7 = t.dataset.name, cm7 = S.courseMeta[nm7] || {};
     cm7.range = val('cm_range'); S.courseMeta[nm7] = cm7; touch('courseMeta'); toast('保存しました'); commit(); return true;
   }
+  if(act==='syl-save'){
+    var nm0 = t.dataset.name;
+    S.syllabus[nm0] = { url:val('sy_url').trim(), exam:val('sy_exam'), rep:val('sy_rep'),
+      att:val('sy_att'), other:val('sy_other'), memo:val('sy_memo') };
+    touch('syllabus'); toast('保存しました'); commit(); return true;
+  }
   if(act==='grade-save'){
     var nm8 = t.dataset.name;
     S.grades[nm8] = { grade: val('gr_grade').trim().toUpperCase(), score: val('gr_score').trim() };
@@ -5716,6 +6020,14 @@ function ttAction(act, t, ev){
 }
 /* ============================== ToDo ============================== */
 var todoTab = 'open';
+function taskMinutes(id){
+  var l = (S.taskLog||{})[id];
+  return l ? toNum(l.min) : 0;
+}
+function taskRunning(id){
+  var l = (S.taskLog||{})[id];
+  return (l && l.start) ? l.start : 0;
+}
 function taskColor(t){ return t && t.plain ? '#FFFFFF' : kindHex('task'); }   /* ToDoで作ったものは白、課題はピンク */
 function taskRow(t){
   var n = isYmd(t.due) ? daysFromToday(t.due) : null;
@@ -5727,8 +6039,10 @@ function taskRow(t){
       '<button class="chk'+(t.done?' on':'')+'" data-act="'+(t.done?'task-undone':'task-done')+'" data-id="'+t.id+'" aria-label="完了">'+(t.done?'✓':'')+'</button>'+
       '<span class="grow" data-act="ev-open" data-src="task" data-id="'+t.id+'" role="button">'+
         '<span class="t">'+esc(t.title)+'</span>'+
-        '<span class="s">'+(t.subject?esc(t.subject)+'・':'')+(isYmd(t.due)?ymdLabel(t.due):'期限なし')+(t.time?' '+esc(t.time)+'まで':'')+
-          (subs.length?'・小項目 '+doneSubs+'/'+subs.length:'')+'</span></span>'+
+        '<span class="s">'+(toNum(t.pri)===2?'❗ ':'')+(t.subject?esc(t.subject)+'・':'')+(isYmd(t.due)?ymdLabel(t.due):'期限なし')+(t.time?' '+esc(t.time)+'まで':'')+
+          (subs.length?'・小項目 '+doneSubs+'/'+subs.length:'')+
+          (taskMinutes(t.id)?'・'+taskMinutes(t.id)+'分やった':'')+
+          (t.how?'・'+({web:'WEB',paper:'紙',mail:'メール',other:'ほか'})[t.how]:'')+'</span></span>'+
       (!t.done && n!==null ? '<span class="due '+dueClass(n)+'">'+dueText(n)+'</span>' : '')+
     '</div>'+
     (subs.length && !t.done ? '<div class="subs">'+subs.map(function(x,i){
@@ -5741,6 +6055,10 @@ function viewTodo(){
     .map(function(t){ return Object.assign({}, t, {left: isYmd(t.due) ? daysFromToday(t.due) : null}); })
     .sort(function(a,b){
       if((a.done?1:0) !== (b.done?1:0)) return (a.done?1:0) - (b.done?1:0);   /* 未完が上 */
+      if(S.ui.todoByPri){
+        var pa = toNum(a.pri==null?1:a.pri), pb = toNum(b.pri==null?1:b.pri);
+        if(pa !== pb) return pb - pa;                                          /* 大事さが高い順 */
+      }
       if(a.left===null) return 1; if(b.left===null) return -1; return a.left-b.left;
     });
   var late = all.filter(function(t){ return !t.done && t.left!==null && t.left<0; });
@@ -5757,6 +6075,10 @@ function viewTodo(){
           '<div><label class="f">科目（任意）</label><select id="td_subject">'+subjectOptions('')+'</select></div>'+
           '<div style="flex:0 0 150px">'+mdPicker('td_due', today(), '締切', false)+'</div></div>'+
         '<div class="field">'+timeSelect('td_time','','締切の時刻（任意）',true)+'</div>'+
+        '<label class="f">大事さ</label><div class="pillrow" id="td_prirow">'+
+          [['2','高'],['1','ふつう'],['0','低']].map(function(o,i){
+            return '<button data-act="td-pri" data-v="'+o[0]+'" class="'+(i===1?'on':'')+'">'+o[1]+'</button>';
+          }).join('')+'</div>'+
         '<div class="field"><label class="f">小項目（1行に1つ・任意）</label><textarea id="td_subs" placeholder="資料を集める&#10;下書き&#10;清書"></textarea></div>'+
         '<button class="btn" data-act="td-add">追加する</button>'+
         '<p class="note">ここで足したものは白色で、今日・明日・ToDoにだけ出ます。カレンダーには出ません。</p>'); }
@@ -5837,13 +6159,26 @@ function todoAction(act, t){
   if(act==='td-add'){
     var ti = val('td_title').trim(); if(!ti){ toast('やることを入れてください', true); return true; }
     var subs = val('td_subs').split(/\n/).map(function(x){ return x.trim(); }).filter(Boolean).map(function(x){ return { text:x, done:0 }; });
-    S.tasks.push({ id:uid('tk'), plain:1, title:ti, subject:val('td_subject'), due:readMd('td_due'), time:(readTime('td_time')||''), done:0, memo:'', subs:subs, photos:[], mt:Date.now() });
+    var pb = document.querySelector('#td_prirow button.on');
+    S.tasks.push({ id:uid('tk'), plain:1, pri:pb?toNum(pb.dataset.v):1, title:ti, subject:val('td_subject'), due:readMd('td_due'), time:(readTime('td_time')||''), done:0, memo:'', subs:subs, photos:[], mt:Date.now() });
     toast('追加しました'); commit(); return true;
   }
   if(act==='sub-toggle'){
     var tk = S.tasks.filter(function(x){ return x.id===t.dataset.id; })[0]; if(!tk) return true;
     var i = toNum(t.dataset.i); if(tk.subs && tk.subs[i]){ tk.subs[i].done = tk.subs[i].done?0:1; tk.mt=Date.now(); commit(); }
     return true;
+  }
+  if(act==='td-pri'){
+    Array.prototype.forEach.call(t.parentNode.querySelectorAll('button'), function(b){ b.classList.remove('on'); });
+    t.classList.add('on'); return true;
+  }
+  if(act==='task-timer'){
+    var id = t.dataset.id;
+    S.taskLog = S.taskLog || {};
+    var l = S.taskLog[id] || { min:0, start:0 };
+    if(l.start){ l.min = toNum(l.min) + Math.max(1, Math.round((Date.now()-l.start)/60000)); l.start = 0; toast(l.min+'分になりました'); }
+    else { l.start = Date.now(); toast('はかり始めました'); }
+    S.taskLog[id] = l; touch('taskLog'); commit(); return true;
   }
   if(act==='todo-tab'){ todoTab = t.dataset.v; render(); return true; }
   if(act==='note-new'){
@@ -6121,6 +6456,8 @@ document.getElementById('detail').addEventListener('click', function(e){
   var act = b.dataset.act;
   if(act==='sub-toggle'){ return; }
   if(act==='task-done'||act==='task-undone'){ risyuAction(act, b, e); closeDetail(); return; }
+  if(todoAction(act, b)) return;
+  if(kindAction(act, b)) return;
   if(calAction(act, b)) return;
 });
 document.getElementById('detail').addEventListener('change', function(e){
