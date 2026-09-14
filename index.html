@@ -181,8 +181,17 @@ body[data-theme="dark"] #apps{background:rgba(255,255,255,.08); border-color:rgb
 body[data-theme="dark"] nav{background:linear-gradient(180deg, rgba(40,34,44,.92), rgba(40,34,44,.80))}
 body[data-theme="dark"] #apps .pill{background:linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.12)); border-color:rgba(255,255,255,.3)}
 #apps button{position:relative; z-index:1; flex:1 1 0; min-width:0; border:0; background:none;
-  color:var(--sub); font:inherit; font-size:.74em; padding:9px 2px; border-radius:999px;
-  font-weight:700; transition:color .25s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  color:var(--sub); font:inherit; font-size:.74em; padding:9px 0; border-radius:999px; letter-spacing:0;
+  font-weight:700; transition:color .25s; white-space:nowrap; overflow:visible}
+/* タブが多いときは文字を少し小さく */
+#apps[data-n="8"] button{font-size:.7em}
+#apps[data-n="9"] button{font-size:.64em}
+#apps[data-n="10"] button{font-size:.6em}
+#apps[data-n="11"] button{font-size:.56em}
+@media (max-width:360px){
+  #apps[data-n="8"] button{font-size:.64em}
+  #apps[data-n="9"] button{font-size:.58em}
+}
 #apps button.on{color:var(--ink)}
 
 /* 下のタブ：同じく丸がすべる */
@@ -533,6 +542,12 @@ label.tg input{width:auto; margin-top:2px}
     box-shadow:inset 0 1px 1px rgba(255,255,255,.7), 0 1px 3px rgba(0,0,0,.16); cursor:pointer}
   .wtl-ev.cls{border-width:1px; border-style:solid; color:var(--ink); cursor:default}
   .wtl-ev span{display:block; overflow:hidden}
+
+/* ================= 時刻の数字入力 ================= */
+  .timerow{display:flex; align-items:center; gap:8px; margin-bottom:11px}
+  .tnum{width:74px!important; text-align:center; font-size:19px!important; font-weight:700;
+    font-variant-numeric:tabular-nums; letter-spacing:.06em; padding:11px 6px!important}
+  .tsep{font-size:1.15em; font-weight:700; color:var(--sub)}
 
 /* ================= そうだん ================= */
   .chatwrap{max-height:52vh; overflow-y:auto; padding:4px 2px;
@@ -1536,12 +1551,40 @@ function mdPicker(idBase, ymd, label, allowEmpty){
   if(allowEmpty) mo += '<option value="">—</option>';
   for(i=1;i<=12;i++) mo += '<option value="'+i+'"'+(m===i?' selected':'')+'>'+i+'月</option>';
   if(allowEmpty) da += '<option value="">—</option>';
-  for(i=1;i<=31;i++) da += '<option value="'+i+'"'+(d===i?' selected':'')+'>'+i+'日</option>';
+  /* 日にちの横に曜日も出す */
+  var curM = m || (new Date().getMonth()+1);
+  for(i=1;i<=31;i++){
+    var ym0 = mdToYmd(curM, i);
+    var w = '';
+    if(isYmd(ym0)){
+      var a0 = ym0.split('-'), dd = new Date(+a0[0], +a0[1]-1, +a0[2]);
+      if(dd.getDate() === i) w = '（'+WDAY[dd.getDay()]+'）';
+    }
+    da += '<option value="'+i+'"'+(d===i?' selected':'')+'>'+i+'日'+w+'</option>';
+  }
   return '<label class="f">'+esc(label)+'</label>'+
     '<div class="pair" style="margin-bottom:11px">'+
-      '<select id="'+idBase+'_m">'+mo+'</select>'+
-      '<select id="'+idBase+'_d">'+da+'</select>'+
+      '<select id="'+idBase+'_m" data-md="'+idBase+'">'+mo+'</select>'+
+      '<select id="'+idBase+'_d" data-md="'+idBase+'">'+da+'</select>'+
     '</div>';
+}
+/* 月を変えたら、日にちの曜日も付け直す */
+function refreshMd(idBase){
+  var ms = document.getElementById(idBase+'_m'), ds = document.getElementById(idBase+'_d');
+  if(!ms || !ds) return;
+  var mv = toNum(ms.value); if(!mv) return;
+  var keep = ds.value;
+  var allowEmpty = ds.options.length && ds.options[0].value === '';
+  var da = allowEmpty ? '<option value="">—</option>' : '';
+  for(var i=1;i<=31;i++){
+    var ym0 = mdToYmd(mv, i), w = '';
+    if(isYmd(ym0)){
+      var a0 = ym0.split('-'), dd = new Date(+a0[0], +a0[1]-1, +a0[2]);
+      if(dd.getDate() === i) w = '（'+WDAY[dd.getDay()]+'）';
+    }
+    da += '<option value="'+i+'"'+(String(i)===keep?' selected':'')+'>'+i+'日'+w+'</option>';
+  }
+  ds.innerHTML = da;
 }
 function readMd(idBase){
   var m = val(idBase+'_m'), d = val(idBase+'_d');
@@ -1726,9 +1769,11 @@ function classesForDate(ymd){
   var map = {};
   termCourses().forEach(function(c){ c.slots.forEach(function(sl){ map[sl.d+sl.p] = c; }); });
   var out = [];
+  var holOn = changesOn(ymd).some(function(h){ return changeType(h)==='holclass'; });   /* 祝日だけど授業あり */
+  var isHol = !!holidayName(ymd) && !S.settings.classOnHoliday && !holOn;
   PERIODS.forEach(function(p){
     var c = map[dch+p]; if(!c) return;
-    var off = isCancelled(c.name, ymd) ? 'cancel' : (!biweekOn(c.name, ymd) ? 'biweek' : '');
+    var off = isHol ? 'holiday' : isCancelled(c.name, ymd) ? 'cancel' : (!biweekOn(c.name, ymd) ? 'biweek' : '');
     var web = c.web || (isOnlineOn(c.name, ymd) ? 1 : 0);
     out.push({ period:p, name:c.name, room:courseRoom(c.name), web:web, req:courseReq(c.name), bi:c.bi, off:off,
                online: isOnlineOn(c.name, ymd) ? 1 : 0 });
@@ -1876,7 +1921,7 @@ var COMMUTE_DEFAULT = {
 };
 var TAB_DEFS = [
   ['today','今日'],['tt','時間割'],['course','授業'],['cal','予定'],['todo','ToDo'],
-  ['money','お金'],['chat','そうだん'],['notes','メモ'],['news','お知らせ'],['risyu','履修'],['set','⚙']
+  ['money','お金'],['chat','相談'],['notes','メモ'],['news','お知らせ'],['risyu','履修'],['set','⚙']
 ];
 var TODAY_SECTIONS = [
   ['digest','今すぐ確認'],['banners','お知らせ'],['classes','今日の授業'],['transit','行き方・帰り方'],
@@ -2939,10 +2984,10 @@ function focusItemsFor(ymd){
   /* 休講・遠隔・補講 */
   if(show('chg')){
     changesOn(ymd).forEach(function(h){
-      var ty = changeType(h), nm = ({cancel:'休講',online:'遠隔',makeup:'補講'})[ty];
+      var ty = changeType(h), nm = ({cancel:'休講',online:'遠隔',makeup:'補講',holclass:'祝日でも授業あり'})[ty];
       out.push({ src:'chg', id:h.id, date:ymd, title:(h.course==='*'?'全休':h.course)+'　'+nm,
         sub:(ty==='makeup'&&h.period?h.period+'限':'')+(h.room?' '+h.room:''), time:'',
-        colorRaw: ty==='cancel'?'var(--rakuten)':ty==='online'?'var(--e6)':'var(--ok)', mt:h.mt||0 });
+        colorRaw: ty==='cancel'?'var(--rakuten)':ty==='online'?'var(--e6)':ty==='holclass'?'var(--holi)':'var(--ok)', mt:h.mt||0 });
     });
     classesForDate(ymd).forEach(function(c){
       if(c.off==='biweek') out.push({ src:'chg', id:'bw'+c.name, date:ymd, title:c.name+'　今週なし（隔週）', sub:'', time:'', colorRaw:'var(--sub)', mt:0 });
@@ -3088,14 +3133,14 @@ function viewDay(ymd, pageKey){
             '<span class="grow"><span class="t"'+(c.off?' style="text-decoration:line-through;color:var(--sub)"':'')+'>'+esc(c.name)+
               (its.length?' '+its.map(function(x){ return '<span class="cevd" style="background:'+itemColor(x)+';display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:3px;vertical-align:middle"></span>'; }).join(''):'')+'</span>'+
             '<span class="s">'+esc(c.room||'')+(c.web?'（家で受講）':'')+(c.online?'・遠隔':'')+(c.makeup?'・補講':'')+
-              (c.off==='cancel'?'　休講':c.off==='biweek'?'　今週なし':'')+'</span></span>'+
+              (c.off==='cancel'?'　休講':c.off==='biweek'?'　今週なし':c.off==='holiday'?'　祝日（授業なし）':'')+'</span></span>'+
             '<span class="s2 num">'+esc(st)+'<br>'+esc(en)+'</span></div>';
         }).join(''));
   };
   parts.transit = function(){ var tr = transitFor(ymd); return tr ? '<div class="tsec">'+tr+'</div>' : ''; };
   parts.leave = function(){ return isToday ? leaveCard() : ''; };
   parts.memo = function(){
-    var pinned = S.notes.filter(function(n){ return n.pinned; }).slice(0,3);
+    var pinned = S.notes.filter(function(n){ return n.pinned; });   /* 上限なし */
     return secWrap('memo','メモ', pinned.length?'ピン留め '+pinned.length+'件':null,
       (pinned.length ? pinned.map(noteRow).join('') : '<div class="empty">ピン留めしたメモがここに出ます。</div>')+
       '<button class="btn ghost" style="margin-top:8px" data-act="note-new">メモを作る</button>');
@@ -3645,12 +3690,14 @@ function viewShifts(){
       var mm = shiftMinutes(x);
       return '<div class="row"><div class="tick" style="background:'+colorOf(x.color||kindOf('work').color)+'"></div>'+
         '<div class="grow"><div class="t">'+esc(x.title || S.settings.shop || 'バイト')+'<span class="b cr" style="margin-left:6px">'+(isWeekend(x.date)?'土日':'平日')+'</span></div>'+
-        '<div class="s">'+ymdLabel(x.date)+'　'+esc(x.start||'')+'〜'+esc(x.end||'')+'（'+(Math.round((mm-shiftBreak(x))/6)/10)+'時間'+(shiftBreak(x)?'・休憩1h引':'')+(toNum(x.ot)?'＋残業'+toNum(x.ot)+'分':'')+'）</div></div>'+
+        '<div class="s">'+ymdLabel(x.date)+'　'+esc(x.start||'')+'〜'+esc(x.realEnd||x.end||'')+
+          (x.realEnd && x.realEnd!==x.end ? '（予定は'+esc(x.end||'')+'）' : '')+
+          '　'+(Math.round((mm-shiftBreak(x)+toNum(x.ot))/6)/10)+'時間'+(shiftBreak(x)?'・休憩1h引':'')+
+          (toNum(x.ot)>0?'・残業'+toNum(x.ot)+'分':toNum(x.ot)<0?'・早上がり'+(-toNum(x.ot))+'分':'')+'</div></div>'+
         '<div class="amt num">'+yen(shiftPay(x))+'</div></div>'+
-        '<div class="row" style="padding-top:0"><div class="grow s">残業を足す</div>'+
+        '<div class="row" style="padding-top:0"><div class="grow s">終わった時間を直す</div>'+
         '<button class="mini" data-act="ot-plus" data-id="'+x.id+'" data-n="-10">−10分</button>'+
         '<button class="mini" data-act="ot-plus" data-id="'+x.id+'" data-n="10">＋10分</button>'+
-        '<button class="mini" data-act="ot-plus" data-id="'+x.id+'" data-n="30">＋30分</button>'+
         '<button class="mini" data-act="ev-open" data-src="work" data-id="'+x.id+'">詳細</button></div>';
     }).join('')+'</div>' : '<div class="empty" style="margin-top:12px">'+ART.empty+'<div style="margin-top:8px">この期間のシフトはありません。</div></div>')+
     '<button class="btn ghost" style="margin-top:12px" data-act="go" data-app="cal" data-tab="cal">カレンダーでシフトを追加</button>'+
@@ -4324,6 +4371,14 @@ function shiftMinutes(s){
   var m = b - a; if(m < 0) m += 1440;
   return m;
 }
+/* 実際に終わった時間から、残業（マイナスなら早上がり）を出す */
+function otFromReal(d){
+  var st = minutesOf(d.time), en = minutesOf(d.end), re = minutesOf(d.realEnd);
+  if(st == null || en == null || re == null) return toNum(d.ot);
+  var base = en - st; if(base < 0) base += 1440;
+  var real = re - st; if(real < 0) real += 1440;
+  return real - base;
+}
 function shiftBreak(s){ return (shiftMinutes(s) >= 420) ? 60 : 0; }   /* 7時間以上は休憩1時間を引く */
 function shiftPay(s){
   var mins = shiftMinutes(s) - shiftBreak(s) + (toNum(s.ot) || 0);
@@ -4410,7 +4465,7 @@ function itemFg(x){ var k=kindOf(x.src); return (x.src==='task'||x.src==='pay'||
 /* ============================== 入力フォーム ============================== */
 function newDraft(date){
   return { kind:'task', title:'', date:date||calSel, dateEnd:'', time:'', end:'', wage:'', ot:'',
-           memo:'', rep:0, subject:'', photos:[], pri:1, how:'', url:'' };
+           memo:'', rep:0, subject:'', photos:[], pri:1, how:'', url:'', realEnd:'' };
 }
 function readEvForm(){
   if(!evDraft) return;
@@ -4425,6 +4480,7 @@ function readEvForm(){
   var uv = g('ev_url'); if(uv !== null) evDraft.url = uv;
   var tv = readTime('ev_time'); if(tv !== null) evDraft.time = tv;
   var ev_ = readTime('ev_end');  if(ev_ !== null) evDraft.end = ev_;
+  var rv = readTime('ev_real');  if(rv !== null) evDraft.realEnd = rv;
   if((v=g('ev_wage'))!==null) evDraft.wage = v;
   if((v=g('ev_ot'))!==null) evDraft.ot = v;
   if((v=g('ev_memo'))!==null) evDraft.memo = v;
@@ -4438,49 +4494,29 @@ function redrawForm(){
   if(fm){ var y=window.scrollY; fm.innerHTML = evFormBody(); window.scrollTo(0,y); if(typeof twInit==='function') twInit(); }
   else render();
 }
-/* 時と分をプルダウンで選ぶ（何も選んでいなければ12時から） */
+/* 時刻は数字で入力（時・分を直接打つ） */
 function timeSelect(id, val_, label, allowEmpty){
   var has = /^\d{1,2}:\d{2}$/.test(val_||'');
-  var hv = has ? val_.split(':')[0] : '';
+  var hv = has ? String(+val_.split(':')[0]) : '';
   var mv = has ? val_.split(':')[1] : '';
-  var ho = allowEmpty ? '<option value="">—</option>' : '';
-  for(var hh=0; hh<24; hh++){
-    var H = pad(hh);
-    var sel = has ? (hv===H) : (!allowEmpty && hh===12);
-    ho += '<option value="'+H+'"'+(sel?' selected':'')+'>'+hh+'時</option>';
-  }
-  var mo = allowEmpty ? '<option value="">—</option>' : '';
-  for(var mm=0; mm<60; mm+=10){
-    var M = pad(mm);
-    var sel2 = has ? (mv===M) : (!allowEmpty && mm===0);
-    mo += '<option value="'+M+'"'+(sel2?' selected':'')+'>'+M+'分</option>';
-  }
   return '<label class="f">'+esc(label)+'</label>'+
-    '<div class="pair" style="margin-bottom:11px">'+
-      '<select id="'+id+'_h" data-t12="'+id+'">'+ho+'</select>'+
-      '<select id="'+id+'_m" data-t12="'+id+'">'+mo+'</select>'+
+    '<div class="timerow" id="'+id+'_row">'+
+      '<input id="'+id+'_h" class="tnum" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="--" value="'+esc(hv)+'" data-tp="'+id+'">'+
+      '<span class="tsep">：</span>'+
+      '<input id="'+id+'_m" class="tnum" inputmode="numeric" pattern="[0-9]*" maxlength="2" placeholder="--" value="'+esc(mv)+'" data-tp="'+id+'">'+
+      (allowEmpty ? '<button type="button" class="mini" data-act="tw-clear" data-id="'+id+'">消す</button>' : '')+
     '</div>';
 }
 function readTime(id){
   var h = document.getElementById(id+'_h'), m = document.getElementById(id+'_m');
   if(!h || !m) return null;
-  if(!h.value || !m.value) return '';
-  return h.value + ':' + m.value;
+  var hs = String(h.value).replace(/[^0-9]/g,''), ms = String(m.value).replace(/[^0-9]/g,'');
+  if(hs === '' && ms === '') return '';
+  var hh = Math.max(0, Math.min(23, toNum(hs)));
+  var mm = Math.max(0, Math.min(59, toNum(ms)));
+  return pad(hh) + ':' + pad(mm);
 }
-/* 空のプルダウンを開いたときは12時のあたりを見せる */
-function twInit(){
-  Array.prototype.forEach.call(document.querySelectorAll('select[data-t12]'), function(sel){
-    if(sel.value) return;
-    var isH = /_h$/.test(sel.id);
-    sel.dataset.pref = isH ? '12' : '00';
-  });
-}
-function readTime(id){
-  var h = document.getElementById(id+'_h'), m = document.getElementById(id+'_m');
-  if(!h || !m) return null;
-  if(!h.value || !m.value) return '';
-  return h.value + ':' + m.value;
-}
+function twInit(){}
 function evFormBody(){
   if(!evDraft) evDraft = newDraft(calSel);
   var k = kindOf(evDraft.kind);
@@ -4515,11 +4551,20 @@ function evFormBody(){
     h += '<div class="pair" style="margin-bottom:11px">'+
       '<div>'+timeSelect('ev_time', evDraft.time, '開始', true)+'</div>'+
       '<div>'+timeSelect('ev_end', evDraft.end, '終了', true)+'</div></div>';
-    h += '<div class="field"><label class="f">残業（分・早上がりはマイナス）</label>'+
-      '<div class="pair"><input id="ev_ot" inputmode="numeric" placeholder="0" value="'+esc(evDraft.ot||'')+'">'+
-      '<button class="mini" data-act="ot-step" data-n="-10" style="flex:0 0 auto">−10</button>'+
-      '<button class="mini" data-act="ot-step" data-n="10" style="flex:0 0 auto">＋10</button></div></div>'+
-      '<p class="note" style="margin:6px 0 10px">早く上がった日は −30 のようにマイナスで入れられます。</p>';
+    h += timeSelect('ev_real', evDraft.realEnd||'', '実際に終わった時間（ちがうときだけ）', true);
+    (function(){
+      var st = minutesOf(evDraft.time), en = minutesOf(evDraft.end), re = minutesOf(evDraft.realEnd);
+      if(st == null || en == null) return;
+      var base = en - st; if(base < 0) base += 1440;
+      var real = (re != null) ? (re - st < 0 ? re - st + 1440 : re - st) : base;
+      var diff = real - base;
+      h += '<p class="note" style="margin:-4px 0 10px">予定は'+(Math.round(base/6)/10)+'時間。'+
+        (re != null
+          ? (diff === 0 ? '予定どおりです。'
+             : diff > 0 ? '<b>'+diff+'分の残業</b>として計算します。'
+             : '<b>'+(-diff)+'分早く上がった</b>として計算します。')
+          : '空のままなら予定どおりで計算します。')+'</p>';
+    })();
     h += '<p class="note" style="margin:-4px 0 10px">'+(isWeekend(evDraft.date)?'土日なので分給 ':'平日なので分給 ')+minRate(evDraft.date)+'円。7時間以上は休憩1時間を引き、交通費'+yen(toNum(S.settings.fare))+'を足します。</p>';
   }else{
     h += '<div class="field">'+timeSelect('ev_time', evDraft.time, (isTask?'締切の時刻（任意）':isTest?'開始時刻（任意）':'時刻（任意）'), true)+'</div>';
@@ -4577,7 +4622,7 @@ function createOne(kind, d, rid){
       kind:kind, photos:ph, rid:rid, mt:now });
   }else if(kind==='work'){
     S.shifts.push({ id:uid('wk'), title:'バイト', date:d.date,
-      start:d.time||'', end:d.end||'', ot:toNum(d.ot), rate:0,
+      start:d.time||'', end:d.end||'', realEnd:d.realEnd||'', ot:otFromReal(d), rate:0,
       memo:d.memo||'', photos:ph, rid:rid, mt:now });
   }else{
     S.events.push({ id:uid('ev'), date:d.date, dateEnd:(isYmd(d.dateEnd)&&d.dateEnd>d.date)?d.dateEnd:'',
@@ -4607,7 +4652,7 @@ function updateOne(src, id, d){
     o.pri=toNum(d.pri); o.how=d.how||''; o.url=d.url||''; }
   else if(listNameOf(src)==='exams'){ o.subject=d.subject||''; o.title=d.title||''; o.date=d.date; o.time=d.time||''; o.room=d.memo||''; o.kind=d.kind; o.photos=ph; }
   else if(src==='work'){ o.title='バイト'; o.date=d.date;
-    o.start=d.time||''; o.end=d.end||''; o.ot=toNum(d.ot); o.memo=d.memo||''; o.photos=ph; }
+    o.start=d.time||''; o.end=d.end||''; o.realEnd=d.realEnd||''; o.ot=otFromReal(d); o.memo=d.memo||''; o.photos=ph; }
   else { o.date=d.date; o.dateEnd=(isYmd(d.dateEnd)&&d.dateEnd>d.date)?d.dateEnd:'';
          o.title=d.title; o.subject=d.subject||''; o.time=d.time||''; o.memo=d.memo||''; o.photos=ph; o.kind=(d.kind==='imp'?'imp':'other'); }
   o.mt = Date.now();
@@ -4648,7 +4693,8 @@ function loadForEdit(src, id){
   if(src==='task') evDraft = Object.assign(base, { kind:'task', title:o.title, subject:o.subject||'', date:o.due, time:o.time||'', memo:o.memo||'',
     pri:toNum(o.pri), how:o.how||'', url:o.url||'' });
   else if(listNameOf(src)==='exams') evDraft = Object.assign(base, { kind:(o.kind||'exam'), title:o.title||'', subject:o.subject||'', date:o.date, time:o.time||'', memo:o.room||'' });
-  else if(src==='work') evDraft = Object.assign(base, { kind:'work', title:o.title||'', date:o.date, time:o.start||'', end:o.end||'', ot:(toNum(o.ot)?String(toNum(o.ot)):''), memo:o.memo||'' });
+  else if(src==='work') evDraft = Object.assign(base, { kind:'work', title:o.title||'', date:o.date, time:o.start||'', end:o.end||'',
+    realEnd:o.realEnd||'', ot:(toNum(o.ot)?String(toNum(o.ot)):''), memo:o.memo||'' });
   else evDraft = Object.assign(base, { kind:(o.kind==='imp'?'imp':'other'), title:o.title, subject:o.subject||'', date:o.date, dateEnd:o.dateEnd||'', time:o.time||'', memo:o.memo||'' });
   calEdit = { src:src, id:id };
   if(isYmd(evDraft.date)){ calSel = evDraft.date; calYm = evDraft.date.slice(0,7); }
@@ -5109,6 +5155,11 @@ function calAction(act, t){
   }
   if(act==='ev-pri'){ readEvForm(); evDraft.pri = toNum(t.dataset.v); redrawForm(); return true; }
   if(act==='ev-how'){ readEvForm(); evDraft.how = (evDraft.how===t.dataset.v ? '' : t.dataset.v); redrawForm(); return true; }
+  if(act==='tw-clear'){
+    var wid = t.dataset.id;
+    ['h','m'].forEach(function(w){ var i=document.getElementById(wid+'_'+w); if(i) i.value=''; });
+    return true;
+  }
   if(act==='ev-save'){ saveEvent(); return true; }
   if(act==='ev-cancel'){ calEdit = null; evDraft = newDraft(calSel); if(calTab==='add') calTab='cal'; render(); window.scrollTo(0,0); return true; }
   if(act==='ev-edit'){
@@ -5199,6 +5250,12 @@ function viewSettings(){
     '</div>'+
     ((S.ui.myColors||[]).length ? '<div class="pillrow">'+(S.ui.myColors||[]).map(function(c,i){
         return '<button class="mini" data-act="mycolor-del" data-i="'+i+'">'+(i+1)+'を消す</button>'; }).join('')+'</div>' : '')+
+    '<label class="f">祝日の授業</label>'+
+    '<div class="pillrow">'+
+      '<button data-act="hol-class" data-v="0" class="'+(!S.settings.classOnHoliday?'on':'')+'">祝日は休み</button>'+
+      '<button data-act="hol-class" data-v="1" class="'+(S.settings.classOnHoliday?'on':'')+'">祝日も授業あり</button>'+
+    '</div>'+
+    '<p class="note" style="margin:-4px 0 10px">祝日に授業がある日は、時間割タブの「補講」で登録もできます。</p>'+
     '<label class="f">締切が近いと知らせる</label>'+
     '<div class="pillrow">'+[[0,'知らせない'],[1,'1日前'],[3,'3日前'],[7,'7日前']].map(function(o){
       return '<button data-act="due-lead" data-v="'+o[0]+'" class="'+((toNum(S.ui.dueLead)||0)===o[0]?'on':'')+'">'+o[1]+'</button>';
@@ -5273,7 +5330,7 @@ function viewSettings(){
     '<div class="field"><label class="f">Gemini APIキー</label>'+
     '<input id="sy_key" type="password" value="'+esc(S.settings.geminiKey||'')+'" placeholder="AQ.Ab… または AIza…"></div>'+
     '<button class="btn ghost" data-act="save-key">保存する</button>'+
-    '<div class="note">Google AI Studio（aistudio.google.com）で無料でもらえます。いまは <b>AQ.</b> で始まるキーが発行されます（以前の AIza… でも動きます）。「そうだん」タブでAIに相談できるようになります。この端末だけに保存され、同期されません。</div>')
+    '<div class="note">Google AI Studio（aistudio.google.com）で無料でもらえます。いまは <b>AQ.</b> で始まるキーが発行されます（以前の AIza… でも動きます）。「相談」タブでAIに相談できるようになります。この端末だけに保存され、同期されません。</div>')
 
   + section('バックアップ', null,
     '<div class="pair"><button class="btn ghost" data-act="export">ファイルに保存</button>'+
@@ -5298,6 +5355,7 @@ function settingsAction(act, t){
   if(act==='mycolor-del'){
     S.ui.myColors.splice(toNum(t.dataset.i), 1); touch('ui'); toast('消しました'); commit(); return true;
   }
+  if(act==='hol-class'){ S.settings.classOnHoliday = toNum(t.dataset.v) ? 1 : 0; toast(S.settings.classOnHoliday?'祝日も授業ありにしました':'祝日は休みにしました'); commit(); return true; }
   if(act==='due-lead'){ S.ui.dueLead = toNum(t.dataset.v); touch('ui'); commit(); return true; }
   if(act==='todo-sort'){ S.ui.todoByPri = toNum(t.dataset.v) ? 1 : 0; touch('ui'); commit(); return true; }
   if(act==='prog-scale'){ S.ui.progScale = toNum(t.dataset.v); touch('ui'); commit(); return true; }
@@ -5673,7 +5731,8 @@ function weekTimeline(){
 }
 /* ============================== 時間割 ============================== */
 var ttShowAll = false;
-var ttWeek = null;   /* null=自動（土日は来週）、0=今週、1=来週、-1=先週 */     /* 他の学期を表示するか */
+var ttWeek = null;
+var courseTemp = false;   /* 授業タブを一時的に開いているか */   /* null=自動（土日は来週）、0=今週、1=来週、-1=先週 */     /* 他の学期を表示するか */
 var courseView = '';       /* 授業タブで開いている科目名 */
 
 function shortName(name){
@@ -5742,7 +5801,7 @@ function viewTT(){
   }
 
   h += '<div class="scroll" style="overflow-x:hidden"><table class="tt tt2"><thead><tr><th class="pd"></th>'+
-    DAYS.map(function(d){ return '<th'+(dates[d]===td?' class="today"':'')+'>'+d+'<span class="dsub">'+Number(dates[d].slice(8,10))+'</span></th>'; }).join('')+
+    DAYS.map(function(d){ var hn=holidayName(dates[d]); return '<th'+(dates[d]===td?' class="today"':'')+(hn?' style="color:var(--holi)"':'')+'>'+d+'<span class="dsub">'+Number(dates[d].slice(8,10))+(hn?'<br><span style="font-size:.85em">'+esc(hn.slice(0,4))+'</span>':'')+'</span></th>'; }).join('')+
     '</tr></thead><tbody>';
   PERIODS.forEach(function(p){
     h += '<tr><th class="pd"><span class="pdn">'+p+'</span><span class="pdt">'+esc(S.commute.periods[p-1]||'')+'<br>'+esc(S.commute.ends[p-1]||'')+'</span></th>';
@@ -5758,7 +5817,8 @@ function viewTT(){
       }
       if(!c){ h += '<td class="empty-cell"></td>'; return; }
       var ymd = dates[d];
-      var off = isCancelled(c.name, ymd) ? 'cancel' : (c.bi && !biweekOn(c.name, ymd) ? 'skip' : '');
+      var holOn = changesOn(ymd).some(function(h){ return changeType(h)==='holclass'; });
+      var off = (holidayName(ymd) && !S.settings.classOnHoliday && !holOn) ? 'holiday' : isCancelled(c.name, ymd) ? 'cancel' : (c.bi && !biweekOn(c.name, ymd) ? 'skip' : '');
       var online = isOnlineOn(c.name, ymd);
       var isWeb = c.web || online;
       var cls = (courseReq(c.name) ? 'reqd' : 'elec') + (off ? ' off' : '') + (isWeb ? ' web' : '');
@@ -5766,6 +5826,7 @@ function viewTT(){
         '<span class="nm2">'+esc(shortName(c.name))+'</span>'+
         (c.bi ? '<span class="tag2">'+(off==='skip' ? '今週なし' : '隔週')+'</span>' : '')+
         (off==='cancel' ? '<span class="tag2 cx">休講</span>' : '')+
+        (off==='holiday' ? '<span class="tag2 cx">祝日</span>' : '')+
         (online ? '<span class="tag2 ol">遠隔</span>' : '')+
         (function(){
           var its = itemsForCourseOn(c.name, ymd);
@@ -5799,13 +5860,13 @@ function weekNotes(dates){
   }).sort(function(a,b){ return a.date.localeCompare(b.date); });
   var chg = S.holidays.filter(function(h){ return h.date >= from && h.date <= to; })
     .sort(function(a,b){ return a.date.localeCompare(b.date); });
-  var typeName = { cancel:'休講', online:'遠隔', makeup:'補講' };
+  var typeName = { cancel:'休講', online:'遠隔', makeup:'補講', holclass:'祝日でも授業あり' };
   if(!items.length && !chg.length) return '';
   return section('この週の連絡事項', (items.length+chg.length)+'件',
     chg.map(function(x){
       var ty = changeType(x);
-      return '<div class="evrow"><span class="cbar" style="background:'+(ty==='cancel'?'var(--rakuten)':ty==='online'?'var(--e6)':'var(--ok)')+'"></span>'+
-        '<span class="grow"><span class="t">'+(x.course==='*'?'全休':esc(x.course))+'　'+typeName[ty]+'</span>'+
+      return '<div class="evrow"><span class="cbar" style="background:'+(ty==='cancel'?'var(--rakuten)':ty==='online'?'var(--e6)':ty==='holclass'?'var(--holi)':'var(--ok)')+'"></span>'+
+        '<span class="grow"><span class="t">'+(x.course==='*'?(ty==='holclass'?'':'全休'):esc(x.course))+(x.course==='*'&&ty==='holclass'?'':'　')+typeName[ty]+'</span>'+
         '<span class="s">'+ymdLabel(x.date)+(ty==='makeup'&&x.period?'　'+x.period+'限':'')+'</span></span></div>';
     }).join('')+
     items.map(function(x){
@@ -5821,8 +5882,8 @@ function weekNotes(dates){
 function cancelBox(){
   var future = S.holidays.filter(function(x){ return x.date >= today(); })
     .sort(function(a,b){ return a.date.localeCompare(b.date); });
-  var typeName = { cancel:'休講', online:'遠隔', makeup:'補講' };
-  var typeColor = { cancel:'var(--rakuten)', online:'var(--e6)', makeup:'var(--ok)' };
+  var typeName = { cancel:'休講', online:'遠隔', makeup:'補講', holclass:'祝日でも授業あり' };
+  var typeColor = { cancel:'var(--rakuten)', online:'var(--e6)', makeup:'var(--ok)', holclass:'var(--holi)' };
   return section('休講・遠隔・補講の登録', future.length ? future.length+'件' : null,
     (future.length ? future.map(function(x){
       var ty = changeType(x);
@@ -5835,7 +5896,7 @@ function cancelBox(){
     '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)">'+
     '<label class="f">種類</label>'+
     '<div class="pillrow" id="cxtype">'+
-      [['cancel','休講'],['online','遠隔'],['makeup','補講']].map(function(o,i){
+      [['cancel','休講'],['online','遠隔'],['makeup','補講'],['holclass','祝日でも授業あり']].map(function(o,i){
         return '<button data-act="cx-type" data-v="'+o[0]+'" class="'+(i===0?'on':'')+'">'+o[1]+'</button>';
       }).join('')+'</div>'+
     '<div class="field"><label class="f">科目</label><select id="cx_course"><option value="*">その日ぜんぶ（全休・全部遠隔）</option>'+
@@ -5846,7 +5907,7 @@ function cancelBox(){
         PERIODS.map(function(p){ return '<option value="'+p+'">'+p+'限</option>'; }).join('')+'</select></div>'+
       '<div><label class="f">教室（任意）</label><input id="cx_room" placeholder="N-204"></div></div>'+
     '<button class="btn ghost" data-act="cancel-add">登録する</button>'+
-    '<p class="note">休講はその日の授業から消え、行き方の計算も変わります。遠隔にすると通学の計算から外れます。補講は空いているコマに入ります。</p></div>');
+    '<p class="note">休講はその日の授業から消え、行き方の計算も変わります。遠隔にすると通学の計算から外れます。補講は空いているコマに入ります。「祝日でも授業あり」は、その祝日を普通の授業日として扱います（科目は「その日ぜんぶ」でOK）。</p></div>');
 }
 
 /* ============================== 授業タブ ============================== */
@@ -5862,7 +5923,9 @@ function viewCourse(){
         '<div class="ct">'+esc(c.name)+(cm.alias?'<span class="s2" style="margin-left:6px">'+esc(cm.alias)+'</span>':'')+'</div>'+
         '<div class="cm">'+esc(c.slotText)+'　'+esc(courseRoom(c.name)||(c.web?'WEB':''))+'　'+c.cr+'単位　'+(courseReq(c.name)?'必修':'選択')+(c.bi?'・隔週':'')+'</div>'+
         '<div class="badges">'+
-          '<span class="b '+(at.ab>=at.limit?'warn':at.limit-at.ab<=1?'r2':'cr')+'">欠席 '+at.ab+'／上限'+at.limit+'</span>'+
+          '<span class="b '+(at.ab>=at.limit?'warn':at.limit-at.ab<=1?'r2':'cr')+'">'+
+            (at.ab>=at.limit ? '単位が危ない（欠席'+at.ab+'）'
+             : 'あと'+(at.limit-at.ab)+'回休むと単位不可')+'</span>'+
           (nT?'<span class="b" style="background:'+kindHex('task')+';color:'+kindFg('task')+'">課題 '+nT+'</span>':'')+
           (S.grades[c.name]&&S.grades[c.name].grade?'<span class="b cat">'+esc(S.grades[c.name].grade)+'</span>':'')+
         '</div></div>';
@@ -5899,7 +5962,7 @@ function courseDetail(name){
   var gr = S.grades[name] || {};
   var todayCls = classesForDate(td).some(function(x){ return x.name===name && !x.off; });
 
-  var h = '<button class="mini" data-act="course-back" style="margin-bottom:10px">‹ 科目一覧</button>';
+  var h = '<button class="mini" data-act="course-back" style="margin-bottom:10px">'+(courseTemp?'‹ 時間割にもどる':'‹ 科目一覧')+'</button>';
   h += '<div class="box" style="border-left:6px solid '+courseColor(name)+';margin-bottom:14px">'+
     '<div class="ct" style="font-size:1.15em">'+esc(name)+'</div>'+
     '<div class="cm">'+esc(c.slotText)+'　'+esc(courseRoom(name)||(c.web?'WEB':''))+'　'+c.cr+'単位'+(c.code?'　コード'+esc(c.code):'')+'</div>'+
@@ -5915,7 +5978,13 @@ function courseDetail(name){
     '</div>';
 
   /* 出欠 */
+  var restAb = at.limit - at.ab;
   h += section('出欠', '出'+at.pres+'・欠'+at.ab+'・遅'+at.late+'／全'+at.total+'回',
+    '<div class="'+(restAb<=0?'msg ng':restAb<=1?'bn red':restAb<=2?'bn amber':'msg ok')+'" style="margin-bottom:12px">'+
+      (restAb<=0 ? '<b>欠席が上限に達しています。</b>先生に相談してください。'
+       : (restAb<=2?'<span class="ic">!</span><span>':'')+
+         '<b>あと'+restAb+'回休むと単位不可</b>です。'+
+         (restAb<=2?'</span>':''))+'</div>'+
     '<div class="grid3 keep3" style="margin-bottom:10px">'+
       '<div class="stat"><div class="k">欠席</div><div class="v" style="color:'+(at.ab>=at.limit?'var(--rakuten)':'inherit')+'">'+at.ab+'</div></div>'+
       '<div class="stat"><div class="k">評価不可まで</div><div class="v">あと'+Math.max(0, at.limit-at.ab)+'</div></div>'+
@@ -6047,8 +6116,18 @@ function ttAction(act, t, ev){
     termsAll().push({ id:id, year:y, label:y+'年 '+(half==='1'?'前期':'後期')+'（'+yy+'年 '+half+'学期）', courses:(cur.courses||[]).map(function(c){ return Object.assign({}, c); }) });
     S.termId = id; touch('termsList'); ttShowAll=false; toast('学期を作りました'); commit(); return true;
   }
-  if(act==='course-open'){ courseView = t.dataset.name; appId='course'; render(); window.scrollTo(0,0); return true; }
-  if(act==='course-back'){ courseView=''; render(); window.scrollTo(0,0); return true; }
+  if(act==='course-open'){
+    courseView = t.dataset.name;
+    /* 授業タブを非表示にしていても開けるよう、一時的に見えるようにする */
+    var tb = (S.ui.tabs||[]).filter(function(x){ return x[0]==='course'; })[0];
+    if(tb && !tb[1]) courseTemp = true;
+    appId='course'; render(); window.scrollTo(0,0); return true;
+  }
+  if(act==='course-back'){
+    courseView='';
+    if(courseTemp){ courseTemp=false; appId='tt'; }
+    render(); window.scrollTo(0,0); return true;
+  }
   if(act==='course-req'){
     var nm = t.dataset.name, cm = S.courseMeta[nm] || {};
     cm.req = courseReq(nm) ? 0 : 1; S.courseMeta[nm] = cm; touch('courseMeta'); commit(); return true;
@@ -6121,9 +6200,13 @@ function ttAction(act, t, ev){
     var ty = tb ? tb.dataset.v : 'cancel';
     if(!cd){ toast('日付を選んでください', true); return true; }
     if(ty === 'makeup' && cc === '*'){ toast('補講は科目を選んでください', true); return true; }
+    if(ty === 'holclass'){
+      if(!holidayName(cd)){ toast(ymdLabel(cd)+' は祝日ではありません', true); return true; }
+      cc = '*';
+    }
     S.holidays.push({ id:uid('hx'), date:cd, course:cc, type:ty,
       period: ty==='makeup' ? toNum(val('cx_period')) : 0, room: val('cx_room').trim(), mt:Date.now() });
-    toast(({cancel:'休講',online:'遠隔',makeup:'補講'})[ty]+'を登録しました'); commit(); return true;
+    toast(({cancel:'休講',online:'遠隔',makeup:'補講',holclass:'祝日の授業'})[ty]+'を登録しました'); commit(); return true;
   }
   if(act==='cancel-del'){ removeWithUndo('holidays', t.dataset.id, '休講を消しました'); commit(); return true; }
   return false;
@@ -6356,10 +6439,49 @@ function chatContext(){
   });
   L.push('【これからの予定（45日ぶん）】\n' + (lines.length ? lines.join('\n') : 'なし'));
 
+  /* 日ごとの状況（14日ぶん）：通学の有無・帰宅時刻・バイトに入れる時間を先に計算しておく */
+  var days = [];
+  for(var i = 0; i < 14; i++){
+    var d = shiftDate(td, i);
+    var a = d.split('-'), dow = WDAY[new Date(+a[0], +a[1]-1, +a[2]).getDay()];
+    var cls = schoolClassesForDate(d);
+    var allCls = classesForDate(d).filter(function(c){ return !c.off; });
+    var web = allCls.filter(function(c){ return c.web; });
+    var line = '・' + d + '（' + dow + '）';
+    var dayItems = items.filter(function(x){ return x.date === d; });
+    var shiftsHere = S.shifts.filter(function(w){ return w.date === d; });
+    var tests = dayItems.filter(function(x){ return x.src==='quiz' || x.src==='exam' || x.src==='kousa'; });
+    var dues = dayItems.filter(function(x){ return x.src==='task' && !x.done; });
+    if(holidayName(d)) line += ' 祝日「' + holidayName(d) + '」';
+    if(cls.length){
+      var first = cls[0], last = cls[cls.length-1];
+      var st = S.commute.periods[first.period-1], en = S.commute.ends[last.period-1];
+      var enMin = minutesOf(en);
+      var homeMin = enMin != null ? enMin + 20 + 80 : null;      /* 授業後20分＋通学80分 */
+      var workFrom = enMin != null ? enMin + 20 + 75 : null;     /* 大学→イオンモール神戸北はおよそ75分 */
+      line += ' 通学あり：' + first.period + '限〜' + last.period + '限（' + st + '〜' + en + '、' +
+        cls.map(function(c){ return c.period + '限' + c.name; }).join('・') + '）。' +
+        '帰宅はおよそ' + hhmmOf(homeMin) + '。バイトに入れるのは' + hhmmOf(workFrom) + '以降のみ。';
+      if(web.length) line += ' このほか遠隔' + web.map(function(c){ return c.period + '限' + c.name; }).join('・') + '（家で受講）。';
+    }else if(web.length){
+      line += ' 通学なし（遠隔' + web.map(function(c){ return c.period + '限' + c.name; }).join('・') + 'のみ）。バイトは終日入れる。';
+    }else{
+      line += ' 通学なし。バイトは終日入れる。';
+    }
+    if(shiftsHere.length) line += ' すでにバイトあり：' + shiftsHere.map(function(w){ return (w.start||'') + '〜' + (w.end||''); }).join('、') + '。';
+    if(tests.length) line += ' テスト：' + tests.map(function(x){ return x.title; }).join('、') + '。';
+    if(dues.length) line += ' 課題の締切：' + dues.map(function(x){ return x.title + (x.time ? ' ' + x.time : ''); }).join('、') + '。';
+    /* 翌日1限の有無（前夜の遅いバイトを避ける判断に） */
+    var nx = shiftDate(d, 1), nxCls = schoolClassesForDate(nx);
+    if(nxCls.length && nxCls[0].period === 1) line += ' 翌日は1限あり（朝が早い）。';
+    days.push(line);
+  }
+  L.push('【日ごとの状況（今日から14日）】\n' + days.join('\n'));
+
   /* 休講・遠隔・補講 */
   var chg = S.holidays.filter(function(h){ return h.date >= td; }).map(function(h){
     return '・' + h.date + ' ' + (h.course==='*'?'全休':h.course) + ' ' +
-      ({cancel:'休講', online:'遠隔', makeup:'補講'})[changeType(h)];
+      ({cancel:'休講', online:'遠隔', makeup:'補講', holclass:'祝日でも授業あり'})[changeType(h)];
   });
   if(chg.length) L.push('【授業の変更】\n' + chg.join('\n'));
 
@@ -6395,7 +6517,10 @@ var CHAT_SYSTEM =
   '・課題やテストの直前にバイトを入れないよう気をつける。テストの3日前は勉強の時間を空ける。\n' +
   '・1限がある日の前夜に遅いバイトを入れない（通学に1時間20分かかるため、朝が早い）。\n' +
   '・扶養の上限に近いときは注意をそえる。\n' +
-  '・情報がないことは推測せず、「アプリに登録がありません」と正直に言う。\n' +
+  '・バイトを提案するときは、必ず「日ごとの状況」に書いてある「バイトに入れるのは○○以降」「終日入れる」を守る。授業のある時間にバイトを勧めない。\n' +
+  '・すでにバイトが入っている日や、テスト・締切の当日は避ける。\n' +
+  '・「日ごとの状況」に無い日付や時間を作り出さない。分からないことは「アプリに登録がありません」と言う。\n' +
+  '・答えは最後まで書き切る。途中で終わらせない。\n' +
   '・長くなりすぎない。箇条書きを活かす。\n';
 
 function chatSuggest(){
@@ -6451,13 +6576,15 @@ async function chatSend(text){
   var box = document.getElementById('chatwrap'); if(box) box.scrollTop = box.scrollHeight;
 
   try{
-    var history = S.chat.slice(-12).map(function(m){
-      return { role: m.role === 'user' ? 'user' : 'model', parts:[{ text:m.text }] };
-    });
+    var history = S.chat.slice(-12)
+      .filter(function(m){ return !(m.role === 'ai' && /^つながりませんでした/.test(m.text)); })
+      .map(function(m){ return { role: m.role === 'user' ? 'user' : 'model', parts:[{ text:m.text }] }; });
+    /* 最初がAIの返事だと受け付けられないので、ユーザーの発言から始める */
+    while(history.length && history[0].role !== 'user') history.shift();
     var body = {
       systemInstruction: { parts: [{ text: CHAT_SYSTEM + '\n\n===== アプリの中身 =====\n' + chatContext() }] },
       contents: history,
-      generationConfig: { temperature: 0.6, maxOutputTokens: 900 }
+      generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
     };
     /* 使えるモデルを順に試す（1つ目がだめなら次へ） */
     var models = [S.settings.geminiModel].filter(Boolean)
@@ -6483,9 +6610,13 @@ async function chatSend(text){
       if(!/not available|not found|NOT_FOUND|unsupported|deprecated|update your code/i.test(lastErr)) break;
     }
     if(!j) throw new Error(lastErr || 'つながりませんでした');
-    var out = '';
-    try{ out = j.candidates[0].content.parts.map(function(p){ return p.text || ''; }).join(''); }catch(e){ out = ''; }
+    var out = '', fin = '';
+    try{
+      out = j.candidates[0].content.parts.map(function(p){ return p.text || ''; }).join('');
+      fin = j.candidates[0].finishReason || '';
+    }catch(e){ out = ''; }
     if(!out) out = 'うまく答えられませんでした。もう一度きいてみてください。';
+    if(fin === 'MAX_TOKENS') out += '\n\n（長くなったので途中までです。「続きを教えて」と送ると続きが読めます）';
     S.chat.push({ role:'ai', text:out, mt:Date.now() });
   }catch(e){
     var msg = String(e.message || '');
@@ -6524,7 +6655,7 @@ var MONEY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ
 var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
 var TODAY_TABS = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
 var CAL_TABS = [['cal','カレンダー'],['add','追加'],['imp','重要'],['health','健康']];
-var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'そうだん', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', notes:'メモ', news:'お知らせ', set:'設定' };
+var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', notes:'メモ', news:'お知らせ', set:'設定' };
 var FOOTS = {
   today:'天気は Open-Meteo の予報です。バスや電車の運行状況は各社の公式情報も確認してください。',
   money:'金額に分割手数料（金利）は含まれていません。引き落とし日の前日までに入金しておくと安心です。',
@@ -6541,7 +6672,14 @@ var FOOTS = {
 
 function render(){
   var APPS = APPS_VISIBLE();
-  if(!APPS.some(function(a){ return a[0]===appId; })) appId = APPS[0] ? APPS[0][0] : 'today';
+  /* 授業タブを一時的に開いているときは、そのまま表示する */
+  if(appId === 'course' && courseTemp && !APPS.some(function(a){ return a[0]==='course'; })){
+    /* 何もしない（タブには出ないが、画面は授業のまま） */
+  }else if(!APPS.some(function(a){ return a[0]===appId; })){
+    appId = APPS[0] ? APPS[0][0] : 'today';
+    courseTemp = false;
+  }
+  document.getElementById('apps').setAttribute('data-n', String(APPS.length));
   document.getElementById('apps').innerHTML = '<span class="pill"></span>' + APPS.map(function(a){
     return '<button data-app="'+a[0]+'" class="'+(appId===a[0]?'on':'')+(a[0]==='set'?' ico':'')+'">'+a[1]+'</button>';
   }).join('');
@@ -6690,6 +6828,27 @@ document.getElementById('memoimg').addEventListener('change', async function(e){
   }catch(err){ toast('写真を保存できませんでした（容量が足りないかもしれません）', true); }
 });
 
+/* 時刻の数字入力：2桁入れたら分へ移る・範囲を直す */
+document.getElementById('app').addEventListener('input', function(e){
+  var el = e.target;
+  if(!el || !el.classList || !el.classList.contains('tnum')) return;
+  var v = String(el.value).replace(/[^0-9]/g,'').slice(0,2);
+  el.value = v;
+  var isH = /_h$/.test(el.id);
+  if(v.length === 2){
+    var n = parseInt(v,10);
+    if(isH && n > 23) el.value = '23';
+    if(!isH && n > 59) el.value = '59';
+    if(isH){
+      var mm = document.getElementById(el.id.replace(/_h$/,'_m'));
+      if(mm) mm.focus();
+    }
+  }
+});
+document.getElementById('app').addEventListener('change', function(e){
+  var el = e.target;
+  if(el && el.dataset && el.dataset.md && /_m$/.test(el.id)) refreshMd(el.dataset.md);
+});
 document.getElementById('app').addEventListener('focusin', function(e){
   /* 時刻のプルダウンを空のまま開いたら、12:00 を入れておく */
   var el = e.target;
