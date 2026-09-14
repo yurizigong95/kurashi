@@ -1282,7 +1282,10 @@ var SEED = [
   { id:'p_iphone', name:'iPhone', accountId:'rakuten', count:24, monthly:8116,  firstAmount:8132, start:'2026-09' }
 ];
 var KEY = 'shiharai:v1';
-var DATA_VER = 11;
+var DATA_VER = 12;
+/* 同期の初期設定（設定タブからいつでも変えられます） */
+var DEFAULT_ROOM = '8b7f4e6et9jhxded';
+var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
 var imgKey = function(id){ return 'shiharai:img:' + id; };
 
 var COLORS = [
@@ -1938,7 +1941,7 @@ var S = {
   ui: JSON.parse(JSON.stringify(UI_DEFAULT)),
   meta: { attend:0, terms:0, commute:0, ui:0, courseMeta:0, memos:0, transit:0, payApplied:0, attendLog:0, grades:0, biweek:0, termsList:0, termsDone:0, progress:0, transitLog:0, taskLog:0, syllabus:0 },
   ver: DATA_VER,
-  settings: { smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }
+  settings: { smbcDay:27, rakutenDay:27, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }
 };
 var appId='today', payTab='home', risyuTab='tt', calTab='cal';
 var draft=null, notice=null, showPlanForm=false, hidePast=true, chartRange=12;
@@ -1957,7 +1960,7 @@ try{
   if(raw){
     var d0 = JSON.parse(raw);
     S = Object.assign({}, S, d0);
-    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, room:'', fbConfig:'', apiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }, d0.settings||{});
+    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }, d0.settings||{});
     S.risyu = Object.assign(JSON.parse(JSON.stringify(RISYU_DEFAULT)), d0.risyu||{});
     S.risyu.earned = Object.assign({ kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0 }, (d0.risyu&&d0.risyu.earned)||{});
     if(!Array.isArray(S.risyu.selected)) S.risyu.selected = [];
@@ -1981,6 +1984,9 @@ try{
     if(S.ui.theme === 'ocean') S.ui.theme = 'sky';
     if(!THEMES.some(function(t){ return t.id===S.ui.theme; })) S.ui.theme = 'pink';
     if((Number(d0.ver)||0) < 9 && S.ui.pageOrder){ delete S.ui.pageOrder.today; }   /* 今日の並びを新しい既定に */
+    /* 同期の設定はアプリに組み込んだものに合わせる */
+    S.settings.room = DEFAULT_ROOM;
+    S.settings.fbConfig = DEFAULT_FB;
     if((Number(d0.ver)||0) < 8 && Array.isArray(S.termsList)){
       S.termsList.forEach(function(t){
         if(t.id === '2026-2'){ t.year = 1; t.label = '1年 後期（2026年 2学期）'; }
@@ -2056,7 +2062,7 @@ function persist(){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
   catch(e){ toast('この端末に保存できませんでした。明細の写真を減らすと直ることがあります。', true); }
 }
-if(!S.settings.room){ S.settings.room = randCode(); persist(); }
+if(!S.settings.room){ S.settings.room = DEFAULT_ROOM || randCode(); persist(); }
 
 function applyUi(){
   var th = S.ui.theme || 'pink';
@@ -2139,35 +2145,102 @@ function parseFbConfig(txt){
   if(!cfg || !cfg.apiKey || !cfg.projectId) throw new Error('MISSING');
   return cfg;
 }
+/* Firebase を読み込む。まず新しい方式、だめなら昔ながらの方式で */
+var fbLoad = null;
+function loadFirebase(){
+  if(fbLoad) return fbLoad;
+  fbLoad = (async function(){
+    /* 1) module 方式 */
+    try{
+      var fa = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+      var ff = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      return { mode:'mod', fa:fa, ff:ff };
+    }catch(e){ /* 次を試す */ }
+    /* 2) script タグ方式（古いSafari向け） */
+    var add = function(src){
+      return new Promise(function(res, rej){
+        var sc = document.createElement('script');
+        sc.src = src; sc.async = true;
+        sc.onload = res; sc.onerror = function(){ rej(new Error('SCRIPT_FAIL')); };
+        document.head.appendChild(sc);
+      });
+    };
+    await add('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+    await add('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js');
+    if(!window.firebase) throw new Error('SCRIPT_FAIL');
+    return { mode:'compat', fb:window.firebase };
+  })();
+  return fbLoad;
+}
 async function initSync(){
-  var room = S.settings.room, fbConfig = S.settings.fbConfig;
+  /* 合言葉とFirebaseの設定は、アプリに組み込んだものを必ず使う */
+  var room = DEFAULT_ROOM, fbConfig = DEFAULT_FB;
   if(!room || !fbConfig) return;
   if(syncState.connecting) return;
+  /* ファイルを直接開いていると、どうやってもつながらない */
+  if(location.protocol === 'file:'){
+    syncState.on = false;
+    syncState.msg = 'ファイルを直接開いています。同期を使うには、GitHubのページ（https:// で始まるURL）から開いてください。';
+    render(); return;
+  }
   syncState.connecting = true;
   try{
     var cfg = parseFbConfig(fbConfig);
-    var fa = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    var fs = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    if(room !== S.settings.room || fbConfig !== S.settings.fbConfig){ syncState.connecting=false; return; }
+    var lib = await loadFirebase();
     if(syncState.unsub){ try{ syncState.unsub(); }catch(e){} syncState.unsub = null; }
-    var app = fa.initializeApp(cfg, 'kurashi-' + Date.now());
-    var ref = fs.doc(fs.getFirestore(app), 'shiharai', room);
-    syncState.ref = ref; syncState.setDoc = fs.setDoc; syncState.on = true; syncState.msg = '';
-    syncState.unsub = fs.onSnapshot(ref, function(snap){
+
+    var ref, setDocFn, onSnap;
+    if(lib.mode === 'mod'){
+      var app = lib.fa.initializeApp(cfg, 'kurashi-' + Date.now());
+      ref = lib.ff.doc(lib.ff.getFirestore(app), 'shiharai', room);
+      setDocFn = lib.ff.setDoc;
+      onSnap = function(r, ok, ng){ return lib.ff.onSnapshot(r, ok, ng); };
+    }else{
+      var fb = lib.fb;
+      var app2 = fb.apps && fb.apps.length ? fb.app() : fb.initializeApp(cfg);
+      ref = fb.firestore(app2).collection('shiharai').doc(room);
+      setDocFn = function(r, data){ return r.set(data); };
+      onSnap = function(r, ok, ng){ return r.onSnapshot(function(snap){
+        ok({ exists:function(){ return snap.exists; }, data:function(){ return snap.data(); } });
+      }, ng); };
+    }
+    syncState.ref = ref; syncState.setDoc = setDocFn; syncState.on = true; syncState.msg = ''; syncState.retry = 0;
+    syncState.unsub = onSnap(ref, function(snap){
       if(snap.exists()) mergeRemote(snap.data());
       else pushRemote(true);
     }, function(err){ syncState.on=false; syncState.msg='つながりませんでした：'+err.message; render(); });
     render();
   }catch(e){
     syncState.on=false;
-    syncState.msg = (e.message === 'EMPTY')   ? 'Firebaseの設定が空です。コンソールの firebaseConfig を貼り付けてください。'
-                  : (e.message === 'MISSING') ? 'apiKey と projectId が見当たりません。firebaseConfig 全体を貼り付けてください。'
-                  : /Failed to fetch|dynamically imported/.test(e.message) ? 'ネットにつながらないか、ファイルを直接開いています。https:// のURLから開いてください。'
-                  : '設定を読み取れませんでした。firebaseConfig の { から } までを貼り付けてください。';
+    var m = String(e && e.message || '');
+    var netErr = /Failed to fetch|dynamically imported|NetworkError|load failed|Importing a module script failed|module script|SCRIPT_FAIL|Load failed|ERR_|timeout/i.test(m);
+    syncState.msg = (m === 'EMPTY')   ? 'Firebaseの設定が空です。コンソールの firebaseConfig を貼り付けてください。'
+                  : (m === 'MISSING') ? 'apiKey と projectId が見当たりません。firebaseConfig 全体を貼り付けてください。'
+                  : netErr ? 'つなぎ直しています…（ネットの調子が悪いか、ファイルを直接開いています）'
+                  : '設定を読み取れませんでした（'+m.slice(0,60)+'）';
+    if(netErr){
+      fbLoad = null;
+      syncState.retry = (syncState.retry||0) + 1;
+      if(syncState.retry <= 5){
+        clearTimeout(syncState.retryTimer);
+        syncState.retryTimer = setTimeout(function(){ syncState.connecting=false; initSync(); }, 3000 * syncState.retry);
+      }else{
+        syncState.msg = 'ネットにつながりません。時間をおいて開き直してください。';
+      }
+    }
     render();
   }finally{
     syncState.connecting = false;
   }
+}
+/* ネットが戻ったら、また同期をつなぐ */
+if(typeof window !== 'undefined'){
+  window.addEventListener('online', function(){
+    syncState.retry = 0; syncState.connecting = false; initSync();
+  });
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && !syncState.on){ syncState.retry = 0; syncState.connecting = false; initSync(); }
+  });
 }
 var LISTS = ['income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices'];
 function payload(){
@@ -5147,13 +5220,19 @@ function viewSettings(){
     '<p class="note" style="margin:-4px 0 10px">分給×（勤務分＋残業分）＋交通費で計算します。時給にすると平日'+yen(Math.round((Number(S.settings.minWeekday)||0)*60))+'／土日'+yen(Math.round((Number(S.settings.minWeekend)||0)*60))+'です。給料は毎月15日締め・25日払いとして扱います。</p>'+
     '<button class="btn ghost" data-act="save-days">保存する</button>')
 
-  + section('端末どうしの同期', syncState.on?'接続中':'未設定',
-    '<div class="field"><label class="f">合言葉（両方の端末で同じものを入れる）</label><input id="sy_room" value="'+esc(S.settings.room)+'"></div>'+
-    '<div class="field"><label class="f">Firebaseの設定（firebaseConfig をそのまま貼り付け）</label>'+
-    '<textarea id="sy_cfg" placeholder=\'{ apiKey: "…", projectId: "…" }\'>'+esc(S.settings.fbConfig)+'</textarea></div>'+
-    '<button class="btn" data-act="save-sync">同期を開始する</button>'+
-    (syncState.msg?'<div class="note">'+esc(syncState.msg)+'</div>':'')+
-    '<div class="note">支払い・履修・予定・課題・テスト・バイト・出席・健康の記録・見た目の設定まで、すべて同期されます。明細の写真とAPIキーはこの端末だけに残ります。</div>')
+  + section('端末どうしの同期', syncState.on ? '✓ つながっています' : 'つないでいます…',
+    '<div class="'+(syncState.on?'msg ok':'bn amber')+'" style="margin-bottom:12px">'+
+      (syncState.on
+        ? 'スマホ・iPad・パソコンの内容が自動でそろいます。設定はいりません。'
+        : '<span class="ic">!</span><span>'+esc(syncState.msg||'つないでいます…')+'</span>')+'</div>'+
+    (location.protocol === 'file:'
+      ? '<div class="bn red" style="margin-bottom:12px"><span class="ic">!</span><span>'+
+        '<b>保存したファイルを直接ひらいています。</b><br>'+
+        'この開き方だと同期できません。<b>https://yurizigong95.github.io/kurashi/</b> から開くか、ホーム画面に追加したアイコンを使ってください。'+
+        '</span></div>'
+      : '')+
+    (!syncState.on ? '<button class="btn ghost" style="margin-bottom:11px" data-act="sync-retry">もう一度つないでみる</button>' : '')+
+    '<div class="note">支払い・履修・予定・課題・テスト・バイト・出席・健康の記録・見た目の設定まで、すべて自動でそろいます。明細の写真とAPIキーはこの端末だけに残ります。</div>')
 
   + section('明細写真の自動読み取り（任意）', S.settings.apiKey?'登録済み':'未登録',
     '<div class="field"><label class="f">Anthropic APIキー</label>'+
@@ -5222,14 +5301,9 @@ function settingsAction(act, t){
     S.transit.sannomiyaTransfer = Math.max(0, toNum(val('st_tr'))); S.transit.workBuffer = Math.max(0, toNum(val('st_wb'))); touch('transit');
     toast('保存しました'); commit(); return true;
   }
-  if(act==='save-sync'){
-    S.settings.room = val('sy_room').trim();
-    S.settings.fbConfig = val('sy_cfg').trim();
-    persist();
-    if(!S.settings.room || !S.settings.fbConfig){
-      syncState.on=false; syncState.msg='合言葉とFirebaseの設定の両方を入れてから押してください。'; render(); return true;
-    }
-    syncState.on=false; syncState.msg='接続しています…'; render(); initSync(); return true;
+  if(act==='sync-retry'){
+    syncState.retry = 0; syncState.connecting = false; fbLoad = null;
+    syncState.msg = '接続しています…'; render(); initSync(); return true;
   }
   if(act==='save-key'){ S.settings.apiKey = val('sy_key').trim(); persist(); toast('保存しました'); render(); return true; }
   if(act==='export'){
