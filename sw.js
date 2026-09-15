@@ -1,5 +1,5 @@
 /* くらしの手帳：オフライン用 */
-var CACHE = 'kurashi-v2';
+var CACHE = 'kurashi-v3';
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png']); }).then(function(){ return self.skipWaiting(); }));
 });
@@ -9,8 +9,9 @@ self.addEventListener('activate', function(e){
 self.addEventListener('fetch', function(e){
   var url = new URL(e.request.url);
   if(url.origin !== location.origin) return;           /* 天気やFirebaseはそのまま */
+  /* 本体は必ずネットから取り直す（古い版が残らないように） */
   e.respondWith(
-    fetch(e.request).then(function(res){
+    fetch(e.request, { cache: 'no-store' }).then(function(res){
       var copy = res.clone(); caches.open(CACHE).then(function(c){ c.put(e.request, copy); }); return res;
     }).catch(function(){ return caches.match(e.request).then(function(r){ return r || caches.match('./index.html'); }); })
   );
