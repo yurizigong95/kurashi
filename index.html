@@ -1355,7 +1355,7 @@ var SEED = [
 ];
 var KEY = 'shiharai:v1';
 var DATA_VER = 15;
-var APP_BUILD = '2026-09-15d';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-09-15e';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -2502,7 +2502,7 @@ function payload(){
     shop: S.settings.shop || '',
     payBankId: S.settings.payBankId || '',
     courseMeta: S.courseMeta, memos: S.memos, transit: S.transit, payApplied: S.payApplied, progress: S.progress,
-    transitLog: S.transitLog, taskLog: S.taskLog, syllabus: S.syllabus, chat: S.chat, chatMeta: S.chatMeta, dayReview: S.dayReview, trash: S.trash, backupAt: S.backupAt, breaks: S.breaks,
+    transitLog: S.transitLog, taskLog: S.taskLog, syllabus: S.syllabus, chat: S.chat, chatMeta: S.chatMeta, dayReview: S.dayReview, backupAt: S.backupAt, breaks: S.breaks,
     aiUse: S.aiUse, aiFeedback: S.aiFeedback, aiMemo: S.aiMemo, dayReview: S.dayReview, chatRooms: S.chatRooms,
     attendLog: S.attendLog, grades: S.grades, biweek: S.biweek, termsList: S.termsList, termId: S.termId, termsDone: S.termsDone, wage: S.settings.wage || 0,
     wage: toNum(S.settings.wage)||1100,
@@ -2512,15 +2512,51 @@ function payload(){
   LISTS.forEach(function(k){ o[k] = S[k]; });
   return o;
 }
+var SYNC_MAX = 700000;    /* Firestoreは1件1MBまで。余裕をみて70万文字 */
+function trimPayload(body){
+  /* 大きすぎるときは、重いものから順に減らす */
+  var size = function(o){ return JSON.stringify(o).length; };
+  if(size(body) <= SYNC_MAX) return body;
+  /* 1) 会話は新しい30件だけ */
+  if(body.chatRooms){
+    Object.keys(body.chatRooms).forEach(function(k){
+      if(Array.isArray(body.chatRooms[k]) && body.chatRooms[k].length > 30)
+        body.chatRooms[k] = body.chatRooms[k].slice(-30);
+    });
+  }
+  if(Array.isArray(body.chat) && body.chat.length > 30) body.chat = body.chat.slice(-30);
+  if(size(body) <= SYNC_MAX) return body;
+  /* 2) 記録類を減らす */
+  if(Array.isArray(body.transitLog)) body.transitLog = body.transitLog.slice(-30);
+  if(body.aiUse){ var ks = Object.keys(body.aiUse).sort(); while(ks.length > 14) delete body.aiUse[ks.shift()]; }
+  if(size(body) <= SYNC_MAX) return body;
+  /* 3) 会話をぜんぶ外す（端末には残る） */
+  body.chat = []; body.chatRooms = {};
+  if(size(body) <= SYNC_MAX) return body;
+  /* 4) 終わった課題の古いものを外す */
+  if(Array.isArray(body.tasks)){
+    var cut = shiftDate(today(), -120);
+    body.tasks = body.tasks.filter(function(t){ return !t.done || !isYmd(t.due) || t.due >= cut; });
+  }
+  return body;
+}
 function pushRemote(now){
   if(!syncState.on || !syncState.ref) return;
   clearTimeout(syncState.timer);
   var go = async function(){
-    var body = payload();
+    var body = trimPayload(payload());
     var sig = JSON.stringify(Object.assign({}, body, {updatedAt:0}));
     if(sig === syncState.last) return;
-    try{ await syncState.setDoc(syncState.ref, body); syncState.last = sig; syncState.pushedAt = Date.now(); render(); }
-    catch(e){ syncState.msg = '送信できませんでした：'+e.message; }
+    syncState.size = sig.length;
+    try{
+      await syncState.setDoc(syncState.ref, body);
+      syncState.last = sig; syncState.pushedAt = Date.now(); syncState.err = '';
+      render();
+    }catch(e){
+      syncState.err = String(e.message || e);
+      syncState.msg = '送れませんでした：' + syncState.err.slice(0, 80);
+      render();
+    }
   };
   now ? go() : (syncState.timer = setTimeout(go, 600));
 }
@@ -3060,7 +3096,7 @@ function findCard(){
       '<span class="tsep">：</span>'+
       '<input id="fd_m" class="tnum" inputmode="numeric" maxlength="2" value="'+esc(tm.split(':')[1])+'">'+
       '<button class="btn" style="flex:0 0 auto;padding:11px 18px" data-act="fd-go">調べる</button></div>'+
-    (res || '<div class="empty">行き先を選んで「調べる」を押してください。</div>'));
+    '<div id="fd_result">'+(res || '<div class="empty">行き先を選んで「調べる」を押してください。</div>')+'</div>');
 }
 /* 経路をさがす */
 function findRoute(from, to, hhmm, mode){
@@ -3318,7 +3354,9 @@ function weekFocus(mon){
     var cls = schoolClassesForDate(ymd);
     var isToday = ymd===today();
     var hol = holidayName(ymd);
-    var closed = !!(S.ui.weekClosed && S.ui.weekClosed[ymd]);
+    var past = ymd < today();
+    var manual = S.ui.weekClosed && (ymd in S.ui.weekClosed);
+    var closed = manual ? !!S.ui.weekClosed[ymd] : past;   /* 過ぎた日は自動でたたむ */
     h += '<div class="wday'+(isToday?' now':'')+(closed?' closed':'')+'">'+
       '<div class="wdh" data-act="wday-toggle" data-d="'+ymd+'" role="button">'+
       '<span class="wdn" style="'+(d.getDay()===0||hol?'color:var(--holi)':d.getDay()===6?'color:var(--e6)':'')+'">'+
@@ -3410,7 +3448,7 @@ function viewDay(ymd, pageKey){
   };
   parts.transit = function(){ var tr = transitFor(ymd); return tr ? '<div class="tsec">'+tr+'</div>' : ''; };
   parts.brief = function(){ return isToday ? morningBriefCard() : ''; };
-  parts.review = function(){ return isToday ? nightReviewCard() : ''; };
+  parts.review = function(){ return isToday ? (nightReviewCard() + (reviewHistOpen ? reviewHistory() : '')) : ''; };
   parts.find = function(){ return isToday ? findCard() : ''; };
   parts.leave = function(){ return isToday ? leaveCard() : ''; };
   parts.memo = function(){
@@ -5103,7 +5141,9 @@ function weekList(){
     var ymd = toYmd(d), its = itemsOn(ymd, 1);
     var isToday = ymd === today();
     var hol = holidayName(ymd);
-    var closed = !!(S.ui.weekClosed && S.ui.weekClosed[ymd]);
+    var past2 = ymd < today();
+    var manual2 = S.ui.weekClosed && (ymd in S.ui.weekClosed);
+    var closed = manual2 ? !!S.ui.weekClosed[ymd] : past2;
     h += '<div class="box wbox'+(closed?' closed':'')+'" style="margin-bottom:8px'+(isToday?';outline:2px solid var(--accent);outline-offset:-2px':'')+'">'+
       '<div class="wdh" data-act="wday-toggle" data-d="'+ymd+'" role="button" style="margin-bottom:'+((its.length&&!closed)?'8px':'0')+'">'+
         '<span class="wdn" style="'+(d.getDay()===0||hol?'color:var(--holi)':d.getDay()===6?'color:var(--e6)':'')+'">'+
@@ -5660,6 +5700,10 @@ function viewSettings(){
       (syncState.pushedAt ? new Date(syncState.pushedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : 'まだ')+'</div></div>'+
     '<div class="row"><div class="grow s">最後に受け取った</div><div class="t num">'+
       (syncState.pulledAt ? new Date(syncState.pulledAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : 'まだ')+'</div></div>'+
+    (syncState.err ? '<div class="msg ng" style="margin-bottom:10px"><b>送れていません。</b><br>'+esc(syncState.err.slice(0,120))+'</div>' : '')+
+    '<div class="row"><div class="grow s">送るデータの大きさ</div><div class="t num">'+
+      (syncState.size ? Math.round(syncState.size/1024)+' KB' : '—')+
+      (syncState.size > 700000 ? '<span class="b warn" style="margin-left:6px">大きい</span>' : '')+'</div></div>'+
     '<div class="row"><div class="grow s">いまの件数</div><div class="t num">'+
       '予定'+S.events.length+'・課題'+S.tasks.length+'・バイト'+S.shifts.length+'</div></div>'+
     '<p class="note">3台とも<b>同じ版</b>になっているか確かめてください。ちがうときは、古いほうで画面を下に引っぱって更新してください。</p>'+
@@ -5952,7 +5996,14 @@ function settingsAction2(act, t){
   if(act==='wk-off'){ weekOff += toNum(t.dataset.v); render(); window.scrollTo(0,0); return true; }
   if(act==='wk-set'){ weekOff = toNum(t.dataset.v); render(); window.scrollTo(0,0); return true; }
   if(act==='today-toggle'){ var id=t.dataset.id; S.ui.todayClosed[id] = S.ui.todayClosed[id]?0:1; touch('ui'); persist(); pushRemote(); render(); return true; }
-  if(act==='fd-mode'){ findMode = t.dataset.v; render(); return true; }
+  if(act==='fd-mode'){
+    findMode = t.dataset.v;
+    var row = t.parentNode;
+    if(row) Array.prototype.forEach.call(row.querySelectorAll('button'), function(bb){ bb.classList.toggle('on', bb.dataset.v===findMode); });
+    var bx = document.getElementById('fd_result');
+    if(bx && findTime){ bx.innerHTML = findRoute(findFrom, findTo, findTime, findMode) || ''; }
+    return true;
+  }
   if(act==='fd-go'){
     var fh = document.getElementById('fd_h'), fm2 = document.getElementById('fd_m');
     var ff = document.getElementById('fd_from'), ft = document.getElementById('fd_to');
@@ -5963,7 +6014,19 @@ function settingsAction2(act, t){
       var M = Math.max(0, Math.min(59, toNum(String(fm2.value).replace(/[^0-9]/g,''))));
       findTime = pad(H)+':'+pad(M);
     }
-    render(); return true;
+    /* 結果のところだけ書き替える（画面の位置は変えない） */
+    var box = document.getElementById('fd_result');
+    if(box){
+      var y = window.scrollY;
+      var top = box.getBoundingClientRect().top;
+      box.innerHTML = findRoute(findFrom, findTo, findTime, findMode) || '';
+      /* 高さが変わってもズレないように、結果の位置を合わせる */
+      requestAnimationFrame(function(){
+        var nt = box.getBoundingClientRect().top;
+        window.scrollTo(0, y + (nt - top));
+      });
+    }else render();
+    return true;
   }
   if(act==='leave-now'){
     var now = new Date(), td2 = today();
@@ -7400,13 +7463,22 @@ function reviewWords(sc){
   return hard ? '今日は予定なし。こういう日にこそ進めておこう。'
               : '今日はゆっくりできましたか。明日にそなえて休んでください。';
 }
+var reviewOpen = false;
 function nightReviewCard(){
   if(S.ui.nightReview === 0) return '';
-  var h = new Date().getHours();
-  if(h < 18) return '';
   var td = today(), sc = dayScore(td);
   var rec = (S.dayReview||{})[td] || {};
   var stars = ['','⭐','⭐⭐','⭐⭐⭐','⭐⭐⭐⭐','⭐⭐⭐⭐⭐'];
+  /* ボタンを押すまでは開かない */
+  if(!reviewOpen){
+    return section('今日のふりかえり', rec.star ? stars[toNum(rec.star)] : null,
+      (rec.star
+        ? '<div class="s2" style="margin-bottom:10px">今日は '+stars[toNum(rec.star)]+(rec.memo?'　'+esc(rec.memo):'')+'</div>'
+        : '<div class="s2" style="margin-bottom:10px">1日をふりかえって、記録しておけます。</div>')+
+      '<div class="pair">'+
+        '<button class="btn" data-act="rev-open">'+(rec.star?'ふりかえりを見る':'今日をふりかえる')+'</button>'+
+        '<button class="btn ghost" style="flex:0 0 auto;padding:13px 16px" data-act="rev-hist">これまで</button></div>');
+  }
   return section('今日のふりかえり', reviewTitle(sc),
     '<div class="msg ' + (sc.tasks && sc.done===sc.tasks ? 'ok' : sc.late>=3 ? 'ng' : '') + '" style="margin-bottom:12px">' +
       esc(reviewWords(sc)) + '</div>' +
@@ -7421,7 +7493,32 @@ function nightReviewCard(){
     }).join('') + '</div>' +
     '<div class="field"><label class="f">ひとこと（任意）</label>' +
       '<input id="rev_memo" value="' + esc(rec.memo||'') + '" placeholder="例：レポート進んだ"></div>' +
-    '<button class="btn ghost" data-act="rev-save">記録する</button>');
+    '<div class="pair">'+
+      '<button class="btn" data-act="rev-save">記録する</button>'+
+      '<button class="btn ghost" style="flex:0 0 auto;padding:13px 16px" data-act="rev-close">とじる</button></div>');
+}
+/* これまでの振り返り */
+function reviewHistory(){
+  var keys = Object.keys(S.dayReview||{}).filter(function(k){ return (S.dayReview[k]||{}).star; }).sort().reverse();
+  var stars = ['','⭐','⭐⭐','⭐⭐⭐','⭐⭐⭐⭐','⭐⭐⭐⭐⭐'];
+  if(!keys.length) return section('これまでのふりかえり', null, '<div class="empty">まだ記録がありません。</div>');
+  /* 直近30日の平均と、星の分布 */
+  var recent = keys.slice(0, 30);
+  var avg = recent.reduce(function(a,k){ return a + toNum(S.dayReview[k].star); }, 0) / recent.length;
+  var cnt = [0,0,0,0,0,0];
+  recent.forEach(function(k){ cnt[toNum(S.dayReview[k].star)]++; });
+  var max = Math.max.apply(null, cnt.slice(1).concat([1]));
+  return section('これまでのふりかえり', recent.length+'日ぶん　平均'+(Math.round(avg*10)/10),
+    '<div class="chart" style="height:100px;margin-bottom:12px">'+[1,2,3,4,5].map(function(n){
+      return '<div class="col"><div class="bar2" style="height:'+Math.max(2,Math.round(cnt[n]/max*76))+'px;'+
+        'background:linear-gradient(180deg,var(--accent2),var(--accent))"></div><div class="lb">'+n+'</div></div>';
+    }).join('')+'</div>'+
+    keys.slice(0, 60).map(function(k){
+      var r = S.dayReview[k];
+      return '<div class="row"><div class="grow"><div class="t">'+ymdLabel(k)+'　'+stars[toNum(r.star)]+'</div>'+
+        (r.memo ? '<div class="s">'+esc(r.memo)+'</div>' : '')+'</div></div>';
+    }).join('')+
+    '<button class="btn ghost" style="margin-top:10px" data-act="rev-hist-close">とじる</button>');
 }
 function reviewTitle(sc){
   if(sc.tasks && sc.done === sc.tasks) return 'ぜんぶ終わった日';
@@ -7456,7 +7553,12 @@ function morningBriefCard(){
   return section('きょうの要点', ymdLabel(td),
     '<div class="msg" style="margin-bottom:0">' + lines.join('<br>') + '</div>');
 }
+var reviewHistOpen = false;
 function reviewAction(act, t){
+  if(act === 'rev-open'){ reviewOpen = true; render(); return true; }
+  if(act === 'rev-close'){ reviewOpen = false; render(); return true; }
+  if(act === 'rev-hist'){ reviewHistOpen = true; render(); return true; }
+  if(act === 'rev-hist-close'){ reviewHistOpen = false; render(); return true; }
   if(act === 'rev-star'){
     Array.prototype.forEach.call(t.parentNode.querySelectorAll('button'), function(b){ b.classList.remove('on'); });
     t.classList.add('on'); return true;
