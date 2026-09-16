@@ -1,39 +1,43 @@
-/* くらしの手帳：キャラクター（オリジナル） */
-/* ============================== キャラクター ==============================
-   このアプリだけのオリジナルの子たち（既存の作品のキャラクターではありません）。
-   ・種類：13ひき。いつも同じ子／日替わり／ランダム を選べる
-   ・出てくる量（充実度）：なし／ちょっと／ふつう／たっぷり
-     ちょっと … 今日の画面のあいさつ・何もない画面
-     ふつう   … ＋お知らせ（トースト）・課題が終わったときのお祝い・相談のアイコン
-     たっぷり … ＋画面のすみにいつもいる子（タップすると話す）・キャラの口調で相談に答える */
-var CHARAS = [
-  { id:'mochi',  name:'もちうさ',   ears:'bunny',   body:'#FFFFFF', line:'#6E5A66', inner:'#F8C9D6', cheek:'#F7A9BE', tic:'',     desc:'白くてもちもち。やさしいうさぎ' },
-  { id:'koro',   name:'ころハム',   ears:'hamster', body:'#F3C58E', line:'#7A5234', inner:'#F7B6A6', cheek:'#F29A8E', belly:'#FFF6EC', tic:'ハムッ', desc:'ほっぺに夢をつめこむハムスター' },
-  { id:'puku',   name:'ぷくねこ',   ears:'cat',     body:'#D9D6E3', line:'#5C586E', inner:'#F4C3D2', cheek:'#F2A7BD', stripes:1, whisker:1, tic:'にゃ', desc:'ねむたがりのしましまねこ' },
-  { id:'kuma',   name:'くまっこ',   ears:'bear',    body:'#C8966B', line:'#5E3F27', inner:'#E8C2A0', cheek:'#EFA08C', muzzle:'#F2DDC6', tic:'くま', desc:'はちみつが好きな小さなくま' },
-  { id:'penta',  name:'ぺんた',     ears:'none',    body:'#4D5F86', line:'#2E3A55', inner:'#FFFFFF', cheek:'#F4A6B8', face:'#FFFFFF', beak:'#F3A73B', tic:'ぺん', desc:'よちよち歩きのペンギン' },
-  { id:'hiyo',   name:'ひよぴ',     ears:'tuft',    body:'#FCE17A', line:'#8A6A1E', inner:'#F8C94F', cheek:'#F6A38E', beak:'#F39A3B', tic:'ぴよ', desc:'元気いっぱいのひよこ' },
-  { id:'komugi', name:'こむぎ',     ears:'shiba',   body:'#E9A965', line:'#6E4424', inner:'#FFF3E4', cheek:'#F29A8A', muzzle:'#FFF3E4', tic:'わん', desc:'しっぽをふる、きなこ色の犬' },
-  { id:'ponpoko',name:'ぽんぽこ',   ears:'bear',    body:'#B8966E', line:'#5A4330', inner:'#8C6A4A', cheek:'#E99A86', mask:'#7A5C40', belly:'#F1E2CB', tic:'ぽこ', desc:'はっぱで化けるのが下手なたぬき' },
-  { id:'panda',  name:'ぱんだん',   ears:'bear',    body:'#FFFFFF', line:'#3E3A40', inner:'#3E3A40', earFill:'#3E3A40', armFill:'#3E3A40', cheek:'#F5A9BA', mask:'#3E3A40', tic:'',     desc:'ささが大好き、のんびりパンダ' },
-  { id:'meeko',  name:'めえこ',     ears:'sheep',   body:'#FFF4E6', line:'#7A6552', inner:'#F4D7C2', cheek:'#F4A9A0', wool:'#FFFFFF', tic:'めぇ', desc:'ふわふわの毛につつまれたひつじ' },
-  { id:'pyonta', name:'ぴょんた',   ears:'frog',    body:'#9ED99A', line:'#3E6B3B', inner:'#FFFFFF', cheek:'#F4A3A3', belly:'#E9F7DA', tic:'けろ', desc:'雨の日がうれしいかえる' },
-  { id:'fuwa',   name:'ふわおば',   ears:'ghost',   body:'#F4F1FF', line:'#6D63A0', inner:'#E3DDFF', cheek:'#F5B3CB', tic:'〜ふわ', desc:'夜にちょっとだけ出てくるおばけ' },
-  { id:'kon',    name:'こんちゃん', ears:'fox',     body:'#F2A15E', line:'#74421F', inner:'#FFF1E2', cheek:'#F29387', muzzle:'#FFF4E8', tic:'こん', desc:'しっぽがじまんのこぎつね' }
-];
-var CHARA_LEVELS = [[0,'なし'],[1,'ちょっと'],[2,'ふつう'],[3,'たっぷり']];
+/* くらしの手帳：キャラクター（出てくる場所・ことば・設定） */
+/* ============================== 設定の読み出し ==============================
+   S.ui.chara = { level, mode, main, friends, talk, hat, touch, custom:[{ id, pid, name, tic, note }] }
+   ・絵は chara-art.js、データは chara-data.js、自分の画像から作るのは chara-make.js      */
+function charaCustomList(){
+  var c = (S.ui && S.ui.chara) || {};
+  return Array.isArray(c.custom) ? c.custom.filter(function(x){ return x && x.id && x.pid; }) : [];
+}
+function charaAllIds(){
+  return CHARAS.map(function(x){ return x.id; }).concat(charaCustomList().map(function(x){ return x.id; }));
+}
 function charaCfg(){
   var c = (S.ui && S.ui.chara) || {};
+  var all = charaAllIds();
+  var friends = Array.isArray(c.friends) ? c.friends.filter(function(id){ return all.indexOf(id) >= 0; }) : [];
+  if(!friends.length) friends = all;
+  var touchOk = CHARA_TOUCHES.some(function(t){ return t[0] === c.touch; });
   return {
-    level: (c.level == null) ? 2 : Math.max(0, Math.min(3, Math.round(toNum(c.level)))),
-    mode: c.mode || 'one',
-    main: c.main || 'mochi',
-    friends: (Array.isArray(c.friends) && c.friends.length) ? c.friends : CHARAS.map(function(x){ return x.id; }),
-    talk: c.talk ? 1 : 0
+    level: (c.level == null) ? 2 : Math.max(0, Math.min(5, Math.round(toNum(c.level)))),
+    mode: (c.mode === 'daily' || c.mode === 'random') ? c.mode : 'one',
+    main: (all.indexOf(c.main) >= 0) ? c.main : 'mochi',
+    friends: friends,
+    talk: c.talk ? 1 : 0,
+    hat: c.hat || 'auto',
+    touch: touchOk ? c.touch : 'line',
+    custom: charaCustomList()
   };
 }
 function charaLevel(){ return charaCfg().level; }
-function charaById(id){ return CHARAS.filter(function(x){ return x.id === id; })[0] || CHARAS[0]; }
+function charaTouch(){ return charaCfg().touch; }
+function charaById(id){
+  var k = CHARAS.filter(function(x){ return x.id === id; })[0];
+  if(k) return k;
+  var u = charaCustomList().filter(function(x){ return x.id === id; })[0];
+  if(u){
+    return { id:u.id, custom:1, pid:u.pid, cat:'mine', name:u.name || '自分の子', tic:u.tic || '',
+             like:u.like || '', desc:u.note || '自分の画像から作った子', line:'#6E5A66', cheek:'#F7A9BE' };
+  }
+  return CHARAS[0];
+}
 var __charaRandom = null;
 /* 今日の子 */
 function charaNow(){
@@ -48,162 +52,62 @@ function charaNow(){
   }
   return charaById(c.main);
 }
-
-/* ===== 絵（SVG） ===== */
-function chEars(k){
-  var L = k.line, B = k.earFill || k.body, I = k.inner;
-  var st = ' stroke="'+L+'" stroke-width="2.6" stroke-linejoin="round"';
-  switch(k.ears){
-    case 'bunny':
-      return '<ellipse cx="37" cy="20" rx="7" ry="17" transform="rotate(-9 37 20)" fill="'+B+'"'+st+'/>'+
-             '<ellipse cx="63" cy="20" rx="7" ry="17" transform="rotate(9 63 20)" fill="'+B+'"'+st+'/>'+
-             '<ellipse cx="37" cy="22" rx="3.2" ry="11" transform="rotate(-9 37 22)" fill="'+I+'"/>'+
-             '<ellipse cx="63" cy="22" rx="3.2" ry="11" transform="rotate(9 63 22)" fill="'+I+'"/>';
-    case 'bear':
-      return '<circle cx="27" cy="33" r="9.5" fill="'+B+'"'+st+'/><circle cx="73" cy="33" r="9.5" fill="'+B+'"'+st+'/>'+
-             '<circle cx="27" cy="34" r="4.8" fill="'+I+'"/><circle cx="73" cy="34" r="4.8" fill="'+I+'"/>';
-    case 'hamster':
-      return '<circle cx="27" cy="37" r="7.5" fill="'+B+'"'+st+'/><circle cx="73" cy="37" r="7.5" fill="'+B+'"'+st+'/>'+
-             '<circle cx="27" cy="38" r="3.8" fill="'+I+'"/><circle cx="73" cy="38" r="3.8" fill="'+I+'"/>';
-    case 'cat':
-      return '<path d="M20 47 L25 17 L44 31 Z" fill="'+B+'"'+st+'/><path d="M80 47 L75 17 L56 31 Z" fill="'+B+'"'+st+'/>'+
-             '<path d="M25.5 40 L27.5 24 L37 31 Z" fill="'+I+'"/><path d="M74.5 40 L72.5 24 L63 31 Z" fill="'+I+'"/>';
-    case 'shiba':
-      return '<path d="M20 46 Q21 20 28 16 Q36 22 44 31 Z" fill="'+B+'"'+st+'/><path d="M80 46 Q79 20 72 16 Q64 22 56 31 Z" fill="'+B+'"'+st+'/>'+
-             '<path d="M26 40 Q27 26 29 23 Q34 27 38 32 Z" fill="'+I+'"/><path d="M74 40 Q73 26 71 23 Q66 27 62 32 Z" fill="'+I+'"/>';
-    case 'fox':
-      return '<path d="M18 48 L22 10 L45 30 Z" fill="'+B+'"'+st+'/><path d="M82 48 L78 10 L55 30 Z" fill="'+B+'"'+st+'/>'+
-             '<path d="M24 40 L25.5 19 L38 30 Z" fill="'+I+'"/><path d="M76 40 L74.5 19 L62 30 Z" fill="'+I+'"/>';
-    case 'frog':
-      return '<circle cx="34" cy="33" r="11" fill="'+B+'"'+st+'/><circle cx="66" cy="33" r="11" fill="'+B+'"'+st+'/>';
-    case 'sheep':
-      var w = k.wool || '#fff', o = '';
-      [[26,34],[36,25],[50,22],[64,25],[74,34],[19,46],[81,46]].forEach(function(p){
-        o += '<circle cx="'+p[0]+'" cy="'+p[1]+'" r="9" fill="'+w+'"'+st+'/>';
-      });
-      return o;
-    case 'tuft':
-      return '<path d="M47 27 Q46 18 50 16 M50 27 Q51 17 56 17 M53 27 Q57 21 60 22" fill="none" stroke="'+L+'" stroke-width="2.4" stroke-linecap="round"/>';
-    default:
-      return '';
+/* 今日のほかの仲間（毎日入れかわる） */
+function charaPals(n){
+  var c = charaCfg(), me = charaNow().id;
+  var pool = (c.friends.length > 1 ? c.friends : charaAllIds()).filter(function(id){ return id !== me; });
+  var seed = Number(today().replace(/-/g, '')) || 1, out = [];
+  while(pool.length && out.length < n){
+    seed = (seed * 16807) % 2147483647;
+    out.push(pool.splice(seed % pool.length, 1)[0]);
   }
-}
-function chBody(k){
-  var st = ' stroke="'+k.line+'" stroke-width="2.6" stroke-linejoin="round"';
-  if(k.ears === 'ghost'){
-    return '<path d="M50 22 C72 22 84 38 84 58 L84 86 Q80 80 75 86 Q70 92 65 86 Q60 80 55 86 Q50 92 45 86 Q40 80 35 86 Q30 92 25 86 Q20 80 16 86 L16 58 C16 38 28 22 50 22 Z" fill="'+k.body+'" fill-opacity=".96"'+st+'/>';
-  }
-  var o = '<path d="M50 27 C73 27 86 42 86 62 C86 80 70 90 50 90 C30 90 14 80 14 62 C14 42 27 27 50 27 Z" fill="'+k.body+'"'+st+'/>';
-  if(k.face) o += '<ellipse cx="50" cy="66" rx="27" ry="21" fill="'+k.face+'"/>';
-  if(k.belly) o += '<ellipse cx="50" cy="75" rx="19" ry="13" fill="'+k.belly+'"/>';
-  if(k.muzzle) o += '<ellipse cx="50" cy="69" rx="11" ry="7.5" fill="'+k.muzzle+'"/>';
-  if(k.stripes) o += '<path d="M44 33 L45 38 M50 31 L50 37 M56 33 L55 38" stroke="'+k.line+'" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>';
-  if(k.mask){
-    o += '<ellipse cx="39" cy="58" rx="7.5" ry="6" transform="rotate(-18 39 58)" fill="'+k.mask+'"/>'+
-         '<ellipse cx="61" cy="58" rx="7.5" ry="6" transform="rotate(18 61 58)" fill="'+k.mask+'"/>';
-  }
-  return o;
-}
-function chFace(k, expr){
-  var L = k.line, o = '';
-  var eyeY = (k.ears === 'frog') ? 33 : 58;
-  var ex1 = (k.ears === 'frog') ? 34 : 40, ex2 = (k.ears === 'frog') ? 66 : 60;
-  var onMask = !!k.mask && k.mask !== k.body;
-  var eyeC = onMask ? '#FFFFFF' : L;
-  var dot = function(x, y, r){
-    return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+eyeC+'"/>'+
-      (onMask ? '' : '<circle cx="'+(x+1.1)+'" cy="'+(y-1.2)+'" r="'+(r*0.32)+'" fill="#fff"/>');
-  };
-  var arcUp = function(x, y){ return '<path d="M'+(x-4)+' '+(y+1)+' Q'+x+' '+(y-4.5)+' '+(x+4)+' '+(y+1)+'" fill="none" stroke="'+eyeC+'" stroke-width="2.6" stroke-linecap="round"/>'; };
-  var arcDn = function(x, y){ return '<path d="M'+(x-4)+' '+(y-1)+' Q'+x+' '+(y+3)+' '+(x+4)+' '+(y-1)+'" fill="none" stroke="'+eyeC+'" stroke-width="2.4" stroke-linecap="round"/>'; };
-  if(expr === 'happy' || expr === 'cheer'){ o += arcUp(ex1, eyeY) + arcUp(ex2, eyeY); }
-  else if(expr === 'sleep'){ o += arcDn(ex1, eyeY) + arcDn(ex2, eyeY); }
-  else if(expr === 'wink'){ o += arcUp(ex1, eyeY) + dot(ex2, eyeY, 3.3); }
-  else if(expr === 'surprise'){ o += dot(ex1, eyeY, 4) + dot(ex2, eyeY, 4); }
-  else if(expr === 'sad'){
-    o += dot(ex1, eyeY + 1, 3) + dot(ex2, eyeY + 1, 3) +
-      '<path d="M'+(ex1-5)+' '+(eyeY-6)+' L'+(ex1+3)+' '+(eyeY-4)+' M'+(ex2+5)+' '+(eyeY-6)+' L'+(ex2-3)+' '+(eyeY-4)+'" stroke="'+L+'" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M'+(ex1+1)+' '+(eyeY+5)+' q-2.4 4 0 5.6 q2.4 -1.6 0 -5.6 Z" fill="#8CC8F0"/>';
-  }
-  else { o += dot(ex1, eyeY, 3.3) + dot(ex2, eyeY, 3.3); }
-
-  /* ほっぺ */
-  var cy = (k.ears === 'frog') ? 62 : 67;
-  o += '<ellipse cx="'+((k.ears === 'frog') ? 28 : 30)+'" cy="'+cy+'" rx="5.2" ry="3.2" fill="'+k.cheek+'" opacity=".8"/>'+
-       '<ellipse cx="'+((k.ears === 'frog') ? 72 : 70)+'" cy="'+cy+'" rx="5.2" ry="3.2" fill="'+k.cheek+'" opacity=".8"/>';
-
-  /* くち・はな・くちばし */
-  var my = (k.ears === 'frog') ? 58 : 66;
-  if(k.beak){
-    o += '<path d="M46 '+(my-1)+' L54 '+(my-1)+' L50 '+(my+4)+' Z" fill="'+k.beak+'" stroke="'+L+'" stroke-width="1.4" stroke-linejoin="round"/>';
-  }else if(k.ears === 'frog'){
-    o += (expr === 'happy' || expr === 'cheer')
-      ? '<path d="M38 '+my+' Q50 '+(my+10)+' 62 '+my+'" fill="#F47C8C" stroke="'+L+'" stroke-width="2.2" stroke-linejoin="round"/>'
-      : '<path d="M40 '+my+' Q50 '+(my+6)+' 60 '+my+'" fill="none" stroke="'+L+'" stroke-width="2.2" stroke-linecap="round"/>';
-  }else{
-    if(k.muzzle || k.ears === 'bear' || k.ears === 'shiba' || k.ears === 'fox') o += '<ellipse cx="50" cy="'+(my)+'" rx="2.6" ry="1.9" fill="'+L+'"/>';
-    var my2 = my + ((k.muzzle || k.ears === 'bear' || k.ears === 'shiba' || k.ears === 'fox') ? 2.6 : 0);
-    if(expr === 'happy' || expr === 'cheer'){
-      o += '<path d="M45 '+my2+' Q50 '+(my2+7)+' 55 '+my2+' Z" fill="#F47C8C" stroke="'+L+'" stroke-width="1.8" stroke-linejoin="round"/>';
-    }else if(expr === 'surprise'){
-      o += '<ellipse cx="50" cy="'+(my2+2)+'" rx="2.6" ry="3.3" fill="'+L+'"/>';
-    }else if(expr === 'sad'){
-      o += '<path d="M46 '+(my2+3)+' Q50 '+my2+' 54 '+(my2+3)+'" fill="none" stroke="'+L+'" stroke-width="2" stroke-linecap="round"/>';
-    }else if(expr === 'sleep'){
-      o += '<circle cx="50" cy="'+(my2+1.5)+'" r="1.7" fill="'+L+'"/>';
-    }else{
-      o += '<path d="M46 '+my2+' Q48 '+(my2+3)+' 50 '+my2+' Q52 '+(my2+3)+' 54 '+my2+'" fill="none" stroke="'+L+'" stroke-width="1.9" stroke-linecap="round"/>';
-    }
-  }
-  if(k.whisker){
-    o += '<path d="M22 63 L31 64 M22 69 L31 68 M78 63 L69 64 M78 69 L69 68" stroke="'+L+'" stroke-width="1.4" stroke-linecap="round" opacity=".6"/>';
-  }
-  if(expr === 'sleep'){
-    o += '<text x="80" y="30" font-size="13" font-weight="700" fill="'+L+'" opacity=".7" font-family="sans-serif">z</text>'+
-         '<text x="88" y="20" font-size="9" font-weight="700" fill="'+L+'" opacity=".5" font-family="sans-serif">z</text>';
-  }
-  return o;
-}
-function chArms(k, expr){
-  if(k.ears === 'ghost') return '';
-  var st = ' fill="'+(k.armFill || k.body)+'" stroke="'+k.line+'" stroke-width="2.4"';
-  if(expr === 'cheer'){
-    return '<ellipse cx="16" cy="50" rx="5.5" ry="8" transform="rotate(-30 16 50)"'+st+'/>'+
-           '<ellipse cx="84" cy="50" rx="5.5" ry="8" transform="rotate(30 84 50)"'+st+'/>';
-  }
-  return '<ellipse cx="20" cy="72" rx="5.5" ry="4.5"'+st+'/><ellipse cx="80" cy="72" rx="5.5" ry="4.5"'+st+'/>';
-}
-function chProp(prop, k){
-  var L = k.line;
-  switch(prop){
-    case 'book':  return '<g transform="translate(62 70)"><rect x="0" y="0" width="22" height="16" rx="2" fill="#7FB3E6" stroke="'+L+'" stroke-width="1.8"/><path d="M11 0 V16" stroke="'+L+'" stroke-width="1.4"/></g>';
-    case 'umbrella': return '<g transform="translate(62 44)"><path d="M0 12 Q12 -6 24 12 Z" fill="#8EC9F2" stroke="'+L+'" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 12 V30 Q12 34 8 33" fill="none" stroke="'+L+'" stroke-width="1.8" stroke-linecap="round"/></g>';
-    case 'coin':  return '<g transform="translate(66 70)"><circle cx="9" cy="9" r="9" fill="#F6C94A" stroke="'+L+'" stroke-width="1.8"/><text x="9" y="13" text-anchor="middle" font-size="10" font-weight="800" fill="'+L+'" font-family="sans-serif">¥</text></g>';
-    case 'star':  return '<path d="M80 12 l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="#F7D35B" stroke="'+L+'" stroke-width="1.2" stroke-linejoin="round"/>';
-    case 'heart': return '<path d="M82 18 c-2.5-4-9-3-9 2 c0 4 5 7 9 10 c4-3 9-6 9-10 c0-5-6.5-6-9-2z" fill="#F58CA8" stroke="'+L+'" stroke-width="1.2"/>';
-    case 'cup':   return '<g transform="translate(64 72)"><path d="M0 0 H16 V8 Q16 15 8 15 Q0 15 0 8 Z" fill="#F3E3D3" stroke="'+L+'" stroke-width="1.8"/><path d="M16 3 Q21 3 21 7 Q21 10 16 10" fill="none" stroke="'+L+'" stroke-width="1.6"/><path d="M5 -3 q-2 -3 0 -6 M10 -3 q-2 -3 0 -6" stroke="'+L+'" stroke-width="1.2" fill="none" opacity=".5"/></g>';
-    case 'pencil':return '<g transform="translate(66 60) rotate(35)"><rect x="0" y="0" width="6" height="22" rx="1" fill="#F7C95B" stroke="'+L+'" stroke-width="1.6"/><path d="M0 22 L3 28 L6 22 Z" fill="#F3DDC0" stroke="'+L+'" stroke-width="1.4" stroke-linejoin="round"/></g>';
-    case 'moon':  return '<path d="M84 10 a8 8 0 1 0 6 12 a6.5 6.5 0 1 1 -6 -12z" fill="#F7E08A" stroke="'+L+'" stroke-width="1.2"/>';
-    default: return '';
-  }
-}
-function chSparkle(){
-  var s = function(x, y, r, c){ return '<path d="M'+x+' '+(y-r)+' Q'+x+' '+y+' '+(x+r)+' '+y+' Q'+x+' '+y+' '+x+' '+(y+r)+' Q'+x+' '+y+' '+(x-r)+' '+y+' Q'+x+' '+y+' '+x+' '+(y-r)+'Z" fill="'+c+'"/>'; };
-  return s(10, 22, 5, '#F7C94F') + s(90, 30, 4, '#F58CA8') + s(14, 86, 3.5, '#8EC9F2');
-}
-/* opt: { size, expr, prop, anim, id } */
-function charaSvg(opt){
-  opt = opt || {};
-  var k = opt.id ? charaById(opt.id) : charaNow();
-  var expr = opt.expr || 'normal', size = opt.size || 64;
-  var svg = '<svg viewBox="0 0 100 100" width="'+size+'" height="'+size+'" aria-hidden="true" focusable="false">'+
-    (expr === 'cheer' ? chSparkle() : '')+
-    chEars(k)+chBody(k)+
-    chFace(k, expr)+chArms(k, expr)+chProp(opt.prop, k)+'</svg>';
-  return '<span class="chara'+(opt.anim ? ' anim-'+opt.anim : '')+'" title="'+esc(k.name)+'">'+svg+'</span>';
+  return out;
 }
 
-/* ===== ことば ===== */
+/* ============================== なかよし度・着せかえ ============================== */
+var __cf = null;
+function charaFriend(){
+  if(__cf && Date.now() - __cf.t < 3000) return __cf.v;
+  var p = 0;
+  (S.tasks || []).forEach(function(t){ if(t && t.done) p += 2; });
+  Object.keys(S.dayReview || {}).forEach(function(k){ if((S.dayReview[k] || {}).grade) p += 3; });
+  p += (S.events || []).length + (S.notes || []).length + Math.floor((S.shifts || []).length / 2);
+  var lv = 0;
+  CHARA_FRIEND_STEPS.forEach(function(s, i){ if(p >= s) lv = i; });
+  var nx = CHARA_FRIEND_STEPS[lv + 1];
+  var v = { pts:p, lv:lv, next:(nx == null) ? 0 : nx - p };
+  __cf = { t:Date.now(), v:v };
+  return v;
+}
+function charaHatInfo(id){ return CHARA_HATS.filter(function(h){ return h.id === id; })[0] || null; }
+function charaHatOk(id){
+  var h = charaHatInfo(id);
+  return !!h && (h.season || charaFriend().lv >= h.lv);
+}
+var __chAuto = null;
+function charaHatAuto(){
+  if(__chAuto && Date.now() - __chAuto.t < 3000) return __chAuto.v;
+  var td = today(), v = '';
+  var exam = (S.exams || []).some(function(x){ return isYmd(x.date) && x.date >= td && daysFromToday(x.date) <= 1; });
+  if(exam) v = 'hachimaki';
+  else{
+    var fes = (typeof festivalNow === 'function') ? festivalNow() : '';
+    var map = { xmas:'santa', halloween:'witch', kodomo:'kabuto', sakura:'sakura', tanabata:'star', natsu:'straw',
+                newyear:'ribbon', valentine:'ribbon', kouyou:'leaf', hinamatsuri:'flower' };
+    var m = Number(td.slice(5, 7));
+    v = map[fes] || ((m === 12 || m <= 2) ? 'scarf' : '');
+  }
+  __chAuto = { t:Date.now(), v:v };
+  return v;
+}
+function charaHatNow(){
+  var c = charaCfg();
+  if(c.level < 1 || c.hat === 'none') return '';
+  if(c.hat !== 'auto') return charaHatOk(c.hat) ? c.hat : '';
+  return (c.level >= 4) ? charaHatAuto() : '';
+}
+
+/* ============================== ことば ============================== */
 /* その子らしい語尾をつける（「あるよ！」→「あるよ にゃ！」） */
 function chTic(line){
   var k = charaNow();
@@ -213,8 +117,16 @@ function chTic(line){
   var end = m ? m[1] : '';
   return line.slice(0, line.length - end.length) + ' ' + k.tic + (end === '。' ? '' : (end || '！'));
 }
+function chPick(a){ return a[Math.floor(Math.random() * a.length)]; }
+var CHARA_FES_LINE = {
+  xmas:'メリークリスマス！', newyear:'あけましておめでとう！', halloween:'トリックオアトリート！', tanabata:'ねがいごと、なににする？',
+  tsukimi:'お月見だんご、食べたいな', valentine:'チョコ、だれにあげる？', setsubun:'鬼は外〜！', hinamatsuri:'ひなまつりだね',
+  kodomo:'こどもの日だね。こいのぼり見た？', natsu:'夏だね！水分とってね', sakura:'お花見日和かも', tsuyu:'雨の季節だね。足もと気をつけてね',
+  kouyou:'紅葉がきれいな季節だね', holiday:'今日は祝日だね'
+};
 function charaLine(kind){
-  var h = new Date().getHours(), td = today(), out = [];
+  var h = new Date().getHours(), td = today(), out = [], k = charaNow();
+  var dow = new Date().getDay();
   /* 大事なことから */
   var dueToday = S.tasks.filter(function(t){ return !t.done && t.due === td; }).length;
   var dueTomo = S.tasks.filter(function(t){ return !t.done && t.due === shiftDate(td, 1); }).length;
@@ -234,51 +146,94 @@ function charaLine(kind){
   if(kind === 'important') return out.length ? chTic(out[0]) : '';
   /* あいさつ */
   var greet = h < 5 ? ['夜ふかしさん、そろそろ寝よ…', 'ねむくない？むりしないでね']
-            : h < 10 ? ['おはよう！今日もいっしょにがんばろ', 'おはよう。朝ごはん食べた？']
+            : h < 10 ? ['おはよう！今日もいっしょにがんばろ', 'おはよう。朝ごはん食べた？', 'おはよ〜。顔あらった？']
             : h < 14 ? ['こんにちは！ひとやすみしてる？', 'おひるごはん、なにたべた？']
-            : h < 18 ? ['午後もあとすこし！', 'おやつの時間かも？']
-            : h < 22 ? ['おつかれさま〜', '今日もえらかったね']
+            : h < 18 ? ['午後もあとすこし！', 'おやつの時間かも？', 'ちょっと甘いものほしくなるね']
+            : h < 22 ? ['おつかれさま〜', '今日もえらかったね', 'お風呂でゆっくりしてね']
             : ['今日もおつかれさま。ゆっくり休んでね', 'あしたの準備、できた？'];
-  var soft = ['水のんだ？', 'ちょっと休けいしよ', 'がんばりすぎないでね', 'できたことを数えてみよ', 'ぐーっとのびをしよ'];
+  var fes = (typeof festivalNow === 'function') ? festivalNow() : '';
+  if(fes && CHARA_FES_LINE[fes]) greet.push(CHARA_FES_LINE[fes]);
+  if(dow === 1 && h < 14) greet.push('あたらしい1週間。ゆっくりいこ');
+  if(dow === 5) greet.push('あと1日で週末だよ！');
+  if(dow === 0 || dow === 6) greet.push('おやすみの日、なにする？');
+  var cls = (typeof schoolClassesForDate === 'function') ? schoolClassesForDate(td) : [];
+  if(cls.length && h < 12) greet.push('今日は' + cls.length + 'コマだね。いってらっしゃい');
+  if(cls.length && h >= 17) greet.push('授業おつかれさま！');
+  var soft = ['水のんだ？', 'ちょっと休けいしよ', 'がんばりすぎないでね', 'できたことを数えてみよ', 'ぐーっとのびをしよ',
+              '看護の勉強、えらいね', 'しっかり寝るのも大事なおしごとだよ', '深呼吸しよ。すー、はー', 'きょうもそばにいるよ'];
+  if(k.like) soft.push(k.like + 'のこと考えてた', 'きょうは' + k.like + 'の気分');
+  var m = Number(td.slice(5, 7));
+  soft.push(m >= 3 && m <= 5 ? 'ぽかぽかしてきたね' : m >= 6 && m <= 8 ? 'あついね、日かげで休もう' : m >= 9 && m <= 11 ? '食欲の秋だね' : 'さむいね、あったかくしてね');
+  if(test){ soft.push('テスト勉強、ちょっとずつね'); }
+  if(b && b.level !== 'bad') soft.push('今月のお金、いい感じ！');
   var allDone = S.tasks.length && !S.tasks.some(function(t){ return !t.done; });
   if(allDone) out.push('やることぜんぶ終わってる！すごい！');
-  if(kind === 'greet') return chTic(out.length && Math.random() < .6 ? out[0] : greet[Math.floor(Math.random() * greet.length)]);
-  var pool = out.concat(greet, soft);
-  return chTic(pool[Math.floor(Math.random() * pool.length)]);
+  if(kind === 'greet') return chTic(out.length && Math.random() < .6 ? out[0] : chPick(greet));
+  return chTic(chPick(out.concat(greet, soft)));
 }
-
-/* ===== 出てくる場所 ===== */
+/* 操作に反応する（いっぱい以上） */
+var CHARA_REACT = {
+  'ev-save':['予定をしまったよ', 'happy'], 'memo-save':['メモしたよ', 'happy'], 'note-save':['メモしたよ', 'happy'],
+  'paid':['お金の記録、えらい！', 'proud'], 'add-task':['課題を入れたよ。いっしょにがんばろ', 'cheer'],
+  'add-exam':['テスト、応援してるよ！', 'cheer'], 'att-set':['出欠の記録、ばっちり', 'wink'],
+  'add-income':['お金の記録、えらい！', 'sparkle'], 'add-fixed':['メモしておいたよ', 'happy'], 'save-stmt':['明細をしまったよ', 'happy'],
+  'grade-save':['成績、記録したよ', 'proud'], 'add-plan':['予定のお金、入れたよ', 'happy'], 'add-bal':['残高をしまったよ', 'happy']
+};
+function charaReact(act){
+  var r = CHARA_REACT[act];
+  if(!r || charaLevel() < 4) return;
+  charaCheer(r[0], r[1], { short:1 });
+}
+/* ============================== 出てくる場所 ============================== */
 /* 今日の画面のあいさつ */
 var __heroLine = { day:'', text:'' };
 function charaHero(){
-  if(charaLevel() < 1) return '';
-  var td = today();
-  if(__heroLine.day !== td + charaNow().id){ __heroLine = { day:td + charaNow().id, text:charaLine('greet') }; }
-  var imp = charaLine('important');
-  var text = imp || __heroLine.text;
-  var prop = /雨/.test(text) ? 'umbrella' : /テスト|課題/.test(text) ? 'book' : /お金/.test(text) ? 'coin' : /すごい|えらかった/.test(text) ? 'star' : /寝よ|休んで/.test(text) ? 'moon' : '';
-  var expr = /ピンチ|あぶない|休めない|すぎた/.test(text) ? 'sad' : /すごい|ファイト|がんばろ/.test(text) ? 'happy' : /寝よ|ねむく/.test(text) ? 'sleep' : 'normal';
-  return '<div class="chhero" data-act="chara-talk" role="button" aria-label="'+esc(charaNow().name)+'と話す">'+
+  var lv = charaLevel();
+  if(lv < 1) return '';
+  var td = today(), me = charaNow();
+  if(__heroLine.day !== td + me.id){ __heroLine = { day:td + me.id, text:charaLine('greet') }; }
+  var text = charaLine('important') || __heroLine.text;
+  var prop = /雨/.test(text) ? 'umbrella' : /テスト|課題|勉強/.test(text) ? 'book' : /お金/.test(text) ? 'coin'
+           : /すごい|えらかった/.test(text) ? 'trophy' : /寝よ|休んで/.test(text) ? 'moon' : /お風呂|ひとやすみ|休けい/.test(text) ? 'cup'
+           : /お月見/.test(text) ? 'moon' : /さむい|雪/.test(text) ? 'snow' : /おやつ|甘い/.test(text) ? 'cake' : '';
+  var expr = /ピンチ|あぶない|休めない|すぎた/.test(text) ? 'sweat' : /ファイト|がんばろ|いってらっしゃい/.test(text) ? 'cheer'
+           : /すごい|おめでとう|クリスマス|トリック/.test(text) ? 'sparkle' : /寝よ|ねむく/.test(text) ? 'sleep'
+           : /えらかった|えらいね/.test(text) ? 'love' : /おつかれ/.test(text) ? 'happy' : 'normal';
+  var pals = (lv >= 5) ? charaPals(2).map(function(id, i){
+    return charaSvg({ id:id, size:44, expr:(i ? 'wink' : 'happy'), anim:'float', still:true });
+  }).join('') : '';
+  return '<div class="chhero'+(pals ? ' withpals' : '')+'" data-act="chara-talk" role="button" aria-label="'+esc(me.name)+'と話す">'+
     '<div class="chbubble">'+esc(text)+'</div>'+
+    (pals ? '<span class="chpals">'+pals+'</span>' : '')+
     charaSvg({ size:72, expr:expr, prop:prop, anim:'bounce' })+'</div>';
 }
 /* 何もない画面 */
-function charaEmpty(){ return charaSvg({ size:64, expr:'sleep', anim:'sway' }); }
+function charaEmpty(){ return charaSvg({ size:64, expr:'sleep', anim:'sway', still:true }); }
 /* 小さな顔（トーストや相談のアイコン） */
-function charaFace(expr, size){ return charaSvg({ size:size || 24, expr:expr || 'normal' }); }
-/* お祝い */
+function charaFace(expr, size){ return charaSvg({ size:size || 24, expr:expr || 'normal', still:true }); }
+/* 見出しの横の小さな子（いっぱい以上） */
+function charaMini(expr){
+  if(charaLevel() < 4) return '';
+  return '<span class="chmini" aria-hidden="true">'+charaSvg({ size:22, expr:expr || 'happy', still:true })+'</span>';
+}
+/* お祝い・反応 */
 var __cheerTimer = null;
-function charaCheer(text, expr){
+function charaCheer(text, expr, opt){
   if(charaLevel() < 2) return;
+  opt = opt || {};
   var box = document.getElementById('chpop');
   if(!box){ box = document.createElement('div'); box.id = 'chpop'; box.setAttribute('aria-hidden', 'true'); document.body.appendChild(box); }
-  box.innerHTML = '<div class="chbubble">'+esc(chTic(text || 'おつかれさま！'))+'</div>'+charaSvg({ size:96, expr:expr || 'cheer', prop:'star', anim:'jump' });
-  box.classList.remove('on'); void box.offsetWidth; box.classList.add('on');
+  box.innerHTML = '<div class="chbubble">'+esc(chTic(text || 'おつかれさま！'))+'</div>'+
+    charaSvg({ size:opt.short ? 70 : 96, expr:expr || 'cheer', prop:opt.short ? '' : 'star', anim:'jump', still:true });
+  if(typeof photoFill === 'function') photoFill();
+  box.className = opt.short ? 'short' : '';
+  void box.offsetWidth; box.classList.add('on');
   clearTimeout(__cheerTimer);
-  __cheerTimer = setTimeout(function(){ box.classList.remove('on'); }, 1900);
+  __cheerTimer = setTimeout(function(){ box.classList.remove('on'); }, opt.short ? 1500 : 1900);
 }
-/* いつも画面のすみにいる子（たっぷりのとき） */
-var __buddy = { shownDay:'', bubble:false };
+/* いつも画面のすみにいる子（たっぷり以上） */
+var __buddy = { shownDay:'', bubble:false, taps:0, tapAt:0 };
+function charaBuddySig(){ return charaNow().id + '|' + charaHatNow() + '|' + charaTouch(); }
 function charaBuddy(){
   var el = document.getElementById('buddy');
   var on = charaLevel() >= 3 && appId !== 'chat';
@@ -287,6 +242,10 @@ function charaBuddy(){
     el = document.createElement('button');
     el.id = 'buddy'; el.type = 'button';
     el.addEventListener('click', function(){
+      var now = Date.now();
+      __buddy.taps = (now - __buddy.tapAt < 1500) ? __buddy.taps + 1 : 1;
+      __buddy.tapAt = now;
+      if(__buddy.taps >= 3){ __buddy.bubble = true; charaBuddyDraw(chTic('なでなで、うれしい！'), 'love'); return; }
       __buddy.bubble = !__buddy.bubble;
       charaBuddyDraw(__buddy.bubble ? charaLine('any') : '');
     });
@@ -298,61 +257,125 @@ function charaBuddy(){
     __buddy.shownDay = td; __buddy.bubble = true;
     charaBuddyDraw(charaLine('greet'));
     setTimeout(function(){ if(__buddy.bubble){ __buddy.bubble = false; charaBuddyDraw(''); } }, 5000);
-  }else if(!el.innerHTML || el.dataset.cid !== charaNow().id){
+  }else if(!el.innerHTML || el.dataset.cid !== charaBuddySig()){
     charaBuddyDraw(__buddy.bubble ? charaLine('any') : '');
   }
+  if(charaLevel() >= 5) charaWanderStart();
 }
-function charaBuddyDraw(text){
+function charaBuddyDraw(text, expr){
   var el = document.getElementById('buddy'); if(!el) return;
-  el.dataset.cid = charaNow().id;
+  el.dataset.cid = charaBuddySig();
   el.innerHTML = (text ? '<span class="chbubble">'+esc(text)+'</span>' : '') +
-    charaSvg({ size:58, expr:text ? 'happy' : 'normal', anim:'float' });
+    charaSvg({ size:58, expr:expr || (text ? 'happy' : 'normal'), anim:'float' });
+  if(typeof photoFill === 'function') photoFill();
 }
-/* キャラの口調で相談に答える（たっぷり、または設定でオン） */
+/* ときどき画面の下を歩く（めいっぱい） */
+var __wander = null;
+function charaWanderStart(){
+  if(__wander) return;
+  __wander = setInterval(charaWalk, 75000);
+  setTimeout(charaWalk, 5000);
+}
+function charaWalk(){
+  if(charaLevel() < 5 || document.hidden || appId === 'chat') return;
+  if(typeof isTyping === 'function' && isTyping()) return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if(document.getElementById('chwalk')) return;
+  var id = chPick(charaPals(3).concat([charaNow().id]));
+  var el = document.createElement('div');
+  el.id = 'chwalk'; el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = charaSvg({ id:id, size:44, expr:chPick(['happy', 'normal', 'wink', 'eat', 'sparkle']), anim:'walk', still:true });
+  el.addEventListener('animationend', function(ev){ if(ev.target === el) el.remove(); });
+  document.body.appendChild(el);
+  if(typeof photoFill === 'function') photoFill();
+  setTimeout(function(){ if(el.parentNode) el.remove(); }, 13000);
+}
+/* キャラの口調で相談に答える（たっぷり以上、または設定でオン） */
 function charaTalkRule(){
   var c = charaCfg();
   if(c.level < 1 || !(c.talk || c.level >= 3)) return '';
   var k = charaNow();
   return '\n【話し方】あなたは、このアプリのキャラクター「' + k.name + '」（' + k.desc + '）として話す。' +
     'やさしく、短めに、かわいらしく。' + (k.tic ? '文の終わりに、ときどき「' + k.tic + '」をつける（毎回ではない）。' : '') +
+    (k.like ? '好きなものは「' + k.like + '」。' : '') +
     'ただし、お金・健康・締切などの大事な中身は正確に伝える。';
 }
 
-/* ===== 設定画面 ===== */
+/* ============================== 設定画面 ============================== */
+var charaCatNow = 'all';
+function charaPill(act, v, on, label){
+  return '<button data-act="'+act+'" data-v="'+esc(String(v))+'" class="'+(on ? 'on' : '')+'">'+label+'</button>';
+}
 function charaSettings(){
   var c = charaCfg(), now = charaNow();
-  var h = '<label class="f">出てくる量</label><div class="pillrow">'+
-    CHARA_LEVELS.map(function(o){
-      return '<button data-act="chara-level" data-v="'+o[0]+'" class="'+(c.level===o[0]?'on':'')+'">'+o[1]+'</button>';
-    }).join('')+'</div>'+
-    '<p class="note" style="margin:-4px 0 10px">'+
-      ['キャラクターは出ません。',
-       '今日の画面のあいさつと、何もない画面に出ます。',
-       '＋お知らせ・課題が終わったときのお祝い・相談のアイコンにも出ます。',
-       '＋画面のすみにいつもいて、タップすると話します。相談もキャラの口調で答えます。'][c.level]+'</p>';
+  var h = '<label class="f">出てくる量（充実度）</label><div class="pillrow">'+
+    CHARA_LEVELS.map(function(o){ return charaPill('chara-level', o[0], c.level === o[0], o[1]); }).join('')+'</div>'+
+    '<p class="note" style="margin:-4px 0 10px">'+CHARA_LEVEL_NOTE[c.level]+'</p>';
   if(c.level > 0){
     h += '<label class="f">出し方</label><div class="pillrow">'+
-      [['one','いつも同じ子'],['daily','日替わり'],['random','開くたびにランダム']].map(function(o){
-        return '<button data-act="chara-mode" data-v="'+o[0]+'" class="'+(c.mode===o[0]?'on':'')+'">'+o[1]+'</button>';
-      }).join('')+'</div>'+
-      '<p class="note" style="margin:-4px 0 10px">'+(c.mode === 'one' ? '下から好きな子を選んでください。' : 'チェックした子の中から出ます（'+c.friends.length+'ひき）。')+'</p>'+
-      '<div class="chgrid">'+CHARAS.map(function(k){
-        var sel = (c.mode === 'one') ? (c.main === k.id) : (c.friends.indexOf(k.id) >= 0);
-        return '<button data-act="chara-pick" data-id="'+k.id+'" class="'+(sel?'on':'')+'" aria-pressed="'+(sel?'true':'false')+'">'+
-          (c.mode !== 'one' ? '<span class="chk2">'+(sel?'✓':'')+'</span>' : '')+
-          charaSvg({ id:k.id, size:56, expr: sel ? 'happy' : 'normal' })+
+      [['one','いつも同じ子'],['daily','日替わり'],['random','開くたびにランダム']].map(function(o){ return charaPill('chara-mode', o[0], c.mode === o[0], o[1]); }).join('')+'</div>'+
+      '<label class="f">絵のタッチ</label><div class="pillrow">'+
+      CHARA_TOUCHES.map(function(o){ return charaPill('chara-touch', o[0], c.touch === o[0], o[1]); }).join('')+'</div>';
+
+    /* キャラクターを選ぶ */
+    var total = CHARAS.length + c.custom.length;
+    if(!CHARA_CATS.some(function(x){ return x[0] === charaCatNow; })) charaCatNow = 'all';
+    var list = (charaCatNow === 'all') ? charaAllIds()
+             : (charaCatNow === 'mine') ? c.custom.map(function(x){ return x.id; })
+             : CHARAS.filter(function(x){ return x.cat === charaCatNow; }).map(function(x){ return x.id; });
+    h += '<label class="f">キャラクター（'+total+'ひき）</label>'+
+      '<p class="note" style="margin:-2px 0 6px">'+(c.mode === 'one' ? 'タップした子になります。' : 'チェックした子の中から出ます（いま'+c.friends.length+'ひき）。')+'</p>'+
+      '<div class="pillrow chcats">'+CHARA_CATS.map(function(o){ return charaPill('chara-cat', o[0], charaCatNow === o[0], o[1]); }).join('')+'</div>';
+    if(list.length){
+      h += '<div class="chgrid">'+list.map(function(id){
+        var k = charaById(id);
+        var sel = (c.mode === 'one') ? (c.main === id) : (c.friends.indexOf(id) >= 0);
+        return '<button data-act="chara-pick" data-id="'+esc(id)+'" class="'+(sel ? 'on' : '')+'" aria-pressed="'+(sel ? 'true' : 'false')+'">'+
+          (c.mode !== 'one' ? '<span class="chk2">'+(sel ? '✓' : '')+'</span>' : '')+
+          charaSvg({ id:id, size:56, expr:sel ? 'happy' : 'normal', still:true })+
           '<span class="chname">'+esc(k.name)+'</span><span class="chdesc">'+esc(k.desc)+'</span></button>';
+      }).join('')+'</div>';
+    }else{
+      h += '<div class="empty" style="padding:10px 0">まだいません。下の「自分の画像から作る」で作れます。</div>';
+    }
+    h += '<div class="pillrow" style="margin-top:8px"><button data-act="chara-make">＋ 自分の画像から作る</button></div>';
+    if(charaCatNow === 'mine' && c.custom.length){
+      h += c.custom.map(function(u){
+        return '<div class="row"><span class="chrowimg">'+charaSvg({ id:u.id, size:36, still:true })+'</span>'+
+          '<div class="grow"><div class="t">'+esc(u.name || '自分の子')+'</div><div class="s">'+esc(u.tic ? '口ぐせ「'+u.tic+'」' : '口ぐせなし')+'</div></div>'+
+          '<button class="mini" data-act="chara-edit" data-id="'+esc(u.id)+'">なおす</button>'+
+          '<button class="mini" data-act="chara-del" data-id="'+esc(u.id)+'">消す</button></div>';
+      }).join('');
+    }
+    h += '<p class="note" style="margin-top:4px">自分で描いた絵や写真を、切りぬいてキャラにできます。画像はこの手帳の中（と同期先）だけに入り、GitHubには置かれません。</p>';
+
+    /* 着せかえ */
+    var fr = charaFriend();
+    h += '<label class="f" style="margin-top:12px">着せかえ</label>'+
+      '<div class="chfriend"><span class="hearts">'+[1,2,3,4,5].map(function(i){ return '<i class="'+(fr.lv >= i ? 'on' : '')+'">♥</i>'; }).join('')+'</span>'+
+      '<span>なかよし度 Lv'+fr.lv+'（'+fr.pts+'pt）'+(fr.next ? '・つぎまで '+fr.next+'pt' : '・さいこう！')+'</span></div>'+
+      '<p class="note" style="margin:0 0 6px">課題を終える・今日の評価をもらう・予定やメモを入れると、なかよし度が上がって着せかえが増えます。</p>'+
+      '<div class="hatgrid">'+
+      [{ id:'auto', name:'季節におまかせ' }, { id:'none', name:'なし' }].concat(CHARA_HATS).map(function(x){
+        var ok = (x.id === 'auto' || x.id === 'none') ? true : charaHatOk(x.id);
+        var preview = (x.id === 'auto') ? charaHatAuto() : (x.id === 'none' ? '' : x.id);
+        return '<button data-act="chara-hat" data-v="'+x.id+'" class="'+(c.hat === x.id ? 'on' : '')+(ok ? '' : ' locked')+'"'+(ok ? '' : ' aria-disabled="true"')+'>'+
+          charaSvg({ id:now.id, size:44, hat:preview, still:true })+
+          '<span class="hn">'+esc(x.name)+'</span>'+(ok ? '' : '<span class="lock">🔒 Lv'+x.lv+'</span>')+'</button>';
       }).join('')+'</div>'+
-      '<label class="f" style="margin-top:10px">いまの子：'+esc(now.name)+'</label>'+
-      '<div class="chexpr">'+['normal','happy','wink','surprise','sleep','sad','cheer'].map(function(e){
-        return charaSvg({ id:now.id, size:44, expr:e });
+      (c.hat === 'auto' && c.level < 4 ? '<p class="note" style="margin-top:4px">「季節におまかせ」は、出てくる量が「いっぱい」以上のときに着がえます。</p>' : '');
+
+    /* 表情 */
+    h += '<label class="f" style="margin-top:12px">いまの子：'+esc(now.name)+'（表情'+CHARA_EXPRS.length+'しゅるい）</label>'+
+      '<div class="chexpr">'+CHARA_EXPRS.map(function(e){
+        return '<span class="chex" title="'+esc(e[1])+'">'+charaSvg({ id:now.id, size:42, expr:e[0], still:true })+'<em>'+esc(e[1])+'</em></span>';
       }).join('')+'</div>'+
       '<div class="pillrow" style="margin-top:8px">'+
         '<button data-act="chara-talk">話しかけてみる</button>'+
-        '<button data-act="chara-talkai" class="'+(c.talk || c.level >= 3 ? 'on' : '')+'">'+(c.level >= 3 ? '相談もこの子の口調（たっぷりでは常にオン）' : '相談もこの子の口調で')+'</button>'+
+        '<button data-act="chara-talkai" class="'+(c.talk || c.level >= 3 ? 'on' : '')+'">'+(c.level >= 3 ? '相談もこの子の口調（たっぷり以上では常にオン）' : '相談もこの子の口調で')+'</button>'+
       '</div>';
   }
-  h += '<p class="note">どの子も、このアプリのために作ったオリジナルのキャラクターです。</p>';
+  h += '<p class="note">用意した子は、どれもこのアプリのために作ったオリジナルのキャラクターです。</p>';
   return h;
 }
 function charaSet(patch){
@@ -362,6 +385,16 @@ function charaSet(patch){
 function charaAction(act, t){
   if(act === 'chara-level'){ charaSet({ level:toNum(t.dataset.v) }); commit(); return true; }
   if(act === 'chara-mode'){ charaSet({ mode:t.dataset.v }); __charaRandom = null; commit(); return true; }
+  if(act === 'chara-touch'){ charaSet({ touch:t.dataset.v }); commit(); return true; }
+  if(act === 'chara-cat'){ charaCatNow = t.dataset.v; render(); return true; }
+  if(act === 'chara-hat'){
+    var v = t.dataset.v;
+    if(v !== 'auto' && v !== 'none' && !charaHatOk(v)){
+      var hi = charaHatInfo(v);
+      toast('なかよし度Lv' + (hi ? hi.lv : '') + 'になると使えます', true); return true;
+    }
+    charaSet({ hat:v }); commit(); return true;
+  }
   if(act === 'chara-pick'){
     var c = charaCfg(), id = t.dataset.id;
     if(c.mode === 'one'){ charaSet({ main:id }); toast(charaById(id).name + 'にしました'); }
@@ -373,8 +406,16 @@ function charaAction(act, t){
     }
     commit(); return true;
   }
-  if(act === 'chara-talk'){ charaCheer(charaLine('any'), 'happy'); if(charaLevel() < 2) toast(charaLine('any')); return true; }
+  if(act === 'chara-talk'){
+    var line = charaLine('any');
+    charaCheer(line, chPick(['happy', 'wink', 'love', 'sparkle', 'proud', 'shy']));
+    if(charaLevel() < 2) toast(line);
+    return true;
+  }
   if(act === 'chara-talkai'){ charaSet({ talk: charaCfg().talk ? 0 : 1 }); commit(); return true; }
+  if(act === 'chara-make'){ if(typeof charaMakeOpen === 'function') charaMakeOpen(''); return true; }
+  if(act === 'chara-edit'){ if(typeof charaMakeOpen === 'function') charaMakeOpen(t.dataset.id); return true; }
+  if(act === 'chara-del'){ if(typeof charaMakeDelete === 'function') charaMakeDelete(t.dataset.id); return true; }
   return false;
 }
 

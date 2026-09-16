@@ -96,7 +96,7 @@ function renderInner(){
     }
   }
   var titleEl = document.getElementById('apptitle');
-  titleEl.innerHTML = esc(TITLES[appId]) + '<span id="synctag"></span>' +
+  titleEl.innerHTML = esc(TITLES[appId]) + (typeof charaMini === 'function' ? charaMini() : '') + '<span id="synctag"></span>' +
     '<button id="addbtn" type="button" data-act="go-add" title="予定を追加する" aria-label="予定を追加する"><span>＋</span><em>追加</em></button>' +
     '<button id="revbtn" data-act="go-review" title="今日の評価をみる">'+
       (function(){
@@ -156,7 +156,11 @@ document.getElementById('nav').addEventListener('click', function(e){
 
 document.getElementById('app').addEventListener('click', function(e){
   var t = e.target.closest('[data-act]'); if(!t) return;
-  undoable(t.dataset.act, function(){ appClick(e, t, t.dataset.act); });
+  var act0 = t.dataset.act;
+  var metaBefore = (typeof CHARA_REACT !== 'undefined' && CHARA_REACT[act0]) ? JSON.stringify(S.meta || {}) : null;
+  undoable(act0, function(){ appClick(e, t, act0); });
+  /* 記録できたときだけ、キャラが反応する */
+  if(metaBefore !== null && JSON.stringify(S.meta || {}) !== metaBefore) charaReact(act0);
 });
 function appClick(e, t, act){
   if(act==='go'){

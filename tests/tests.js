@@ -625,16 +625,51 @@ test('見た目：画面のスタイルとキャラクターを選べて、相�
 
   /* キャラクター */
   var bad = [], P = new A.DOMParser();
+  var check = function(opt, tag){
+    var h = A.charaSvg(opt);
+    var svg = h.slice(h.indexOf('<svg'), h.lastIndexOf('</svg>') + 6).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+    if(/NaN|undefined/.test(svg) || P.parseFromString(svg, 'image/svg+xml').getElementsByTagName('parsererror').length) bad.push(tag);
+  };
+  ok(A.CHARAS.length >= 35, 'キャラの数：' + A.CHARAS.length);
+  eq(new Set(A.CHARAS.map(function(k){ return k.id; })).size, A.CHARAS.length, 'キャラのIDが重なっている');
   A.CHARAS.forEach(function(k){
-    ['normal', 'happy', 'sleep', 'wink', 'surprise', 'sad', 'cheer'].forEach(function(ex){
-      ['', 'book', 'umbrella', 'coin', 'star', 'heart', 'cup', 'pencil', 'moon'].forEach(function(pr){
-        var h = A.charaSvg({ id:k.id, expr:ex, prop:pr });
-        var svg = h.slice(h.indexOf('<svg'), h.lastIndexOf('</svg>') + 6).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
-        if(P.parseFromString(svg, 'image/svg+xml').getElementsByTagName('parsererror').length) bad.push(k.id + '/' + ex + '/' + pr);
-      });
-    });
+    A.CHARA_EXPRS.forEach(function(ex){ check({ id:k.id, expr:ex[0], hat:'' }, k.id + '/' + ex[0]); });
+    A.CHARA_PROPS.forEach(function(pr){ check({ id:k.id, prop:pr, hat:'' }, k.id + '/' + pr); });
+    A.CHARA_HATS.forEach(function(ht){ check({ id:k.id, hat:ht.id }, k.id + '/' + ht.id); });
   });
   ok(!bad.length, '絵がこわれている：' + bad.slice(0, 5).join(', '));
+  /* 絵のタッチ */
+  A.S.ui.chara = J(A, { level:2, touch:'pencil' });
+  ok(/filter="url\(#chPencil\)"/.test(A.charaSvg({ id:'kuma' })) && doc.getElementById('chPencil'), '手がき風');
+  A.S.ui.chara = J(A, { level:2 });
+
+  /* 自分の画像から作る */
+  var cv = doc.createElement('canvas'); cv.width = cv.height = 64;
+  var cx = cv.getContext('2d');
+  cx.fillStyle = '#fff'; cx.fillRect(0, 0, 64, 64);
+  cx.fillStyle = '#e04060'; cx.beginPath(); cx.arc(32, 32, 16, 0, 7); cx.fill();
+  var cv2 = doc.createElement('canvas'); cv2.width = cv2.height = 64; cv2.getContext('2d').drawImage(cv, 0, 0);
+  ok(A.charaCutBg(cv2.getContext('2d'), 64, 64, 60), '背景を消す');
+  var px = cv2.getContext('2d').getImageData(0, 0, 64, 64).data;
+  eq(px[3], 0, 'すみは透明になる');
+  eq(px[(32 * 64 + 32) * 4 + 3], 255, 'まんなかは残る');
+  A.chMake = { edit:'', name:'テストの子', tic:'てす', like:'いちご', note:'', src:null, bg:1, zoom:70, cx:.5, cy:.5 };
+  A.charaMakeEl(); A.charaMakeSetImage(cv, cv.toDataURL('image/png'));
+  ok(doc.getElementById('chmk_prev') && doc.getElementById('chmk_box'), '切りぬきの画面');
+  await A.charaMakeSave();
+  var mine = A.charaCustomList();
+  eq(mine.length, 1, '自分の子が増える');
+  eq(A.charaNow().id, mine[0].id, '作った子になる');
+  ok(/てす/.test(A.chatSystem()) || A.charaLevel() < 3, '口ぐせ');
+  A.appId = 'today'; A.todayTab = 'today'; A.render();
+  await until(function(){ var im = doc.querySelector('.hero .chara.chimg img'); return im && /^data:image\/png/.test(im.src || ''); }, 4000, '自分の子の画像が出る');
+  A.settingsAction('img-orphan', { dataset:{} });
+  await sleep(300);
+  ok(await A.photoGetLocal(mine[0].pid), '写真の片づけで消えない');
+  await settle([A, B]);
+  eq(B.charaCustomList().length, 1, '自分の子が相手に届く');
+  ok(await B.photoGet(mine[0].pid), '画像も相手に届く');
+  A.charaCatNow = 'all';
   A.appId = 'set'; A.render();
   doc.querySelector('[data-act="chara-level"][data-v="3"]').click();
   eq(A.charaLevel(), 3, '出てくる量');
@@ -652,6 +687,25 @@ test('見た目：画面のスタイルとキャラクターを選べて、相�
   eq(B.S.ui.style, 'liquid', 'スタイルが相手に届く');
   eq(B.document.body.getAttribute('data-style'), 'liquid', '相手の画面も変わる');
   eq(B.charaNow().id, 'koro', 'キャラが相手に届く');
+  /* めいっぱい */
+  A.appId = 'set'; A.render();
+  doc.querySelector('[data-act="chara-level"][data-v="5"]').click();
+  A.appId = 'today'; A.todayTab = 'today'; A.render();
+  ok(doc.querySelector('#apptitle .chmini'), '見出しに小さな子');
+  eq(doc.querySelectorAll('.hero .chpals .chara').length, 2, '仲間があいさつに来る');
+  A.appId = 'tt'; A.render();
+  ok(doc.querySelector('th.today .ttch') || A.ttWeek, '時間割の今日');
+  A.charaReact('ev-save');
+  ok(doc.getElementById('chpop').classList.contains('short'), '操作に反応する');
+  A.charaWalk();
+  A.charaAction('chara-hat', { dataset:{ v:'ribbon' } });
+  eq(A.charaHatNow(), 'ribbon', '着せかえ');
+  A.appId = 'set'; A.S.ui.setOpen = J(A, { chara:1 }); A.render();
+  eq(doc.querySelectorAll('.hatgrid button').length, A.CHARA_HATS.length + 2, '着せかえの一覧');
+  eq(doc.querySelectorAll('.chexpr .chex').length, A.CHARA_EXPRS.length, '表情の一覧');
+  A.confirm = function(){ return true; };
+  A.charaMakeDelete(mine[0].id);
+  eq(A.charaCustomList().length, 0, '自分の子を消せる');
   A.appId = 'set'; A.render();
   doc.querySelector('[data-act="chara-level"][data-v="0"]').click();
   A.appId = 'today'; A.render();

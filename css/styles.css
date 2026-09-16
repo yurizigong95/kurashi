@@ -27,8 +27,8 @@ body[data-style] .box::before, body[data-style] .hero::before{ background:var(--
 body[data-style] .box::after{ background:var(--sv-rim, none) }
 
 /* ボタン */
-body[data-style] .pillrow button, body[data-style] .chips button, body[data-style] .mini, body[data-style] .kbtn,
-body[data-style] .themes button, body[data-style] button.btn.ghost{
+body[data-style] .pillrow button, body[data-style] .chips button, body[data-style] .mini, body[data-style] .kbtn:not(.on),
+body[data-style] .themes button, body[data-style] button.btn.ghost, body[data-style] .unkou, body[data-style] #fabmenu button{
   background:var(--sv-ctl); border:var(--sv-ctl-bd); box-shadow:var(--sv-ctl-sh);
   -webkit-backdrop-filter:var(--sv-ctl-blur, none); backdrop-filter:var(--sv-ctl-blur, none) }
 body[data-style] .pillrow button, body[data-style] .chips button, body[data-style] .mini, body[data-style] .kbtn{ border-radius:var(--sv-ctl-rad, 999px) }
@@ -61,6 +61,78 @@ body[data-style] .cmsg.ai .cbub{ background:var(--sv-card); border:var(--sv-card
 body[data-style] .cmsg.me .cbub{ background:var(--sv-btn); color:var(--sv-btn-ink); border:var(--sv-btn-bd) }
 body[data-style] #toast{ border-radius:var(--sv-ctl-rad, 999px) }
 body[data-style] #apps button, body[data-style] nav button{ border-radius:var(--sv-pill-rad, 999px) }
+
+/* 時間割・月カレンダー・メモ・週の予定など（それぞれ自分の見た目を持っているもの） */
+body[data-style] .scroll, body[data-style] table.cal, body[data-style] .wtl, body[data-style] .ncard, body[data-style] .addcard{
+  background:var(--sv-card); border:var(--sv-card-bd); box-shadow:var(--sv-card-sh);
+  -webkit-backdrop-filter:var(--sv-blur); backdrop-filter:var(--sv-blur) }
+body[data-style] .scroll, body[data-style] table.cal, body[data-style] .wtl{ border-radius:var(--sv-rad) }
+body[data-style] .ncard, body[data-style] .addcard{ border-radius:var(--sv-rad-s, var(--sv-rad)) }
+body[data-style] .ncard.pin{ border-color:var(--warn) }
+body[data-style] .calbar{ background:var(--sv-nav, var(--sv-hdr)); border:var(--sv-bar-bd); box-shadow:var(--sv-nav-sh, var(--sv-bar-sh));
+  -webkit-backdrop-filter:var(--sv-hdr-blur); backdrop-filter:var(--sv-hdr-blur); border-radius:var(--sv-rad-s, 18px) }
+body[data-style] .cal th, body[data-style] table.tt:not(.tt2) thead th{ background:var(--sv-inner) }
+body[data-style] table.tt2 thead th:not(.today), body[data-style] table.tt2 th.pd{ background:transparent }
+body[data-style] .cal td{ border-color:var(--sv-grid, var(--rule)) }
+body[data-style] .cal td.today{ background:var(--sv-today, var(--todaybg)) }
+body[data-style] .stat, body[data-style] .grid3.keep3 .stat, body[data-style] .revcal .rc:not(.has), body[data-style] .ttnow{
+  background:var(--sv-inner); border:var(--sv-inner-bd, var(--sv-ctl-bd)); box-shadow:var(--sv-inner-sh, none);
+  -webkit-backdrop-filter:none; backdrop-filter:none }
+body[data-style] .stat, body[data-style] .grid3.keep3 .stat{ border-radius:var(--sv-rad-s, 18px) }
+body[data-style] .bn, body[data-style] .msg{ border:var(--sv-inner-bd, var(--sv-ctl-bd)); box-shadow:var(--sv-bn-sh, none); border-radius:var(--sv-rad-s, 18px);
+  -webkit-backdrop-filter:none; backdrop-filter:none }
+body[data-style] .chk:not(.on), body[data-style] .progb{ background:var(--sv-ctl); border:var(--sv-ctl-bd); box-shadow:var(--sv-ctl-sh);
+  -webkit-backdrop-filter:none; backdrop-filter:none }
+body[data-style] .chk::after, body[data-style] .progb::after{ background:var(--sv-on-gloss, none) }
+body[data-style] .wday.now{ background:var(--sv-today, var(--todaybg)) }
+/* 時間割のマス（必修は赤、選択は青のまま、質感だけスタイルに合わせる） */
+body[data-style] td.reqd .cell2, body[data-style] td.elec .cell2{
+  border:var(--sv-cell-bd, 1px solid rgba(0,0,0,.08)); box-shadow:var(--sv-cell-sh, none);
+  border-radius:var(--sv-cell-rad, 9px); -webkit-backdrop-filter:var(--sv-cell-blur, none); backdrop-filter:var(--sv-cell-blur, none) }
+body[data-style] td.reqd .cell2{ background:var(--sv-reqd, #FFE6E1) }
+body[data-style] td.elec .cell2{ background:var(--sv-elec, #E6EDFF) }
+body[data-style] td.reqd .cell2::before, body[data-style] td.elec .cell2::before{ background:var(--sv-cell-sheen, none) }
+body[data-style] td.web .cell2, body[data-style] td.mkup .cell2{ border-style:dashed }
+body[data-theme="dark"][data-style] td.reqd .cell2{ background:var(--sv-reqd-d, rgba(244,160,143,.16)) }
+body[data-theme="dark"][data-style] td.elec .cell2{ background:var(--sv-elec-d, rgba(157,180,245,.16)) }
+
+/* スタイルごとの基本の色（線・区切り・今日の色など、画面のあちこちで使う） */
+body[data-style="minimal"], body[data-style="note"], body[data-style="neumo"], body[data-style="fuwa"], body[data-style="clay"], body[data-style="pop"]{
+  --edge:rgba(0,0,0,.10); --rule:rgba(0,0,0,.07); --soft:rgba(0,0,0,.035);
+  --glass:rgba(255,255,255,.92); --glass2:rgba(0,0,0,.03); --blur:none; --spec:0 0 #0000;
+  --todaybg:rgba(0,0,0,.045); --todaycol:rgba(0,0,0,.035);
+}
+@supports (color: color-mix(in srgb, red 50%, blue)){
+  body[data-style="minimal"], body[data-style="fuwa"], body[data-style="clay"], body[data-style="pop"], body[data-style="neumo"]{
+    --todaybg:color-mix(in srgb, var(--accent) 13%, transparent); --todaycol:color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+}
+body[data-theme="dark"][data-style="minimal"], body[data-theme="dark"][data-style="note"], body[data-theme="dark"][data-style="neumo"],
+body[data-theme="dark"][data-style="fuwa"], body[data-theme="dark"][data-style="clay"], body[data-theme="dark"][data-style="pop"]{
+  --edge:rgba(255,255,255,.12); --rule:rgba(255,255,255,.08); --soft:rgba(255,255,255,.05);
+  --glass:rgba(255,255,255,.06); --glass2:rgba(255,255,255,.04); --todaybg:rgba(255,255,255,.08); --todaycol:rgba(255,255,255,.06);
+}
+body[data-style="note"]{ --todaybg:rgba(255,222,110,.30); --todaycol:rgba(255,222,110,.24); --edge:rgba(60,50,40,.16); --rule:rgba(60,50,40,.10) }
+body[data-theme="dark"][data-style="note"]{ --todaybg:rgba(255,210,90,.14); --todaycol:rgba(255,210,90,.10) }
+body[data-style="liquid"]{
+  --edge:rgba(255,255,255,.55); --rule:rgba(255,255,255,.42); --glass:rgba(255,255,255,.22); --glass2:rgba(255,255,255,.14);
+  --blur:blur(16px) saturate(190%) brightness(1.06); --todaybg:rgba(255,255,255,.34); --todaycol:rgba(255,255,255,.36);
+  --sv-reqd:linear-gradient(150deg, rgba(255,214,206,.55), rgba(255,180,170,.22)); --sv-elec:linear-gradient(150deg, rgba(214,226,255,.55), rgba(180,198,250,.22));
+  --sv-cell-bd:1px solid rgba(255,255,255,.7); --sv-cell-sh:inset 0 1px 1px rgba(255,255,255,.9), 0 4px 10px -4px rgba(0,0,0,.18);
+  --sv-cell-rad:11px; --sv-cell-blur:blur(10px) saturate(180%);
+  --sv-cell-sheen:radial-gradient(120% 70% at 0% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%);
+  --sv-grid:rgba(255,255,255,.45); --sv-bn-sh:inset 0 1px 1px rgba(255,255,255,.7);
+}
+body[data-theme="dark"][data-style="liquid"]{ --edge:rgba(255,255,255,.16); --rule:rgba(255,255,255,.10); --glass:rgba(255,255,255,.06); --glass2:rgba(255,255,255,.04);
+  --todaybg:rgba(255,255,255,.10); --todaycol:rgba(255,255,255,.08); --sv-grid:rgba(255,255,255,.10);
+  --sv-cell-bd:1px solid rgba(255,255,255,.16); --sv-cell-sh:inset 0 1px 1px rgba(255,255,255,.2) }
+body[data-style="aurora"]{
+  --edge:rgba(255,255,255,.85); --blur:blur(24px) saturate(160%); --todaybg:rgba(255,255,255,.5);
+  --sv-reqd:linear-gradient(150deg, #FFE3EE, #FFD3DC); --sv-elec:linear-gradient(150deg, #E5E4FF, #D8ECFF);
+  --sv-cell-bd:1px solid #fff; --sv-cell-sh:0 4px 10px -4px rgba(140,110,220,.4); --sv-cell-rad:11px;
+  --sv-grid:rgba(190,170,240,.35);
+}
+body[data-theme="dark"][data-style="aurora"]{ --edge:rgba(255,255,255,.14); --todaybg:rgba(255,255,255,.08); --sv-grid:rgba(255,255,255,.10); --sv-cell-bd:1px solid rgba(255,255,255,.14) }
 
 /* ================= すっきり ================= */
 body[data-style="minimal"]{
@@ -436,6 +508,22 @@ body[data-style="neumo"] .pillrow button.on::before, body[data-style="neumo"] .c
   content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); margin-right:5px; vertical-align:2px }
 body[data-style="neumo"] .themes button.on{ box-shadow:inset 3px 3px 7px var(--sv-lo), inset -3px -3px 7px var(--sv-hi), 0 0 0 2px var(--accent) }
 
+/* 時間割のマス・お知らせの帯など、スタイルごとの細かいところ */
+body[data-style="minimal"]{ --sv-cell-bd:1px solid rgba(0,0,0,.06); --sv-cell-rad:8px }
+body[data-style="note"]{ --sv-cell-bd:1px solid rgba(60,50,40,.14); --sv-cell-rad:4px; --sv-reqd:#FDE9E4; --sv-elec:#E7EDFB; --sv-grid:rgba(60,50,40,.10) }
+body[data-style="pop"]{ --sv-cell-bd:1.5px solid var(--sv-line); --sv-cell-sh:2px 2px 0 var(--sv-line); --sv-cell-rad:10px; --sv-grid:rgba(0,0,0,.14); --sv-bn-sh:2px 2px 0 var(--sv-line) }
+body[data-theme="dark"][data-style="pop"]{ --sv-grid:rgba(255,255,255,.16) }
+body[data-style="neumo"]{ --sv-cell-bd:1px solid transparent; --sv-cell-sh:-3px -3px 6px var(--sv-hi), 3px 3px 6px var(--sv-lo); --sv-cell-rad:10px;
+  --sv-bn-sh:-3px -3px 7px var(--sv-hi), 3px 3px 7px var(--sv-lo); --sv-grid:rgba(0,0,0,.06) }
+body[data-theme="dark"][data-style="neumo"]{ --sv-grid:rgba(255,255,255,.06) }
+body[data-style="clay"]{ --sv-cell-bd:0 solid transparent; --sv-cell-rad:12px;
+  --sv-cell-sh:inset -2px -2px 4px rgba(0,0,0,.08), inset 2px 2px 4px rgba(255,255,255,.8), 0 4px 8px -4px rgba(0,0,0,.25);
+  --sv-bn-sh:inset -2px -2px 4px rgba(0,0,0,.06), inset 2px 2px 4px rgba(255,255,255,.7) }
+body[data-theme="dark"][data-style="clay"]{ --sv-cell-sh:inset -2px -2px 4px rgba(0,0,0,.3), 0 4px 8px -4px rgba(0,0,0,.5); --sv-bn-sh:none }
+body[data-style="fuwa"]{ --sv-cell-bd:1.5px solid #fff; --sv-cell-sh:0 3px 0 rgba(0,0,0,.06); --sv-cell-rad:12px }
+body[data-theme="dark"][data-style="fuwa"]{ --sv-cell-bd:1.5px solid rgba(255,255,255,.1) }
+body[data-style="note"] .cal td.today .dn, body[data-style="note"] table.tt2 thead th.today{ box-shadow:none }
+
 /* ================= スタイルを選ぶ画面 ================= */
 .stylegrid{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin-bottom:8px}
 @media (min-width:760px){ .stylegrid{grid-template-columns:repeat(5, minmax(0, 1fr))} }
@@ -572,3 +660,94 @@ body[data-theme="dark"] .chexpr{background:rgba(255,255,255,.05)}
 .cmsg .cav{flex:none; align-self:flex-end; margin-right:6px; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.85);
   display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.12)}
 body[data-theme="dark"] .cmsg .cav{background:rgba(255,255,255,.9)}
+
+/* ================= キャラクター（ふえた分） ================= */
+/* 絵のタッチ */
+.chara.ct-sticker svg, .chara.ct-sticker img{
+  filter:drop-shadow(1.6px 0 0 #fff) drop-shadow(-1.6px 0 0 #fff) drop-shadow(0 1.6px 0 #fff) drop-shadow(0 -1.6px 0 #fff) drop-shadow(0 2px 3px rgba(0,0,0,.22)) }
+.chara.ct-soft svg [stroke]{ stroke-opacity:.38 }
+.chara.ct-soft svg{ filter:saturate(.92) }
+/* まばたき */
+.chara.blink .cheye{ transform-box:fill-box; transform-origin:center; animation:chBlink 5s infinite }
+@keyframes chBlink{ 0%, 92%, 100%{ transform:scaleY(1) } 95%{ transform:scaleY(.12) } }
+/* 歩く */
+.chara.anim-walk svg, .chara.anim-walk img{ animation:chStep .5s ease-in-out infinite alternate }
+@keyframes chStep{ from{ transform:translateY(0) rotate(-5deg) } to{ transform:translateY(-4px) rotate(5deg) } }
+#chwalk{ position:fixed; left:0; bottom:calc(env(safe-area-inset-bottom) + 4px); z-index:29; pointer-events:none;
+  animation:chWalkX 11s linear forwards; filter:drop-shadow(0 3px 3px rgba(0,0,0,.15)) }
+@keyframes chWalkX{ from{ transform:translateX(-60px) } to{ transform:translateX(calc(100vw + 20px)) } }
+body[data-kb] #chwalk, body.chmaking #chwalk{ display:none }
+@media (prefers-reduced-motion:reduce){ .chara.blink .cheye, .chara.anim-walk svg, .chara.anim-walk img{ animation:none } #chwalk{ display:none } }
+
+/* 画像から作った子 */
+.chara.chimg{ position:relative; display:inline-block; border-radius:22%; background:radial-gradient(circle, rgba(255,255,255,.55) 0 55%, transparent 56%) }
+.chara.chimg img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; -webkit-user-select:none; user-select:none }
+.chara.chimg img:not([src]){ visibility:hidden }
+.chara.chimg svg{ position:absolute; inset:0; overflow:visible }
+.chara.chimg.anim-bounce img{ animation:chBounce 2.6s ease-in-out infinite; transform-origin:50% 100% }
+.chara.chimg.anim-sway img{ animation:chSway 3.4s ease-in-out infinite; transform-origin:50% 90% }
+.chara.chimg.anim-jump img{ animation:chJump .9s cubic-bezier(.3,1.6,.5,1) 2; transform-origin:50% 100% }
+.chara.chimg.anim-float img{ animation:chFloat 3.2s ease-in-out infinite }
+.chara.chimg.ex-sad img, .chara.chimg.ex-cry img{ transform:rotate(-6deg); filter:saturate(.8) }
+.chara.chimg.ex-sleep img{ filter:brightness(.93) }
+.chara.chimg.ex-angry img{ animation:chShake .5s ease-in-out 2 }
+.chara.chimg.ex-surprise img{ transform:scale(1.06) }
+.chara.chimg.ex-think img{ transform:rotate(5deg) }
+@keyframes chShake{ 0%, 100%{ transform:translateX(0) } 25%{ transform:translateX(-2px) } 75%{ transform:translateX(2px) } }
+.chara.chimg.ct-sticker{ background:none }
+
+/* 今日の画面：仲間 */
+.hero .chhero .chpals{ display:flex; align-items:flex-end; gap:0; margin-right:-8px; margin-bottom:2px }
+.hero .chhero.withpals .chbubble{ margin-bottom:40px }
+.hero .chhero .chpals .chara:nth-child(2){ margin-left:-10px }
+/* 見出し・時間割・カレンダーの小さな子 */
+.chmini{ display:inline-flex; margin-left:-2px }
+table.tt2 thead th.today .ttch{ display:block; line-height:0; margin:0 auto 1px; width:18px }
+table.tt2 thead th.today .ttch .chara{ background:#fff; border-radius:50% }
+.cal .calch{ display:inline-flex; flex:none; margin-left:1px }
+
+/* お祝い（小さいほう） */
+#chpop.short .chbubble{ font-size:.8em }
+
+/* 設定：分類・着せかえ・表情 */
+.chcats{ margin-bottom:6px }
+.chcats button{ font-size:.7em !important; padding:5px 11px !important }
+.chfriend{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.8em; font-weight:700; margin-bottom:2px }
+.chfriend .hearts i{ font-style:normal; color:rgba(0,0,0,.15); font-size:1.1em; margin-right:1px }
+.chfriend .hearts i.on{ color:#F0587A }
+body[data-theme="dark"] .chfriend .hearts i{ color:rgba(255,255,255,.18) }
+body[data-theme="dark"] .chfriend .hearts i.on{ color:#F58CA8 }
+.hatgrid{ display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px; margin:4px 0 4px }
+@media (min-width:760px){ .hatgrid{ grid-template-columns:repeat(6, minmax(0, 1fr)) } }
+.hatgrid button{ position:relative; display:flex; flex-direction:column; align-items:center; gap:1px; padding:6px 2px 5px; border-radius:14px;
+  border:1px solid var(--edge); background:rgba(255,255,255,.5); font:inherit; color:var(--ink); cursor:pointer }
+body[data-theme="dark"] .hatgrid button{ background:rgba(255,255,255,.06) }
+.hatgrid button.on{ box-shadow:0 0 0 2.5px var(--accent) }
+.hatgrid button.locked .chara{ opacity:.35; filter:grayscale(1) }
+.hatgrid .hn{ font-size:.58em; font-weight:700; line-height:1.25; text-align:center }
+.hatgrid .lock{ position:absolute; top:4px; right:4px; font-size:.52em; font-weight:700; color:var(--sub) }
+.chexpr{ gap:2px 4px }
+.chex{ display:inline-flex; flex-direction:column; align-items:center; width:52px }
+.chex em{ font-style:normal; font-size:.54em; color:var(--sub); line-height:1.2; text-align:center }
+.chrowimg{ flex:none; line-height:0 }
+
+/* 自分の画像から作る画面 */
+#chmake{ position:fixed; inset:0; z-index:80; display:none; align-items:flex-end; justify-content:center;
+  background:rgba(40,24,34,.38); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px) }
+#chmake.on{ display:flex }
+.chmk-card{ width:100%; max-width:460px; max-height:92vh; display:flex; flex-direction:column; border-radius:26px 26px 0 0;
+  background:var(--paper); color:var(--ink); box-shadow:0 -10px 40px rgba(0,0,0,.25); padding-bottom:env(safe-area-inset-bottom) }
+@media (min-width:600px){ #chmake{ align-items:center } .chmk-card{ border-radius:26px } }
+.chmk-hd{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px 10px; border-bottom:1px solid var(--rule) }
+.chmk-bd{ overflow-y:auto; padding:12px 16px 18px; -webkit-overflow-scrolling:touch }
+.chmk-stage{ position:relative; margin:4px auto 10px; max-width:320px; line-height:0; touch-action:none; cursor:crosshair;
+  background:repeating-conic-gradient(#e9e9ee 0 25%, #fff 0 50%) 0 0/16px 16px; border-radius:10px; overflow:hidden }
+.chmk-stage img{ width:100%; height:auto; display:block; -webkit-user-select:none; user-select:none; pointer-events:none }
+.chmk-box{ position:absolute; border:2px solid #fff; border-radius:8px; box-shadow:0 0 0 2px var(--accent), 0 0 0 999px rgba(0,0,0,.35); pointer-events:none }
+.chmk-prev{ display:flex; align-items:center; gap:10px; margin:8px 0 }
+.chmk-prev canvas{ width:96px; height:96px; border-radius:16px; border:1px solid var(--edge);
+  background:repeating-conic-gradient(#ececf1 0 25%, #fff 0 50%) 0 0/12px 12px }
+.chmk-prev span{ font-size:.8em; color:var(--sub); font-weight:700 }
+.chmk-now{ display:flex; justify-content:center; padding:6px 0 10px }
+.chmk-bd input[type="range"]{ width:100%; padding:0; border:0; background:none; box-shadow:none }
+body.chmaking #buddy{ display:none }

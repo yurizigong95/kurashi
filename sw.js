@@ -1,8 +1,8 @@
 /* くらしの手帳：オフライン用 */
-var CACHE = 'kurashi-v6';
+var CACHE = 'kurashi-v7';
 var FILES = [
   './', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png',
-  './css/app.css', './css/styles.css', './js/chara.js',
+  './css/app.css', './css/styles.css', './js/chara-data.js', './js/chara-art.js', './js/chara.js', './js/chara-make.js',
   './js/data.js', './js/core.js', './js/sync.js', './js/ai.js', './js/common.js', './js/decor.js',
   './js/commute.js', './js/today.js', './js/money.js', './js/risyu.js', './js/calendar.js',
   './js/settings.js', './js/google.js', './js/timetable.js', './js/todo.js', './js/chat.js',

@@ -486,6 +486,7 @@ function monthGrid(){
 
       h += '<td class="'+cls.join(' ')+'"><div class="day" role="button" tabindex="0" data-act="cal-day" data-d="'+ymd+'">'+
         '<span class="dhead"><span class="dn">'+Number(ymd.slice(8,10))+'</span>'+
+        (ymd === td && typeof charaLevel === 'function' && charaLevel() >= 5 ? '<span class="calch">'+charaSvg({ size:16, expr:'happy', hat:'', still:true })+'</span>' : '')+
         (rev && rev.grade ? '<span class="dgrade" style="--gc:'+(GRADE_COLOR[rev.grade]||'#999')+'">'+esc(rev.grade)+'</span>' : '')+
         (hol ? '<span class="holname">'+esc(hol)+'</span>' : '')+'</span>';
 

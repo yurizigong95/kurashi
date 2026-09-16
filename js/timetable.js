@@ -101,7 +101,7 @@ function viewTT(){
     DAYS.map(function(d){
       var hn = holidayName(dates[d]), isTd = (dates[d] === td);
       return '<th'+(isTd?' class="today"':'')+(hn&&!isTd?' style="color:var(--holi)"':'')+'>'+
-        (isTd ? '<span class="todaytag">今日</span>' : '')+d+
+        (isTd ? (typeof charaLevel === 'function' && charaLevel() >= 4 ? '<span class="ttch">'+charaSvg({ size:18, expr:'happy', hat:'', still:true })+'</span>' : '')+'<span class="todaytag">今日</span>' : '')+d+
         '<span class="dsub">'+Number(dates[d].slice(8,10))+(hn?'<br><span style="font-size:.85em">'+esc(hn.slice(0,4))+'</span>':'')+'</span></th>';
     }).join('')+
     '</tr></thead><tbody>';

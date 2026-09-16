@@ -338,7 +338,7 @@ function settingsAction(act, t){
   }
   if(act==='photo-list'){
     photoKeys().then(function(ks){
-      window.__photoList = ks;
+      window.__photoList = ks.filter(function(k9){ return String(k9).indexOf('chimg_') !== 0; });
       photoOpen = true; render();
     });
     return true;
@@ -380,7 +380,7 @@ function settingsAction(act, t){
         if(mm && (mm.photos||[]).length) mm.photos = mm.photos.filter(function(x){ return ids.indexOf(x) < 0; });
       });
       photoPick = {};
-      photoKeys().then(function(ks){ window.__photoList = ks; photoUsage().then(function(u){ window.__photoQuota = u; toast(ids.length+'枚を消しました'); commit(); }); });
+      photoKeys().then(function(ks){ window.__photoList = ks.filter(function(k9){ return String(k9).indexOf('chimg_') !== 0; }); photoUsage().then(function(u){ window.__photoQuota = u; toast(ids.length+'枚を消しました'); commit(); }); });
     });
     return true;
   }
@@ -426,6 +426,7 @@ function settingsAction(act, t){
       (arr||[]).forEach(function(o){ (o.photos||[]).forEach(function(pid){ used[pid]=1; }); });
     });
     Object.keys(S.memos||{}).forEach(function(k){ ((S.memos[k]||{}).photos||[]).forEach(function(pid){ used[pid]=1; }); });
+    if(typeof charaPhotoIds === 'function') charaPhotoIds().forEach(function(pid){ used[pid]=1; });   /* 自分で作ったキャラの画像は残す */
     photoKeys().then(function(ks){
       var kill = ks.filter(function(id5){ return !used[id5]; });
       return Promise.all(kill.map(function(id6){ return photoDel(id6); })).then(function(){
