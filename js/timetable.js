@@ -73,14 +73,11 @@ function viewTT(){
     '<button class="mini" data-act="tt-week" data-v="1">次週 ›</button>'+
     '<span class="s2" style="margin-left:auto">'+esc(weekLabel)+'　'+(mon.getMonth()+1)+'/'+mon.getDate()+'〜</span>'+
     '</div>';
-  /* 今日がどこか、ひと目でわかるようにする */
-  h += '<div class="ttnow">'+
-       '<span class="ttnowdot"></span>'+
-       '<b>今日は '+ymdLabel(td)+'</b>'+
-       (todayCol ? '<span class="s2">　'+esc(todayCol)+'曜日の列が今日です</span>'
-                 : '<span class="s2">　この週には入っていません</span>'+
-                   (wk!==0 ? '<button class="mini" data-act="tt-weekset" data-v="0" style="margin-left:8px">今週にもどる</button>' : ''))+
-       '</div>';
+  /* 今日の印は上の日付の欄だけ。今日が入っていない週を見ているときだけ、もどるボタンを出す */
+  if(!todayCol && wk !== 0){
+    h += '<div class="ttnow"><span class="ttnowdot"></span><b>今日は '+ymdLabel(td)+'</b>'+
+         '<button class="mini" data-act="tt-weekset" data-v="0" style="margin-left:8px">今週にもどる</button></div>';
+  }
 
   if(ttShowAll){
     h += '<div class="box" style="margin-bottom:12px">'+
@@ -100,7 +97,6 @@ function viewTT(){
       '<p class="note">科目の追加・削除は「授業」タブからできます。</p></div></div>';
   }
 
-  var nowMin = now.getHours()*60 + now.getMinutes();
   h += '<div class="scroll" style="overflow-x:hidden"><table class="tt tt2"><thead><tr><th class="pd"></th>'+
     DAYS.map(function(d){
       var hn = holidayName(dates[d]), isTd = (dates[d] === td);
@@ -110,14 +106,11 @@ function viewTT(){
     }).join('')+
     '</tr></thead><tbody>';
   PERIODS.forEach(function(p){
-    var pSt = minutesOf(S.commute.periods[p-1]||''), pEn = minutesOf(S.commute.ends[p-1]||'');
-    var nowRow = (todayCol && pSt != null && pEn != null && nowMin >= pSt && nowMin <= pEn);
-    h += '<tr'+(nowRow?' class="nowrow"':'')+'><th class="pd"><span class="pdn">'+p+'</span><span class="pdt">'+esc(S.commute.periods[p-1]||'')+'<br>'+esc(S.commute.ends[p-1]||'')+'</span></th>';
+    h += '<tr><th class="pd"><span class="pdn">'+p+'</span><span class="pdt">'+esc(S.commute.periods[p-1]||'')+'<br>'+esc(S.commute.ends[p-1]||'')+'</span></th>';
     DAYS.forEach(function(d){
       var c = map[d+p];
       var ymd0 = dates[d];
-      var isTdCol = (ymd0 === td);
-      var tdCls = isTdCol ? ' todaycol' : '';
+      var tdCls = '';                    /* 今日の印は、上の日付の欄だけにつける */
       var mk = makeupsOn(ymd0).filter(function(x){ return toNum(x.period)===p; })[0];
       if(!c && mk){
         h += '<td class="'+(courseReq(mk.course)?'reqd':'elec')+' mkup'+tdCls+'"><div class="cell2" role="button" tabindex="0" data-act="course-open" data-name="'+esc(mk.course)+'">'+

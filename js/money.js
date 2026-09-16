@@ -7,100 +7,89 @@ function accRow(acc, amount, sub, label){
     '<div class="amt num">'+yen(amount)+'</div></div>';
 }
 
-/* ===== 1か月のお金の流れ（図） ===== */
-var FLOW_COLORS = { bal:'#4E8BC4', inc:'#3FA36B', short:'#D93A2F', card:'#D9738F', fixed:'#E0A23A', free:'#3FA36B' };
-function flowGroup(list, max){
-  list = list.filter(function(x){ return x[1] > 0; }).sort(function(a,b){ return b[1] - a[1]; });
-  if(list.length <= max) return list;
-  var head = list.slice(0, max - 1), rest = list.slice(max - 1);
-  head.push(['そのほか' + rest.length + '件', rest.reduce(function(a,x){ return a + x[1]; }, 0), rest[0][2]]);
-  return head;
-}
-function moneyFlowSvg(){
+/* ===== 1か月のお金の流れ =====
+   「あるお金」を1本の帯にして、出ていく分とのこりに分けて見せる（全体に対する割合）。
+   下に、1件ずつの金額と割合の一覧（表の代わり）を出す。
+   色：引落＝1番目（青）・固定費＝2番目（オレンジ）・のこり＝3番目（みどり）。足りない分は注意の赤＋「!」。 */
+var flowOpen = false;
+function flowPct(v, total){ return total > 0 ? Math.round(v / total * 100) : 0; }
+function flowData(){
   var b = budget(), d = derive(), cur = thisYm(), g = d.byMonth[cur];
-  var src = [], use = [];
-  S.balances.forEach(function(x){ src.push([x.name || '口座', toNum(x.amount), 'bal']); });
-  S.income.forEach(function(x){ src.push([x.name || '収入', toNum(x.amount), 'inc']); });
-  var smbc = g ? g.smbc.plan + g.smbc.stmt : 0, rak = g ? g.rakuten.plan + g.rakuten.stmt : 0;
-  if(smbc > 0) use.push(['三井住友の引落', smbc, 'card']);
-  if(rak > 0) use.push(['楽天の引落', rak, 'card']);
-  S.fixed.forEach(function(x){ use.push([x.name || '固定費', toNum(x.amount), 'fixed']); });
-  src = flowGroup(src, 6);
-  use = flowGroup(use, 6);
-  if(b.free < 0) src.push(['足りない分', -b.free, 'short']);
-  if(b.free > 0) use.push(['自由に使えるお金', b.free, 'free']);
-  var total = Math.max(src.reduce(function(a,x){ return a + x[1]; }, 0), use.reduce(function(a,x){ return a + x[1]; }, 0));
-  if(!total) return '';
-  var W = 360, gap = 6, ROW = 30;          /* 小さい項目でも、名前と金額が重ならない高さをとる */
-  var k = 220 / total;
-  var xL = 108, xM = 172, xR = 244, bw = 10, mw = 16;
-  var place = function(list){
-    var y = gap;
-    var out = list.map(function(x){
-      var h = Math.max(2, x[1] * k), slot = Math.max(h, ROW);
-      var o = { x:x, y0:y + (slot - h) / 2, y1:y + (slot - h) / 2 + h };
-      y += slot + gap;
-      return o;
-    });
-    return { list:out, end:y };
-  };
-  var PL = place(src), PR = place(use);
-  var poolH = total * k;
-  var H = Math.max(PL.end, PR.end, poolH + 28);
-  /* 短い方の列は、まんなかに寄せる */
-  var shift = function(P){ var d = (H - P.end) / 2; P.list.forEach(function(o){ o.y0 += d; o.y1 += d; }); return P.list; };
-  var L = shift(PL), R = shift(PR);
-  var poolY = (H - poolH) / 2 + 6;
-  var band = function(x0, a0, a1, x1, b0, b1, color, title){
-    var c = (x0 + x1) / 2;
-    return '<path d="M'+x0+','+a0+' C'+c+','+a0+' '+c+','+b0+' '+x1+','+b0+' L'+x1+','+b1+' C'+c+','+b1+' '+c+','+a1+' '+x0+','+a1+' Z" '+
-      'fill="'+color+'" fill-opacity=".28"><title>'+esc(title)+'</title></path>';
-  };
-  var svg = '<svg class="mflow" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="今月のお金の流れ">';
-  /* 左 → まんなか */
-  var py = poolY;
-  L.forEach(function(o){
-    var h = o.x[1] * k;
-    svg += band(xL + bw, o.y0, o.y0 + h, xM, py, py + h, FLOW_COLORS[o.x[2]], o.x[0] + ' ' + yen(o.x[1]));
-    py += h;
-  });
-  /* まんなか → 右 */
-  py = poolY;
-  R.forEach(function(o){
-    var h = o.x[1] * k;
-    svg += band(xM + mw, py, py + h, xR, o.y0, o.y0 + h, FLOW_COLORS[o.x[2]], o.x[0] + ' ' + yen(o.x[1]));
-    py += h;
-  });
-  var label = function(o, x, anchor){
-    var cy = (o.y0 + o.y1) / 2;
-    return '<rect x="'+(anchor === 'end' ? xL : xR)+'" y="'+o.y0+'" width="'+bw+'" height="'+(o.y1 - o.y0)+'" rx="2" fill="'+FLOW_COLORS[o.x[2]]+'"/>'+
-      '<text x="'+x+'" y="'+(cy - 2)+'" text-anchor="'+anchor+'" class="mf-n">'+esc(String(o.x[0]).slice(0, 9))+'</text>'+
-      '<text x="'+x+'" y="'+(cy + 11)+'" text-anchor="'+anchor+'" class="mf-v">'+yen(o.x[1])+'</text>';
-  };
-  L.forEach(function(o){ svg += label(o, xL - 5, 'end'); });
-  R.forEach(function(o){ svg += label(o, xR + bw + 5, 'start'); });
-  svg += '<rect x="'+xM+'" y="'+poolY+'" width="'+mw+'" height="'+poolH+'" rx="3" class="mf-pool"/>'+
-    '<text x="'+(xM + mw/2)+'" y="'+(poolY - 6)+'" text-anchor="middle" class="mf-n">今月</text>';
-  svg += '</svg>';
-  return svg;
+  var cards = [];
+  if(g){
+    if(g.smbc.plan + g.smbc.stmt > 0) cards.push({ name:ACCOUNTS.smbc.bank + '（' + ACCOUNTS.smbc.card + '）', amount:g.smbc.plan + g.smbc.stmt });
+    if(g.rakuten.plan + g.rakuten.stmt > 0) cards.push({ name:ACCOUNTS.rakuten.bank + '（' + ACCOUNTS.rakuten.card + '）', amount:g.rakuten.plan + g.rakuten.stmt });
+  }
+  var fixed = S.fixed.map(function(x){ return { name:x.name || '固定費', amount:toNum(x.amount) }; }).filter(function(x){ return x.amount > 0; });
+  var srcs = S.balances.map(function(x){ return { name:(x.name || '口座') + '（残高）', amount:toNum(x.amount) }; })
+    .concat(S.income.map(function(x){ return { name:(x.name || '収入') + '（今月の収入）', amount:toNum(x.amount) }; }))
+    .filter(function(x){ return x.amount > 0; });
+  var sum = function(a){ return a.reduce(function(s, x){ return s + x.amount; }, 0); };
+  return { b:b, have:b.have, out:b.pay + b.fixed, card:sum(cards), fix:sum(fixed), free:b.free,
+           cards:cards, fixed:fixed, srcs:srcs };
 }
 function flowCard(){
-  var b = budget();
-  var svg = moneyFlowSvg();
-  return section('お金の流れ', ymLabel(thisYm()),
-    (svg
-      ? '<div class="mflowwrap">'+svg+'</div>'+
-        '<div class="mf-legend">'+
-          '<span><i style="background:'+FLOW_COLORS.bal+'"></i>口座</span>'+
-          '<span><i style="background:'+FLOW_COLORS.inc+'"></i>収入</span>'+
-          '<span><i style="background:'+FLOW_COLORS.card+'"></i>カード</span>'+
-          '<span><i style="background:'+FLOW_COLORS.fixed+'"></i>固定費</span>'+
-          '<span><i style="background:'+(b.free < 0 ? FLOW_COLORS.short : FLOW_COLORS.free)+'"></i>'+(b.free < 0 ? '足りない分' : 'のこり')+'</span>'+
-        '</div>'+
-        '<p class="note">左が「あるお金（口座＋今月の収入）」、右が「出ていくお金」です。'+
-          (b.free < 0 ? '<b style="color:var(--rakuten)">'+yen(-b.free)+'足りません。</b>' : '自由に使えるのは<b>'+yen(b.free)+'</b>です。')+'</p>'
-      : '<div class="empty">口座の残高・収入・固定費を入れると、図になります。</div>')+
-    '<button class="btn ghost" style="margin-top:8px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>');
+  var f = flowData();
+  if(!f.have && !f.out){
+    return section('今月のお金の流れ', ymLabel(thisYm()),
+      '<div class="empty">口座の残高・収入・固定費を入れると、ここにまとめが出ます。</div>'+
+      '<button class="btn ghost" style="margin-top:8px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>');
+  }
+  var short = f.free < 0;
+  var base = short ? f.out : f.have;            /* 帯ぜんたいが表すお金 */
+  var segs = [
+    { cls:'s1', label:'カードの引落', v:f.card },
+    { cls:'s2', label:'固定費', v:f.fix },
+    short ? null : { cls:'s3', label:'のこり', v:f.free }
+  ].filter(function(s){ return s && s.v > 0; });
+  var tip = function(s){ return s.label + ' ' + yen(s.v) + '（' + flowPct(s.v, base) + '%）'; };
+
+  /* 3つの数字 */
+  var h = '<div class="mf2">'+
+    '<div class="mf-kpis">'+
+      '<div class="mf-kpi"><div class="k">あるお金</div><div class="v">'+yen(f.have)+'</div><div class="s">口座＋今月の収入</div></div>'+
+      '<div class="mf-kpi"><div class="k">出ていく</div><div class="v">'+yen(f.out)+'</div><div class="s">引落＋固定費</div></div>'+
+      (short
+        ? '<div class="mf-kpi hero bad"><div class="k"><span class="mf-alert" aria-hidden="true">!</span>足りない</div><div class="v">'+yen(-f.free)+'</div><div class="s">引き落としまでに入金を</div></div>'
+        : '<div class="mf-kpi hero"><div class="k">自由に使える</div><div class="v">'+yen(f.free)+'</div><div class="s">あるお金の'+flowPct(f.free, f.have)+'%</div></div>')+
+    '</div>';
+
+  /* 1本の帯 */
+  h += '<div class="mf-cap">'+(short ? '出ていくお金 '+yen(f.out)+' のうちわけ' : 'あるお金 '+yen(f.have)+' の行き先')+'</div>'+
+    '<div class="mf-bar" role="img" aria-label="'+esc(segs.map(tip).join('、'))+'">'+
+      segs.map(function(s){
+        var p = s.v / base * 100;
+        return '<span class="mf-seg '+s.cls+'" tabindex="0" style="flex-grow:'+p.toFixed(3)+'" data-tip="'+esc(tip(s))+'" title="'+esc(tip(s))+'">'+
+          (p >= 18 ? '<span class="mf-in">'+flowPct(s.v, base)+'%</span>' : '')+'</span>';
+      }).join('')+
+      (short ? '<span class="mf-mark" style="left:'+(f.have / base * 100).toFixed(2)+'%" title="ここまでは払えます（あるお金 '+esc(yen(f.have))+'）"></span>' : '')+
+    '</div>'+
+    (short ? '<div class="mf-markcap" style="padding-left:'+Math.min(80, f.have / base * 100).toFixed(1)+'%">▲ ここまでは払えます</div>' : '');
+
+  /* 凡例（色と名前と金額） */
+  h += '<div class="mf-leg">'+segs.map(function(s){
+    return '<span class="mf-li"><i class="mf-sw '+s.cls+'"></i>'+esc(s.label)+'<b>'+yen(s.v)+'</b><em>'+flowPct(s.v, base)+'%</em></span>';
+  }).join('')+'</div>';
+
+  /* 1件ずつの一覧 */
+  var rows = function(list, cls, total){
+    var max = list.reduce(function(m, x){ return Math.max(m, x.amount); }, 0) || 1;
+    return list.slice().sort(function(a, b){ return b.amount - a.amount; }).map(function(x){
+      return '<div class="mf-row"><span class="mf-name"><i class="mf-sw '+cls+'"></i>'+esc(x.name)+'</span>'+
+        '<span class="mf-track"><span class="mf-fill '+cls+'" style="width:'+Math.max(2, x.amount / max * 100).toFixed(1)+'%"></span></span>'+
+        '<span class="mf-amt">'+yen(x.amount)+'</span><span class="mf-pct">'+flowPct(x.amount, total)+'%</span></div>';
+    }).join('');
+  };
+  h += '<details class="mf-more"'+(flowOpen ? ' open' : '')+' data-flow-more="1"><summary>1件ずつ見る</summary>'+
+    (f.cards.length || f.fixed.length
+      ? '<div class="mf-sub">出ていくお金（'+(short ? '出ていくお金' : 'あるお金')+'に対する割合）</div>'+
+        rows(f.cards, 's1', base) + rows(f.fixed, 's2', base)
+      : '')+
+    (f.srcs.length ? '<div class="mf-sub">あるお金のもと</div>' + rows(f.srcs, 'sx', f.have) : '')+
+    '</details></div>';
+
+  h += '<button class="btn ghost" style="margin-top:10px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>';
+  return section('今月のお金の流れ', ymLabel(thisYm()), h);
 }
 
 /* ===== シフト表の写真から、シフトをまとめて登録 ===== */

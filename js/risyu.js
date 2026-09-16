@@ -532,7 +532,18 @@ function risyuAction(act, t, ev){
   }
   if(act==='task-done' || act==='task-undone'){
     var tk = S.tasks.filter(function(x){ return x.id===t.dataset.id; })[0];
-    if(tk){ tk.done = act==='task-done'?1:0; tk.mt=Date.now(); if(tk.done) toast('おつかれさま！'); commit(); }
+    if(tk){
+      tk.done = act==='task-done'?1:0; tk.mt=Date.now();
+      if(tk.done){
+        toast('おつかれさま！');
+        /* キャラクターのお祝い（ぜんぶ終わったら、とくべつに） */
+        if(typeof charaCheer === 'function'){
+          var left = S.tasks.filter(function(x){ return !x.done; }).length;
+          charaCheer(left ? 'おつかれさま！あと' + left + 'こだよ' : 'ぜんぶ終わった！すごい！', 'cheer');
+        }
+      }
+      commit();
+    }
     return true;
   }
   if(act==='del-task'){ removeItem('tasks', t.dataset.id); toast('削除しました'); commit(); return true; }

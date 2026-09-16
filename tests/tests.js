@@ -167,7 +167,7 @@ test('すべての画面がエラーなく表示できる', async function(){
     });
   });
   try{
-    S.ui.setOpen = { s1:1, s2:1, s3:1, s4:1, s5:1, s6:1, storageBox:1, kindSettings:1, weekFilterSettings:1, errlog:1, gas:1, whatsnew:1 };
+    S.ui.setOpen = { s1:1, s2:1, s3:1, s4:1, s5:1, s6:1, storageBox:1, kindSettings:1, weekFilterSettings:1, errlog:1, gas:1, whatsnew:1, chara:1 };
     w.appId = 'set'; w.render();
   }catch(e){ errs.push('設定：' + e.message); }
   w.termCourses().forEach(function(c){ try{ w.appId = 'course'; w.courseView = c.name; w.render(); }catch(e){ errs.push('授業 ' + c.name + '：' + e.message); } });
@@ -347,7 +347,7 @@ test('入力：予定の追加画面で打った字が、描き直し・種類�
   await settle([A2, frames.B]);
 });
 
-test('時間割：今日の列がわかり、科目の予定（その他をふくむ）が出る', async function(){
+test('時間割：今日は上の日付の欄だけに色がつき、科目の予定（その他をふくむ）が出る', async function(){
   var A = frames.A;
   var td = A.today(), dow = new Date().getDay();
   A.S.events.push(J(A, { id:'ev_tt', date:td, title:'持ち物', subject:'英語コミュニケーションⅡ(7)', kind:'other', mt:Date.now() }));
@@ -355,9 +355,11 @@ test('時間割：今日の列がわかり、科目の予定（その他をふ�
   A.appId = 'tt'; A.ttWeek = null; A.render();
   if(dow >= 1 && dow <= 5){
     ok(A.document.querySelector('th.today .todaytag'), '今日の見出し');
-    ok(A.document.querySelectorAll('td.todaycol').length >= 6, '今日の列');
   }
-  ok(A.document.querySelector('.ttnow'), '「今日は」の表示');
+  eq(A.document.querySelectorAll('td.todaycol, tr.nowrow').length, 0, '授業のマスは囲まない');
+  A.ttWeek = 2; A.render();
+  ok(A.document.querySelector('.ttnow [data-act="tt-weekset"]'), '別の週を見ているときは「今週にもどる」');
+  A.ttWeek = null; A.render();
   ok(A.itemsForCourseOn('英語コミュニケーションⅡ(7)', td).some(function(x){ return x.id === 'ev_tt'; }), 'その他の予定もマスに出る');
   var box = [].slice.call(A.document.querySelectorAll('#app section')).filter(function(s){ return /科目ごとの予定/.test(s.textContent); })[0];
   ok(box && /持ち物/.test(box.textContent), '科目ごとの予定に出る');
@@ -417,10 +419,20 @@ test('お金：1か月のお金の流れの図', async function(){
   A.S.income = J(A, [{ id:'in1', name:'バイト代', amount:60000, mt:1 }]);
   A.S.fixed = J(A, [{ id:'fx1', name:'スマホ', amount:3000, kind:'sub', mt:1 }, { id:'fx2', name:'サブスク', amount:1000, kind:'sub', mt:1 }]);
   A.appId = 'money'; A.payTab = 'home'; A.render();
-  var svg = A.document.querySelector('svg.mflow');
-  ok(svg, '図がない');
-  ok(svg.querySelectorAll('path').length >= 4, '流れの帯が足りない');
-  ok(/楽天銀行/.test(svg.textContent) && /スマホ/.test(svg.textContent), 'ラベル');
+  var bar = A.document.querySelector('.mf-bar');
+  ok(bar, '帯がない');
+  ok(bar.querySelectorAll('.mf-seg').length >= 2, '帯のうちわけが足りない');
+  ok(A.document.querySelectorAll('.mf-leg .mf-li').length >= 2, '凡例がない');
+  var more = A.document.querySelector('.mf-more');
+  ok(more && /楽天銀行/.test(more.textContent) && /スマホ/.test(more.textContent), '1件ずつの一覧');
+  var free = A.budget().free;
+  ok(A.document.querySelector('.mf-kpi.hero').textContent.indexOf(A.yen(free)) >= 0, '自由に使えるお金の数字');
+  /* 足りないとき */
+  A.S.fixed.push(J(A, { id:'fx3', name:'大きな出費', amount:500000, kind:'fix', mt:1 }));
+  A.render();
+  ok(A.document.querySelector('.mf-kpi.bad') && A.document.querySelector('.mf-mark'), '足りないときの表示');
+  A.S.fixed = A.S.fixed.filter(function(x){ return x.id !== 'fx3'; });
+  A.render();
 });
 
 test('お金：シフト表の写真から読み取って登録', async function(){
@@ -586,12 +598,67 @@ test('エラーの記録・新しい版のお知らせ・写真を大きく見�
   A.eval("setTimeout(function(){ throw new Error('画面のわざとのエラー'); }, 0)");
   await sleep(100);
   ok(A.errLogAll().some(function(x){ return /画面のわざとのエラー/.test(x.m); }), '画面のエラーが記録されない');
-  ok(/同期/.test(A.whatsNewHtml(A.APP_BUILD)), 'お知らせの中身');
+  ok(A.CHANGELOG[0].build === A.APP_BUILD && A.whatsNewHtml(A.APP_BUILD).indexOf('お知らせはありません') < 0, 'この版のお知らせがある');
   A.showWhatsNew();
   ok(A.document.getElementById('whatsnew').classList.contains('on'), 'お知らせが出ない');
   A.closeWhatsNew();
   eq(A.SYNC_LOCAL.seenBuild, A.APP_BUILD, '見た印');
   ok(A.document.getElementById('viewer'), '写真を見る画面がある');
+});
+
+test('見た目：画面のスタイルとキャラクターを選べて、相手にも届く', async function(){
+  var A = frames.A, B = frames.B, doc = A.document;
+  A.S.ui.setOpen = J(A, { s1:1, chara:1 }); A.appId = 'set'; A.render();
+  eq(doc.querySelectorAll('.stylegrid button').length, A.UI_STYLES.length, 'スタイルの見本の数');
+  doc.querySelector('[data-act="set-style"][data-v="liquid"]').click();
+  eq(doc.body.getAttribute('data-style'), 'liquid', 'スタイルが変わる');
+  /* どのスタイルでも、どの画面もこわれない */
+  var errs = [];
+  A.UI_STYLES.forEach(function(s){
+    A.S.ui.style = s.id; A.applyUi();
+    ['today', 'money', 'tt', 'set', 'chat'].forEach(function(a){ try{ A.appId = a; A.render(); }catch(e){ errs.push(s.id + '/' + a + '：' + e.message); } });
+  });
+  ok(!errs.length, errs.join('\n'));
+  A.S.ui.style = 'glass'; A.applyUi();
+  ok(!doc.body.hasAttribute('data-style'), 'いつものにもどすと印が消える');
+  A.S.ui.style = 'liquid'; A.applyUi();
+
+  /* キャラクター */
+  var bad = [], P = new A.DOMParser();
+  A.CHARAS.forEach(function(k){
+    ['normal', 'happy', 'sleep', 'wink', 'surprise', 'sad', 'cheer'].forEach(function(ex){
+      ['', 'book', 'umbrella', 'coin', 'star', 'heart', 'cup', 'pencil', 'moon'].forEach(function(pr){
+        var h = A.charaSvg({ id:k.id, expr:ex, prop:pr });
+        var svg = h.slice(h.indexOf('<svg'), h.lastIndexOf('</svg>') + 6).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+        if(P.parseFromString(svg, 'image/svg+xml').getElementsByTagName('parsererror').length) bad.push(k.id + '/' + ex + '/' + pr);
+      });
+    });
+  });
+  ok(!bad.length, '絵がこわれている：' + bad.slice(0, 5).join(', '));
+  A.appId = 'set'; A.render();
+  doc.querySelector('[data-act="chara-level"][data-v="3"]').click();
+  eq(A.charaLevel(), 3, '出てくる量');
+  ok(doc.getElementById('buddy'), 'たっぷりでは、すみに子がいる');
+  doc.querySelector('[data-act="chara-pick"][data-id="koro"]').click();
+  eq(A.charaNow().id, 'koro', '選んだ子になる');
+  ok(/ハムッ/.test(A.chatSystem()), '相談もその子の口調になる');
+  A.appId = 'today'; A.todayTab = 'today'; A.render();
+  ok(doc.querySelector('.hero .chhero svg'), '今日の画面にあいさつが出る');
+  A.charaCheer('テスト', 'cheer');
+  ok(doc.getElementById('chpop').classList.contains('on'), 'お祝いが出る');
+  A.appId = 'chat'; A.render();
+  ok(!doc.getElementById('buddy'), '相談の画面では、すみの子はかくれる');
+  await settle([A, B]);
+  eq(B.S.ui.style, 'liquid', 'スタイルが相手に届く');
+  eq(B.document.body.getAttribute('data-style'), 'liquid', '相手の画面も変わる');
+  eq(B.charaNow().id, 'koro', 'キャラが相手に届く');
+  A.appId = 'set'; A.render();
+  doc.querySelector('[data-act="chara-level"][data-v="0"]').click();
+  A.appId = 'today'; A.render();
+  ok(!doc.getElementById('buddy') && !doc.querySelector('.chhero'), 'なしにすると出ない');
+  /* もとにもどす */
+  A.S.ui.style = 'glass'; A.S.ui.chara = J(A, { level:2 }); A.touch('ui'); A.applyUi(); A.commit();
+  await settle([A, B]);
 });
 
 test('予定：自分で作った種類が保存しても「その他」に変わらない', async function(){

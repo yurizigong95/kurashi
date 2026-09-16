@@ -160,14 +160,31 @@ function stopListeners(){
   syncState.unsub = [];
 }
 function onListenErr(err){
+  var m = String(err && err.message || err);
   syncState.on = false;
-  syncState.msg = 'つながりませんでした：' + (err && err.message || err);
-  logErr('同期', syncState.msg);
+  /* Firebase のルールで止められているときは、直し方がわかるように */
+  syncState.permDenied = /permission|insufficient/i.test(m) || (err && err.code === 'permission-denied');
+  syncState.msg = syncState.permDenied
+    ? 'Firebaseのルールで止められています。設定 › 端末どうしの同期 の手順でルールを直してください。'
+    : 'つながりませんでした：' + m;
+  logErr('同期', syncState.msg + (syncState.permDenied ? '（' + m + '）' : ''));
   stopListeners();
   updateSyncTag(); render();
 }
+/* 新しいしくみに必要な Firebase のルール（部屋のIDで始まる文書だけ読み書きできる） */
+function firebaseRulesText(){
+  return "rules_version = '2';\n" +
+    "service cloud.firestore {\n" +
+    "  match /databases/{database}/documents {\n" +
+    "    match /shiharai/{docId} {\n" +
+    "      allow read, write: if docId.matches('" + DEFAULT_ROOM + ".*');\n" +
+    "    }\n" +
+    "  }\n" +
+    "}\n";
+}
 /* 目次が届いた */
 function onMainDoc(data){
+  syncState.permDenied = false;
   syncState.pulledAt = Date.now();
   syncState.remote = data || { parts:{} };
   syncState.devices = (data && data.devices) || {};

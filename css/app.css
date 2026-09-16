@@ -662,7 +662,13 @@ label.tg input{width:auto; margin-top:2px}
   .fold.on .box{border-top-left-radius:0; border-top-right-radius:0}
   .fold{margin-bottom:10px}
 
-  #revbtn{margin-left:auto; border:0; background:none; padding:0 2px; cursor:pointer; line-height:1}
+  #addbtn{margin-left:auto; display:inline-flex; align-items:center; gap:3px; height:28px; padding:0 10px 0 8px; border-radius:10px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.7); color:#fff; font:inherit; font-size:.7em; font-weight:800; line-height:1;
+    background:linear-gradient(160deg, var(--accent2), var(--accent)); box-shadow:inset 0 1px 1px rgba(255,255,255,.6), 0 2px 7px rgba(0,0,0,.14)}
+  #addbtn span{font-size:1.35em; font-weight:700; margin-top:-1px}
+  #addbtn em{font-style:normal}
+  #addbtn:active{transform:scale(.93)}
+  #revbtn{margin-left:4px; border:0; background:none; padding:0 2px; cursor:pointer; line-height:1}
   #revbtn .rgb{display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:26px;
     padding:0 7px; border-radius:9px; font-size:.72em; font-weight:800; color:#fff;
     border:1px solid rgba(255,255,255,.7); background:linear-gradient(160deg, color-mix(in srgb, var(--gc) 74%, white), var(--gc));
@@ -670,6 +676,8 @@ label.tg input{width:auto; margin-top:2px}
   #revbtn .rgb.none{color:var(--sub); font-weight:700; font-size:.64em;
     background:linear-gradient(160deg, rgba(255,255,255,.7), rgba(255,255,255,.4)); border-color:var(--edge)}
   #revbtn:active{transform:scale(.93)}
+  body[data-theme="dark"] #addbtn{color:#111; border-color:rgba(255,255,255,.35)}
+  body[data-theme="dark"] #revbtn .rgb.none{color:var(--ink); background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.22)}
   .kbtn .ksl{font-size:.82em; opacity:.85; margin-right:4px; font-weight:700}
 
 /* ================= カレンダーの追加ボタン ================= */
@@ -824,11 +832,6 @@ label.tg input{width:auto; margin-top:2px}
     border-radius:10px 10px 0 0; box-shadow:0 2px 8px rgba(0,0,0,.18)}
   table.tt2 thead th.today .dsub{color:rgba(255,255,255,.92); font-weight:700}
   table.tt2 thead th.today .todaytag{display:block; font-size:.78em; line-height:1.1; letter-spacing:.04em}
-  table.tt2 td.todaycol{background:var(--todaycol); box-shadow:inset 1px 0 0 var(--accent), inset -1px 0 0 var(--accent)}
-  table.tt2 tbody tr:last-child td.todaycol{box-shadow:inset 1px 0 0 var(--accent), inset -1px 0 0 var(--accent), inset 0 -2px 0 var(--accent)}
-  table.tt2 td.todaycol .cell2{border-color:var(--accent)}
-  table.tt2 tr.nowrow th.pd .pdn{color:var(--accent); font-weight:800}
-  table.tt2 tr.nowrow td.todaycol .cell2{outline:2px solid var(--accent); outline-offset:-2px}
   .ttnow{display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:2px 0 10px; padding:8px 12px;
     border-radius:14px; background:var(--todaycol); border:1px solid var(--edge); font-size:.82em}
   .ttnow .ttnowdot{width:9px; height:9px; border-radius:50%; background:var(--accent); flex:none;
@@ -1168,3 +1171,55 @@ svg.mflow .mf-v{font-size:10px; fill:var(--sub); font-variant-numeric:tabular-nu
 svg.mflow .mf-pool{fill:var(--accent)}
 .mf-legend{display:flex; flex-wrap:wrap; gap:4px 12px; margin:8px 0 2px; font-size:.74em; color:var(--sub)}
 .mf-legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:-1px}
+
+/* Firebaseのルール（コピー用） */
+pre.rules{margin:8px 0; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.75); border:1px solid var(--edge);
+  font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-all; -webkit-user-select:text; user-select:text}
+body[data-theme="dark"] pre.rules{background:rgba(0,0,0,.25)}
+
+/* ===== お金の流れ（帯と一覧） ===== */
+.mf2{--mf-1:#2a78d6; --mf-2:#eb6834; --mf-3:#1baf7a; --mf-x:#898781; --mf-bad:#d03b3b; --mf-gap:rgba(255,255,255,.95); --mf-track:rgba(0,0,0,.06)}
+body[data-theme="dark"] .mf2{--mf-1:#3987e5; --mf-2:#d95926; --mf-3:#199e70; --mf-gap:#241f28; --mf-track:rgba(255,255,255,.08)}
+.mf-kpis{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-bottom:14px}
+.mf-kpi{padding:10px 10px 9px; border-radius:14px; background:rgba(255,255,255,.55); border:1px solid var(--edge); min-width:0}
+body[data-theme="dark"] .mf-kpi{background:rgba(255,255,255,.06)}
+.mf-kpi .k{font-size:.72em; color:var(--sub); display:flex; align-items:center; gap:4px}
+.mf-kpi .v{font-size:1.12em; font-weight:700; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mf-kpi .s{font-size:.66em; color:var(--sub); margin-top:1px}
+.mf-kpi.hero{background:rgba(255,255,255,.8)}
+.mf-kpi.hero .v{font-size:1.32em}
+.mf-kpi.bad .v{color:var(--mf-bad)}
+.mf-alert{display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%;
+  background:var(--mf-bad); color:#fff; font-size:10px; font-weight:800}
+.mf-cap{font-size:.78em; color:var(--sub); margin:0 0 6px}
+.mf-bar{position:relative; display:flex; gap:2px; height:24px; border-radius:6px}
+.mf-seg{position:relative; min-width:4px; height:100%; display:flex; align-items:center; justify-content:center; outline:none; cursor:default}
+.mf-seg:first-child{border-radius:6px 0 0 6px}
+.mf-seg:last-of-type{border-radius:0 6px 6px 0}
+.mf-seg:only-of-type{border-radius:6px}
+.mf-seg.s1,.mf-sw.s1,.mf-fill.s1{background:var(--mf-1)}
+.mf-seg.s2,.mf-sw.s2,.mf-fill.s2{background:var(--mf-2)}
+.mf-seg.s3,.mf-sw.s3,.mf-fill.s3{background:var(--mf-3)}
+.mf-sw.sx,.mf-fill.sx{background:var(--mf-x)}
+.mf-in{font-size:11px; font-weight:700; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); pointer-events:none}
+.mf-seg:hover::after,.mf-seg:focus::after{content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+  white-space:nowrap; font-size:12px; font-weight:600; color:#fff; background:rgba(30,26,34,.92); padding:4px 8px; border-radius:8px; z-index:3; pointer-events:none}
+.mf-mark{position:absolute; top:-5px; bottom:-5px; width:2px; margin-left:-1px; background:var(--ink); border-radius:2px}
+.mf-markcap{font-size:.7em; color:var(--sub); margin-top:4px; white-space:nowrap}
+.mf-leg{display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 0 4px; font-size:.8em}
+.mf-li{display:inline-flex; align-items:center; gap:5px; color:var(--ink)}
+.mf-li b{font-weight:700; margin-left:2px}
+.mf-li em{font-style:normal; color:var(--sub)}
+.mf-sw{display:inline-block; width:10px; height:10px; border-radius:3px; flex:none}
+.mf-more{margin-top:10px; border-top:1px solid var(--rule); padding-top:8px}
+.mf-more summary{cursor:pointer; font-size:.84em; font-weight:700; color:var(--sub); padding:4px 0}
+.mf-sub{font-size:.74em; color:var(--sub); margin:10px 0 2px}
+.mf-row{display:grid; grid-template-columns:minmax(0, 1.3fr) minmax(0, 1fr) auto 2.8em; align-items:center; gap:8px; padding:5px 0; font-size:.82em}
+.mf-name{display:flex; align-items:center; gap:6px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.mf-track{height:8px; border-radius:4px; background:var(--mf-track); overflow:hidden}
+.mf-fill{display:block; height:100%; border-radius:0 4px 4px 0}
+.mf-amt{font-variant-numeric:tabular-nums; font-weight:600; text-align:right}
+.mf-pct{font-variant-numeric:tabular-nums; color:var(--sub); text-align:right}
+@media (max-width:380px){ .mf-kpi .v{font-size:1em} .mf-kpi.hero .v{font-size:1.12em} }
+.stbox{padding:8px 10px 10px; margin:0 0 10px; border-radius:14px; background:rgba(255,255,255,.4); border:1px solid var(--edge)}
+body[data-theme="dark"] .stbox{background:rgba(255,255,255,.05)}

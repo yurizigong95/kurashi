@@ -331,7 +331,8 @@ function chatSystem(){
     '【答えの終わりに】根拠にした予定があれば、最後の行に「根拠：9/17の課題、9/20のテスト」のように短く書く。\n' +
     '【予定の提案】新しく予定を入れるとよさそうなときは、いちばん最後に次の形式だけの行を足す（複数可・説明は書かない）：\n' +
     '[[ADD|種類|タイトル|YYYY-MM-DD|HH:MM|終了HH:MM]]\n' +
-    '  種類は task/quiz/exam/kousa/work/imp/other のどれか。時刻がいらないときは空でよい。\n';
+    '  種類は task/quiz/exam/kousa/work/imp/other のどれか。時刻がいらないときは空でよい。\n' +
+    ((typeof charaTalkRule === 'function') ? charaTalkRule() : '');
 }
 
 function chatSuggest(){
@@ -402,6 +403,7 @@ function viewChat(){
       return;
     }
     h += '<div class="cmsg ' + (m.role === 'user' ? 'me' : 'ai') + '">' +
+      ((m.role !== 'user' && typeof charaLevel === 'function' && charaLevel() >= 2) ? '<span class="cav">' + charaFace('normal', 30) + '</span>' : '') +
       '<div class="cbub">' +
         ((m.atts||[]).length
           ? '<div class="atts in">' + m.atts.map(function(a){

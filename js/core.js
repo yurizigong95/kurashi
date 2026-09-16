@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-09-17b';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-09-17c';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -102,6 +102,22 @@ var THEMES = [
   {id:'dark',     name:'ダーク',   sw:['#1B1720','#E38BA8']},
   {id:'custom',   name:'自分の色', sw:['#E8C8E8','#9B6BB5'], custom:1 }
 ];
+/* 画面のスタイル（形や質感。色のテーマとは別に選べる） */
+var UI_STYLES = [
+  { id:'glass',   name:'すりガラス',       tag:'いつもの', desc:'いままでの、やわらかいガラス' },
+  { id:'liquid',  name:'リキッドグラス',   tag:'おすすめ', desc:'水のように透きとおるガラス。ふちが光り、背景の色がにじみます' },
+  { id:'aurora',  name:'ゆめかわオーロラ', tag:'おしゃれ', desc:'パステルのオーロラと、虹色のふち' },
+  { id:'fuwa',    name:'ふわもこ',         tag:'かわいい', desc:'水玉の背景と、ぬいぐるみのようなステッチ' },
+  { id:'clay',    name:'ねんど',           tag:'かわいい', desc:'ぷにっとした粘土のような立体' },
+  { id:'pop',     name:'ぷっくりポップ',   tag:'かわいい', desc:'くっきりした線と影。シールのよう' },
+  { id:'note',    name:'手帳',             tag:'おしゃれ', desc:'方眼ノートとマスキングテープ、蛍光ペン' },
+  { id:'neumo',   name:'ふんわり立体',     tag:'おしゃれ', desc:'背景と同じ色で、浮き出たような形' },
+  { id:'minimal', name:'すっきり',         tag:'見やすい', desc:'白くて平ら。文字が読みやすく、電池にもやさしい' }
+];
+function uiStyleNow(){
+  var id = S.ui.style || 'glass';
+  return UI_STYLES.filter(function(s){ return s.id === id; })[0] || UI_STYLES[0];
+}
 /* 自分で選んだ色から、明るさ違いを作る */
 function hexToRgb(h){ h=String(h||'').replace('#',''); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
   return { r:parseInt(h.slice(0,2),16)||0, g:parseInt(h.slice(2,4),16)||0, b:parseInt(h.slice(4,6),16)||0 }; }
@@ -583,7 +599,7 @@ var UNDO_LISTS = ['income','fixed','balances','events','tasks','exams','health',
 var UNDO_KEYS = ['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog',
                  'syllabus','dayReview','terms','commute','transit','termsList','chatQuick','risyu','termId'];
 /* 押しただけで、ほとんど何も変えない操作（覚えておく手間をはぶく） */
-var UNDO_SKIP = /^(go|fold|cal-(prev|next|today|day|mode|view|filter|mset|addopen)|km-|cw-|kind-(pick|mode)|subj-pick|tt-(week|weekset|terms|subj-past)|course-(open|back)|ev-(open|close|kind|pri|how|photo|edit|edit-from-detail|reset)|chat-(room|att|q|send|speak|stop|sum)|voice-|quick-edit|work-(prev|next|now)|fd-|dl-|photo-(pick|list|close)|memo-photo-view|go-|today-toggle|range|toggle-|wstyle|manual|cancel-stmt|cam|pick|syl-(ai|cancel)|shift-ocr$|shift-ocr-cancel|gas-|storage-recount|errlog-copy|note-(open|back)|dev-rename|sync-|export|import|ics)$/;
+var UNDO_SKIP = /^(go|fold|cal-(prev|next|today|day|mode|view|filter|mset|addopen)|km-|cw-|kind-(pick|mode)|subj-pick|tt-(week|weekset|terms|subj-past)|course-(open|back)|ev-(open|close|kind|pri|how|photo|edit|edit-from-detail|reset)|chat-(room|att|q|send|speak|stop|sum)|voice-|quick-edit|work-(prev|next|now)|fd-|dl-|photo-(pick|list|close)|memo-photo-view|go-|today-toggle|range|toggle-|wstyle|manual|cancel-stmt|cam|pick|syl-(ai|cancel)|shift-ocr$|shift-ocr-cancel|gas-|storage-recount|errlog-copy|note-(open|back)|dev-rename|sync-|export|import|ics|chara-talk)$/;
 var UNDO_LABEL = { 'task-done':'完了にしました', 'task-undone':'未完了にもどしました', 'paid':'支払いの印を変えました',
   'prog-step':'進みぐあいを変えました', 'att-set':'出欠を記録しました', 'ot-plus':'時間を直しました',
   'sub-toggle':'小項目を変えました', 'note-check':'チェックを変えました', 'kind-up':'順番を変えました', 'kind-down':'順番を変えました',
@@ -697,8 +713,9 @@ function toastUndo(text, fn){
   if(window.__undoWatch) window.__undoWatch.hasUndo = true;
   var t = document.getElementById('toast');
   if(!t) return;
-  t.innerHTML = esc(text)+' <button id="undoBtn" style="margin-left:10px;border:1px solid rgba(255,255,255,.5);background:none;color:inherit;border-radius:999px;padding:2px 10px;font:inherit;font-size:.9em">取り消す</button>';
-  t.className = 'on';
+  var face2 = (typeof charaLevel === 'function' && charaLevel() >= 2) ? charaFace('normal', 22) : '';
+  t.innerHTML = face2 + '<span>' + esc(text) + '</span>' + ' <button id="undoBtn" style="margin-left:10px;border:1px solid rgba(255,255,255,.5);background:none;color:inherit;border-radius:999px;padding:2px 10px;font:inherit;font-size:.9em">取り消す</button>';
+  t.className = 'on' + (face2 ? ' withch' : '');
   clearTimeout(toastTimer);
   var btn = document.getElementById('undoBtn');
   if(btn) btn.onclick = function(){ t.className=''; fn(); };
@@ -1225,6 +1242,8 @@ function applyUi(){
   var th = (mode === 'season' || mode === 'mix') ? (SEASON_THEME[seasonNow()] || 'pink') : (S.ui.theme || 'pink');
   document.body.setAttribute('data-theme', th);
   document.body.setAttribute('data-fs', S.ui.fs || 'm');
+  var stl = uiStyleNow().id;
+  if(stl !== 'glass') document.body.setAttribute('data-style', stl); else document.body.removeAttribute('data-style');
   if(th === 'custom') applyCustomTheme(); else clearCustomTheme();
   document.body.setAttribute('data-season', (mode==='season'||mode==='mix') ? seasonNow() : '');
   /* 行事のかざりは、背景の設定とは別に選べる */
@@ -1295,8 +1314,10 @@ function toast(text, bad){
   if(window.__undoWatch && !bad) window.__undoWatch.toasts.push(String(text));
   var t = document.getElementById('toast');
   if(!t) return;
-  t.textContent = text;
-  t.className = 'on' + (bad ? ' bad' : '');
+  /* キャラクターがいるときは、小さな顔をそえる */
+  var face = (typeof charaLevel === 'function' && charaLevel() >= 2) ? charaFace(bad ? 'sad' : 'happy', 22) : '';
+  t.innerHTML = face + '<span>' + esc(text) + '</span>';
+  t.className = 'on' + (bad ? ' bad' : '') + (face ? ' withch' : '');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ t.className = bad?'bad':''; }, 2600);
 }

@@ -1,0 +1,574 @@
+/* くらしの手帳：画面のスタイル（設定 › 見た目 で選ぶ）とキャラクター
+   body[data-style] がないときは、いつもの「すりガラス」（app.css のまま）。
+   各スタイルは --sv-* の値だけを決め、下の共通ルールがそれを使う。 */
+
+/* ================= 共通ルール ================= */
+body[data-style]{ background:var(--sv-paper, var(--paper)) }
+body[data-style]::before{ background:var(--sv-bg); opacity:var(--sv-bg-op, 1) }
+
+body[data-style] header{ background:var(--sv-hdr); border-bottom:var(--sv-hdr-bd); box-shadow:var(--sv-hdr-sh);
+  -webkit-backdrop-filter:var(--sv-hdr-blur); backdrop-filter:var(--sv-hdr-blur); border-radius:var(--sv-hdr-rad, 0) }
+body[data-style] #apps{ background:var(--sv-bar); border:var(--sv-bar-bd); box-shadow:var(--sv-bar-sh); border-radius:var(--sv-bar-rad, 999px) }
+body[data-style] nav{ background:var(--sv-nav, var(--sv-hdr)); border:var(--sv-bar-bd); box-shadow:var(--sv-nav-sh, var(--sv-bar-sh));
+  -webkit-backdrop-filter:var(--sv-hdr-blur); backdrop-filter:var(--sv-hdr-blur); border-radius:var(--sv-bar-rad, 999px) }
+body[data-style] #apps .pill, body[data-style] nav .pill{ background:var(--sv-pill); border:var(--sv-pill-bd); box-shadow:var(--sv-pill-sh);
+  border-radius:var(--sv-pill-rad, 999px) }
+
+/* カード */
+body[data-style] .box, body[data-style] .hero, body[data-style] .ccard, body[data-style] .fold .foldhd, body[data-style] .sheet{
+  background:var(--sv-card); border:var(--sv-card-bd); box-shadow:var(--sv-card-sh);
+  -webkit-backdrop-filter:var(--sv-blur); backdrop-filter:var(--sv-blur) }
+body[data-style] .box, body[data-style] .hero{ border-radius:var(--sv-rad) }
+body[data-style] .ccard, body[data-style] .fold .foldhd{ border-radius:var(--sv-rad-s, var(--sv-rad)) }
+body[data-style] .fold.on .foldhd{ border-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; box-shadow:none }
+body[data-style] .fold.on .box{ border-top-left-radius:0; border-top-right-radius:0 }
+body[data-style] .sheet{ border-radius:var(--sv-rad) var(--sv-rad) 0 0 }
+body[data-style] .box::before, body[data-style] .hero::before{ background:var(--sv-sheen, none) }
+body[data-style] .box::after{ background:var(--sv-rim, none) }
+
+/* ボタン */
+body[data-style] .pillrow button, body[data-style] .chips button, body[data-style] .mini, body[data-style] .kbtn,
+body[data-style] .themes button, body[data-style] button.btn.ghost{
+  background:var(--sv-ctl); border:var(--sv-ctl-bd); box-shadow:var(--sv-ctl-sh);
+  -webkit-backdrop-filter:var(--sv-ctl-blur, none); backdrop-filter:var(--sv-ctl-blur, none) }
+body[data-style] .pillrow button, body[data-style] .chips button, body[data-style] .mini, body[data-style] .kbtn{ border-radius:var(--sv-ctl-rad, 999px) }
+body[data-style] .themes button{ border-radius:var(--sv-rad-s, 18px) }
+body[data-style] button.btn.ghost{ color:var(--ink); border-radius:var(--sv-btn-rad, 999px) }
+body[data-style] .pillrow button.on, body[data-style] .chips button.on{
+  background:var(--sv-on); border:var(--sv-on-bd); box-shadow:var(--sv-on-sh); color:var(--sv-on-ink) }
+body[data-style] .pillrow button.on::after{ background:var(--sv-on-gloss, none) }
+body[data-style] .themes button.on{ box-shadow:var(--sv-ctl-sh), 0 0 0 2px var(--accent) }
+body[data-style] button.btn:not(.ghost){
+  background:var(--sv-btn); border:var(--sv-btn-bd); box-shadow:var(--sv-btn-sh); color:var(--sv-btn-ink);
+  border-radius:var(--sv-btn-rad, 999px) }
+body[data-style] button.btn:not(.ghost):active{ box-shadow:var(--sv-btn-press-sh, var(--sv-btn-sh)); transform:var(--sv-btn-press, translateY(1px)) }
+body[data-style] button.btn[disabled]{ background:var(--rule); color:var(--sub); box-shadow:none }
+body[data-style] .fab{ background:var(--sv-btn); border:var(--sv-btn-bd); box-shadow:var(--sv-btn-sh); color:var(--sv-btn-ink) }
+
+/* 入力欄 */
+body[data-style] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+body[data-style] textarea, body[data-style] select{
+  background:var(--sv-in); border:var(--sv-in-bd); box-shadow:var(--sv-in-sh); border-radius:var(--sv-in-rad, 18px);
+  -webkit-backdrop-filter:var(--sv-ctl-blur, none); backdrop-filter:var(--sv-ctl-blur, none) }
+body[data-style] input:focus, body[data-style] textarea:focus, body[data-style] select:focus{
+  border-color:var(--accent); box-shadow:var(--sv-in-sh), 0 0 0 3px var(--sv-focus, rgba(120,120,140,.22)) }
+
+/* 中の小さな面 */
+body[data-style] .mf-kpi, body[data-style] .stbox{ background:var(--sv-inner); border:var(--sv-inner-bd, var(--sv-ctl-bd)); box-shadow:var(--sv-inner-sh, none) }
+body[data-style] .mf-kpi.hero{ background:var(--sv-inner-hi, var(--sv-inner)) }
+body[data-style] .cmsg.ai .cbub{ background:var(--sv-card); border:var(--sv-card-bd); box-shadow:var(--sv-ctl-sh);
+  -webkit-backdrop-filter:var(--sv-blur); backdrop-filter:var(--sv-blur) }
+body[data-style] .cmsg.me .cbub{ background:var(--sv-btn); color:var(--sv-btn-ink); border:var(--sv-btn-bd) }
+body[data-style] #toast{ border-radius:var(--sv-ctl-rad, 999px) }
+body[data-style] #apps button, body[data-style] nav button{ border-radius:var(--sv-pill-rad, 999px) }
+
+/* ================= すっきり ================= */
+body[data-style="minimal"]{
+  --sv-bg:linear-gradient(rgba(255,255,255,.62), rgba(255,255,255,.62));
+  --sv-card:#fff; --sv-card-bd:1px solid rgba(0,0,0,.08); --sv-card-sh:0 1px 2px rgba(0,0,0,.04);
+  --sv-blur:none; --sv-rad:16px; --sv-rad-s:14px; --sv-sheen:none; --sv-rim:none;
+  --sv-hdr:rgba(255,255,255,.94); --sv-hdr-bd:1px solid rgba(0,0,0,.07); --sv-hdr-sh:none; --sv-hdr-blur:blur(12px);
+  --sv-bar:rgba(0,0,0,.05); --sv-bar-bd:1px solid transparent; --sv-bar-sh:none; --sv-nav:rgba(245,245,247,.94);
+  --sv-pill:#fff; --sv-pill-bd:1px solid rgba(0,0,0,.06); --sv-pill-sh:0 1px 3px rgba(0,0,0,.14);
+  --sv-ctl:#fff; --sv-ctl-bd:1px solid rgba(0,0,0,.12); --sv-ctl-sh:none; --sv-ctl-rad:10px;
+  --sv-on:var(--accent); --sv-on-bd:1px solid var(--accent); --sv-on-sh:none; --sv-on-ink:#fff;
+  --sv-btn:var(--accent); --sv-btn-bd:1px solid transparent; --sv-btn-sh:none; --sv-btn-ink:#fff; --sv-btn-rad:12px;
+  --sv-in:#fff; --sv-in-bd:1px solid rgba(0,0,0,.14); --sv-in-sh:none; --sv-in-rad:10px;
+  --sv-inner:rgba(0,0,0,.035); --sv-inner-bd:1px solid transparent; --sv-inner-hi:rgba(0,0,0,.055);
+}
+body[data-theme="dark"][data-style="minimal"]{
+  --sv-bg:none; --sv-card:#26212B; --sv-card-bd:1px solid rgba(255,255,255,.08); --sv-card-sh:none;
+  --sv-hdr:rgba(27,23,32,.94); --sv-hdr-bd:1px solid rgba(255,255,255,.07); --sv-nav:rgba(34,29,39,.94);
+  --sv-bar:rgba(255,255,255,.06); --sv-pill:#3A3340; --sv-pill-bd:1px solid rgba(255,255,255,.08);
+  --sv-ctl:#2B2530; --sv-ctl-bd:1px solid rgba(255,255,255,.12); --sv-on-ink:#111; --sv-btn-ink:#111;
+  --sv-in:#211C26; --sv-in-bd:1px solid rgba(255,255,255,.14); --sv-inner:rgba(255,255,255,.04); --sv-inner-hi:rgba(255,255,255,.07);
+}
+body[data-style="minimal"] .box::after, body[data-style="minimal"] .hero::before, body[data-style="minimal"] .box::before{ display:none }
+body[data-style="minimal"] .chk{ -webkit-backdrop-filter:none; backdrop-filter:none }
+body[data-style="minimal"] #decor{ opacity:.45 }
+
+/* ================= リキッドグラス ================= */
+body[data-style="liquid"]{
+  --sv-bg:
+    radial-gradient(52vw 38vh at 8% 6%, var(--accent2), transparent 62%),
+    radial-gradient(48vw 36vh at 96% 20%, var(--tint3), transparent 64%),
+    radial-gradient(56vw 40vh at 78% 76%, var(--accent), transparent 62%),
+    radial-gradient(62vw 44vh at 6% 94%, var(--tint1), transparent 64%),
+    radial-gradient(36vw 26vh at 46% 42%, rgba(255,255,255,.7), transparent 70%);
+  --sv-bg-op:.78;
+  --sv-card:linear-gradient(135deg, rgba(255,255,255,.36) 0%, rgba(255,255,255,.14) 48%, rgba(255,255,255,.22) 100%);
+  --sv-card-bd:1px solid rgba(255,255,255,.28);
+  --sv-card-sh:inset 0 1px 1px rgba(255,255,255,.95), inset 0 -1px 1px rgba(255,255,255,.35),
+    inset 0 0 24px rgba(255,255,255,.20), 0 14px 34px -10px rgba(0,0,0,.20), 0 2px 6px rgba(0,0,0,.05);
+  --sv-blur:blur(16px) saturate(190%) brightness(1.06);
+  --sv-rad:30px; --sv-rad-s:24px;
+  --sv-sheen:radial-gradient(120% 70% at 0% 0%, rgba(255,255,255,.50), rgba(255,255,255,0) 52%),
+    radial-gradient(90% 60% at 100% 100%, rgba(255,255,255,.20), rgba(255,255,255,0) 56%);
+  --sv-rim:linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(255,255,255,.15) 26%, rgba(255,255,255,0) 50%, rgba(255,255,255,.12) 74%, rgba(255,255,255,.85) 100%);
+  --sv-hdr:linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.12));
+  --sv-hdr-bd:1px solid rgba(255,255,255,.45); --sv-hdr-sh:0 10px 26px -12px rgba(0,0,0,.22);
+  --sv-hdr-blur:blur(22px) saturate(200%) brightness(1.05);
+  --sv-bar:rgba(255,255,255,.14); --sv-bar-bd:1px solid rgba(255,255,255,.5);
+  --sv-bar-sh:inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(255,255,255,.25), 0 4px 14px rgba(0,0,0,.10);
+  --sv-nav:linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,.12));
+  --sv-pill:radial-gradient(120% 90% at 30% 0%, rgba(255,255,255,.95), rgba(255,255,255,.45) 60%, rgba(255,255,255,.30));
+  --sv-pill-bd:1px solid rgba(255,255,255,.95);
+  --sv-pill-sh:inset 0 1px 1px #fff, inset 0 -3px 6px rgba(255,255,255,.45), inset 0 0 0 .5px rgba(255,255,255,.6), 0 5px 14px rgba(0,0,0,.18);
+  --sv-ctl:linear-gradient(180deg, rgba(255,255,255,.36), rgba(255,255,255,.12));
+  --sv-ctl-bd:1px solid rgba(255,255,255,.55);
+  --sv-ctl-sh:inset 0 1px 1px rgba(255,255,255,.9), inset 0 -1px 1px rgba(255,255,255,.25), 0 3px 10px rgba(0,0,0,.08);
+  --sv-ctl-blur:blur(10px) saturate(180%);
+  --sv-on:linear-gradient(160deg, var(--accent2), var(--accent));
+  --sv-on-bd:1px solid rgba(255,255,255,.75);
+  --sv-on-sh:inset 0 1px 1px rgba(255,255,255,.9), inset 0 -3px 6px rgba(0,0,0,.10), 0 6px 16px -4px rgba(0,0,0,.28);
+  --sv-on-gloss:radial-gradient(120% 80% at 30% 0%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%);
+  --sv-on-ink:#fff;
+  --sv-btn:linear-gradient(160deg, var(--accent2), var(--accent));
+  --sv-btn-bd:1px solid rgba(255,255,255,.7);
+  --sv-btn-sh:inset 0 1px 1px rgba(255,255,255,.85), inset 0 -4px 10px rgba(0,0,0,.10), 0 10px 24px -8px rgba(0,0,0,.35);
+  --sv-btn-ink:#fff;
+  --sv-in:rgba(255,255,255,.26); --sv-in-bd:1px solid rgba(255,255,255,.6);
+  --sv-in-sh:inset 0 1px 3px rgba(0,0,0,.08), inset 0 -1px 0 rgba(255,255,255,.7);
+  --sv-inner:rgba(255,255,255,.24); --sv-inner-bd:1px solid rgba(255,255,255,.5); --sv-inner-hi:rgba(255,255,255,.40);
+  --sv-inner-sh:inset 0 1px 1px rgba(255,255,255,.8);
+  --sv-focus:rgba(255,255,255,.5);
+}
+@supports (color: color-mix(in srgb, red 50%, blue)){
+  body[data-style="liquid"]{
+    --sv-on:linear-gradient(160deg, color-mix(in srgb, var(--accent2) 78%, transparent), color-mix(in srgb, var(--accent) 86%, transparent));
+    --sv-btn:linear-gradient(160deg, color-mix(in srgb, var(--accent2) 80%, transparent), color-mix(in srgb, var(--accent) 90%, transparent));
+  }
+}
+body[data-theme="dark"][data-style="liquid"]{
+  --sv-bg-op:.62;
+  --sv-card:linear-gradient(135deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.04) 50%, rgba(255,255,255,.08) 100%);
+  --sv-card-bd:1px solid rgba(255,255,255,.14);
+  --sv-card-sh:inset 0 1px 1px rgba(255,255,255,.30), inset 0 0 24px rgba(255,255,255,.05), 0 14px 34px -10px rgba(0,0,0,.65);
+  --sv-blur:blur(16px) saturate(170%) brightness(.92);
+  --sv-sheen:radial-gradient(120% 70% at 0% 0%, rgba(255,255,255,.14), rgba(255,255,255,0) 52%);
+  --sv-rim:linear-gradient(135deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.05) 30%, rgba(255,255,255,0) 50%, rgba(255,255,255,.05) 70%, rgba(255,255,255,.40) 100%);
+  --sv-hdr:linear-gradient(180deg, rgba(24,20,28,.55), rgba(24,20,28,.30)); --sv-hdr-bd:1px solid rgba(255,255,255,.12);
+  --sv-nav:linear-gradient(180deg, rgba(40,34,44,.55), rgba(40,34,44,.35));
+  --sv-bar:rgba(255,255,255,.07); --sv-bar-bd:1px solid rgba(255,255,255,.16);
+  --sv-bar-sh:inset 0 1px 1px rgba(255,255,255,.18), 0 4px 14px rgba(0,0,0,.4);
+  --sv-pill:radial-gradient(120% 90% at 30% 0%, rgba(255,255,255,.34), rgba(255,255,255,.12) 60%);
+  --sv-pill-bd:1px solid rgba(255,255,255,.3); --sv-pill-sh:inset 0 1px 1px rgba(255,255,255,.4), 0 5px 14px rgba(0,0,0,.4);
+  --sv-ctl:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.04)); --sv-ctl-bd:1px solid rgba(255,255,255,.16);
+  --sv-ctl-sh:inset 0 1px 1px rgba(255,255,255,.22), 0 3px 10px rgba(0,0,0,.3);
+  --sv-on:linear-gradient(160deg, var(--accent), var(--accent2)); --sv-on-ink:#111; --sv-on-bd:1px solid rgba(255,255,255,.35);
+  --sv-btn:linear-gradient(160deg, var(--accent), var(--accent2)); --sv-btn-ink:#111; --sv-btn-bd:1px solid rgba(255,255,255,.35);
+  --sv-in:rgba(255,255,255,.07); --sv-in-bd:1px solid rgba(255,255,255,.16); --sv-in-sh:inset 0 1px 3px rgba(0,0,0,.3);
+  --sv-inner:rgba(255,255,255,.06); --sv-inner-bd:1px solid rgba(255,255,255,.12); --sv-inner-hi:rgba(255,255,255,.10);
+  --sv-inner-sh:inset 0 1px 1px rgba(255,255,255,.12); --sv-focus:rgba(255,255,255,.18);
+}
+/* ふちの光（上下で強く、横でうすくなる） */
+body[data-style="liquid"] .box::after, body[data-style="aurora"] .box::after{
+  inset:0; left:0; right:0; top:0; height:auto; border-radius:inherit; padding:1.5px;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude }
+body[data-style="liquid"] .hero::after{content:''; position:absolute; inset:0; border-radius:inherit; padding:1.5px; pointer-events:none;
+  background:var(--sv-rim);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude }
+body[data-style="liquid"] .hero > *{ position:relative; z-index:1 }
+body[data-style="liquid"] .hero .art{ position:absolute }
+body[data-style="liquid"] #toast{ background:rgba(40,34,44,.62); color:#fff; border:1px solid rgba(255,255,255,.3);
+  -webkit-backdrop-filter:blur(20px) saturate(180%); backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.35), 0 14px 30px rgba(0,0,0,.25) }
+/* 透明を減らす設定の人には、くもりを強くする */
+@media (prefers-reduced-transparency: reduce){
+  body[data-style="liquid"]{ --sv-card:rgba(255,255,255,.86); --sv-ctl:rgba(255,255,255,.9); --sv-in:#fff; --sv-hdr:rgba(255,255,255,.94) }
+  body[data-theme="dark"][data-style="liquid"]{ --sv-card:rgba(40,34,46,.94); --sv-ctl:rgba(52,45,58,.95); --sv-in:#211C26; --sv-hdr:rgba(27,23,32,.96) }
+}
+
+/* ================= ゆめかわオーロラ ================= */
+body[data-style="aurora"]{
+  --sv-bg:
+    radial-gradient(70vw 50vh at 0% 0%, rgba(255,182,219,.78), transparent 60%),
+    radial-gradient(60vw 46vh at 100% 8%, rgba(190,172,255,.72), transparent 62%),
+    radial-gradient(70vw 50vh at 92% 70%, rgba(150,226,255,.66), transparent 62%),
+    radial-gradient(70vw 50vh at 4% 96%, rgba(172,245,212,.66), transparent 62%),
+    radial-gradient(44vw 32vh at 50% 44%, rgba(255,244,196,.60), transparent 70%),
+    radial-gradient(60vw 40vh at 40% 20%, var(--tint1), transparent 70%);
+  --sv-paper:#F6EEF8;
+  --sv-card:linear-gradient(150deg, rgba(255,255,255,.74), rgba(255,255,255,.50));
+  --sv-card-bd:1px solid rgba(255,255,255,.6);
+  --sv-card-sh:inset 0 1px 0 #fff, 0 12px 30px -12px rgba(140,110,220,.40);
+  --sv-blur:blur(24px) saturate(160%);
+  --sv-rad:28px; --sv-rad-s:22px;
+  --sv-sheen:linear-gradient(120deg, rgba(255,255,255,.55), rgba(255,255,255,0) 42%);
+  --sv-rim:linear-gradient(120deg, #ffb3d9, #c9b8ff 22%, #9fe0ff 44%, #b3f3d3 64%, #ffe7a3 82%, #ffb3d9);
+  --sv-hdr:rgba(255,255,255,.58); --sv-hdr-bd:1px solid rgba(255,255,255,.85);
+  --sv-hdr-sh:0 8px 24px -10px rgba(140,110,220,.40); --sv-hdr-blur:blur(24px) saturate(160%);
+  --sv-bar:rgba(255,255,255,.42); --sv-bar-bd:1px solid rgba(255,255,255,.9); --sv-bar-sh:0 3px 12px -4px rgba(140,110,220,.35);
+  --sv-nav:rgba(255,255,255,.58);
+  --sv-pill:linear-gradient(120deg, #ffe0ef, #ebe3ff 50%, #dcf3ff); --sv-pill-bd:1px solid #fff;
+  --sv-pill-sh:inset 0 1px 0 #fff, 0 4px 12px -2px rgba(140,110,220,.45);
+  --sv-ctl:rgba(255,255,255,.64); --sv-ctl-bd:1px solid rgba(255,255,255,.95);
+  --sv-ctl-sh:0 3px 10px -3px rgba(140,110,220,.30); --sv-ctl-blur:blur(12px);
+  --sv-on:linear-gradient(120deg, #cf5a94, #8a68d4 55%, #4a8fc8); --sv-on-bd:1px solid rgba(255,255,255,.8);
+  --sv-on-sh:0 6px 16px -5px rgba(138,104,212,.60), inset 0 1px 0 rgba(255,255,255,.45); --sv-on-ink:#fff;
+  --sv-on-gloss:linear-gradient(150deg, rgba(255,255,255,.4), rgba(255,255,255,0) 50%);
+  --sv-btn:linear-gradient(120deg, #cf5a94, #8a68d4 55%, #4a8fc8); --sv-btn-bd:1px solid rgba(255,255,255,.8);
+  --sv-btn-sh:0 10px 22px -8px rgba(138,104,212,.65), inset 0 1px 0 rgba(255,255,255,.5); --sv-btn-ink:#fff;
+  --sv-in:rgba(255,255,255,.72); --sv-in-bd:1px solid #fff; --sv-in-sh:inset 0 1px 3px rgba(140,110,220,.2);
+  --sv-inner:rgba(255,255,255,.62); --sv-inner-bd:1px solid rgba(255,255,255,.95); --sv-inner-hi:rgba(255,255,255,.86);
+  --sv-focus:rgba(160,130,240,.30);
+}
+body[data-theme="dark"][data-style="aurora"]{
+  --sv-paper:#171325;
+  --sv-bg:
+    radial-gradient(70vw 50vh at 0% 0%, rgba(220,90,160,.40), transparent 60%),
+    radial-gradient(60vw 46vh at 100% 8%, rgba(120,90,230,.42), transparent 62%),
+    radial-gradient(70vw 50vh at 92% 70%, rgba(60,160,220,.36), transparent 62%),
+    radial-gradient(70vw 50vh at 4% 96%, rgba(60,200,150,.30), transparent 62%);
+  --sv-card:linear-gradient(150deg, rgba(48,38,70,.72), rgba(30,24,46,.56)); --sv-card-bd:1px solid rgba(255,255,255,.10);
+  --sv-card-sh:inset 0 1px 0 rgba(255,255,255,.12), 0 14px 30px -12px rgba(0,0,0,.7);
+  --sv-sheen:linear-gradient(120deg, rgba(255,255,255,.10), rgba(255,255,255,0) 42%);
+  --sv-hdr:rgba(23,19,37,.72); --sv-hdr-bd:1px solid rgba(255,255,255,.10); --sv-nav:rgba(30,25,48,.72);
+  --sv-bar:rgba(255,255,255,.06); --sv-bar-bd:1px solid rgba(255,255,255,.14);
+  --sv-pill:linear-gradient(120deg, rgba(220,90,160,.5), rgba(120,90,230,.5), rgba(60,160,220,.5)); --sv-pill-bd:1px solid rgba(255,255,255,.25);
+  --sv-ctl:rgba(255,255,255,.07); --sv-ctl-bd:1px solid rgba(255,255,255,.14); --sv-ctl-sh:0 3px 10px -3px rgba(0,0,0,.5);
+  --sv-in:rgba(255,255,255,.06); --sv-in-bd:1px solid rgba(255,255,255,.14); --sv-in-sh:inset 0 1px 3px rgba(0,0,0,.4);
+  --sv-inner:rgba(255,255,255,.05); --sv-inner-bd:1px solid rgba(255,255,255,.10); --sv-inner-hi:rgba(255,255,255,.09);
+}
+body[data-style="aurora"] .box::after{ opacity:.85 }
+body[data-style="aurora"] .head:not(.foldhd) h2{ background:linear-gradient(120deg, #cf5a94, #8a68d4, #4a8fc8); -webkit-background-clip:text; background-clip:text; color:transparent }
+body[data-theme="dark"][data-style="aurora"] .head:not(.foldhd) h2{ background:linear-gradient(120deg, #ff9ccb, #c3adff, #8fd3ff); -webkit-background-clip:text; background-clip:text }
+
+/* ================= ふわもこ ================= */
+body[data-style="fuwa"]{
+  --sv-bg:
+    radial-gradient(circle at 10px 10px, rgba(255,255,255,.80) 3.2px, transparent 3.9px) 0 0/28px 28px,
+    radial-gradient(circle at 24px 24px, rgba(255,255,255,.50) 2.2px, transparent 2.9px) 0 0/28px 28px,
+    radial-gradient(70vw 50vh at 0% 0%, var(--tint2), transparent 62%),
+    radial-gradient(70vw 50vh at 100% 100%, var(--tint1), transparent 62%);
+  --sv-card:rgba(255,255,255,.88); --sv-card-bd:2px solid #fff;
+  --sv-card-sh:0 10px 24px -10px rgba(0,0,0,.18), 0 2px 0 rgba(0,0,0,.03);
+  --sv-blur:none; --sv-rad:34px; --sv-rad-s:26px; --sv-sheen:none; --sv-rim:none;
+  --sv-hdr:rgba(255,255,255,.88); --sv-hdr-bd:0 solid transparent; --sv-hdr-sh:0 8px 20px -10px rgba(0,0,0,.18);
+  --sv-hdr-blur:blur(14px); --sv-hdr-rad:0 0 26px 26px;
+  --sv-bar:rgba(0,0,0,.04); --sv-bar-bd:2px solid rgba(255,255,255,.9); --sv-bar-sh:none; --sv-nav:rgba(255,255,255,.88);
+  --sv-pill:#fff; --sv-pill-bd:2px solid var(--accent2); --sv-pill-sh:0 3px 0 rgba(0,0,0,.08);
+  --sv-ctl:#fff; --sv-ctl-bd:2px solid var(--accent2); --sv-ctl-sh:0 3px 0 rgba(0,0,0,.06);
+  --sv-on:var(--accent); --sv-on-bd:2px solid var(--accent); --sv-on-ink:#fff;
+  --sv-on-sh:0 3px 0 rgba(0,0,0,.14), inset 0 2px 0 rgba(255,255,255,.35);
+  --sv-on-gloss:radial-gradient(60% 50% at 30% 20%, rgba(255,255,255,.4), rgba(255,255,255,0) 70%);
+  --sv-btn:var(--accent); --sv-btn-bd:2px solid rgba(255,255,255,.9); --sv-btn-ink:#fff;
+  --sv-btn-sh:0 5px 0 rgba(0,0,0,.15), inset 0 2px 0 rgba(255,255,255,.35), 0 10px 18px -8px rgba(0,0,0,.25);
+  --sv-btn-press-sh:0 1px 0 rgba(0,0,0,.15), inset 0 2px 0 rgba(255,255,255,.35); --sv-btn-press:translateY(4px);
+  --sv-in:#fff; --sv-in-bd:2px solid var(--accent2); --sv-in-sh:none; --sv-in-rad:22px;
+  --sv-inner:var(--glasstint); --sv-inner-bd:2px dashed rgba(0,0,0,.06); --sv-inner-hi:rgba(255,255,255,.9);
+}
+body[data-theme="dark"][data-style="fuwa"]{
+  --sv-bg:
+    radial-gradient(circle at 10px 10px, rgba(255,255,255,.07) 3.2px, transparent 3.9px) 0 0/28px 28px,
+    radial-gradient(70vw 50vh at 0% 0%, var(--tint2), transparent 62%),
+    radial-gradient(70vw 50vh at 100% 100%, var(--tint1), transparent 62%);
+  --sv-card:rgba(50,42,56,.92); --sv-card-bd:2px solid rgba(255,255,255,.08); --sv-card-sh:0 10px 24px -10px rgba(0,0,0,.6);
+  --sv-hdr:rgba(34,28,38,.92); --sv-nav:rgba(40,34,44,.92); --sv-bar:rgba(255,255,255,.05); --sv-bar-bd:2px solid rgba(255,255,255,.08);
+  --sv-pill:#3E3546; --sv-ctl:#2E2733; --sv-in:#2A2430; --sv-on-ink:#111; --sv-btn-ink:#111; --sv-btn-bd:2px solid rgba(255,255,255,.2);
+  --sv-inner:rgba(255,255,255,.05); --sv-inner-bd:2px dashed rgba(255,255,255,.08); --sv-inner-hi:rgba(255,255,255,.08);
+}
+/* ぬいぐるみのステッチ */
+body[data-style="fuwa"] .box::after, body[data-style="fuwa"] .hero::before{
+  content:''; position:absolute; inset:6px; left:6px; right:6px; top:6px; height:auto; pointer-events:none;
+  border-radius:28px; border:1.5px dashed var(--accent2); background:none; opacity:.7 }
+body[data-style="fuwa"] .fold.on .box::after{ border-top-left-radius:0; border-top-right-radius:0 }
+body[data-style="fuwa"] .head:not(.foldhd) h2::before{ content:'♡'; color:var(--accent); margin-right:4px; font-weight:700 }
+
+/* ================= ねんど ================= */
+body[data-style="clay"]{
+  --sv-bg:
+    radial-gradient(64vw 46vh at 6% -2%, var(--tint1), transparent 62%),
+    radial-gradient(56vw 42vh at 104% 14%, var(--tint2), transparent 60%),
+    radial-gradient(70vw 48vh at 16% 100%, var(--tint3), transparent 64%);
+  --sv-card:#FFFDFE; --sv-card-bd:0 solid transparent;
+  --sv-card-sh:inset -8px -8px 16px rgba(0,0,0,.06), inset 8px 8px 16px #fff, 0 18px 34px -14px rgba(0,0,0,.28);
+  --sv-blur:none; --sv-rad:34px; --sv-rad-s:28px; --sv-sheen:none; --sv-rim:none;
+  --sv-hdr:rgba(255,255,255,.92); --sv-hdr-bd:0 solid transparent; --sv-hdr-sh:0 10px 24px -12px rgba(0,0,0,.25);
+  --sv-hdr-blur:blur(12px); --sv-hdr-rad:0 0 30px 30px;
+  --sv-bar:rgba(0,0,0,.04); --sv-bar-bd:0 solid transparent;
+  --sv-bar-sh:inset 3px 3px 6px rgba(0,0,0,.08), inset -3px -3px 6px rgba(255,255,255,.9);
+  --sv-nav:rgba(255,255,255,.92);
+  --sv-pill:#fff; --sv-pill-bd:0 solid transparent;
+  --sv-pill-sh:inset -2px -2px 4px rgba(0,0,0,.08), inset 2px 2px 4px #fff, 0 4px 10px -2px rgba(0,0,0,.2);
+  --sv-ctl:#fff; --sv-ctl-bd:0 solid transparent;
+  --sv-ctl-sh:inset -3px -3px 6px rgba(0,0,0,.07), inset 3px 3px 6px #fff, 0 6px 12px -6px rgba(0,0,0,.25);
+  --sv-on:var(--accent); --sv-on-bd:0 solid transparent; --sv-on-ink:#fff;
+  --sv-on-sh:inset -3px -3px 6px rgba(0,0,0,.18), inset 3px 3px 6px rgba(255,255,255,.35), 0 8px 14px -6px rgba(0,0,0,.35);
+  --sv-btn:var(--accent); --sv-btn-bd:0 solid transparent; --sv-btn-ink:#fff;
+  --sv-btn-sh:inset -4px -4px 8px rgba(0,0,0,.18), inset 4px 4px 8px rgba(255,255,255,.35), 0 12px 20px -8px rgba(0,0,0,.35);
+  --sv-btn-press-sh:inset -2px -2px 5px rgba(0,0,0,.2), inset 2px 2px 5px rgba(255,255,255,.3); --sv-btn-press:scale(.98);
+  --sv-in:#fff; --sv-in-bd:0 solid transparent; --sv-in-rad:20px;
+  --sv-in-sh:inset 3px 3px 6px rgba(0,0,0,.09), inset -3px -3px 6px #fff;
+  --sv-inner:rgba(0,0,0,.025); --sv-inner-bd:0 solid transparent; --sv-inner-hi:rgba(0,0,0,.04);
+  --sv-inner-sh:inset 2px 2px 5px rgba(0,0,0,.06), inset -2px -2px 5px #fff;
+}
+@supports (color: color-mix(in srgb, red 50%, blue)){
+  body[data-style="clay"]{
+    --sv-card:color-mix(in srgb, var(--accent2) 14%, #fff);
+    --sv-card-sh:inset -8px -8px 16px rgba(0,0,0,.06), inset 8px 8px 16px rgba(255,255,255,.9),
+      0 18px 34px -14px color-mix(in srgb, var(--accent) 55%, transparent);
+    --sv-ctl:color-mix(in srgb, var(--accent2) 8%, #fff);
+  }
+}
+body[data-theme="dark"][data-style="clay"]{
+  --sv-card:#2C2533;
+  --sv-card-sh:inset -8px -8px 16px rgba(0,0,0,.3), inset 8px 8px 16px rgba(255,255,255,.05), 0 18px 34px -14px rgba(0,0,0,.7);
+  --sv-hdr:rgba(34,28,38,.94); --sv-nav:rgba(40,34,44,.94);
+  --sv-bar:rgba(255,255,255,.05); --sv-bar-sh:inset 3px 3px 6px rgba(0,0,0,.35), inset -3px -3px 6px rgba(255,255,255,.04);
+  --sv-pill:#3E3546; --sv-pill-sh:inset -2px -2px 4px rgba(0,0,0,.3), inset 2px 2px 4px rgba(255,255,255,.08), 0 4px 10px -2px rgba(0,0,0,.5);
+  --sv-ctl:#332B3A; --sv-ctl-sh:inset -3px -3px 6px rgba(0,0,0,.3), inset 3px 3px 6px rgba(255,255,255,.05), 0 6px 12px -6px rgba(0,0,0,.6);
+  --sv-on-ink:#111; --sv-btn-ink:#111;
+  --sv-in:#2A2330; --sv-in-sh:inset 3px 3px 6px rgba(0,0,0,.35), inset -3px -3px 6px rgba(255,255,255,.04);
+  --sv-inner:rgba(255,255,255,.03); --sv-inner-hi:rgba(255,255,255,.06);
+  --sv-inner-sh:inset 2px 2px 5px rgba(0,0,0,.3), inset -2px -2px 5px rgba(255,255,255,.03);
+}
+
+/* ================= ぷっくりポップ ================= */
+body[data-style="pop"]{
+  --sv-bg:
+    radial-gradient(circle at 20% 30%, var(--accent2) 0 3px, transparent 3.6px) 0 0/90px 90px,
+    radial-gradient(circle at 70% 62%, var(--tint3) 0 4px, transparent 4.6px) 0 0/120px 120px,
+    radial-gradient(circle at 42% 82%, var(--tint1) 0 2.5px, transparent 3.1px) 0 0/70px 70px;
+  --sv-line:var(--ink);
+  --sv-card:#fff; --sv-card-bd:2px solid var(--sv-line); --sv-card-sh:4px 4px 0 var(--sv-line);
+  --sv-blur:none; --sv-rad:20px; --sv-rad-s:16px; --sv-sheen:none; --sv-rim:none;
+  --sv-hdr:#fff; --sv-hdr-bd:2px solid var(--sv-line); --sv-hdr-sh:none; --sv-hdr-blur:none;
+  --sv-bar:#fff; --sv-bar-bd:2px solid var(--sv-line); --sv-bar-sh:3px 3px 0 var(--sv-line); --sv-nav:#fff;
+  --sv-nav-sh:3px 3px 0 var(--sv-line);
+  --sv-pill:var(--accent2); --sv-pill-bd:2px solid var(--sv-line); --sv-pill-sh:none;
+  --sv-ctl:#fff; --sv-ctl-bd:2px solid var(--sv-line); --sv-ctl-sh:2px 2px 0 var(--sv-line);
+  --sv-on:var(--accent2); --sv-on-bd:2px solid var(--sv-line); --sv-on-sh:2px 2px 0 var(--sv-line); --sv-on-ink:var(--ink);
+  --sv-btn:var(--accent2); --sv-btn-bd:2px solid var(--sv-line); --sv-btn-sh:4px 4px 0 var(--sv-line); --sv-btn-ink:var(--ink);
+  --sv-btn-press-sh:1px 1px 0 var(--sv-line); --sv-btn-press:translate(3px, 3px);
+  --sv-in:#fff; --sv-in-bd:2px solid var(--sv-line); --sv-in-sh:none; --sv-in-rad:14px;
+  --sv-inner:var(--glasstint); --sv-inner-bd:2px solid var(--sv-line); --sv-inner-hi:#fff;
+  --sv-focus:var(--accent2);
+}
+body[data-theme="dark"][data-style="pop"]{
+  --sv-line:rgba(240,232,236,.85);
+  --sv-card:#241F29; --sv-hdr:#1F1A24; --sv-bar:#241F29; --sv-nav:#241F29;
+  --sv-pill:var(--accent); --sv-ctl:#2A2430; --sv-on:var(--accent); --sv-on-ink:#111; --sv-btn:var(--accent); --sv-btn-ink:#111;
+  --sv-in:#211C26; --sv-inner:rgba(255,255,255,.05); --sv-inner-hi:rgba(255,255,255,.08);
+}
+body[data-style="pop"] #apps button.on, body[data-style="pop"] nav button.on{ color:var(--ink) }
+body[data-style="pop"] .head:not(.foldhd) h2{ display:inline-block; padding:1px 10px; border-radius:999px; background:#fff; border:2px solid var(--sv-line); box-shadow:2px 2px 0 var(--sv-line) }
+body[data-theme="dark"][data-style="pop"] .head:not(.foldhd) h2{ background:#241F29 }
+body[data-style="pop"] #toast{ border:2px solid var(--sv-line); box-shadow:3px 3px 0 var(--sv-line) }
+
+/* ================= 手帳 ================= */
+body[data-style="note"]{
+  --sv-paper:#F8F4EA;
+  --sv-bg:
+    linear-gradient(rgba(110,130,165,.14) 1px, transparent 1px) 0 0/100% 22px,
+    linear-gradient(90deg, rgba(110,130,165,.14) 1px, transparent 1px) 0 0/22px 100%;
+  --sv-card:#FFFFFF; --sv-card-bd:1px solid rgba(60,50,40,.13);
+  --sv-card-sh:0 1px 0 rgba(60,50,40,.06), 0 8px 16px -10px rgba(60,50,40,.30);
+  --sv-blur:none; --sv-rad:8px; --sv-rad-s:8px; --sv-sheen:none; --sv-rim:none;
+  --sv-hdr:#FFFDF8; --sv-hdr-bd:1px solid rgba(60,50,40,.13); --sv-hdr-sh:0 2px 0 rgba(60,50,40,.04); --sv-hdr-blur:none;
+  --sv-bar:rgba(60,50,40,.05); --sv-bar-bd:1px solid rgba(60,50,40,.10); --sv-bar-sh:none; --sv-bar-rad:10px;
+  --sv-nav:#FFFDF8;
+  --sv-pill:#fff; --sv-pill-bd:1px solid rgba(60,50,40,.18); --sv-pill-sh:0 1px 2px rgba(60,50,40,.18); --sv-pill-rad:8px;
+  --sv-ctl:#fff; --sv-ctl-bd:1px solid rgba(60,50,40,.26); --sv-ctl-sh:none; --sv-ctl-rad:8px;
+  --sv-on:var(--accent); --sv-on-bd:1px solid var(--accent); --sv-on-sh:0 2px 0 rgba(60,50,40,.18); --sv-on-ink:#fff;
+  --sv-btn:var(--accent); --sv-btn-bd:1px solid transparent; --sv-btn-sh:0 2px 0 rgba(60,50,40,.28); --sv-btn-ink:#fff; --sv-btn-rad:10px;
+  --sv-in:#FFFEFB; --sv-in-bd:1px solid rgba(60,50,40,.22); --sv-in-sh:none; --sv-in-rad:8px;
+  --sv-inner:#FBF8F1; --sv-inner-bd:1px solid rgba(60,50,40,.10); --sv-inner-hi:#FFF8DC;
+  --sv-marker:rgba(255,222,110,.65); --sv-tape:var(--accent2);
+}
+body[data-theme="dark"][data-style="note"]{
+  --sv-paper:#1C1A21;
+  --sv-bg:
+    linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px) 0 0/100% 22px,
+    linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px) 0 0/22px 100%;
+  --sv-card:#27232B; --sv-card-bd:1px solid rgba(255,255,255,.08); --sv-card-sh:0 8px 16px -10px rgba(0,0,0,.6);
+  --sv-hdr:#211E25; --sv-hdr-bd:1px solid rgba(255,255,255,.08); --sv-nav:#211E25;
+  --sv-bar:rgba(255,255,255,.05); --sv-bar-bd:1px solid rgba(255,255,255,.08); --sv-pill:#3A3440; --sv-pill-bd:1px solid rgba(255,255,255,.12);
+  --sv-ctl:#2C2830; --sv-ctl-bd:1px solid rgba(255,255,255,.16); --sv-on-ink:#111; --sv-btn-ink:#111;
+  --sv-in:#221F26; --sv-in-bd:1px solid rgba(255,255,255,.16); --sv-inner:rgba(255,255,255,.04); --sv-inner-bd:1px solid rgba(255,255,255,.06);
+  --sv-inner-hi:rgba(255,210,90,.10); --sv-marker:rgba(255,210,90,.26); --sv-tape:var(--accent2);
+}
+/* マスキングテープ */
+body[data-style="note"] .box::after{
+  left:50%; right:auto; top:-2px; width:86px; height:18px; transform:translateX(-50%) rotate(-2deg);
+  background:repeating-linear-gradient(45deg, rgba(255,255,255,.35) 0 4px, rgba(255,255,255,0) 4px 8px), var(--sv-tape);
+  opacity:.55; border-radius:1px }
+body[data-style="note"] section:nth-of-type(3n+2) .box::after{ transform:translateX(-50%) rotate(2.5deg); background:repeating-linear-gradient(-45deg, rgba(255,255,255,.35) 0 4px, rgba(255,255,255,0) 4px 8px), var(--tint3) }
+body[data-style="note"] section:nth-of-type(3n) .box::after{ transform:translateX(-50%) rotate(-1deg); background:repeating-linear-gradient(90deg, rgba(255,255,255,.4) 0 3px, rgba(255,255,255,0) 3px 7px), var(--tint1) }
+body[data-style="note"] .fold .box::after{ display:none }
+/* 蛍光ペン */
+body[data-style="note"] .head:not(.foldhd) h2{ background:linear-gradient(transparent 58%, var(--sv-marker) 58%, var(--sv-marker) 92%, transparent 92%); padding:0 3px }
+body[data-style="note"] .hero{ border-left:4px double var(--accent2) }
+
+/* ================= ふんわり立体 ================= */
+body[data-style="neumo"]{
+  --sv-bg:none;
+  --sv-hi:rgba(255,255,255,.78); --sv-lo:rgba(0,0,0,.13);
+  --sv-card:var(--paper); --sv-card-bd:1px solid rgba(255,255,255,.35);
+  --sv-card-sh:-7px -7px 16px var(--sv-hi), 7px 7px 18px var(--sv-lo);
+  --sv-blur:none; --sv-rad:26px; --sv-rad-s:22px; --sv-sheen:none; --sv-rim:none;
+  --sv-hdr:var(--paper); --sv-hdr-bd:0 solid transparent; --sv-hdr-sh:0 6px 14px rgba(0,0,0,.08); --sv-hdr-blur:none;
+  --sv-bar:var(--paper); --sv-bar-bd:0 solid transparent;
+  --sv-bar-sh:inset 3px 3px 7px var(--sv-lo), inset -3px -3px 7px var(--sv-hi);
+  --sv-nav:var(--paper); --sv-nav-sh:-4px -4px 10px var(--sv-hi), 4px 4px 10px var(--sv-lo);
+  --sv-pill:var(--paper); --sv-pill-bd:1px solid rgba(255,255,255,.5);
+  --sv-pill-sh:-3px -3px 7px var(--sv-hi), 3px 3px 7px var(--sv-lo);
+  --sv-ctl:var(--paper); --sv-ctl-bd:1px solid rgba(255,255,255,.4);
+  --sv-ctl-sh:-3px -3px 7px var(--sv-hi), 3px 3px 7px var(--sv-lo);
+  --sv-on:var(--paper); --sv-on-bd:1px solid transparent; --sv-on-ink:var(--ink);
+  --sv-on-sh:inset 3px 3px 7px var(--sv-lo), inset -3px -3px 7px var(--sv-hi);
+  --sv-btn:linear-gradient(145deg, var(--accent2), var(--accent)); --sv-btn-bd:1px solid transparent; --sv-btn-ink:#fff;
+  --sv-btn-sh:-4px -4px 10px var(--sv-hi), 5px 5px 12px rgba(0,0,0,.2);
+  --sv-btn-press-sh:inset 3px 3px 7px rgba(0,0,0,.2), inset -3px -3px 7px rgba(255,255,255,.25); --sv-btn-press:none;
+  --sv-in:var(--paper); --sv-in-bd:1px solid transparent;
+  --sv-in-sh:inset 3px 3px 7px var(--sv-lo), inset -3px -3px 7px var(--sv-hi);
+  --sv-inner:var(--paper); --sv-inner-bd:1px solid transparent; --sv-inner-hi:var(--paper);
+  --sv-inner-sh:inset 2px 2px 6px var(--sv-lo), inset -2px -2px 6px var(--sv-hi);
+}
+body[data-theme="dark"][data-style="neumo"]{
+  --sv-hi:rgba(255,255,255,.05); --sv-lo:rgba(0,0,0,.55);
+  --sv-card-bd:1px solid rgba(255,255,255,.04); --sv-btn-ink:#111;
+}
+body[data-style="neumo"] .pillrow button.on, body[data-style="neumo"] .chips button.on{ font-weight:700 }
+body[data-style="neumo"] .pillrow button.on::before, body[data-style="neumo"] .chips button.on::before{
+  content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); margin-right:5px; vertical-align:2px }
+body[data-style="neumo"] .themes button.on{ box-shadow:inset 3px 3px 7px var(--sv-lo), inset -3px -3px 7px var(--sv-hi), 0 0 0 2px var(--accent) }
+
+/* ================= スタイルを選ぶ画面 ================= */
+.stylegrid{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin-bottom:8px}
+@media (min-width:760px){ .stylegrid{grid-template-columns:repeat(5, minmax(0, 1fr))} }
+.stylegrid button{position:relative; display:flex; flex-direction:column; align-items:stretch; gap:5px; padding:6px 6px 8px;
+  border-radius:18px; border:1px solid var(--edge); background:rgba(255,255,255,.5); font:inherit; color:var(--ink); cursor:pointer; text-align:left}
+body[data-theme="dark"] .stylegrid button{background:rgba(255,255,255,.06)}
+.stylegrid button.on{box-shadow:0 0 0 2.5px var(--accent)}
+.stylegrid .stn{font-size:.74em; font-weight:700; line-height:1.3; padding:0 2px}
+.stylegrid .stt{position:absolute; top:10px; right:10px; font-size:.58em; font-weight:700; padding:1px 6px; border-radius:999px;
+  background:rgba(255,255,255,.92); color:#4A3A44; box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.stylegrid button.on .stt{background:var(--accent); color:#fff}
+body[data-theme="dark"] .stylegrid button.on .stt{color:#111}
+/* 小さな見本 */
+.stpv{position:relative; display:block; height:66px; border-radius:12px; overflow:hidden; background:var(--paper)}
+.stpv i{position:absolute; display:block}
+.stpv .c{left:12%; right:12%; top:14px; height:26px; border-radius:10px}
+.stpv .c::after{content:''; position:absolute; left:8px; top:9px; width:46%; height:3px; border-radius:2px; background:rgba(0,0,0,.28); box-shadow:0 6px 0 rgba(0,0,0,.14)}
+.stpv .b{left:12%; top:46px; width:42%; height:12px; border-radius:999px; background:var(--accent)}
+.stpv .b2{left:58%; top:46px; width:30%; height:12px; border-radius:999px}
+.pv-glass{background:radial-gradient(80% 90% at 0% 0%, var(--tint1), transparent 70%), radial-gradient(80% 90% at 100% 100%, var(--tint3), transparent 70%), var(--paper)}
+.pv-glass .c{background:linear-gradient(150deg, rgba(255,255,255,.75), rgba(255,255,255,.35)); border:1px solid #fff; box-shadow:0 3px 8px rgba(0,0,0,.1)}
+.pv-glass .b2{background:rgba(255,255,255,.6); border:1px solid #fff}
+.pv-liquid{background:radial-gradient(60% 70% at 10% 10%, var(--accent2), transparent 70%), radial-gradient(60% 70% at 90% 90%, var(--accent), transparent 70%), radial-gradient(50% 60% at 90% 10%, var(--tint3), transparent 70%), var(--paper)}
+.pv-liquid .c{background:linear-gradient(135deg, rgba(255,255,255,.42), rgba(255,255,255,.08)); border:1px solid rgba(255,255,255,.7);
+  box-shadow:inset 0 1px 1px #fff, inset 0 0 12px rgba(255,255,255,.3), 0 6px 12px -4px rgba(0,0,0,.2);
+  -webkit-backdrop-filter:blur(6px) saturate(180%); backdrop-filter:blur(6px) saturate(180%)}
+.pv-liquid .b{background:linear-gradient(160deg, var(--accent2), var(--accent)); box-shadow:inset 0 1px 1px rgba(255,255,255,.9)}
+.pv-liquid .b2{background:rgba(255,255,255,.3); border:1px solid rgba(255,255,255,.8); box-shadow:inset 0 1px 1px #fff}
+.pv-aurora{background:radial-gradient(70% 80% at 0% 0%, #ffb6db, transparent 70%), radial-gradient(70% 80% at 100% 0%, #beacff, transparent 70%), radial-gradient(70% 80% at 90% 100%, #96e2ff, transparent 70%), radial-gradient(70% 80% at 0% 100%, #acf5d4, transparent 70%), #F6EEF8}
+.pv-aurora .c{background:rgba(255,255,255,.72); border:1.5px solid #e3d6ff; box-shadow:0 4px 10px -4px rgba(140,110,220,.5)}
+.pv-aurora .b{background:linear-gradient(120deg, #cf5a94, #8a68d4, #4a8fc8)}
+.pv-aurora .b2{background:rgba(255,255,255,.7); border:1px solid #fff}
+.pv-fuwa{background:radial-gradient(circle at 6px 6px, rgba(255,255,255,.9) 2px, transparent 2.6px) 0 0/14px 14px, var(--paper)}
+.pv-fuwa .c{background:#fff; border-radius:16px; box-shadow:0 4px 8px -4px rgba(0,0,0,.2); outline:1.5px dashed var(--accent2); outline-offset:-4px}
+.pv-fuwa .b{box-shadow:0 2px 0 rgba(0,0,0,.15)}
+.pv-fuwa .b2{background:#fff; border:1.5px solid var(--accent2)}
+.pv-clay{background:radial-gradient(80% 90% at 0% 0%, var(--tint1), transparent 70%), var(--paper)}
+.pv-clay .c{background:#fff; border-radius:16px; box-shadow:inset -3px -3px 6px rgba(0,0,0,.07), inset 3px 3px 6px #fff, 0 6px 10px -5px rgba(0,0,0,.3)}
+.pv-clay .b{box-shadow:inset -2px -2px 3px rgba(0,0,0,.2), inset 2px 2px 3px rgba(255,255,255,.4)}
+.pv-clay .b2{background:#fff; box-shadow:inset -2px -2px 3px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.15)}
+.pv-pop{background:radial-gradient(circle at 30% 30%, var(--accent2) 0 2px, transparent 2.5px) 0 0/22px 22px, var(--paper)}
+.pv-pop .c{background:#fff; border:2px solid #3A2E39; box-shadow:3px 3px 0 #3A2E39}
+.pv-pop .b{background:var(--accent2); border:2px solid #3A2E39; box-shadow:2px 2px 0 #3A2E39}
+.pv-pop .b2{background:#fff; border:2px solid #3A2E39}
+.pv-note{background:linear-gradient(rgba(110,130,165,.18) 1px, transparent 1px) 0 0/100% 9px, linear-gradient(90deg, rgba(110,130,165,.18) 1px, transparent 1px) 0 0/9px 100%, #F8F4EA}
+.pv-note .c{background:#fff; border:1px solid rgba(60,50,40,.15); border-radius:3px; box-shadow:0 3px 5px -3px rgba(60,50,40,.35)}
+.pv-note .c::before{content:''; position:absolute; left:50%; top:-4px; width:30px; height:8px; transform:translateX(-50%) rotate(-3deg); background:var(--accent2); opacity:.6}
+.pv-note .b{border-radius:4px}
+.pv-note .b2{background:#fff; border:1px solid rgba(60,50,40,.3); border-radius:4px}
+.pv-neumo{background:var(--paper)}
+.pv-neumo .c{background:var(--paper); box-shadow:-4px -4px 8px rgba(255,255,255,.8), 4px 4px 8px rgba(0,0,0,.14)}
+.pv-neumo .b{background:var(--paper); box-shadow:inset 2px 2px 4px rgba(0,0,0,.15), inset -2px -2px 4px rgba(255,255,255,.8)}
+.pv-neumo .b2{background:var(--paper); box-shadow:-2px -2px 4px rgba(255,255,255,.8), 2px 2px 4px rgba(0,0,0,.14)}
+.pv-minimal{background:#F7F6F8}
+.pv-minimal .c{background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:6px}
+.pv-minimal .b{border-radius:4px}
+.pv-minimal .b2{background:#fff; border:1px solid rgba(0,0,0,.12); border-radius:4px}
+body[data-theme="dark"] .pv-glass .c, body[data-theme="dark"] .pv-aurora .c{background:rgba(60,50,70,.7); border-color:rgba(255,255,255,.2)}
+body[data-theme="dark"] .pv-fuwa .c, body[data-theme="dark"] .pv-clay .c, body[data-theme="dark"] .pv-note .c,
+body[data-theme="dark"] .pv-minimal .c{background:#2C2632}
+body[data-theme="dark"] .pv-pop .c{background:#2C2632; border-color:#F0E8EC; box-shadow:3px 3px 0 #F0E8EC}
+body[data-theme="dark"] .pv-neumo .c{box-shadow:-4px -4px 8px rgba(255,255,255,.05), 4px 4px 8px rgba(0,0,0,.6)}
+body[data-theme="dark"] .pv-minimal, body[data-theme="dark"] .pv-note{background:#1C1A21}
+body[data-theme="dark"] .stpv .c::after{background:rgba(255,255,255,.4); box-shadow:0 6px 0 rgba(255,255,255,.2)}
+
+/* ================= キャラクター ================= */
+.chara{display:inline-block; line-height:0; vertical-align:middle; flex:none}
+.chara svg{display:block; overflow:visible}
+.chara.anim-bounce svg{animation:chBounce 2.6s ease-in-out infinite; transform-origin:50% 100%}
+.chara.anim-sway svg{animation:chSway 3.4s ease-in-out infinite; transform-origin:50% 90%}
+.chara.anim-jump svg{animation:chJump .9s cubic-bezier(.3,1.6,.5,1) 2; transform-origin:50% 100%}
+.chara.anim-float svg{animation:chFloat 3.2s ease-in-out infinite}
+@keyframes chBounce{0%,100%{transform:translateY(0) scale(1,1)} 45%{transform:translateY(0) scale(1.03,.96)} 60%{transform:translateY(-5px) scale(.98,1.03)} 75%{transform:translateY(0) scale(1.02,.98)}}
+@keyframes chSway{0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)}}
+@keyframes chJump{0%{transform:translateY(0) scale(1,1)} 20%{transform:translateY(0) scale(1.08,.9)} 50%{transform:translateY(-18px) scale(.95,1.06)} 80%{transform:translateY(0) scale(1.05,.95)} 100%{transform:translateY(0) scale(1,1)}}
+@keyframes chFloat{0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)}}
+@media (prefers-reduced-motion:reduce){ .chara svg{animation:none !important} }
+
+/* ふきだし */
+.chbubble{position:relative; display:inline-block; max-width:220px; padding:7px 11px; border-radius:16px; font-size:.8em; font-weight:600; line-height:1.45;
+  color:#4A3A44; background:#fff; border:1px solid rgba(0,0,0,.06); box-shadow:0 4px 12px -4px rgba(0,0,0,.2); text-align:left}
+body[data-theme="dark"] .chbubble{background:#F3EEF2; color:#2A2228}
+
+/* 今日の画面のあいさつ */
+.hero.withch{padding-right:18px}
+.hero .chhero{position:relative; z-index:2; display:flex; align-items:flex-end; justify-content:flex-end; gap:6px; margin-top:8px; cursor:pointer;
+  -webkit-user-select:none; user-select:none}
+.hero .chhero .chbubble{margin-bottom:34px; border-bottom-right-radius:5px}
+.hero .chhero .chbubble::after{content:''; position:absolute; right:-6px; bottom:6px; width:12px; height:12px; background:inherit;
+  border-right:1px solid rgba(0,0,0,.06); border-bottom:1px solid rgba(0,0,0,.06); transform:rotate(-45deg); border-radius:0 0 3px 0}
+.hero .chhero:active .chara svg{transform:scale(.94)}
+.hero.withch .art{display:none}
+.hero.withch .date, .hero.withch .greet, .hero.withch .wx{padding-right:0}
+
+/* お祝い */
+#chpop{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 90px); z-index:72; display:flex; flex-direction:column; align-items:center; gap:4px;
+  transform:translate(-50%, 30px) scale(.6); opacity:0; visibility:hidden; pointer-events:none;
+  transition:transform .35s cubic-bezier(.3,1.5,.5,1), opacity .25s, visibility .35s}
+#chpop.on{transform:translate(-50%, 0) scale(1); opacity:1; visibility:visible}
+#chpop .chbubble{font-size:.86em; white-space:nowrap; max-width:86vw; overflow:hidden; text-overflow:ellipsis}
+
+/* 画面のすみにいる子 */
+#buddy{position:fixed; left:10px; bottom:calc(env(safe-area-inset-bottom) + 12px); z-index:30; display:flex; align-items:flex-end; gap:4px;
+  border:0; background:none; padding:0; cursor:pointer; -webkit-user-select:none; user-select:none; filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))}
+#buddy .chbubble{order:2; margin-bottom:40px; max-width:min(220px, 60vw); border-bottom-left-radius:5px; animation:chPopIn .3s cubic-bezier(.3,1.5,.5,1)}
+#buddy:active .chara svg{transform:scale(.92)}
+@keyframes chPopIn{from{opacity:0; transform:translateY(6px) scale(.9)} to{opacity:1; transform:none}}
+body[data-kb] #buddy, body:has(.sheet.on) #buddy, body:has(.veil.on) #buddy{display:none}
+@media (prefers-reduced-motion:reduce){ #buddy .chbubble{animation:none} }
+@media (min-width:760px){ #buddy{left:18px; bottom:18px} }
+
+/* 設定のキャラ選び */
+.chgrid{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin:4px 0 6px}
+@media (min-width:760px){ .chgrid{grid-template-columns:repeat(5, minmax(0, 1fr))} }
+.chgrid button{position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 4px 8px; border-radius:18px;
+  border:1px solid var(--edge); background:rgba(255,255,255,.5); font:inherit; color:var(--ink); cursor:pointer}
+body[data-theme="dark"] .chgrid button{background:rgba(255,255,255,.06)}
+.chgrid button.on{box-shadow:0 0 0 2.5px var(--accent); background:rgba(255,255,255,.82)}
+body[data-theme="dark"] .chgrid button.on{background:rgba(255,255,255,.14)}
+.chgrid .chname{font-size:.78em; font-weight:700; margin-top:2px}
+.chgrid .chdesc{font-size:.6em; color:var(--sub); line-height:1.35; text-align:center}
+.chgrid .chk2{position:absolute; top:6px; right:6px; width:18px; height:18px; border-radius:50%; border:1.5px solid var(--sub);
+  font-size:11px; font-weight:800; line-height:15px; text-align:center; color:#fff}
+.chgrid button.on .chk2{background:var(--accent); border-color:var(--accent)}
+body[data-theme="dark"] .chgrid button.on .chk2{color:#111}
+.chexpr{display:flex; flex-wrap:wrap; gap:4px; padding:6px 8px; border-radius:14px; background:rgba(255,255,255,.4)}
+body[data-theme="dark"] .chexpr{background:rgba(255,255,255,.05)}
+
+/* お知らせの顔 */
+#toast.withch{display:inline-flex; align-items:center; gap:8px; padding-left:8px; text-align:left}
+#toast.withch .chara{background:#fff; border-radius:50%; padding:1px}
+
+/* 相談のアイコン */
+.cmsg .cav{flex:none; align-self:flex-end; margin-right:6px; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.85);
+  display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.12)}
+body[data-theme="dark"] .cmsg .cav{background:rgba(255,255,255,.9)}

@@ -2,7 +2,8 @@
 /* ============================== 設定 ============================== */
 function viewSettings(){
   var c = S.commute;
-  var look = foldSection('s1', '見た目', THEMES.filter(function(t){ return t.id===S.ui.theme; })[0].name,
+  var look = foldSection('s1', '見た目', uiStyleNow().name + '・' + ((THEMES.filter(function(t){ return t.id===S.ui.theme; })[0] || THEMES[0]).name),
+    styleSettings() +
     '<label class="f">カラー（背景ごと変わります）</label><div class="themes">'+
       THEMES.map(function(t){
         var sw = t.custom ? 'linear-gradient(150deg,'+(S.ui.customColor||'#E8C8E8')+','+(S.ui.customColor||'#E8C8E8')+')'
@@ -91,7 +92,9 @@ function viewSettings(){
     '<label class="tg"><input type="checkbox" id="cbWeather"'+(S.ui.weather?' checked':'')+'>三田の天気とバス遅延の注意を表示する</label>')
 
 ;
-  return look + (photoOpen ? photoPicker() : '') + storageBox() + trashBox() + kindSettings() + weekFilterSettings() + tabSettings() + pageSettings() + diaSettings()
+  var chSec = (typeof charaSettings === 'function')
+    ? foldSection('chara', 'キャラクター', (charaLevel() ? charaNow().name + '・' : '') + CHARA_LEVELS[charaLevel()][1], charaSettings()) : '';
+  return look + chSec + (photoOpen ? photoPicker() : '') + storageBox() + trashBox() + kindSettings() + weekFilterSettings() + tabSettings() + pageSettings() + diaSettings()
   + foldSection('s2', '通学の時間', '合計 '+commuteTotal()+'分',
     '<div class="grid3" style="margin-bottom:11px">'+
       '<div><label class="f">家→バス停</label><input id="cm_walk" inputmode="numeric" value="'+toNum(c.walk)+'"></div>'+
@@ -198,6 +201,19 @@ function syncSettings(){
     ? '<div class="msg" style="margin-bottom:12px"><b>テストモード</b>　この画面では本物のデータを使いません。</div>'
     : '<div class="bn '+(ph[0] === 'ng' ? 'red' : 'amber')+'" style="margin-bottom:12px"><span class="ic">!</span><span><b>'+esc(ph[1])+'</b>'+
       (ph[2] ? '<br>'+esc(ph[2]) : '')+'</span></div>';
+  if(syncState.permDenied){
+    h += '<div class="box" style="margin-bottom:12px;background:rgba(255,255,255,.55)">'+
+      '<div class="t" style="font-weight:700;margin-bottom:6px">Firebaseのルールを直す手順</div>'+
+      '<ol class="steps">'+
+        '<li><a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebaseコンソール</a>を開き、プロジェクト「kurashi-59562」を選ぶ</li>'+
+        '<li>左のメニューの「Firestore Database」→ 上の「ルール」を開く</li>'+
+        '<li>書いてあるものを<b>ぜんぶ消して</b>、下の「ルールをコピー」で写したものを貼り付ける</li>'+
+        '<li>「公開」を押す → 1分ほど待って、この画面の「もう一度つなぐ」を押す</li>'+
+      '</ol>'+
+      '<pre class="rules">'+esc(firebaseRulesText())+'</pre>'+
+      '<button class="btn ghost" data-act="copy-rules">ルールをコピー</button>'+
+      '<p class="note">このルールは「部屋のID（'+esc(DEFAULT_ROOM)+'）で始まる文書だけ」を読み書きできるようにします。</p></div>';
+  }
   if(location.protocol === 'file:'){
     h += '<div class="bn red" style="margin-bottom:12px"><span class="ic">!</span><span>'+
       '<b>保存したファイルを直接ひらいています。</b><br>この開き方だと同期できません。<b>https://yurizigong95.github.io/kurashi/</b> から開くか、ホーム画面のアイコンを使ってください。</span></div>';
@@ -280,11 +296,21 @@ function settingsAction(act, t){
     try{ localStorage.removeItem(ERRLOG_KEY); }catch(e){}
     toast('消しました'); render(); return true;
   }
+  if(act==='copy-rules'){
+    navigator.clipboard.writeText(firebaseRulesText()).then(function(){ toast('ルールをコピーしました。Firebaseのルールの画面に貼り付けてください'); },
+      function(){ toast('コピーできませんでした。上の文字を長押しして写してください', true); });
+    return true;
+  }
   if(act==='sync-resume'){ syncState.pauseUntil = 0; syncState.writes = []; pushRemote(true); toast('同期を再開しました'); render(); return true; }
   if(act==='go-errlog'){
     S.ui.setOpen = S.ui.setOpen || {}; S.ui.setOpen.errlog = 1; render();
     setTimeout(function(){ var el = document.querySelector('[data-id="errlog"]'); if(el) el.scrollIntoView({ block:'start', behavior:'smooth' }); }, 50);
     return true;
+  }
+  if(act==='set-style'){
+    var stNew = UI_STYLES.filter(function(s){ return s.id === t.dataset.v; })[0];
+    if(!stNew) return true;
+    S.ui.style = stNew.id; touch('ui'); applyUi(); toast('「' + stNew.name + '」にしました'); commit(); return true;
   }
   if(act==='set-theme'){ S.ui.theme = t.dataset.v; touch('ui'); applyUi(); toast('テーマを変えました'); commit(); return true; }
   if(act==='mycolor-add'){
@@ -756,20 +782,26 @@ function storageBox(){
     body = '<div class="s2" style="margin-bottom:10px">容量を調べています…</div>';
   }else{
     var free = (q.estimateOk && q.quota) ? Math.max(0, q.quota - q.used) : 0;
+    var phPct = (q.estimateOk && q.quota) ? Math.min(100, Math.round(q.used / q.quota * 100)) : 0;
     body =
-      '<div class="grid2" style="margin-bottom:10px">'+
-        '<div class="stat"><div class="k">写真の枚数</div><div class="v num">'+q.count+'枚</div></div>'+
-        '<div class="stat"><div class="k">写真の大きさ</div><div class="v num">'+sizeText(q.bytes)+'</div></div>'+
-      '</div>'+
-      '<div class="row"><div class="grow"><div class="t">文字のデータ（予定・メモなど）</div>'+
-        '<div class="s">'+sizeText(st.total)+' ／ 約5MBまで</div></div>'+
+      '<p class="note" style="margin-top:0">この端末には、データを入れる<b>入れものが2つ</b>あります。</p>'+
+      /* 1) 文字の入れもの */
+      '<div class="stbox"><div class="row"><div class="grow"><div class="t">① 文字の入れもの</div>'+
+        '<div class="s">予定・課題・メモ・会話など　<b>'+sizeText(st.total)+'</b> ／ 上限 約5MB</div></div>'+
         '<span class="b cat">'+txtPct+'%</span></div>'+
-      '<div class="bar" style="margin:6px 0 12px"><i class="'+(txtPct>=80?'over':txtPct>=50?'':'done')+'" style="width:'+Math.max(2,txtPct)+'%"></i></div>'+
-      '<div class="row"><div class="grow"><div class="t">合計（写真＋文字）</div>'+
-        '<div class="s">'+sizeText(q.bytes + st.total)+
-        ((q.estimateOk && q.quota) ? '　あと約 '+sizeText(free)+' 入ります（ブラウザの目安）' : '')+'</div></div></div>'+
-      (q.estimateOk ? '' : '<p class="note">このブラウザは、端末の空きを教えてくれません。</p>')+
-      (q.biggest ? '<p class="note">いちばん大きい写真は '+sizeText(q.biggest)+' です。</p>' : '');
+      '<div class="bar" style="margin:6px 0 6px"><i class="'+(txtPct>=80?'over':txtPct>=50?'':'done')+'" style="width:'+Math.max(2,txtPct)+'%"></i></div>'+
+      '<p class="note" style="margin:0">「約5MB」は、ブラウザ（SafariやChrome）が文字データ用に決めている大きさです。どの端末でもほぼ同じで、増やせません。文字だけなら、ふつうはいっぱいになりません。</p></div>'+
+      /* 2) 写真の入れもの */
+      '<div class="stbox"><div class="row"><div class="grow"><div class="t">② 写真の入れもの</div>'+
+        '<div class="s">写真 <b>'+q.count+'枚・'+sizeText(q.bytes)+'</b>'+
+        ((q.estimateOk && q.quota) ? ' ／ あと約 <b>'+sizeText(free)+'</b> 入ります' : '')+'</div></div>'+
+        ((q.estimateOk && q.quota) ? '<span class="b cat">'+phPct+'%</span>' : '')+'</div>'+
+      ((q.estimateOk && q.quota) ? '<div class="bar" style="margin:6px 0 6px"><i class="'+(phPct>=80?'over':phPct>=50?'':'done')+'" style="width:'+Math.max(2,phPct)+'%"></i></div>' : '')+
+      '<p class="note" style="margin:0">'+
+        ((q.estimateOk && q.quota)
+          ? '「あと約'+sizeText(free)+'」は、この端末の空き容量をもとに、ブラウザが「このアプリが使ってよい」と決めた目安です。端末の空きが減ると小さくなります。'
+          : 'このブラウザは、写真の入れものの空きを教えてくれません。')+
+        (q.biggest ? 'いちばん大きい写真は '+sizeText(q.biggest)+' です。' : '')+'</p></div>';
   }
   return foldSection('storageBox', '写真とデータの容量',
     q ? (q.count+'枚・'+sizeText(q.bytes)) : '調べています…',
@@ -782,8 +814,7 @@ function storageBox(){
       '<button class="mini" data-act="img-clean" data-m="6">6か月より古いのを消す</button>'+
       '<button class="mini" data-act="img-orphan">迷子の写真を消す</button>'+
     '</div>'+
-    '<p class="note">「写真の大きさ」は、この端末に入っている写真を1枚ずつ数えた本当の合計です。'+
-      '写真は端末ごとに保存され、同期はされません（予定やメモの文字は同期されます）。</p>');
+    '<p class="note">写真の大きさは、この端末に入っている写真を1枚ずつ数えた本当の合計です。写真と文字は、どちらも同期されます（設定 › 端末どうしの同期）。</p>');
 }
 /* 写真をえらんで消す */
 function photoPicker(){
@@ -946,4 +977,18 @@ function trashBox(){
       : '<div class="empty">消したものが30日ここに残ります。</div>')+
     (list.length ? '<button class="btn ghost" style="margin-top:10px" data-act="trash-clear">ぜんぶ捨てる</button>' : '')+
     '<p class="note">30日たつと自動で消えます。まちがえて消しても、ここから戻せます。</p>');
+}
+
+/* 画面のスタイルを選ぶ（見本つき） */
+function styleSettings(){
+  var cur = uiStyleNow();
+  return '<label class="f">画面のスタイル（形や質感）</label>'+
+    '<div class="stylegrid">'+UI_STYLES.map(function(s){
+      var on = (s.id === cur.id);
+      return '<button data-act="set-style" data-v="'+s.id+'" class="'+(on?'on':'')+'" aria-pressed="'+(on?'true':'false')+'">'+
+        '<span class="stpv pv-'+s.id+'" aria-hidden="true"><i class="c"></i><i class="b"></i><i class="b2"></i></span>'+
+        '<span class="stt">'+esc(s.tag)+'</span>'+
+        '<span class="stn">'+esc(s.name)+'</span></button>';
+    }).join('')+'</div>'+
+    '<p class="note" style="margin:-2px 0 12px">いまは<b>「'+esc(cur.name)+'」</b>：'+esc(cur.desc)+'。下のカラーと組み合わせられます。</p>';
 }

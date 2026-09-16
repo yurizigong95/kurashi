@@ -259,8 +259,9 @@ function viewDay(ymd, pageKey){
   var dch = WDAY[d.getDay()], isToday = (ymd === today());
   var hh = new Date().getHours();
   var greet = isToday ? (hh < 5 ? 'おそくまでおつかれさま' : hh < 11 ? 'おはようございます' : hh < 18 ? 'こんにちは' : 'おつかれさま') : '明日の予定';
-  var html = '<div class="hero slim"><div class="date">'+(+a[0])+'年'+(+a[1])+'月'+(+a[2])+'日（'+dch+'）'+
-    (holidayName(ymd) ? '　'+esc(holidayName(ymd)) : '')+'</div><div class="greet">'+greet+'</div></div>';
+  var chHero = (isToday && typeof charaHero === 'function') ? charaHero() : '';
+  var html = '<div class="hero slim'+(chHero ? ' withch' : '')+'"><div class="date">'+(+a[0])+'年'+(+a[1])+'月'+(+a[2])+'日（'+dch+'）'+
+    (holidayName(ymd) ? '　'+esc(holidayName(ymd)) : '')+'</div><div class="greet">'+greet+'</div>'+chHero+'</div>';
 
   /* 欠席があと1回で上限の授業（いちばん上に出す） */
   html += absenceAlert(ymd);

@@ -97,6 +97,7 @@ function renderInner(){
   }
   var titleEl = document.getElementById('apptitle');
   titleEl.innerHTML = esc(TITLES[appId]) + '<span id="synctag"></span>' +
+    '<button id="addbtn" type="button" data-act="go-add" title="予定を追加する" aria-label="予定を追加する"><span>＋</span><em>追加</em></button>' +
     '<button id="revbtn" data-act="go-review" title="今日の評価をみる">'+
       (function(){
         var r = (S.dayReview||{})[today()];
@@ -114,6 +115,7 @@ function renderInner(){
   if(typeof photoFill==='function') photoFill();
   if(typeof applyDecor==='function') applyDecor();
   if(appId==='chat' && typeof chatScrollBottom==='function') chatScrollBottom();
+  if(typeof charaBuddy==='function') charaBuddy();   /* たっぷりのときの、すみにいる子 */
   var fixHeader = function(){
     var hd = document.querySelector('header');
     if(hd) document.documentElement.style.setProperty('--hdrh', Math.round(hd.getBoundingClientRect().height)+'px');
@@ -170,6 +172,7 @@ function appClick(e, t, act){
     if(calAction(act, t)) return;
   }
   if(chatAction(act, t)) return;
+  if(typeof charaAction==='function' && charaAction(act, t)) return;
   if(reviewAction(act, t)) return;
   if(kindAction(act, t)) return;
   if(ttAction(act, t, e)) return;
@@ -311,6 +314,13 @@ document.querySelector('header').addEventListener('click', function(e){
   if(!t) return;
   e.preventDefault();
   var act = t.dataset.act;
+  if(act === 'go-add'){
+    /* どの画面からでも、今日の日付で予定の追加画面を開く（書きかけがあればそのまま） */
+    if(calEdit || !evDraft){ calEdit = null; evDraft = newDraft(today()); }
+    appId = 'cal'; calTab = 'add'; courseView = ''; closeDetail();
+    render(); window.scrollTo(0, 0);
+    return;
+  }
   if(act === 'go-sync'){
     appId = 'set'; S.ui.setOpen = S.ui.setOpen || {}; S.ui.setOpen.s4 = 1;
     render();
@@ -641,3 +651,8 @@ if(TEST_MODE){
 
 /* 読みこみの見張り（index.html）に「ちゃんと起動した」と知らせる */
 window.__kurashiOK = true;
+/* 「1件ずつ見る」を開いたかどうかを覚えておく（描き直しても閉じないように） */
+document.getElementById('app').addEventListener('toggle', function(e){
+  var t = e.target;
+  if(t && t.dataset && t.dataset.flowMore) flowOpen = !!t.open;
+}, true);
