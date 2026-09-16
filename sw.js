@@ -1,5 +1,5 @@
 /* くらしの手帳：オフライン用 */
-var CACHE = 'kurashi-v4';
+var CACHE = 'kurashi-v5';
 var FILES = [
   './', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png',
   './css/app.css',
@@ -10,7 +10,12 @@ var FILES = [
   './gas/Code.gs'
 ];
 self.addEventListener('install', function(e){
-  e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(FILES); }).then(function(){ return self.skipWaiting(); }));
+  /* 1つ読めないファイルがあっても、ほかはしまって先に進む（全部失敗扱いにしない） */
+  e.waitUntil(caches.open(CACHE).then(function(c){
+    return Promise.all(FILES.map(function(f){
+      return fetch(f, { cache:'no-store' }).then(function(res){ if(res.ok) return c.put(f, res); })['catch'](function(){});
+    }));
+  }).then(function(){ return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(keys){ return Promise.all(keys.filter(function(k){ return k!==CACHE; }).map(function(k){ return caches.delete(k); })); }).then(function(){ return self.clients.claim(); }));
@@ -21,12 +26,19 @@ self.addEventListener('fetch', function(e){
   if(url.origin !== location.origin) return;           /* 天気やFirebase・Googleはそのまま */
   if(url.pathname.indexOf('/tests/') >= 0) return;     /* テストのページはしまわない */
   /* 本体は必ずネットから取り直す（古い版が残らないように）。つながらないときだけしまったものを使う */
+  var isPage = (e.request.mode === 'navigate');
+  var fromCache = function(){
+    return caches.match(e.request, { ignoreSearch:true }).then(function(r){
+      /* ページのときだけ、しまってある index.html で代わりにする（css や js の代わりに HTML を返さない） */
+      return r || (isPage ? caches.match('./index.html') : undefined) || Response.error();
+    });
+  };
   e.respondWith(
-    fetch(e.request, { cache: 'no-store' }).then(function(res){
-      if(res && res.ok){ var copy = res.clone(); caches.open(CACHE).then(function(c){ c.put(e.request, copy); }); }
-      return res;
-    }).catch(function(){
-      return caches.match(e.request, { ignoreSearch:true }).then(function(r){ return r || caches.match('./index.html'); });
-    })
+    /* ページの読みこみには、よけいな指定をつけない（Safariで失敗しないように） */
+    fetch(e.request, isPage ? undefined : { cache: 'no-store' }).then(function(res){
+      if(res && res.ok){ var copy = res.clone(); caches.open(CACHE).then(function(c){ c.put(e.request, copy); }); return res; }
+      /* 見つからないときは、しまってあるものがあればそれを使う */
+      return caches.match(e.request, { ignoreSearch:true }).then(function(r){ return r || res; });
+    })['catch'](fromCache)
   );
 });

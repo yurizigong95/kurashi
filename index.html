@@ -7,16 +7,29 @@
 <meta name="apple-mobile-web-app-title" content="くらしの手帳">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-180.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <meta name="theme-color" content="#EAD0D7">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>くらしの手帳</title>
-<link rel="stylesheet" href="css/app.css">
+<script>
+/* ファイルが読みこめなかったときに、何が足りないかを記録する */
+window.__kMissing = [];
+function kMiss(el){ window.__kMissing.push(el.getAttribute('href') || el.getAttribute('src')); }
+</script>
+<style>
+/* 本体の見た目（css/app.css）が読めなくても、画面がばらばらに出ないように */
+body{margin:0; background:#EAD0D7; color:#4A2B38; font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+.hide,.sheet:not(.on),.veil:not(.on),#viewer:not(.on),#fabmenu:not(.on){display:none}
+#splash{position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:#EAD0D7}
+#loadfail{position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; background:#EAD0D7; font-size:15px; line-height:1.7}
+#loadfail .card{max-width:480px; background:#fff; border-radius:18px; padding:20px 18px; box-shadow:0 8px 30px rgba(0,0,0,.12)}
+#loadfail h2{margin:0 0 8px; font-size:18px}
+#loadfail code{font-size:13px; background:#f5eef1; padding:1px 5px; border-radius:6px; word-break:break-all}
+#loadfail button{display:block; width:100%; margin-top:10px; padding:12px; border-radius:999px; border:1px solid #d9738f; background:#fff; color:#4A2B38; font:inherit}
+#loadfail button.main{background:#d9738f; color:#fff; border-color:#d9738f}
+</style>
+<link rel="stylesheet" href="css/app.css" onerror="kMiss(this)">
 </head>
 <body data-theme="pink" data-fs="m">
 
@@ -64,25 +77,74 @@
   <div class="sheet-bd" id="shBody"></div>
 </div>
 
-<!-- 読みこむ順番に意味があります（上のファイルの関数を下で使う） -->
-<script src="js/data.js"></script>
-<script src="js/core.js"></script>
-<script src="js/sync.js"></script>
-<script src="js/ai.js"></script>
-<script src="js/common.js"></script>
-<script src="js/decor.js"></script>
-<script src="js/commute.js"></script>
-<script src="js/today.js"></script>
-<script src="js/money.js"></script>
-<script src="js/risyu.js"></script>
-<script src="js/calendar.js"></script>
-<script src="js/settings.js"></script>
-<script src="js/google.js"></script>
-<script src="js/timetable.js"></script>
-<script src="js/todo.js"></script>
-<script src="js/chat.js"></script>
-<script src="js/review.js"></script>
-<script src="js/whatsnew.js"></script>
-<script src="js/main.js"></script>
+<!-- 読みこむ順番に意味があります（上のファイルの関数を下で使う）。
+     css・js・gas フォルダは、この index.html と同じ場所に置いてください。 -->
+<script src="js/data.js" onerror="kMiss(this)"></script>
+<script src="js/core.js" onerror="kMiss(this)"></script>
+<script src="js/sync.js" onerror="kMiss(this)"></script>
+<script src="js/ai.js" onerror="kMiss(this)"></script>
+<script src="js/common.js" onerror="kMiss(this)"></script>
+<script src="js/decor.js" onerror="kMiss(this)"></script>
+<script src="js/commute.js" onerror="kMiss(this)"></script>
+<script src="js/today.js" onerror="kMiss(this)"></script>
+<script src="js/money.js" onerror="kMiss(this)"></script>
+<script src="js/risyu.js" onerror="kMiss(this)"></script>
+<script src="js/calendar.js" onerror="kMiss(this)"></script>
+<script src="js/settings.js" onerror="kMiss(this)"></script>
+<script src="js/google.js" onerror="kMiss(this)"></script>
+<script src="js/timetable.js" onerror="kMiss(this)"></script>
+<script src="js/todo.js" onerror="kMiss(this)"></script>
+<script src="js/chat.js" onerror="kMiss(this)"></script>
+<script src="js/review.js" onerror="kMiss(this)"></script>
+<script src="js/whatsnew.js" onerror="kMiss(this)"></script>
+<script src="js/main.js" onerror="kMiss(this)"></script>
+<script>
+/* ===== 読みこみの見張り =====
+   ファイルが足りない・古い保存が残っているときは、ばらばらの画面ではなく、原因と直し方を出す。 */
+(function(){
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+  function show(missing, hint){
+    if(document.getElementById('loadfail')) return;
+    var box = document.createElement('div');
+    box.id = 'loadfail';
+    box.innerHTML = '<div class="card"><h2>アプリを開けませんでした</h2>' +
+      (missing.length
+        ? '<p>次のファイルが見つかりません：<br><code>' + missing.slice(0, 6).map(esc).join('</code><br><code>') + '</code>' + (missing.length > 6 ? '<br>ほか' + (missing.length - 6) + '個' : '') + '</p>'
+        : '<p>アプリの中身を読みこめませんでした。</p>') +
+      (hint ? '<p>' + hint + '</p>' : '') +
+      '<button class="main" type="button" id="lfReload">もう一度読みこむ</button>' +
+      '<button type="button" id="lfClean">しまってある古いファイルを消して読みこむ（予定などのデータは消えません）</button></div>';
+    document.body.appendChild(box);
+    document.getElementById('lfReload').onclick = function(){ location.reload(); };
+    document.getElementById('lfClean').onclick = function(){
+      var jobs = [];
+      if('serviceWorker' in navigator) jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){ return r.unregister(); })); }));
+      if(window.caches) jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }));
+      Promise.all(jobs).then(function(){ location.reload(); }, function(){ location.reload(); });
+    };
+  }
+  function check(){
+    var missing = window.__kMissing.slice();
+    if(window.__kurashiOK && !missing.length) return;
+    var hint = '';
+    /* よくある置き間違い：フォルダがもう1つ内側に入っている */
+    var probe = (window.fetch ? fetch('kurashi/js/core.js', { method:'HEAD', cache:'no-store' }).then(function(r){ return r.ok; }, function(){ return false; }) : Promise.resolve(false));
+    probe.then(function(nested){
+      if(nested){
+        hint = '<b>css・js・gas フォルダが「kurashi」フォルダの中に入っています。</b><br>' +
+          'GitHubで、この index.html と同じ場所（いちばん上）に、css・js・gas・tests の4つのフォルダを置いてください。';
+      }else if(missing.length){
+        hint = 'GitHubに <code>css</code>・<code>js</code>・<code>gas</code> フォルダが、index.html と同じ場所にあるか確かめてください。';
+      }else{
+        hint = '通信が不安定か、古いファイルが残っているかもしれません。下のボタンを試してください。';
+      }
+      var s = document.getElementById('splash'); if(s) s.style.display = 'none';
+      show(missing, hint);
+    });
+  }
+  if(document.readyState === 'complete') setTimeout(check, 1500);
+  else window.addEventListener('load', function(){ setTimeout(check, 1500); });
+})();
+</script>
 </body>
 </html>
