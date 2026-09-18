@@ -203,6 +203,7 @@ function viewHome(d){
     '</div>'+
     '<button class="btn ghost" style="margin-top:12px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>'); };
   partsM.flow = function(){ return flowCard(); };
+  partsM.spend = function(){ return (typeof kbHomeCard === 'function') ? kbHomeCard() : ''; };
   partsM.fuyou = function(){ return fuyouCard(); };
   partsM.yearchart = function(){ return yearPayChart(); };
   partsM.balchart = function(){ return balanceChart(); };

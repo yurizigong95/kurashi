@@ -63,18 +63,59 @@ function fakeAi(req){
   ]}));
   if(tag === 'summary') return Promise.resolve('・テストのまとめ\n・来週までにレポート');
   if(tag === 'stt') return Promise.resolve('明日の予定は？');
+  if(tag === 'week') return Promise.resolve('よかったこと：出席をがんばった\n来週の目標：課題を早めに');
+  if(tag === 'charatalk'){
+    var mk = function(p, n){ var a = []; for(var i = 0; i < n; i++) a.push(p + 'のセリフ' + i); return a; };
+    return Promise.resolve(JSON.stringify({ morning:mk('朝', 50), noon:mk('昼', 50), evening:mk('夕', 50), night:mk('夜', 40), any:mk('いつでも', 40) }));
+  }
+  if(tag === 'chat'){
+    var last = (req.contents || [])[req.contents.length - 1] || {};
+    var said = (last.parts || []).map(function(p){ return p.text || ''; }).join('');
+    var answered = (last.parts || []).some(function(p){ return p.functionResponse; });
+    if(answered) return Promise.resolve('登録しました。');
+    if((req.tools || []).indexOf('functions') >= 0 && /登録して/.test(said)){
+      return Promise.resolve({ parts:[
+        { functionCall:{ name:'add_event', args:{ title:'歯医者', date:'2026-10-20', time:'10:00' } } },
+        { functionCall:{ name:'add_spend', args:{ amount:580, title:'コンビニ', category:'food' } } }
+      ] });
+    }
+    if((req.tools || []).indexOf('google_search') >= 0){
+      return Promise.resolve({ text:'調べました。', grounding:{ groundingChunks:[{ web:{ uri:'https://example.com/a', title:'出典A' } }, { web:{ uri:'javascript:alert(1)', title:'だめ' } }],
+        searchEntryPoint:{ renderedContent:'<div class="chip">検索</div>' } } });
+    }
+  }
   return Promise.resolve('テストの答えです。');
 }
 var gasCalls = [];
+var gasState = { jobs:[], inbox:[], summary:null, taskItems:[], taskChanges:[], taskCreated:[] };
+/* にせの Firebase Storage */
+var stStore = {};
+var fakeSt = {
+  put:function(pid, data){ stStore[pid] = data; return new Promise(function(r){ setTimeout(r, 5); }); },
+  get:function(pid){ return Promise.resolve(stStore[pid] || null); },
+  del:function(pid){ delete stStore[pid]; return Promise.resolve(); }
+};
 function fakeGas(req){
   gasCalls.push(req);
   if(req.token !== 'tok') return Promise.resolve({ ok:false, error:'合言葉がちがいます' });
-  if(req.action === 'ping') return Promise.resolve({ ok:true, user:'test@example.com', calendar:'くらしの手帳' });
+  if(req.action === 'ping') return Promise.resolve({ ok:true, user:'test@example.com', calendar:'くらしの手帳', ver:2, trigger:true });
   if(req.action === 'calSync') return Promise.resolve({ ok:true, done:req.items.length, remaining:0, total:req.items.length, errors:[] });
   if(req.action === 'backup') return Promise.resolve({ ok:true, id:'f1', name:req.name, size:req.json.length, url:'' });
   if(req.action === 'photoNames') return Promise.resolve({ ok:true, names:[] });
   if(req.action === 'photoPut') return Promise.resolve({ ok:true });
   if(req.action === 'backupList') return Promise.resolve({ ok:true, items:[] });
+  if(req.action === 'ping') return Promise.resolve({ ok:true, user:'test@example.com', ver:2, trigger:true });
+  if(req.action === 'setup' || req.action === 'shortKey' || req.action === 'discordSet' || req.action === 'pushRegister' || req.action === 'pushRemove') return Promise.resolve({ ok:true });
+  if(req.action === 'jobsPut'){ gasState.jobs = req.jobs; return Promise.resolve({ ok:true, n:req.jobs.length }); }
+  if(req.action === 'summaryPut'){ gasState.summary = req.summary; return Promise.resolve({ ok:true }); }
+  if(req.action === 'inboxTake'){ var box = gasState.inbox; gasState.inbox = []; return Promise.resolve({ ok:true, items:box }); }
+  if(req.action === 'notifyTest') return Promise.resolve({ ok:true, result:{ push:[{ code:200 }], discord:{ code:204 } } });
+  if(req.action === 'tasksSync'){
+    gasState.taskItems = req.items;
+    var out = { ok:true, changes:gasState.taskChanges || [], created:gasState.taskCreated || [], remaining:0 };
+    gasState.taskChanges = []; gasState.taskCreated = [];
+    return Promise.resolve(out);
+  }
   return Promise.resolve({ ok:false, error:'unknown ' + req.action });
 }
 
@@ -591,6 +632,104 @@ test('Google：橋わたし（Apps Script）の通知の時刻が前日の0時',
   ok(created[1].deleted, 'なくなった予定はカレンダーからも消す');
 });
 
+test('Google：橋わたしの通知・ショートカット・ToDo（プログラムそのもの）', async function(){
+  var src = await fetch('../gas/Code.gs', { cache:'no-store' }).then(function(r){ return r.text(); });
+  var manifest = await fetch('../gas/appsscript.json', { cache:'no-store' }).then(function(r){ return r.json(); });
+  ok(manifest.oauthScopes.indexOf('https://www.googleapis.com/auth/firebase.messaging') >= 0, '通知の権限');
+  ok(manifest.dependencies.enabledAdvancedServices.some(function(s){ return s.serviceId === 'tasks'; }), 'ToDoのサービス');
+  var props = {}, triggers = [], fetched = [], gtasks = {}, gid = 0;
+  var P = {
+    getProperties:function(){ return Object.assign({}, props); }, getProperty:function(k){ return props[k] == null ? null : props[k]; },
+    setProperty:function(k, v){ props[k] = String(v); }, setProperties:function(o){ Object.keys(o).forEach(function(k){ props[k] = String(o[k]); }); },
+    deleteProperty:function(k){ delete props[k]; }
+  };
+  var env = {
+    CalendarApp:{ getCalendarsByName:function(){ return [{ getName:function(){ return 'くらしの手帳'; } }]; }, EventColor:{}, Color:{} },
+    PropertiesService:{ getScriptProperties:function(){ return P; } },
+    LockService:{ getScriptLock:function(){ return { waitLock:function(){}, tryLock:function(){ return true; }, releaseLock:function(){} }; } },
+    ContentService:{ MimeType:{ JSON:'json' }, createTextOutput:function(s){ return { s:s, setMimeType:function(){ return this; } }; } },
+    Utilities:{
+      computeDigest:function(alg, s){ var h = 0; for(var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return [h & 255, (h >> 8) & 255, (h >> 16) & 255, (h >> 24) & 255, s.length & 255]; },
+      base64EncodeWebSafe:function(x){ return btoa(typeof x === 'string' ? unescape(encodeURIComponent(x)) : String.fromCharCode.apply(null, x.map(function(b){ return b & 255; }))).replace(/\+/g, '-').replace(/\//g, '_'); },
+      DigestAlgorithm:{ MD5:'md5' }, Charset:{ UTF_8:'utf8' }
+    },
+    Session:{ getEffectiveUser:function(){ return { getEmail:function(){ return 'me@example.com'; } }; } },
+    DriveApp:{},
+    ScriptApp:{
+      getProjectTriggers:function(){ return triggers.slice(); },
+      deleteTrigger:function(t){ triggers = triggers.filter(function(x){ return x !== t; }); },
+      newTrigger:function(fn){ return { timeBased:function(){ return { everyMinutes:function(){ return { create:function(){ triggers.push({ getHandlerFunction:function(){ return fn; } }); } }; } }; } }; },
+      getOAuthToken:function(){ return 'oauth-token'; }
+    },
+    UrlFetchApp:{ fetch:function(url, opt){ fetched.push({ url:url, opt:opt }); return { getResponseCode:function(){ return /discord/.test(url) ? 204 : 200; }, getContentText:function(){ return '{}'; } }; } },
+    CacheService:{ getScriptCache:function(){ return { get:function(){ return null; }, put:function(){} }; } },
+    Tasks:{
+      Tasklists:{ get:function(id){ if(id !== 'L1') throw new Error('no'); return { id:'L1' }; }, list:function(){ return { items:[] }; }, insert:function(){ return { id:'L1' }; } },
+      Tasks:{
+        list:function(){ return { items:Object.keys(gtasks).map(function(k){ return gtasks[k]; }) }; },
+        insert:function(b){ var t = Object.assign({ id:'g' + (++gid), updated:new Date().toISOString() }, b); gtasks[t.id] = t; return t; },
+        patch:function(b, l, id){ Object.assign(gtasks[id], b, { updated:new Date().toISOString() }); return gtasks[id]; },
+        remove:function(l, id){ gtasks[id].deleted = true; }
+      }
+    }
+  };
+  var names = Object.keys(env);
+  var run = new Function(names.join(','), src.replace("var TOKEN = 'ここに合言葉';", "var TOKEN = 'tok';") + '\nreturn { doPost:doPost, doGet:doGet, tick:tick };');
+  var G = run.apply(null, names.map(function(n){ return env[n]; }));
+  var post = function(req){ req.token = 'tok'; return JSON.parse(G.doPost({ postData:{ contents:JSON.stringify(req) } }).s); };
+  var get = function(p){ return JSON.parse(G.doGet({ parameter:p }).s); };
+  ok(post({ action:'ping' }).ver >= 2, '新しいプログラム');
+  ok(post({ action:'setup' }).ok && triggers.length === 1, '5分ごとの確認を作る');
+  post({ action:'setup' });
+  eq(triggers.length, 1, '2回押しても1つだけ');
+  /* ショートカット */
+  eq(get({ k:'x', a:'widget' }).ok, false, '短い合言葉がないと断る');
+  ok(post({ action:'shortKey', key:'abcdefghijklmnop1234' }).ok, '短い合言葉');
+  ok(get({ k:'abcdefghijklmnop1234', a:'in', kind:'pay', amount:'¥1,280', shop:'セブン' }).ok, 'Apple Payの記録を預かる');
+  eq(get({ k:'abcdefghijklmnop1234', a:'in', kind:'hack' }).ok, false, '知らない記録は断る');
+  var box = post({ action:'inboxTake' });
+  eq(box.items.length, 1, '預かった記録');
+  eq(box.items[0].amount, 1280, '金額の読み取り');
+  eq(post({ action:'inboxTake' }).items.length, 0, '取りこんだら空になる');
+  post({ action:'summaryPut', summary:{ title:'9/17', lines:['1限 看護'], alarm:{ time:'06:40', hour:6, minute:40 } } });
+  eq(get({ k:'abcdefghijklmnop1234', a:'alarm' }).time, '06:40', '目覚ましの時刻');
+  eq(get({ k:'abcdefghijklmnop1234', a:'widget' }).lines[0], '1限 看護', 'ウィジェットの中身');
+  /* 通知 */
+  ok(post({ action:'pushRegister', device:'dA', pushToken:'TOKEN_A', name:'iPhone' }).ok, '端末の登録');
+  ok(post({ action:'discordSet', url:'https://discord.com/api/webhooks/123/abc' }).ok, 'Discordの登録');
+  eq(post({ action:'discordSet', url:'https://evil.example.com/x' }).ok, false, 'Discord以外のURLは断る');
+  var now = Date.now();
+  post({ action:'jobsPut', jobs:[
+    { id:'j1', at:now - 60000, title:'締切', body:'レポート', push:1, discord:1 },
+    { id:'j2', at:now + 3600000, title:'あとで', body:'', push:1, discord:0 }
+  ] });
+  G.tick();
+  var fcm = fetched.filter(function(f){ return /fcm\.googleapis\.com/.test(f.url); });
+  eq(fcm.length, 1, '時刻が来たものだけスマホに送る');
+  var msg = JSON.parse(fcm[0].opt.payload).message;
+  eq(msg.token + '|' + msg.data.title, 'TOKEN_A|締切', '送る中身');
+  eq(fcm[0].opt.headers['x-goog-user-project'], 'kurashi-59562', 'Firebaseのプロジェクトで送る');
+  eq(fetched.filter(function(f){ return /discord/.test(f.url); }).length, 1, 'Discordにも送る');
+  G.tick();
+  eq(fetched.filter(function(f){ return /fcm/.test(f.url); }).length, 1, '同じ通知は2回送らない');
+  /* Google ToDo */
+  var r1 = post({ action:'tasksSync', items:[{ k:'tk-1', title:'レポート', done:0, due:'2026-10-02', notes:'', mt:now }] });
+  ok(r1.ok && Object.keys(gtasks).length === 1, 'Googleに課題を作る');
+  var g1 = gtasks[Object.keys(gtasks)[0]];
+  eq(g1.due, '2026-10-02T00:00:00.000Z', '締切日');
+  g1.status = 'completed'; g1.updated = new Date(now + 5000).toISOString();
+  gtasks.gX = { id:'gX', title:'Googleで足した', status:'needsAction', updated:new Date().toISOString() };
+  var r2 = post({ action:'tasksSync', items:[{ k:'tk-1', title:'レポート', done:0, due:'2026-10-02', notes:'', mt:now }] });
+  eq(r2.changes.length, 1, 'Googleで完了にしたものを返す');
+  eq(r2.changes[0].done, 1, '完了');
+  eq(r2.created.length, 1, 'Googleで足したものを返す');
+  var r3 = post({ action:'tasksSync', items:[{ k:'tk-1', title:'レポート', done:1, due:'2026-10-02', notes:'', mt:now }, { k:r2.created[0].k, title:'Googleで足した', done:0, due:'', notes:'', mt:now }] });
+  eq(r3.changes.length + r3.created.length + r3.done, 0, '落ちついたら何もしない');
+  var r4 = post({ action:'tasksSync', items:[{ k:r2.created[0].k, title:'Googleで足した', done:0, due:'', notes:'', mt:now }] });
+  ok(g1.deleted, 'アプリで消したらGoogleからも消す');
+  ok(r4.ok, '消す');
+});
+
 test('エラーの記録・新しい版のお知らせ・写真を大きく見る', async function(){
   var A = frames.A;
   A.logErr('テスト', 'わざと記録');
@@ -713,6 +852,242 @@ test('見た目：画面のスタイルとキャラクターを選べて、相�
   /* もとにもどす */
   A.S.ui.style = 'glass'; A.S.ui.chara = J(A, { level:2 }); A.touch('ui'); A.applyUi(); A.commit();
   await settle([A, B]);
+});
+
+test('家計簿：CSVの読みこみ（二重に入らない）・手入力・相手に届く', async function(){
+  var A = frames.A, B = frames.B;
+  /* 楽天銀行のような形（入出金が1列） */
+  var csv1 = '﻿取引日,入出金(円),取引後残高(円),入出金内容\r\n20260901,-1200,50000,セブンイレブン\r\n20260902,80000,130000,給与 デリフランス\r\n';
+  var rows = A.kbParseCsv(csv1);
+  var g = A.kbGuessRoles(rows);
+  eq(g.head, 0, '見出しの行');
+  eq(g.roles.join(','), 'date,signed,,title', '列の役目');
+  var items = A.kbRowsToItems(rows, g.roles, g.head, '楽天銀行');
+  eq(items.length, 2, '行の数');
+  eq(items[0].io + items[0].amount + items[0].cat, 'out1200food', '支出と分類');
+  eq(items[1].io, 'in', '入金');
+  /* 見出しのないカードのCSV */
+  var csv2 = '2026/09/03,"ＪＲ西日本　定期",12,340円,1,,12340\n2026/09/04,Amazon.co.jp,"3,980",,,,\n';
+  var rows2 = A.kbParseCsv(csv2), g2 = A.kbGuessRoles(rows2);
+  eq(g2.roles[0] + g2.roles[1], 'datetitle', '見出しなしでも日付と内容');
+  var before = (A.S.spends || []).length;
+  items.forEach(function(o){ A.kbAdd(o); });
+  items.forEach(function(o){ A.kbAdd(o); });
+  eq(A.S.spends.length, before + 2, '同じ明細は二重に入らない');
+  A.appId = 'money'; A.payTab = 'kakeibo'; A.kbYm = '2026-09'; A.render();
+  ok(A.document.querySelector('.kbbars .kbbar'), '分類ごとの帯');
+  A.document.getElementById('kb_amt').value = '450';
+  A.document.getElementById('kb_title').value = 'ローソン';
+  A.document.querySelector('[data-act="kb-add"][data-io="out"]').click();
+  ok(A.S.spends.some(function(x){ return x.title === 'ローソン' && x.amount === 450; }), '手入力');
+  await settle([A, B]);
+  eq(B.S.spends.length, A.S.spends.length, '家計簿が相手に届く');
+});
+
+test('そうだん：頼むとそのまま手帳に入る（取り消せる）・ネットで調べた出典', async function(){
+  var A = frames.A;
+  A.appId = 'chat'; A.chatRoom = 'main'; A.render();
+  var nEv = A.S.events.length, nSp = (A.S.spends || []).length;
+  await A.chatSend('10月20日10時に歯医者を登録して。あとコンビニで580円使ったのも記録して');
+  var m = A.roomMsgs()[A.roomMsgs().length - 1];
+  eq((m.ops || []).length, 2, '入れたものの記録');
+  eq(A.S.events.length, nEv + 1, '予定が入る');
+  eq(A.S.spends.length, nSp + 1, '家計簿に入る');
+  ok(A.S.events.some(function(e){ return e.title === '歯医者' && e.date === '2026-10-20' && e.time === '10:00'; }), '予定の中身');
+  A.render();
+  A.document.querySelector('[data-act="chat-undo"]').click();
+  eq(A.S.events.length, nEv, '取り消すと予定が消える');
+  eq(A.S.spends.length, nSp, '取り消すと家計簿も消える');
+  /* 登録を頼んでいないときは道具を渡しても使われない（にせAIは登録しない） */
+  A.S.ui.aiDirect = 0;
+  await A.chatSend('歯医者を登録して');
+  eq(A.S.events.length, nEv, 'オフのときは入れない');
+  A.S.ui.aiDirect = 1;
+  /* URLつき・調べて → 検索とURLの道具 */
+  aiCalls.length = 0;
+  await A.chatSend('https://example.com/news を読んで調べて');
+  var call = aiCalls.filter(function(c){ return c.tag === 'chat'; }).pop();
+  ok(call.tools.indexOf('google_search') >= 0 && call.tools.indexOf('url_context') >= 0, '検索とURLの道具');
+  var m2 = A.roomMsgs()[A.roomMsgs().length - 1];
+  eq((m2.src || []).length, 1, '出典（http以外は出さない）');
+  A.render();
+  ok(A.document.querySelector('.aisrc a[href="https://example.com/a"]'), '出典のリンク');
+  ok(A.document.querySelector('iframe.aisep[sandbox]'), '検索の候補は安全な枠で出す');
+  eq(A.lenRule(), A.lenRuleAuto(), '答えの長さはおまかせ');
+});
+
+test('Google連携：通知の予定・ショートカットの記録・ウィジェット・ToDo', async function(){
+  var A = frames.A, B = frames.B;
+  A.GAS.url = 'https://script.google.com/macros/s/test/exec'; A.GAS.token = 'tok'; A.saveGas();
+  /* 通知の予定 */
+  var due = A.shiftDate(A.today(), 2);
+  A.S.tasks.push(J(A, { id:'tk_nt', title:'看護レポート', subject:'', due:due, time:'', done:0, memo:'', subs:[], photos:[], mt:Date.now() }));
+  A.notifySet({ push:1, discord:1, quiet:0 });
+  await A.notifyPush(true);
+  var ids = gasState.jobs.map(function(j){ return j.id; });
+  ok(ids.indexOf('d1-tk_nt-' + due) >= 0 && ids.indexOf('d0-tk_nt-' + due) >= 0, '前日と当日の締切通知');
+  ok(gasState.jobs.every(function(j){ return j.push === 1 && j.discord === 1 && j.at > Date.now(); }), 'スマホとDiscordに、これからの時刻で');
+  /* ショートカットから届いた記録 */
+  await A.linksMakeKey();
+  ok(A.shortKey().length >= 16, '短い合言葉');
+  var d = new Date(); d.setHours(12, 0, 0, 0);
+  gasState.inbox = [
+    { id:'in1', kind:'pay', amount:720, shop:'ファミリーマート', card:'Suica', at:d.getTime() },
+    { id:'in1', kind:'pay', amount:720, shop:'ファミリーマート', card:'Suica', at:d.getTime() },
+    { id:'in2', kind:'memo', text:'薬局で目薬', at:d.getTime() }
+  ];
+  var sp0 = A.S.spends.length, nt0 = A.S.notes.length;
+  await A.inboxPull(true);
+  eq(A.S.spends.length, sp0 + 1, 'Apple Payの記録（同じものは1回）');
+  ok(A.S.spends.some(function(x){ return x.src === 'wallet' && x.cat === 'food'; }), '分類も自動');
+  eq(A.S.notes.length, nt0 + 1, 'メモ');
+  /* 学校に着いた → 出席 */
+  var ymd = A.today(), cls = A.schoolClassesForDate(ymd);
+  if(cls.length){
+    cls.forEach(function(c){ A.S.attendLog[c.name] = (A.S.attendLog[c.name] || []).filter(function(x){ return x.date !== ymd; }); });
+    var st = A.minutesOf(A.S.commute.periods[cls[0].period - 1]);
+    var msg = A.arriveAttend(ymd, st + 20);
+    ok(/遅刻/.test(msg), '始まったあとに着いたら遅刻');
+  }
+  /* ウィジェットと目覚まし */
+  await A.summaryPush(true);
+  ok(gasState.summary && Array.isArray(gasState.summary.lines) && gasState.summary.alarm, 'まとめを送る');
+  var al = A.alarmPlan();
+  if(A.schoolClassesForDate(al.date).length) ok(/^\d{2}:\d{2}$/.test(al.time), '目覚ましの時刻');
+  ok(/Script\.setWidget/.test(A.scriptableCode()) && A.scriptableCode().indexOf(A.shortKey()) >= 0, 'ウィジェットのプログラム');
+  /* Google ToDo */
+  A.linkPrefSet({ tasks:1 });
+  gasState.taskChanges = [{ k:'tk-tk_nt', title:'看護レポート（直した）', done:1, due:due, notes:'' }];
+  gasState.taskCreated = [{ k:'g-abc', title:'Googleで足した', done:0, due:'2026-11-01', notes:'' }];
+  await A.tasksSync(true);
+  ok(gasState.taskItems.some(function(x){ return x.k === 'tk-tk_nt'; }), '課題を送る');
+  var t1 = A.S.tasks.filter(function(t){ return t.id === 'tk_nt'; })[0];
+  ok(t1.done === 1 && /直した/.test(t1.title), 'Googleで直したものが入る');
+  ok(A.S.tasks.some(function(t){ return t.gk === 'g-abc'; }), 'Googleで足したものが入る');
+  await A.tasksSync(true);
+  ok(gasState.taskItems.some(function(x){ return x.k === 'g-abc'; }), '次からは同じキーで送る');
+  await settle([A, B]);
+  eq(B.shortKey(), A.shortKey(), '短い合言葉はほかの端末でも同じ');
+  A.linkPrefSet({ tasks:0 });
+  A.GAS.url = ''; A.GAS.token = ''; A.saveGas();
+  A.commit();
+  await settle([A, B]);
+});
+
+test('キャラ：どの子も1日200種類以上のセリフ・AIのセリフ', async function(){
+  var A = frames.A;
+  var few = A.CHARAS.filter(function(k){ return A.charaDayPool(k.id).total < 200; }).map(function(k){ return k.id + ':' + A.charaDayPool(k.id).total; });
+  ok(!few.length, '200種類に足りない：' + few.join(', '));
+  var p1 = A.charaDayPool('koro', '2026-10-01'), p2 = A.charaDayPool('koro', '2026-10-02');
+  ok(p1.any.join('|') !== p2.any.join('|'), '日によって並びが変わる');
+  ok(p1.any.some(function(s){ return /ハムッ/.test(s); }), 'その子の口ぐせ');
+  var base = A.charaDayPool('mochi').total;
+  A.S.ui.chara = J(A, { level:2, aiTalk:1 });
+  await A.charaTalkAi('mochi');
+  ok(A.S.charaTalk[A.today() + ':mochi'], 'AIのセリフをしまう');
+  ok(A.charaDayPool('mochi').total >= base + 200, 'AIのセリフがふえる（' + A.charaDayPool('mochi').total + '）');
+  ok(A.charaDayPool('mochi').ai, 'AIのセリフ入りの印');
+  ok(A.charaLine('greet').length > 0, 'あいさつ');
+});
+
+test('おせわ：たまご→生まれる・ごはん・時間でおなかがすく・ミニゲーム', async function(){
+  var A = frames.A, B = frames.B, doc = A.document;
+  A.appId = 'pet'; A.render();
+  var id = A.petActiveId();
+  if(!A.petNow(id)) doc.querySelector('[data-act="pet-adopt"]').click();
+  ok(A.petNow(id), 'たまごをもらう');
+  A.appId = 'pet'; A.render();
+  while(A.petNow(id).stage === 0) doc.querySelector('[data-act="pet-warm"]').click();
+  eq(A.petNow(id).stage, 1, '生まれる');
+  /* 見るだけでは変わらない */
+  var snap = JSON.stringify(A.S.pets);
+  A.render(); A.render();
+  eq(JSON.stringify(A.S.pets), snap, '見るだけでは書きかえない');
+  /* 時間がたつと、おなかがすく */
+  A.S.pets[id].at = Date.now() - 10 * 3600000;
+  A.S.pets[id].hun = 80;
+  ok(A.petNow(id).hun <= 41, '10時間でおなかがすく');
+  eq(A.petMood(A.petNow(id)).expr === 'normal' || A.petNow(id).hun < 50, true, 'ようすが変わる');
+  /* ごはん（コインが減る） */
+  A.S.pets._ = J(A, Object.assign({}, A.petMeta(), { bonus:500 }));
+  var c0 = A.petCoins(), h0 = A.petNow(id).hun;
+  A.petPanel = 'food'; A.render();
+  doc.querySelector('[data-act="pet-feed"][data-v="onigiri"]').click();
+  eq(A.petCoins(), c0 - 10, 'コインが減る');
+  ok(A.petNow(id).hun > h0, 'おなかがふくれる');
+  /* おせわおやすみ：時間を止める */
+  doc.querySelector('[data-act="pet-pause"]').click();
+  A.S.pets[id].at = Date.now() - 20 * 3600000;
+  var frozen = A.S.pets[id].hun;
+  eq(A.petNow(id).hun, frozen, 'おやすみ中は下がらない');
+  doc.querySelector('[data-act="pet-pause"]').click();
+  /* ミニゲーム */
+  A.petGameStart('star');
+  ok(doc.getElementById('petgame').classList.contains('on'), 'ゲームの画面');
+  A.petGame.score = 7;
+  var c1 = A.petCoins();
+  A.petGameEnd(false);
+  eq(A.petCoins(), c1 + 7, 'とった数だけコイン');
+  A.petGameStart('memory');
+  eq(doc.querySelectorAll('.pgcard').length, 12, 'カード12まい');
+  A.petGameEnd(true);
+  ok(!doc.getElementById('petgame').classList.contains('on'), 'ゲームを閉じる');
+  await settle([A, B]);
+  eq(B.petNow(id) && B.petNow(id).stage, A.petNow(id).stage, 'おせわの様子が相手に届く');
+});
+
+test('週のふりかえり：AIで書く・AIなしでもまとめる・相手に届く', async function(){
+  var A = frames.A, B = frames.B;
+  var mon = A.shiftDate(A.monOfYmd(A.today()), -7);
+  await A.weekReviewMake(mon, false);
+  ok(A.S.weekReview[mon] && /よかったこと/.test(A.S.weekReview[mon].text), 'AIのふりかえり');
+  var st = A.weekStats(mon);
+  ok(/出席/.test(A.weekReviewTemplate(st)), 'AIなしのまとめ');
+  A.weekOff = 0; A.appId = 'today'; A.todayTab = 'week'; A.render();
+  ok(A.document.querySelector('.wkrev'), '今週の画面に出る');
+  await settle([A, B]);
+  ok(B.S.weekReview[mon], 'ふりかえりが相手に届く');
+});
+
+test('写真：大きい写真は小さくして送る・Firebase Storage でも届く', async function(){
+  var A = frames.A, B = frames.B;
+  /* 大きい写真を作る */
+  var cv = A.document.createElement('canvas'); cv.width = 2400; cv.height = 1800;
+  var cx = cv.getContext('2d');
+  for(var i = 0; i < 400; i++){ cx.fillStyle = 'hsl(' + (i * 37 % 360) + ',70%,' + (30 + i % 50) + '%)'; cx.fillRect((i * 97) % 2400, (i * 61) % 1800, 120, 90); }
+  var big = cv.toDataURL('image/jpeg', 0.98);
+  ok(big.length > 350000, 'テスト用の写真が大きい（' + big.length + '）');
+  A.SYNC_LOCAL.photoSize = 'small';
+  var small = await A.photoShrinkForSync('p_big', big);
+  ok(small.length < big.length, '小さくなる（' + big.length + '→' + small.length + '）');
+  eq(await A.photoShrinkForSync('chimg_x', big), big, 'キャラの画像はそのまま');
+  /* Storage に送る */
+  A.SYNC_LOCAL.photoStore = 'storage';
+  await A.photoPut('p_st1', big);
+  await until(function(){ var m = A.photoCloud.index['p_st1']; return m && m.st; }, 8000, 'Storageに送る');
+  ok(stStore['p_st1'] && stStore['p_st1'].length < big.length, 'Storageには小さくした写真');
+  await settle([A, B]);
+  var got = await B.photoGet('p_st1');
+  ok(got && got.length === stStore['p_st1'].length, '相手はStorageから受け取る');
+  await A.photoDel('p_st1');
+  await until(function(){ return !stStore['p_st1']; }, 5000, 'Storageからも消える');
+  A.SYNC_LOCAL.photoStore = 'fs'; A.SYNC_LOCAL.photoSize = 'normal'; A.saveSyncLocal();
+});
+
+test('運用：エラー送信の形・場所の計算・アップロードの確認', async function(){
+  var A = frames.A;
+  var d = A.sentryParse('https://abc123@o12345.ingest.us.sentry.io/678');
+  ok(d && /\/api\/678\/envelope\/\?sentry_key=abc123/.test(d.url), 'DSNの読み取り');
+  eq(A.sentryParse('https://evil.example.com/1'), null, 'Sentry以外は使わない');
+  ok(A.sentryScrub('ID 12345 https://x.y/z tokenABCDEFGHIJKLMNOPQRSTUVWX').indexOf('12345') < 0, '数字やURLを伏せる');
+  var dist = A.geoDist({ lat:34.889, lng:135.225 }, { lat:34.7376, lng:135.3416 });
+  ok(dist > 18000 && dist < 22000, '三田〜西宮の距離（' + dist + 'm）');
+  await A.fileCheckRun();
+  ok(A.fileCheck.result && !A.fileCheck.result.missing.length, '見つからないファイル：' + (A.fileCheck.result ? A.fileCheck.result.missing.join(',') : ''));
+  ok(A.fileCheck.result.listed, 'files.json を使って確かめる');
+  eq(A.fileCheck.result.changed.join(','), '', 'files.json と中身がちがう（tools/チェック を実行してください）');
+  A.perfRunAll();
+  ok(Object.keys(A.perfStat).length >= 10, '画面ごとの速さ');
 });
 
 test('予定：自分で作った種類が保存しても「その他」に変わらない', async function(){
@@ -848,6 +1223,8 @@ async function runAll(){
   window.__FAKE_FS = FS = makeFakeFs();
   window.__FAKE_AI = fakeAi;
   window.__FAKE_GAS = fakeGas;
+  window.__FAKE_ST = fakeSt;
+  gasState.jobs = []; gasState.inbox = []; gasState.summary = null;
   ['A', 'B'].forEach(clean);
   try{
     await openFrame('A');

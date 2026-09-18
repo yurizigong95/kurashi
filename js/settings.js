@@ -153,7 +153,13 @@ function viewSettings(){
     '</div>'+
     '<div class="note">Google AI Studio（aistudio.google.com）で無料でもらえます。いまは <b>AQ.</b> で始まるキーが発行されます（以前の AIza… でも動きます）。「相談」タブでAIに相談できるようになります。この端末だけに保存され、同期されません。</div>')
 
-  + foldSection('gas', 'Google連携（カレンダー・ドライブ）', gasReady() ? '✓ つながっています' : '未設定', gasSettings())
+  + (typeof voiceSettings === 'function' ? foldSection('voice', '声・AIの登録', S.ui.voiceEngine === 'gemini' ? 'AIの声' : '端末の声', voiceSettings()) : '')
+
+  + foldSection('gas', 'Google連携（カレンダー・ドライブ・ToDo・通知）', gasReady() ? '✓ つながっています' : '未設定', gasSettings())
+  + (typeof notifySettings === 'function' ? foldSection('notify', '通知（スマホ・Discord）', notifyPrefs().push || notifyPrefs().discord ? 'オン' : 'オフ', notifySettings()) : '')
+  + (typeof linksSettings === 'function' ? foldSection('links', 'iPhone・ショートカット・ウィジェット', shortKey() ? '準備OK' : '未設定', linksSettings()) : '')
+  + (typeof tasksSettings === 'function' ? foldSection('gtasks', 'Google ToDoリスト', linkPrefs().tasks ? '同期中' : 'オフ', tasksSettings()) : '')
+  + (typeof placeSettings === 'function' ? foldSection('place', '学校の場所', linkPrefs().place ? '登録ずみ' : '未登録', placeSettings()) : '')
 
   + foldSection('s6', 'ファイルでのバックアップ', null,
     '<div class="pair"><button class="btn ghost" data-act="export">ファイルに保存</button>'+
@@ -162,6 +168,9 @@ function viewSettings(){
     '<div class="note">機種変更のときや、念のための保存に使えます。読み込むと、今の内容に足し合わせます。</div>')
 
   + foldSection('errlog', 'エラーの記録', errLogAll().length ? errLogAll().length+'件' : 'なし', errLogBox())
+  + (typeof opsSettings === 'function' ? foldSection('ops', 'エラーの自動送信（Sentry）', OPS.sentryOn ? 'オン' : 'オフ', opsSettings()) : '')
+  + (typeof perfSettings === 'function' ? foldSection('perf', '表示の速さ', null, perfSettings()) : '')
+  + (typeof verSettings === 'function' ? foldSection('ver', 'アプリの版・アップロード', APP_BUILD, verSettings()) : '')
 
   + foldSection('whatsnew', 'この版で変わったこと', APP_BUILD, whatsNewHtml());
 }
@@ -258,7 +267,8 @@ function syncSettings(){
     '</div>'+
     '<div class="row"><div class="grow s">同期にある写真</div><div class="t num">'+
       (pc.ready ? pc.count+'枚・'+sizeText(pc.bytes) : '—')+(pc.queued || pc.busy ? '（送っています：のこり'+pc.queued+'枚）' : '')+'</div></div>'+
-    '<p class="note" style="margin-top:4px">「送らない」にしても、ほかの端末の写真は見られます。</p>';
+    '<p class="note" style="margin-top:4px">「送らない」にしても、ほかの端末の写真は見られます。</p>'+
+    (typeof photoSyncSettings === 'function' ? photoSyncSettings() : '');
 
   /* くわしい情報 */
   var rp = (syncState.remote && syncState.remote.parts) || {};
@@ -279,6 +289,9 @@ function settingsAction(act, t){
     if(!nm){ toast('名前を入れてください', true); return true; }
     DEV.name = nm; saveDevice(); pushRemote(true); toast('この端末の名前を「'+nm+'」にしました'); render(); return true;
   }
+  if(act==='photo-size'){ SYNC_LOCAL.photoSize = t.dataset.v; saveSyncLocal(); toast('送る写真の大きさを変えました'); render(); return true; }
+  if(act==='photo-store'){ SYNC_LOCAL.photoStore = t.dataset.v; saveSyncLocal(); if(t.dataset.v==='storage'){ photoCloud.failed = {}; } toast(t.dataset.v==='storage' ? 'これからの写真は Firebase Storage に送ります' : 'これからの写真はいつもの方法で送ります'); render(); return true; }
+  if(act==='copy-text'){ navigator.clipboard.writeText(t.dataset.text||'').then(function(){ toast('コピーしました'); }, function(){ toast('コピーできませんでした', true); }); return true; }
   if(act==='photo-sync'){
     SYNC_LOCAL.photoSync = toNum(t.dataset.v) ? 1 : 0; saveSyncLocal();
     if(SYNC_LOCAL.photoSync){ photoCloud.failed = {}; photoUploadScan(); }

@@ -1,0 +1,167 @@
+{
+    "build":  "2026-09-18a",
+    "made":  "2026-09-18 15:47",
+    "files":  [
+                  {
+                      "path":  "css/app.css",
+                      "sha256":  "565cb70705f60be0"
+                  },
+                  {
+                      "path":  "css/styles.css",
+                      "sha256":  "02cf5c2dc7fc0c25"
+                  },
+                  {
+                      "path":  "gas/appsscript.json",
+                      "sha256":  "0cbb9bd4ef7ce047"
+                  },
+                  {
+                      "path":  "gas/Code.gs",
+                      "sha256":  "fcabe2485afeeb49"
+                  },
+                  {
+                      "path":  "icon-180.png"
+                  },
+                  {
+                      "path":  "icon-192.png"
+                  },
+                  {
+                      "path":  "icon-512.png"
+                  },
+                  {
+                      "path":  "index.html",
+                      "sha256":  "54e719d5ee349232"
+                  },
+                  {
+                      "path":  "js/ai.js",
+                      "sha256":  "570144f23387ad97"
+                  },
+                  {
+                      "path":  "js/ai-plus.js",
+                      "sha256":  "ff760a3c17c5b24c"
+                  },
+                  {
+                      "path":  "js/calendar.js",
+                      "sha256":  "2e1a159367a9f75f"
+                  },
+                  {
+                      "path":  "js/chara.js",
+                      "sha256":  "0740769913e48c1d"
+                  },
+                  {
+                      "path":  "js/chara-art.js",
+                      "sha256":  "db496db533e25489"
+                  },
+                  {
+                      "path":  "js/chara-data.js",
+                      "sha256":  "d083af461185cd5d"
+                  },
+                  {
+                      "path":  "js/chara-make.js",
+                      "sha256":  "8dac138dbf1f0895"
+                  },
+                  {
+                      "path":  "js/chara-talk.js",
+                      "sha256":  "93330aab89c83585"
+                  },
+                  {
+                      "path":  "js/chat.js",
+                      "sha256":  "ef52362be3a5bf85"
+                  },
+                  {
+                      "path":  "js/common.js",
+                      "sha256":  "fa610673fe3795cd"
+                  },
+                  {
+                      "path":  "js/commute.js",
+                      "sha256":  "2b5ed09191468a8b"
+                  },
+                  {
+                      "path":  "js/core.js",
+                      "sha256":  "adc9cdc10e606b2b"
+                  },
+                  {
+                      "path":  "js/data.js",
+                      "sha256":  "fdadc8a4c84287ca"
+                  },
+                  {
+                      "path":  "js/decor.js",
+                      "sha256":  "dd061a7623e7e829"
+                  },
+                  {
+                      "path":  "js/google.js",
+                      "sha256":  "c6292da41d04fb43"
+                  },
+                  {
+                      "path":  "js/kakeibo.js",
+                      "sha256":  "02d6f1d603fbd7e1"
+                  },
+                  {
+                      "path":  "js/links.js",
+                      "sha256":  "8f2907e429d6a566"
+                  },
+                  {
+                      "path":  "js/main.js",
+                      "sha256":  "4e4207319d1c0a11"
+                  },
+                  {
+                      "path":  "js/money.js",
+                      "sha256":  "fab9f185699953e6"
+                  },
+                  {
+                      "path":  "js/notify.js",
+                      "sha256":  "362da64065f65d14"
+                  },
+                  {
+                      "path":  "js/ops.js",
+                      "sha256":  "3066583e6ab102c2"
+                  },
+                  {
+                      "path":  "js/pet.js",
+                      "sha256":  "af71021e6fbb9eac"
+                  },
+                  {
+                      "path":  "js/review.js",
+                      "sha256":  "33cc874e5607b067"
+                  },
+                  {
+                      "path":  "js/risyu.js",
+                      "sha256":  "3740ef8cbb93e2f9"
+                  },
+                  {
+                      "path":  "js/settings.js",
+                      "sha256":  "bcbc558c350ba88f"
+                  },
+                  {
+                      "path":  "js/sync.js",
+                      "sha256":  "1a3573327d068cb3"
+                  },
+                  {
+                      "path":  "js/timetable.js",
+                      "sha256":  "115d2a69efbfc8cd"
+                  },
+                  {
+                      "path":  "js/today.js",
+                      "sha256":  "2a3bfbb360ab3517"
+                  },
+                  {
+                      "path":  "js/todo.js",
+                      "sha256":  "ceafcdd8b1413501"
+                  },
+                  {
+                      "path":  "js/whatsnew.js",
+                      "sha256":  "c49c4f25f5bd3a7d"
+                  },
+                  {
+                      "path":  "js/wx-plus.js",
+                      "sha256":  "9542e6d6bf5fa3b8"
+                  },
+                  {
+                      "path":  "manifest.json",
+                      "sha256":  "d6aac3ee0aa01315"
+                  },
+                  {
+                      "path":  "sw.js",
+                      "sha256":  "f30919e0602b2dcf"
+                  }
+              ]
+}

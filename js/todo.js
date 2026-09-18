@@ -124,7 +124,8 @@ function noteDetail(n){
     '<div class="pair">'+
       '<button class="btn" data-act="note-save" data-id="'+n.id+'">保存</button>'+
       '<button class="btn ghost" data-act="note-photo" data-id="'+n.id+'">写真</button>'+
-      '<button class="btn ghost" data-act="note-pin" data-id="'+n.id+'" style="flex:0 0 auto">'+(n.pinned?'📌 解除':'📌')+'</button></div>'+
+      '<button class="btn ghost" data-act="note-pin" data-id="'+n.id+'" style="flex:0 0 auto">'+(n.pinned?'📌 解除':'📌')+'</button>'+
+      '<button class="btn ghost" data-act="share-note" data-id="'+n.id+'" style="flex:0 0 auto">共有</button></div>'+
     '<button class="btn ghost" style="margin-top:8px;color:var(--rakuten)" data-act="note-del" data-id="'+n.id+'">このメモを削除</button>'+
     '<p class="note">作成 '+new Date(n.ct||n.mt||0).toLocaleString('ja-JP')+'　更新 '+new Date(n.mt||0).toLocaleString('ja-JP')+'</p>'+
     '</div>';

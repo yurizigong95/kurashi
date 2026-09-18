@@ -265,6 +265,7 @@ function viewDay(ymd, pageKey){
 
   /* 欠席があと1回で上限の授業（いちばん上に出す） */
   html += absenceAlert(ymd);
+  if(isToday && typeof placeCard === 'function') html += placeCard();
 
   var parts = {};
   parts.weather = function(){
@@ -274,13 +275,15 @@ function viewDay(ymd, pageKey){
       return '<div class="bn '+(t.need?'red':'green')+'"><span class="ic">'+(t.need?'☔':'☀')+'</span><span>'+
         (t.need?'明日は雨の予報です（降水'+t.pop+'%）。傘を用意してください。':'明日の降水は'+t.pop+'%。傘は要らなさそうです。')+'</span></div>';
     }
-    return secWrap('weather','天気','三田と西宮', weatherCard() || '<div class="empty">天気は設定でオンにできます。</div>');
+    return secWrap('weather','天気','三田と西宮', (typeof warnCard === 'function' ? warnCard() : '') +
+      (weatherCard() || '<div class="empty">天気は設定でオンにできます。</div>') + (typeof radarCard === 'function' ? radarCard() : ''));
   };
   parts.events = function(){
     var its = itemsOn(ymd).filter(function(x){ return x.src!=='cls'; });
     return secWrap('events', (isToday?'今日':'明日')+'の予定', its.length?its.length+'件':null,
-      its.length ? its.map(function(x){ return itemRow(x, true); }).join('')
-                 : '<div class="empty">予定はありません。</div>');
+      (its.length ? its.map(function(x){ return itemRow(x, true); }).join('')
+                 : '<div class="empty">予定はありません。</div>')+
+      '<button class="mini" style="margin-top:8px" data-act="share-day" data-d="'+ymd+'">この日の予定を共有</button>');
   };
   parts.classes = function(){
     var cls = classesForDate(ymd);
@@ -335,6 +338,7 @@ function viewWeekTab(){
     '<button class="mini" data-act="wk-off" data-v="1">次週 ›</button></div>';
   var parts = {};
   parts.days = function(){ return '<div class="box">'+weekFocus(mon)+'</div>'; };
+  parts.review = function(){ return (weekOff >= 0 && weekOff <= 1 && typeof weekReviewCard === 'function') ? weekReviewCard(monOfYmd(today())) : ''; };
   parts.notes = function(){
     var dates = {}; DAYS.forEach(function(d,i){ var x=new Date(mon); x.setDate(mon.getDate()+i); dates[d]=toYmd(x); });
     return weekNotes(dates);

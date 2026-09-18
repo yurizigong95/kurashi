@@ -168,7 +168,12 @@ function charaLine(kind){
   if(b && b.level !== 'bad') soft.push('今月のお金、いい感じ！');
   var allDone = S.tasks.length && !S.tasks.some(function(t){ return !t.done; });
   if(allDone) out.push('やることぜんぶ終わってる！すごい！');
-  if(kind === 'greet') return chTic(out.length && Math.random() < .6 ? out[0] : chPick(greet));
+  if(kind === 'greet'){
+    if(out.length && Math.random() < .6) return chTic(out[0]);
+    if(typeof charaPoolLine === 'function' && Math.random() < .75) return charaPoolLine(k.id, 'greet');
+    return chTic(chPick(greet));
+  }
+  if(typeof charaPoolLine === 'function' && !(out.length && Math.random() < .3)) return charaPoolLine(k.id, 'any');
   return chTic(chPick(out.concat(greet, soft)));
 }
 /* 操作に反応する（いっぱい以上） */
@@ -371,6 +376,8 @@ function charaSettings(){
         return '<span class="chex" title="'+esc(e[1])+'">'+charaSvg({ id:now.id, size:42, expr:e[0], still:true })+'<em>'+esc(e[1])+'</em></span>';
       }).join('')+'</div>'+
       '<div class="pillrow" style="margin-top:8px">'+
+        (typeof charaDayPool === 'function' ? '</div><p class="note">今日の'+esc(now.name)+'のセリフ：<b>'+charaDayPool(now.id).total+'種類</b>'+(charaDayPool(now.id).ai ? '（AIが考えたセリフ入り）' : '')+'</p><div class="pillrow">'+
+          '<button data-act="chara-aitalk" class="'+(charaTalkAiOn() ? 'on' : '')+'">'+(charaTalkAiOn() ? 'AIが毎日セリフを考える（1日1〜3回）' : 'AIのセリフは使わない')+'</button></div><div class="pillrow">' : '')+
         '<button data-act="chara-talk">話しかけてみる</button>'+
         '<button data-act="chara-talkai" class="'+(c.talk || c.level >= 3 ? 'on' : '')+'">'+(c.level >= 3 ? '相談もこの子の口調（たっぷり以上では常にオン）' : '相談もこの子の口調で')+'</button>'+
       '</div>';
@@ -413,6 +420,7 @@ function charaAction(act, t){
     return true;
   }
   if(act === 'chara-talkai'){ charaSet({ talk: charaCfg().talk ? 0 : 1 }); commit(); return true; }
+  if(act === 'chara-aitalk'){ charaSet({ aiTalk: charaTalkAiOn() ? 0 : 1 }); commit(); if(charaTalkAiOn()) charaTalkAiToday(); return true; }
   if(act === 'chara-make'){ if(typeof charaMakeOpen === 'function') charaMakeOpen(''); return true; }
   if(act === 'chara-edit'){ if(typeof charaMakeOpen === 'function') charaMakeOpen(t.dataset.id); return true; }
   if(act === 'chara-del'){ if(typeof charaMakeDelete === 'function') charaMakeDelete(t.dataset.id); return true; }

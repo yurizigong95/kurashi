@@ -68,8 +68,17 @@ function withTimeout(p, ms, label){
 function makeRealAdapter(lib, cfg){
   if(lib.mode === 'mod'){
     var ff = lib.ff;
-    var app = lib.fa.initializeApp(cfg, 'kurashi-' + Date.now());
-    var db = ff.getFirestore(app);
+    /* アプリは1つだけ作って使い回す（オフラインでも読めるように、端末の中にも置いておく） */
+    var app = (lib.fa.getApps && lib.fa.getApps().filter(function(a){ return a.name === 'kurashi-sync'; })[0]) || null;
+    var db;
+    if(app){ db = ff.getFirestore(app); }
+    else{
+      app = lib.fa.initializeApp(cfg, 'kurashi-sync');
+      try{
+        db = ff.initializeFirestore(app, { localCache: ff.persistentLocalCache({ tabManager: ff.persistentMultipleTabManager() }) });
+        syncState.cache = 'persistent';
+      }catch(e){ db = ff.getFirestore(app); syncState.cache = 'memory'; }
+    }
     var ref = function(id){ return ff.doc(db, FS_COL, id); };
     return {
       get: function(id){ return ff.getDoc(ref(id)).then(function(s){ return s.exists() ? s.data() : null; }); },
@@ -217,10 +226,10 @@ function onLegacyDoc(data){
    WHOLE    … 設定のかたまり（新しい方で丸ごと入れ替える）
    MAPS     … 名前をキーにした表（両方の端末で足したぶんを残す）
    LOGS     … 記録の配列（重複を消してつなげる）                       */
-var LISTS = ['income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices','breaks'];
+var LISTS = ['spends','income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices','breaks'];
 var WHOLE_KEYS = ['terms','commute','ui','transit','termsList','chatQuick'];
 var MAP_KEYS = ['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone',
-                'progress','taskLog','syllabus','dayReview','aiUse','chatMeta','aiLog','cloud'];
+                'progress','taskLog','syllabus','dayReview','aiUse','chatMeta','aiLog','cloud','pets','weekReview','charaTalk'];
 var LOG_KEYS = ['transitLog','aiFeedback','aiMemo','trash'];
 /* APIキー・Googleの合言葉は送らない（大事な鍵なので、端末ごとに入れる） */
 var SET_KEYS = ['smbcDay','rakutenDay','geminiModel','aiTone','aiLen','aiStyle',
@@ -234,12 +243,12 @@ var SYNC_PARTS = {
                  'terms','commute','ui','transit','termsList'],
            meta:['terms','commute','ui','transit','termsList','settings'] },
   plan:  { keys:['events','tasks','exams','health','holidays','breaks'], meta:[] },
-  money: { keys:['income','fixed','balances','shifts'], meta:[] },
+  money: { keys:['income','fixed','balances','shifts','spends'], meta:[] },
   notes: { keys:['notes','notices'], meta:[] },
-  maps:  { keys:['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog','syllabus','dayReview','cloud'],
-           meta:['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog','syllabus','dayReview','cloud'] },
-  ai:    { keys:['chat','chatRooms','chatMeta','chatQuick','aiUse','aiLog','aiFeedback','aiMemo'],
-           meta:['chatMeta','chatQuick','aiUse','aiLog','aiFeedback','aiMemo'] },
+  maps:  { keys:['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog','syllabus','dayReview','cloud','pets','weekReview'],
+           meta:['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog','syllabus','dayReview','cloud','pets','weekReview'] },
+  ai:    { keys:['chat','chatRooms','chatMeta','chatQuick','aiUse','aiLog','aiFeedback','aiMemo','charaTalk'],
+           meta:['chatMeta','chatQuick','aiUse','aiLog','aiFeedback','aiMemo','charaTalk'] },
   logs:  { keys:['transitLog','trash'], meta:['transitLog','trash'] }
 };
 function syncSettingsOf(){
@@ -877,13 +886,85 @@ function onPhotoIdx(data){
   if(appId === 'set' && !isTyping()) render();
 }
 function photoSyncOn(){ return SYNC_LOCAL.photoSync !== 0; }
+/* 同期に送る写真の大きさ（この端末の写真はそのまま） */
+var PHOTO_SIZES = { small:[1200, 0.72], normal:[1600, 0.8], orig:[0, 0] };
+function photoSizeMode(){ return PHOTO_SIZES[SYNC_LOCAL.photoSize] ? SYNC_LOCAL.photoSize : 'normal'; }
+function photoStoreMode(){ return SYNC_LOCAL.photoStore === 'storage' ? 'storage' : 'fs'; }
+function shrinkDataUrl(dataUrl, maxSide, q){
+  return new Promise(function(res){
+    var img = new Image();
+    img.onload = function(){
+      var sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+      if(sc >= 1 && dataUrl.length < 700000){ res(dataUrl); return; }
+      var cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.width * sc)); cv.height = Math.max(1, Math.round(img.height * sc));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      var out = cv.toDataURL('image/jpeg', q);
+      res(out.length < dataUrl.length ? out : dataUrl);
+    };
+    img.onerror = function(){ res(dataUrl); };
+    img.src = dataUrl;
+  });
+}
+async function photoShrinkForSync(pid, data){
+  var mode = PHOTO_SIZES[photoSizeMode()];
+  if(!mode[0]) return data;
+  if(String(pid).indexOf('chimg_') === 0) return data;              /* 自分で作ったキャラ（透明な部分がある）はそのまま */
+  if(!/^data:image\/(jpeg|jpg|png|webp|heic)/i.test(data) || data.length < 350000) return data;
+  try{ return await shrinkDataUrl(data, mode[0], mode[1]); }catch(e){ return data; }
+}
+/* Firebase Storage（入れると大きな写真も軽く送れる。Blazeプランが必要） */
+var stLoad = null;
+function fakeStorage(){
+  try{ if(window.__FAKE_ST) return window.__FAKE_ST; }catch(e){}
+  try{ if(window.parent && window.parent !== window && window.parent.__FAKE_ST) return window.parent.__FAKE_ST; }catch(e){}
+  return null;
+}
+function blobToDataUrl(blob){
+  return new Promise(function(res, rej){ var r = new FileReader(); r.onload = function(){ res(r.result); }; r.onerror = rej; r.readAsDataURL(blob); });
+}
+function stPath(pid){ return 'kurashi/' + DEFAULT_ROOM + '/' + String(pid).replace(/[^A-Za-z0-9_-]/g, ''); }
+function loadStorage(){
+  if(TEST_MODE){
+    var f = fakeStorage();
+    return f ? Promise.resolve(f) : Promise.reject(new Error('テストでは使えません'));
+  }
+  if(stLoad) return stLoad;
+  stLoad = (async function(){
+    var fa = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    var fst = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js');
+    var app = fa.getApps().filter(function(a){ return a.name === 'kurashi-st'; })[0] || fa.initializeApp(parseFbConfig(DEFAULT_FB), 'kurashi-st');
+    var st = fst.getStorage(app);
+    return {
+      put: function(pid, dataUrl){ return fst.uploadString(fst.ref(st, stPath(pid)), dataUrl, 'data_url'); },
+      get: function(pid){ return fst.getBlob(fst.ref(st, stPath(pid))).then(blobToDataUrl); },
+      del: function(pid){ return fst.deleteObject(fst.ref(st, stPath(pid))); }
+    };
+  })();
+  stLoad['catch'](function(){ stLoad = null; });
+  return stLoad;
+}
+function storageRulesText(){
+  return "rules_version = '2';\n" +
+    "service firebase.storage {\n" +
+    "  match /b/{bucket}/o {\n" +
+    "    match /kurashi/" + DEFAULT_ROOM + "/{file} {\n" +
+    "      allow read: if true;\n" +
+    "      allow write: if request.resource == null || request.resource.size < 20 * 1024 * 1024;\n" +
+    "    }\n" +
+    "  }\n" +
+    "}\n";
+}
+function storageCorsCommand(){
+  return "echo '[{\"origin\":[\"https://yurizigong95.github.io\"],\"method\":[\"GET\"],\"maxAgeSeconds\":3600}]' > cors.json && gsutil cors set cors.json gs://kurashi-59562.firebasestorage.app";
+}
 /* まだ送っていない写真をさがして、順番に送る */
 async function photoUploadScan(){
   if(!syncState.on || !fsa || !photoCloud.index || !photoSyncOn()) return;
   var keys = await photoKeys();
   keys.forEach(function(k){
     var m = photoCloud.index[k];
-    if((!m || (!m.del && !m.n)) && photoCloud.queue.indexOf(k) < 0 && !photoCloud.failed[k]) photoCloud.queue.push(k);
+    if((!m || (!m.del && !m.n && !m.st)) && photoCloud.queue.indexOf(k) < 0 && !photoCloud.failed[k]) photoCloud.queue.push(k);
   });
   photoUploadRun();
 }
@@ -899,15 +980,30 @@ async function photoUploadRun(){
     while(photoCloud.queue.length && syncState.on){
       var pid = photoCloud.queue.shift();
       var m = photoCloud.index[pid];
-      if(m && (m.n || m.del)) continue;
+      if(m && (m.n || m.st || m.del)) continue;
       try{
         var data = await photoGetLocal(pid);
         if(!data) continue;
-        var n = Math.max(1, Math.ceil(data.length / CHUNK));
-        for(var i = 0; i < n; i++){
-          await fsSet(docPhoto(pid, i), { d:data.slice(i*CHUNK, (i+1)*CHUNK), i:i, n:n, at:Date.now() }, false, 'photo');
+        data = await photoShrinkForSync(pid, data);
+        var item = null;
+        if(photoStoreMode() === 'storage'){
+          try{
+            guardWrite('photo');
+            var sa = await loadStorage();
+            await withTimeout(sa.put(pid, data), 120000, '写真の保存');
+            item = { st:1, n:0, s:data.length, t:Date.now(), by:DEV.id };
+          }catch(se){
+            if(/送りすぎ/.test(se.message)) throw se;
+            logErr('写真の同期', 'Firebase Storageに送れなかったので、ふつうの方法で送ります：' + se.message);
+          }
         }
-        var item = { n:n, s:data.length, t:Date.now(), by:DEV.id };
+        if(!item){
+          var n = Math.max(1, Math.ceil(data.length / CHUNK));
+          for(var i = 0; i < n; i++){
+            await fsSet(docPhoto(pid, i), { d:data.slice(i*CHUNK, (i+1)*CHUNK), i:i, n:n, at:Date.now() }, false, 'photo');
+          }
+          item = { n:n, s:data.length, t:Date.now(), by:DEV.id };
+        }
         var upd = { items:{} }; upd.items[pid] = item;
         await fsSet(docPhotoIdx(), upd, true, 'photo');
         photoCloud.index[pid] = item;
@@ -929,14 +1025,20 @@ var photoFetching = {};
 function photoFetchCloud(pid){
   if(photoFetching[pid]) return photoFetching[pid];
   var m = photoCloud.index && photoCloud.index[pid];
-  if(!syncState.on || !fsa || !m || m.del || !m.n) return Promise.resolve(null);
+  if(!syncState.on || !fsa || !m || m.del || (!m.n && !m.st)) return Promise.resolve(null);
   photoFetching[pid] = (async function(){
     try{
-      var ids = []; for(var i = 0; i < m.n; i++) ids.push(docPhoto(pid, i));
-      var docs = await Promise.all(ids.map(fsGet));
-      if(docs.some(function(d){ return !d; })) return null;
-      var data = docs.map(function(d){ return d.d || ''; }).join('');
-      if(!/^data:/.test(data)) return null;
+      var data;
+      if(m.st){
+        var sa = await loadStorage();
+        data = await withTimeout(sa.get(pid), 60000, '写真の読みこみ');
+      }else{
+        var ids = []; for(var i = 0; i < m.n; i++) ids.push(docPhoto(pid, i));
+        var docs = await Promise.all(ids.map(fsGet));
+        if(docs.some(function(d){ return !d; })) return null;
+        data = docs.map(function(d){ return d.d || ''; }).join('');
+      }
+      if(!/^data:/.test(data || '')) return null;
       await photoPut(pid, data, { noCloud:true });
       return data;
     }catch(e){
@@ -955,13 +1057,33 @@ async function photoCloudDelete(pid){
     var upd = { items:{} }; upd.items[pid] = { del:1, t:Date.now(), by:DEV.id };
     await fsSet(docPhotoIdx(), upd, true, 'photo');
     if(photoCloud.index) photoCloud.index[pid] = upd.items[pid];
+    if(m && m.st) loadStorage().then(function(sa){ return sa.del(pid); })['catch'](function(){});
     if(m && m.n) for(var i = 0; i < m.n; i++) fsDel(docPhoto(pid, i), 'photo')['catch'](function(){});
   }catch(e){ logErr('写真の同期', pid + ' を消せませんでした：' + e.message); }
 }
 function photoCloudStats(){
-  var idx = photoCloud.index || {}, n = 0, s = 0;
-  Object.keys(idx).forEach(function(k){ var m = idx[k]; if(m && m.n && !m.del){ n++; s += Number(m.s)||0; } });
-  return { count:n, bytes:s, queued:photoCloud.queue.length, busy:photoCloud.busy, ready:!!photoCloud.index };
+  var idx = photoCloud.index || {}, n = 0, s = 0, st = 0;
+  Object.keys(idx).forEach(function(k){ var m = idx[k]; if(m && (m.n || m.st) && !m.del){ n++; s += Number(m.s)||0; if(m.st) st++; } });
+  return { count:n, bytes:s, storage:st, queued:photoCloud.queue.length, busy:photoCloud.busy, ready:!!photoCloud.index };
+}
+/* 設定画面（写真の送り方） */
+function photoSyncSettings(){
+  var size = photoSizeMode(), store = photoStoreMode();
+  return '<label class="f">送る写真の大きさ</label><div class="pillrow">' +
+    [['small', '小さめ（軽い）'], ['normal', 'ふつう'], ['orig', '元のまま']].map(function(o){
+      return '<button data-act="photo-size" data-v="' + o[0] + '" class="' + (size === o[0] ? 'on' : '') + '">' + o[1] + '</button>';
+    }).join('') + '</div>' +
+    '<p class="note" style="margin-top:-4px">大きな写真は、送る前に小さくします（この端末の写真はそのまま）。</p>' +
+    '<label class="f">写真の置き場所</label><div class="pillrow">' +
+    '<button data-act="photo-store" data-v="fs" class="' + (store === 'fs' ? 'on' : '') + '">いつもの（Firestore）</button>' +
+    '<button data-act="photo-store" data-v="storage" class="' + (store === 'storage' ? 'on' : '') + '">Firebase Storage</button></div>' +
+    (store === 'storage'
+      ? '<div class="bn amber"><span class="ic">!</span><span><b>Firebase Storage は Blaze プラン（従量課金・無料枠あり）でだけ使えます。</b>準備ができていないときは、自動で「いつもの」方法で送ります。</span></div>' +
+        '<ol class="steps"><li><a href="https://console.firebase.google.com/project/kurashi-59562/usage/details" target="_blank" rel="noopener">Firebaseの使用量と請求</a>で Blaze プランにする（予算アラートを設定しておくと安心）</li>' +
+        '<li><a href="https://console.firebase.google.com/project/kurashi-59562/storage" target="_blank" rel="noopener">Storage</a> を開いて「始める」</li>' +
+        '<li>Storage の「ルール」に、下のルールを貼って公開 <button class="mini" data-act="copy-text" data-text="' + esc(storageRulesText()) + '">ルールをコピー</button></li>' +
+        '<li>ブラウザから写真を読めるように、<a href="https://console.cloud.google.com/?cloudshell=true&project=kurashi-59562" target="_blank" rel="noopener">Cloud Shell</a> で次の1行を実行 <button class="mini" data-act="copy-text" data-text="' + esc(storageCorsCommand()) + '">コマンドをコピー</button></li></ol>'
+      : '');
 }
 
 /* ============================== 上の「同期」表示 ============================== */

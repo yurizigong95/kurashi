@@ -46,9 +46,10 @@ function toneRule(){
   return 'ていねいでやわらかい。共感してから具体的な提案をする。';
 }
 function lenRule(){
-  var l = S.ui.aiLen || 'normal';
+  var l = S.ui.aiLen || 'auto';
   if(l === 'short') return '3行以内。要点だけ。';
   if(l === 'long')  return 'くわしく。理由や代わりの案も書く。';
+  if(l === 'auto' && typeof lenRuleAuto === 'function') return lenRuleAuto();
   return 'ふつう。長くても10行くらい。';
 }
 function styleRule(){
@@ -376,9 +377,9 @@ function viewChat(){
       '>' + esc(m[1]) + '</button>';
   }).join('') + '</div>';
   h += '<div class="pillrow" style="margin-bottom:10px">' +
-    [['short','短く'],['normal','ふつう'],['long','くわしく']].map(function(o){
+    [['auto','長さおまかせ'],['short','短く'],['normal','ふつう'],['long','くわしく']].map(function(o){
       return '<button class="mini" data-act="ai-len" data-v="' + o[0] + '"' +
-        ((S.ui.aiLen||'normal')===o[0] ? ' style="background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;border-color:rgba(255,255,255,.6)"' : '') +
+        ((S.ui.aiLen||'auto')===o[0] ? ' style="background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;border-color:rgba(255,255,255,.6)"' : '') +
         '>' + o[1] + '</button>';
     }).join('') +
     '<span class="s2" style="margin-left:auto">今日 ' + n + '回' + (n >= AI_FREE_LIMIT*0.8 ? '（使いすぎかも）' : '') + '</span></div>';
@@ -420,9 +421,11 @@ function viewChat(){
         '<button class="mini" data-act="chat-short" data-i="' + i + '">短く</button>' +
         '<button class="mini" data-act="chat-more" data-i="' + i + '">詳しく</button>' +
         '<button class="mini" data-act="chat-save" data-i="' + i + '">メモ</button>' +
-        (voiceCanSpeak() ? '<button class="mini" data-act="chat-speak" data-i="' + i + '">' + (voice.speakingI === i ? '■ 止める' : '🔊 読む') + '</button>' : '') +
+        ((voiceCanSpeak() || ttsEngine() === 'gemini') ? '<button class="mini" data-act="chat-speak" data-i="' + i + '">' + (voice.speakingI === i ? '■ 止める' : '🔊 読む') + '</button>' : '') +
         '<button class="mini" data-act="quick-from" data-i="' + i + '" title="ひとつ前の質問をボタンにする">★ ボタンに</button>' +
-        '</div>' : '') + '</div></div>';
+        '<button class="mini" data-act="share-chat" data-i="' + i + '">共有</button>' +
+        '</div>' : '') +
+      (m.role === 'ai' && typeof chatExtrasHtml === 'function' ? chatExtrasHtml(m, i) : '') + '</div></div>';
     (m.adds || []).forEach(function(ad, j){
       h += '<div class="cmsg ai"><div class="addcard">' +
         '<span class="kdot" style="background:' + kindHex(ad.kind) + ';width:14px;height:14px"></span>' +
@@ -449,6 +452,11 @@ function viewChat(){
         '<button class="mini" data-act="att-del" data-i="' + i + '">×</button></div>';
     }).join('') + '</div>';
   }
+  if(typeof chatAttChips === 'function') h += chatAttChips();
+  h += '<div class="pillrow" style="margin-bottom:6px">' +
+    '<button class="mini' + (chatWeb ? ' on' : '') + '" data-act="chat-web" aria-pressed="' + (chatWeb ? 'true' : 'false') + '">🔎 ネットで調べる' + (chatWeb ? '（オン）' : '') + '</button>' +
+    '<button class="mini" data-act="talk-start">🗣 声だけで会話</button>' +
+    '<button class="mini' + (aiDirectOn() ? ' on' : '') + '" data-act="ai-direct">' + (aiDirectOn() ? '✓ 頼んだら手帳に入れる' : '頼んでも手帳に入れない') + '</button></div>';
   h += '<div class="pair">' +
     '<button class="btn ghost" style="flex:0 0 auto;padding:13px 14px" data-act="chat-att" title="写真やファイルをつける">📎</button>' +
     '<input id="chat_in" placeholder="' + (voice.listening ? '聞いています…話してください' : 'きいてみる（例：来週のバイトいつがいい？）') + '"' +
@@ -521,8 +529,9 @@ async function chatSend(text, opt){
     if(sumText) sys += '\n\n===== これまでの会話のまとめ（前の話の続きとして使う） =====\n' + sumText;
 
     chatAbort = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-    var out = await aiGenerate({ system:sys, contents:history, temperature:0.3,
-      maxTokens:(S.ui.aiLen==='long' ? 3000 : 2048), signal: chatAbort ? chatAbort.signal : undefined, tag:'chat' });
+    var asked = await chatAsk({ system:sys, contents:history, text:text, voice:!!opt.voice, talk:!!opt.talk,
+      signal: chatAbort ? chatAbort.signal : undefined });
+    var out = asked.text;
     if(!out) out = 'うまく答えられませんでした。もう一度きいてみてください。';
     /* AIが「予定に入れるとよい」と書いた行を取り出す */
     var adds = [];
@@ -536,9 +545,13 @@ async function chatSend(text, opt){
         time:/^\d{1,2}:\d{2}$/.test(tm)?tm:'', end:/^\d{1,2}:\d{2}$/.test(en)?en:'' });
       return '';
     }).replace(/\n{3,}/g, '\n\n').trim();
-    roomSet(roomMsgs().concat([{ role:'ai', text:out, adds:adds, mt:Date.now() }]));
-    /* 声で聞いたときは、声で答える */
-    if(opt.voice && S.ui.voiceRead) setTimeout(function(){ speakMsg(roomMsgs().length - 1); }, 60);
+    var aiMsg = { role:'ai', text:out, adds:adds, mt:Date.now() };
+    if(asked.ops && asked.ops.length) aiMsg.ops = asked.ops;
+    if(asked.src && asked.src.length) aiMsg.src = asked.src;
+    if(asked.sep) aiMsg.sep = asked.sep;
+    roomSet(roomMsgs().concat([aiMsg]));
+    /* 声で聞いたときは、声で答える（会話モードのときは会話モードが読む） */
+    if(opt.voice && !opt.talk && S.ui.voiceRead) setTimeout(function(){ speakMsg(roomMsgs().length - 1); }, 60);
     /* 長くなってきたら、古い会話をまとめて軽くする */
     setTimeout(function(){ chatMaybeSummarize(false); }, 400);
     if(window.__revCatch){
@@ -689,19 +702,14 @@ async function voiceTranscribe(blob){
 }
 /* 答えを読み上げる */
 function speakMsg(i){
-  if(!voiceCanSpeak()) return;
   var m = roomMsgs()[i];
   if(!m || m.role !== 'ai') return;
-  window.speechSynthesis.cancel();
-  if(voice.speakingI === i){ voice.speakingI = -1; render(); return; }
-  var text = String(m.text || '').replace(/根拠：.*$/m, '').replace(/[＊*#・]/g, ' ').slice(0, 1500);
-  var u = new SpeechSynthesisUtterance(text);
-  u.lang = 'ja-JP'; u.rate = 1.05;
-  var ja = (window.speechSynthesis.getVoices() || []).filter(function(v){ return /^ja/i.test(v.lang); })[0];
-  if(ja) u.voice = ja;
-  u.onend = u.onerror = function(){ if(voice.speakingI === i){ voice.speakingI = -1; if(appId === 'chat' && !isTyping()) render(); } };
+  if(voice.speakingI === i){ voice.speakingI = -1; ttsStop(); render(); return; }
+  ttsUnlock();
   voice.speakingI = i;
-  window.speechSynthesis.speak(u);
+  ttsSpeak(m.text).then(function(){
+    if(voice.speakingI === i){ voice.speakingI = -1; if(appId === 'chat' && !isTyping()) render(); }
+  });
   if(appId === 'chat' && !isTyping()) render();
 }
 
@@ -828,6 +836,7 @@ function chatAction(act, t){
   if(act === 'chat-send'){
     var el = document.getElementById('chat_in');
     var v = el ? el.value.trim() : '';
+    if(!v && chatFiles.length && typeof ATT_PROMPTS !== 'undefined') v = ATT_PROMPTS.sum;
     if(!v){ toast('きくことを入れてください', true); return true; }
     if(el) el.value = '';
     chatSend(v); return true;

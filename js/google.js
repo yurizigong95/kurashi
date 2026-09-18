@@ -228,19 +228,23 @@ function gasSettings(){
       '<b>まだつながっていません。</b>下の手順で「橋わたし」を作ると、Googleカレンダーへの予定の送信と、Googleドライブへの毎週のバックアップが自動で動きます。</span></div>'+
       '<ol class="steps">'+
         '<li>下の「合言葉を作って、プログラムをコピー」を押す</li>'+
-        '<li><a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> で新しいプロジェクトを作り、中身を全部消して<b>貼り付け</b>、保存</li>'+
+        '<li><a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> で新しいプロジェクトを作り、Code.gs の中身を全部消して<b>貼り付け</b>、保存</li>'+
+        '<li>左の「⚙ プロジェクトの設定」→「appsscript.json マニフェスト ファイルをエディタで表示する」にチェック → エディタの <b>appsscript.json</b> を下の「設定ファイルをコピー」の中身に置きかえて保存</li>'+
         '<li>右上の「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」<br>・次のユーザーとして実行：<b>自分</b><br>・アクセスできるユーザー：<b>全員</b></li>'+
         '<li>「デプロイ」→ Googleの確認画面で許可（「このアプリは確認されていません」と出たら「詳細」→「移動」）</li>'+
         '<li>出てきた<b>ウェブアプリのURL</b>を下に貼って「つながるか試す」</li>'+
       '</ol>';
   }
-  h += '<button class="btn ghost" data-act="gas-copy">合言葉を作って、プログラムをコピー</button>'+
+  h += '<div class="pair"><button class="btn ghost" data-act="gas-copy">合言葉を作って、プログラムをコピー</button>'+
+    '<button class="btn ghost" data-act="gas-manifest" style="flex:0 0 auto">設定ファイルをコピー</button></div>'+
+    (ready ? '<p class="note">新しい版にしたときは、プログラムと設定ファイルを貼り直して、「デプロイ」→「デプロイを管理」→ ✏️ →「新バージョン」で更新してください（URLは変わりません）。</p>' : '')+
     '<div class="field" style="margin-top:10px"><label class="f">橋わたしのURL</label>'+
     '<input id="gas_url" value="'+esc(GAS.url)+'" placeholder="https://script.google.com/macros/s/…/exec" inputmode="url"></div>'+
     '<div class="field"><label class="f">合言葉</label>'+
     '<input id="gas_token" type="password" value="'+esc(GAS.token)+'" placeholder="プログラムに入っている合言葉"></div>'+
     '<div class="pair"><button class="btn" data-act="gas-save">保存して、つながるか試す</button></div>'+
-    (GAS.user ? '<p class="note">つながっています：'+esc(GAS.user)+'</p>' : '');
+    (GAS.user ? '<p class="note">つながっています：'+esc(GAS.user)+(GAS.ver ? '（5分ごとの確認：'+(GAS.trigger ? '動いている' : '止まっている')+'）' : '（古いプログラムです。貼り直してください）')+'</p>' : '')+
+    (GAS.user && GAS.ver && !GAS.trigger ? '<button class="mini" data-act="gas-setup">5分ごとの確認を動かす</button>' : '');
   if(ready){
     h += '<label class="f" style="margin-top:14px">Googleカレンダー</label>'+
       '<div class="pillrow">'+
@@ -308,7 +312,8 @@ function gasAction(act, t){
     if(!u || !tk){ toast('URLと合言葉の両方を入れてください', true); render(); return true; }
     toast('つながるか試しています…');
     gasCall('ping').then(function(r){
-      GAS.user = r.user || 'OK'; saveGas();
+      GAS.user = r.user || 'OK'; GAS.ver = r.ver || 0; GAS.trigger = r.trigger ? 1 : 0; saveGas();
+      if(r.ver && !r.trigger) gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); render(); })['catch'](function(e){ logErr('Google連携', '5分ごとの確認を動かせませんでした：' + e.message); });
       toast('つながりました：' + (r.calendar || 'くらしの手帳'));
       gasCalSync(true); gasBackup(false);
       render();
@@ -317,6 +322,16 @@ function gasAction(act, t){
       logErr('Google連携', e.message);
       render();
     });
+    return true;
+  }
+  if(act === 'gas-manifest'){
+    fetch('gas/appsscript.json', { cache:'no-store' }).then(function(r){ if(!r.ok) throw new Error('設定ファイルが見つかりません'); return r.text(); })
+      .then(function(txt){ return navigator.clipboard.writeText(txt); })
+      .then(function(){ toast('設定ファイル（appsscript.json）をコピーしました'); }, function(e){ toast('コピーできませんでした：' + e.message, true); });
+    return true;
+  }
+  if(act === 'gas-setup'){
+    gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); toast('5分ごとの確認を動かしました'); render(); }, function(e){ toast('できませんでした：' + e.message, true); });
     return true;
   }
   if(act === 'gas-cal'){ GAS.cal = toNum(t.dataset.v); saveGas(); if(GAS.cal) gasCalSync(true); render(); return true; }

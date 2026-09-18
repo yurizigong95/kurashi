@@ -8,7 +8,7 @@ var MONEY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ
 var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
 var TODAY_TABS = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
 var CAL_TABS = [['cal','カレンダー'],['add','追加'],['imp','重要'],['health','健康']];
-var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', notes:'メモ', news:'お知らせ', set:'設定' };
+var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', notes:'メモ', news:'お知らせ', set:'設定' };
 var FOOTS = {
   today:'天気は Open-Meteo の予報です。バスや電車の運行状況は各社の公式情報も確認してください。',
   money:'金額に分割手数料（金利）は含まれていません。引き落とし日の前日までに入金しておくと安心です。',
@@ -18,6 +18,7 @@ var FOOTS = {
   course:'科目をタップすると出欠・課題・テスト・成績・メモをまとめて見られます。',
   todo:'科目を選んだ課題は、その科目の色になります。',
   chat:'アプリに登録した予定をもとに、AIが相談に乗ります。',
+  pet:'課題を終えたり、予定やメモを入れたりすると、コインがたまります。',
   notes:'ピン留めしたメモは今日ページにも出ます。',
   news:'今日ページに出たお知らせの履歴です。',
   set:'合言葉は他人に教えないでください。Firestoreのセキュリティルールを必ず設定してください。'
@@ -66,7 +67,7 @@ function renderInner(){
     html += viewToday();
   }else if(appId==='money'){
     var d = derive();
-    html += ({ home:viewHome, schedule:viewSchedule, chart:viewChart, stmt:viewStmt, in:viewIncome, work:viewShifts })[payTab](d);
+    html += ({ home:viewHome, kakeibo:viewKakeibo, schedule:viewSchedule, chart:viewChart, stmt:viewStmt, in:viewIncome, work:viewShifts })[payTab](d);
   }else if(appId==='risyu'){
     html += ({ tt:viewRisyuTt, plans:viewRisyuPlans })[risyuTab==='plans'?'plans':'tt']();
   }else if(appId==='tt'){ html += viewTT(); }
@@ -75,6 +76,7 @@ function renderInner(){
   else if(appId==='chat'){ html += viewChat(); }
   else if(appId==='notes'){ html += viewNotes(); }
   else if(appId==='news'){ html += viewNews(); }
+  else if(appId==='pet'){ html += viewPet(); }
   else if(appId==='cal'){
     html += calTab==='health' ? viewHealth() : calTab==='kind' ? viewKindTab() : calTab==='add' ? viewCalAdd() : viewCalendar();
   }else{
@@ -176,6 +178,12 @@ function appClick(e, t, act){
     if(calAction(act, t)) return;
   }
   if(chatAction(act, t)) return;
+  if(typeof aiPlusAction === 'function' && aiPlusAction(act, t)) return;
+  if(typeof linksAction === 'function' && linksAction(act, t)) return;
+  if(typeof notifyAction === 'function' && notifyAction(act, t)) return;
+  if(typeof petAction === 'function' && petAction(act, t)) return;
+  if(typeof wxAction === 'function' && wxAction(act, t)) return;
+  if(typeof opsAction === 'function' && opsAction(act, t)) return;
   if(typeof charaAction==='function' && charaAction(act, t)) return;
   if(reviewAction(act, t)) return;
   if(kindAction(act, t)) return;
@@ -197,6 +205,7 @@ function appClick(e, t, act){
     if(calAction(act, t)) return;
   }
   if(calAction(act, t)) return;
+  if(typeof kakeiboAction === 'function' && kakeiboAction(act, t)) return;
   if(moneyAction(act, t)) return;
   settingsAction(act, t);
 }
@@ -214,7 +223,8 @@ document.getElementById('chatfile').addEventListener('change', async function(e)
         var data = await resizeImage(f, 1200, 0.75);
         chatFiles.push({ name:f.name, kind:'image', mime:'image/jpeg', data:data });
       }else{
-        if(f.size > 3 * 1024 * 1024){ toast(f.name + ' は大きすぎます（3MBまで）', true); continue; }
+        var lim = /pdf/i.test(f.type || f.name) ? 15 : 3;
+        if(f.size > lim * 1024 * 1024){ toast(f.name + ' は大きすぎます（' + lim + 'MBまで）', true); continue; }
         var d2 = await new Promise(function(res, rej){
           var r = new FileReader();
           r.onload = function(){ res(r.result); };
@@ -426,6 +436,7 @@ document.getElementById('detail').addEventListener('click', function(e){
     if(act==='task-done'||act==='task-undone'){ risyuAction(act, b, e); closeDetail(); return; }
     if(todoAction(act, b)) return;
     if(kindAction(act, b)) return;
+    if(typeof linksAction === 'function' && linksAction(act, b)) return;
     if(calAction(act, b)) return;
   });
 });
@@ -654,7 +665,7 @@ if(TEST_MODE){
 }
 
 /* 読みこみの見張り（index.html）に「ちゃんと起動した」と知らせる */
-window.__kurashiOK = true;
+window.__kurashiOK = true; try{ window.__kurashiReadyAt = performance.now(); }catch(e){}
 /* 「1件ずつ見る」を開いたかどうかを覚えておく（描き直しても閉じないように） */
 document.getElementById('app').addEventListener('toggle', function(e){
   var t = e.target;

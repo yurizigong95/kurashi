@@ -1,0 +1,58 @@
+# くらしの手帳：アップロードのたびに、ファイルの抜け・自動テスト・表示の速さを調べる
+name: check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  files:
+    name: ファイルの抜け
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tools/check-files.mjs
+
+  test:
+    name: 自動テスト
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: ブラウザを用意
+        run: |
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund playwright@1.47.2
+          npx playwright install --with-deps chromium
+      - name: ページを出す
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 > server.log 2>&1 &
+          sleep 2
+      - name: テスト
+        run: node tools/ci-run.mjs
+      - name: 表示の速さ（Lighthouse）
+        continue-on-error: true
+        run: |
+          export CHROME_PATH=$(node -e "console.log(require('playwright').chromium.executablePath())")
+          npx --yes lighthouse@12 "http://127.0.0.1:8080/index.html?test=1&dev=lh" \
+            --only-categories=performance,accessibility,best-practices \
+            --output=html --output=json --output-path=./lighthouse \
+            --chrome-flags="--headless=new --no-sandbox" --quiet
+          node -e "const r=require('./lighthouse.report.json');for(const k in r.categories){console.log(r.categories[k].title+': '+Math.round(r.categories[k].score*100))}"
+      - name: 速さの結果を残す
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse
+          path: lighthouse.report.*
+          if-no-files-found: ignore

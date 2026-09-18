@@ -784,6 +784,7 @@ function openDetail(src, id){
       '<div class="pair" style="margin-top:12px">'+
         '<button class="btn" data-act="ev-edit-from-detail" data-src="'+src+'" data-id="'+id+'">直す</button>'+
         '<button class="btn ghost" data-act="ev-del-from-detail" data-src="'+src+'" data-id="'+id+'" style="color:var(--rakuten)">削除</button></div>'+
+      '<button class="btn ghost" style="margin-top:8px" data-act="share-item" data-src="'+src+'" data-id="'+id+'">共有する</button>'+
     '</div>';
   var sh = document.getElementById('detail');
   sh.querySelector('.sheet-bd').innerHTML = body;

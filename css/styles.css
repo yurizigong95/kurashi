@@ -28,7 +28,8 @@ body[data-style] .box::after{ background:var(--sv-rim, none) }
 
 /* ボタン */
 body[data-style] .pillrow button, body[data-style] .chips button, body[data-style] .mini, body[data-style] .kbtn:not(.on),
-body[data-style] .themes button, body[data-style] button.btn.ghost, body[data-style] .unkou, body[data-style] #fabmenu button{
+body[data-style] .themes button, body[data-style] button.btn.ghost, body[data-style] .unkou, body[data-style] #fabmenu button,
+body[data-style] .petlist button:not(.on), body[data-style] .petacts button:not(.btn):not(.on), body[data-style] .hatgrid button, body[data-style] .chgrid button:not(.on), body[data-style] .stylegrid button:not(.on){
   background:var(--sv-ctl); border:var(--sv-ctl-bd); box-shadow:var(--sv-ctl-sh);
   -webkit-backdrop-filter:var(--sv-ctl-blur, none); backdrop-filter:var(--sv-ctl-blur, none) }
 body[data-style] .pillrow button, body[data-style] .chips button, body[data-style] .mini, body[data-style] .kbtn{ border-radius:var(--sv-ctl-rad, 999px) }
