@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-09-19a';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-09-19b';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -626,7 +626,7 @@ var UNDO_LISTS = ['spends','income','fixed','balances','events','tasks','exams',
 var UNDO_KEYS = ['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog',
                  'syllabus','dayReview','terms','commute','transit','termsList','chatQuick','risyu','termId'];
 /* 押しただけで、ほとんど何も変えない操作（覚えておく手間をはぶく） */
-var UNDO_SKIP = /^(go|fold|cal-(prev|next|today|day|mode|view|filter|mset|addopen)|km-|cw-|kind-(pick|mode)|subj-pick|tt-(week|weekset|terms|subj-past)|course-(open|back)|ev-(open|close|kind|pri|how|photo|edit|edit-from-detail|reset)|chat-(room|att|q|send|speak|stop|sum)|voice-|quick-edit|work-(prev|next|now)|fd-|dl-|photo-(pick|list|close)|memo-photo-view|go-|today-toggle|range|toggle-|wstyle|manual|cancel-stmt|cam|pick|syl-(ai|cancel)|shift-ocr$|shift-ocr-cancel|gas-|storage-recount|errlog-copy|note-(open|back)|dev-rename|sync-|export|import|ics|chara-(talk|cat|make|edit)|kb-(ym|cat|all|csv|csv-cancel)|link-copy|inbox-pull|summary-push|tasks-sync|place-check|share-(day|item|note|chat)|nt-(on|off|test|push)|chat-web|talk-start|att-ask|wkrev-hist|radar-[a-z]+|warn-reload|pet-(panel|game|rename)|perf-run|files-check|ver-[a-z]+|sentry-test|copy-text|gas-(manifest|setup))$/;
+var UNDO_SKIP = /^(go|fold|cal-(prev|next|today|day|mode|view|filter|mset|addopen)|km-|cw-|kind-(pick|mode)|subj-pick|tt-(week|weekset|terms|subj-past)|course-(open|back)|ev-(open|close|kind|pri|how|photo|edit|edit-from-detail|reset)|chat-(room|att|q|send|speak|stop|sum)|voice-|quick-edit|work-(prev|next|now)|fd-|dl-|photo-(pick|list|close)|memo-photo-view|go-|today-toggle|range|toggle-|wstyle|manual|cancel-stmt|cam|pick|syl-(ai|cancel)|shift-ocr$|shift-ocr-cancel|gas-|storage-recount|errlog-copy|note-(open|back)|dev-rename|sync-|export|import|ics|chara-(talk|cat|make|edit)|kb-(ym|cat|all|csv|csv-cancel)|link-copy|inbox-pull|summary-push|tasks-sync|place-check|share-(day|item|note|chat)|nt-(on|off|test|push)|chat-web|talk-start|att-ask|wkrev-hist|radar-[a-z]+|warn-reload|pet-(panel|game|rename)|anki-[a-z-]+|perf-run|files-check|ver-[a-z]+|sentry-test|copy-text|gas-(manifest|setup))$/;
 var UNDO_LABEL = { 'task-done':'完了にしました', 'task-undone':'未完了にもどしました', 'paid':'支払いの印を変えました',
   'prog-step':'進みぐあいを変えました', 'att-set':'出欠を記録しました', 'ot-plus':'時間を直しました',
   'sub-toggle':'小項目を変えました', 'note-check':'チェックを変えました', 'kind-up':'順番を変えました', 'kind-down':'順番を変えました',
@@ -867,7 +867,7 @@ var COMMUTE_DEFAULT = {
   ends:    PERIOD_DEFAULT.map(function(x){ return x[1]; })
 };
 var TAB_DEFS = [
-  ['today','今日'],['tt','時間割'],['course','授業'],['cal','予定'],['todo','ToDo'],
+  ['today','今日'],['tt','時間割'],['course','授業'],['cal','予定'],['todo','ToDo'],['anki','暗記'],
   ['money','お金'],['chat','相談'],['notes','メモ'],['pet','おせわ'],['news','お知らせ'],['risyu','履修'],['set','⚙']
 ];
 var TODAY_SECTIONS = [
@@ -879,8 +879,8 @@ var WEEK_SECTIONS = [
 ];
 /* 各ページで並べ替え・表示切替ができる項目 */
 var PAGE_SECTIONS = {
-  today: [['brief','朝のまとめ'],['weather','天気'],['events','今日の予定'],['classes','今日の授業'],['transit','行き方・帰り方'],['unkou','運行情報'],['find','時間を決めて調べる'],['review','今日のふりかえり'],['leave','出発の記録'],['memo','メモ']],
-  tomo:  [['weather','天気'],['events','明日の予定'],['classes','明日の授業'],['transit','行き方・帰り方'],['memo','メモ']],
+  today: [['brief','朝のまとめ'],['weather','天気'],['items','今日の持ち物'],['events','今日の予定'],['classes','今日の授業'],['transit','行き方・帰り方'],['unkou','運行情報'],['find','時間を決めて調べる'],['review','今日のふりかえり'],['leave','出発の記録'],['memo','メモ']],
+  tomo:  [['weather','天気'],['items','明日の持ち物'],['events','明日の予定'],['classes','明日の授業'],['transit','行き方・帰り方'],['memo','メモ']],
   kind:  [['picker','種類を選ぶ'],['list','予定の一覧']],
   week:  [['review','先週のふりかえり'],['days','日ごとの一覧'],['notes','週の連絡事項']],
   life:  [['money','今月のお金'],['banners','お知らせ'],['next10','これから10日間']],
@@ -939,7 +939,7 @@ function pageHidden(page, id){
   return !!(S.ui.pageHide[page] && S.ui.pageHide[page][id]);
 }
 var UI_DEFAULT = { theme:'pink', fs:'m', weather:1,
-  tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['money',1],['chat',1],['notes',1],['pet',1],['news',0],['risyu',0],['set',1]],
+  tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['anki',1],['money',1],['chat',1],['notes',1],['pet',1],['news',0],['risyu',0],['set',1]],
   todayOrder: TODAY_SECTIONS.map(function(x){ return x[0]; }),
   todayClosed: {}, pageOrder:{}, pageHide:{}, subOrder:{}, subHide:{}, setOpen:{}, customColor:'#E8C8E8', autoClean:1 };
 var S = {
@@ -954,6 +954,8 @@ var S = {
   cloud: {},                /* Googleへのバックアップ・カレンダーの記録（端末どうしで共有） */
   delAt: {}, revAt: {},
   attendLog: {}, grades: {}, holidays: [], biweek: {}, notes: [], notices: [],
+  cards: [], studyLog: {}, petDays: {},   /* 暗記カード・勉強した枚数・おせわの毎日の記録 */
+  suggests: [],                           /* AIが見つけた課題の候補（見てから追加する） */
   termsList: null, termId: '2026-2', termsDone: {},
   transit: { sannomiyaTransfer:10, workBuffer:10, fav:[], custom:{ busGo:[], trainGo:[], trainBack:[], busBack:[], busWork:[] } },
   attend: {}, terms: { first:{} },
@@ -1127,9 +1129,18 @@ try{
     S.revAt = (d0.revAt && typeof d0.revAt==='object') ? d0.revAt : {};
     S.chatQuick = Array.isArray(d0.chatQuick) ? d0.chatQuick : null;
     S.spends = Array.isArray(d0.spends) ? d0.spends : [];
-    ['pets','weekReview','charaTalk'].forEach(function(k){ S[k] = (d0[k] && typeof d0[k]==='object' && !Array.isArray(d0[k])) ? d0[k] : {}; });
+    ['pets','weekReview','charaTalk','studyLog','petDays'].forEach(function(k){ S[k] = (d0[k] && typeof d0[k]==='object' && !Array.isArray(d0[k])) ? d0[k] : {}; });
+    S.cards = Array.isArray(d0.cards) ? d0.cards : [];
+    S.suggests = Array.isArray(d0.suggests) ? d0.suggests : [];
     if(!Array.isArray(S.ui.tabs)) S.ui.tabs = UI_DEFAULT.tabs.map(function(x){ return x.slice(); });
     TAB_DEFS.forEach(function(t){ if(!S.ui.tabs.some(function(x){ return x[0]===t[0]; })) S.ui.tabs.push([t[0], t[0]==='news'||t[0]==='risyu' ? 0 : 1]); });
+    /* 暗記タブは、ToDoのうしろに入れる（あとから足した人も、⚙のうしろにならないように） */
+    (function(){
+      var i = S.ui.tabs.findIndex(function(x){ return x[0]==='anki'; });
+      var j = S.ui.tabs.findIndex(function(x){ return x[0]==='set'; });
+      var k = S.ui.tabs.findIndex(function(x){ return x[0]==='todo'; });
+      if(i > j && j >= 0){ var it = S.ui.tabs.splice(i,1)[0]; S.ui.tabs.splice(k >= 0 ? k+1 : j, 0, it); }
+    })();
     /* そうだんタブは、お金のうしろに入れる */
     (function(){
       var i = S.ui.tabs.findIndex(function(x){ return x[0]==='chat'; });
@@ -1206,7 +1217,7 @@ function autoTouch(){
 }
 /* ===== どの端末で直したかを、1件ずつ記録する ===== */
 var __itemSig = null;
-var STAMP_LISTS = ['spends','income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices','breaks','plans'];
+var STAMP_LISTS = ['spends','income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices','breaks','plans','cards','suggests'];
 function itemSigAll(){
   var all = {};
   STAMP_LISTS.forEach(function(k){

@@ -8,7 +8,7 @@ var MONEY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ
 var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
 var TODAY_TABS = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
 var CAL_TABS = [['cal','カレンダー'],['add','追加'],['imp','重要'],['health','健康']];
-var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', notes:'メモ', news:'お知らせ', set:'設定' };
+var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', anki:'暗記', notes:'メモ', news:'お知らせ', set:'設定' };
 var FOOTS = {
   today:'天気は Open-Meteo の予報です。バスや電車の運行状況は各社の公式情報も確認してください。',
   money:'金額に分割手数料（金利）は含まれていません。引き落とし日の前日までに入金しておくと安心です。',
@@ -18,7 +18,8 @@ var FOOTS = {
   course:'科目をタップすると出欠・課題・テスト・成績・メモをまとめて見られます。',
   todo:'科目を選んだ課題は、その科目の色になります。',
   chat:'アプリに登録した予定をもとに、AIが相談に乗ります。',
-  pet:'課題を終えたり、予定やメモを入れたりすると、コインがたまります。',
+  pet:'課題を終えたり、暗記カードをやったり、きょうのミッションをこなしたりすると、コインがたまります。',
+  anki:'「おぼえた」ほど、次に出るまでの日があきます。毎日少しずつが近道です。',
   notes:'ピン留めしたメモは今日ページにも出ます。',
   news:'今日ページに出たお知らせの履歴です。',
   set:'合言葉は他人に教えないでください。Firestoreのセキュリティルールを必ず設定してください。'
@@ -77,6 +78,7 @@ function renderInner(){
   else if(appId==='notes'){ html += viewNotes(); }
   else if(appId==='news'){ html += viewNews(); }
   else if(appId==='pet'){ html += viewPet(); }
+  else if(appId==='anki'){ html += viewAnki(); }
   else if(appId==='cal'){
     html += calTab==='health' ? viewHealth() : calTab==='kind' ? viewKindTab() : calTab==='add' ? viewCalAdd() : viewCalendar();
   }else{
@@ -182,6 +184,7 @@ function appClick(e, t, act){
   if(typeof linksAction === 'function' && linksAction(act, t)) return;
   if(typeof notifyAction === 'function' && notifyAction(act, t)) return;
   if(typeof petAction === 'function' && petAction(act, t)) return;
+  if(typeof ankiAction === 'function' && ankiAction(act, t)) return;
   if(typeof wxAction === 'function' && wxAction(act, t)) return;
   if(typeof opsAction === 'function' && opsAction(act, t)) return;
   if(typeof charaAction==='function' && charaAction(act, t)) return;
@@ -190,6 +193,7 @@ function appClick(e, t, act){
   if(ttAction(act, t, e)) return;
   if(todoAction(act, t)) return;
   if(settingsAction2(act, t)) return;
+  if(typeof gasPlusAction === 'function' && gasPlusAction(act, t)) return;
   if(gasAction(act, t)) return;
   if(delayAction(act, t)) return;
   if(act === 'go-gas'){

@@ -156,6 +156,10 @@ async function gasBackup(manual){
     persist(); pushRemote();
     /* 写真も、まだ送っていないものを少しずつ */
     var sent = await gasBackupPhotos(manual ? 60 : 20);
+    /* 新しい橋わたしなら、スプレッドシートにも書き出す */
+    if(typeof sheetExport === 'function' && toNum(GAS.ver) >= 3){
+      try{ await sheetExport(false); persist(); pushRemote(); }catch(e2){ logErr('スプレッドシート', e2.message); }
+    }
     if(manual) toast('Googleドライブに保存しました' + (sent ? '（写真'+sent+'枚も）' : ''));
     gasBackupState.list = null;
   }catch(e){
@@ -312,7 +316,9 @@ function gasAction(act, t){
     if(!u || !tk){ toast('URLと合言葉の両方を入れてください', true); render(); return true; }
     toast('つながるか試しています…');
     gasCall('ping').then(function(r){
-      GAS.user = r.user || 'OK'; GAS.ver = r.ver || 0; GAS.trigger = r.trigger ? 1 : 0; saveGas();
+      GAS.user = r.user || 'OK'; GAS.ver = r.ver || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; saveGas();
+      if(typeof gasUrlShare === 'function'){ gasUrlShare(); persist(); pushRemote(); }
+      if(typeof gfeatPush === 'function') gfeatPush()['catch'](function(e){ logErr('Google連携', e.message); });
       if(r.ver && !r.trigger) gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); render(); })['catch'](function(e){ logErr('Google連携', '5分ごとの確認を動かせませんでした：' + e.message); });
       toast('つながりました：' + (r.calendar || 'くらしの手帳'));
       gasCalSync(true); gasBackup(false);

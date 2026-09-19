@@ -3,7 +3,10 @@
    S.pets = { _:{ active, bonus, spent, bag:{食べ物:数}, room:[かざり], pause, mt },
               <キャラID>:{ name, born, exp, hun, joy, cln, eng, sleep, at, mt } }
    ・おなか・きげん・きれい・げんき は、時間がたつと少しずつ下がる（見るだけでは書きかえない）。
-   ・コインは、課題を終える・今日の評価・予定やメモを入れる（なかよし度）と、ミニゲームでふえる。 */
+   ・コインは、課題を終える・今日の評価・予定やメモを入れる（なかよし度）と、ミニゲームでふえる。
+   S.petDays = { 'YYYY-MM-DD|端末ID':{ coins, spent, fed, study, mt }, 'm:YYYY-MM-DD':{ got:{ミッション:1}, mt } }
+   ・あとから足したコインの出入りは、日と端末ごとに分けて記録する（2台で同時に使っても、同期で消えない）。
+   ・きょうのミッション（授業・課題・暗記・おせわ・家計簿）をこなすと、ごほうびがもらえる。 */
 var PET_FOODS = [
   { id:'onigiri', name:'おにぎり', icon:'🍙', price:10, hun:30, joy:2 },
   { id:'bread',   name:'パン',     icon:'🍞', price:12, hun:32, joy:3 },
@@ -30,7 +33,28 @@ var PET_DECO = [
   { id:'music',   name:'レコード',   icon:'🎶', price:110, x:20, y:62 }
 ];
 var PET_STAGES = [[0, 'たまご'], [10, 'あかちゃん'], [80, 'こども'], [250, 'おとな'], [600, 'なかよしマスター']];
+var PET_STAGE_HAT = ['', '', 'beret', 'nurse', 'crown'];    /* 育つと、すがたが変わる（こども→ベレー帽、おとな→ナースキャップ、マスター→おうかん） */
+var PET_STAGE_GIFT = [0, 20, 50, 100, 200];                  /* 育ったときのごほうびコイン */
 var PET_RATE = { hun:4, joy:3, cln:2 };     /* 1時間に下がる量 */
+var PET_STUDY_CAP = 30;                      /* 暗記でもらえるコインは1日30まで */
+/* きょうのミッション（check … できたか。off … 今日はできない日） */
+var PET_MISSIONS = [
+  { id:'visit',   icon:'👋', name:'会いにくる',         coins:5,  check:function(){ return true; } },
+  { id:'class',   icon:'🏫', name:'授業に出る（出席をつける）', coins:10,
+    off:function(){ return typeof classesForDate === 'function' && !classesForDate(today()).filter(function(c){ return !c.off; }).length; },
+    check:function(){
+      var td = today(), log = S.attendLog || {};
+      return Object.keys(log).some(function(n){ return (log[n] || []).some(function(x){ return x && x.date === td && (x.st === '出' || x.st === '遅'); }); });
+    } },
+  { id:'task',    icon:'✅', name:'課題を1つ終える',     coins:10,
+    check:function(){ var td = today(); return (S.tasks || []).some(function(t){ return t.done && t.mt && toYmd(new Date(Number(t.mt))) === td; }); } },
+  { id:'anki',    icon:'📚', name:'暗記カードを10まい',  coins:15,
+    check:function(){ return typeof ankiCountOn === 'function' && ankiCountOn(today()) >= 10; } },
+  { id:'care',    icon:'🍙', name:'ごはんをあげる',      coins:5,  check:function(){ return petDaySum('fed', today()) > 0; } },
+  { id:'kakeibo', icon:'🧾', name:'家計簿をつける',      coins:5,
+    check:function(){ var td = today(); return (S.spends || []).some(function(x){ return x.date === td || (x.mt && toYmd(new Date(Number(x.mt))) === td); }); } }
+];
+var PET_MISSION_ALL = 20;                    /* ぜんぶクリアのごほうび */
 
 function petAll(){ return (S.pets && typeof S.pets === 'object') ? S.pets : {}; }
 function petMeta(){ return Object.assign({ active:'', bonus:100, spent:0, bag:{}, room:[], pause:0 }, petAll()._ || {}); }
@@ -42,7 +66,65 @@ function petActiveId(){
 function petCoins(){
   var m = petMeta();
   var earned = (typeof charaFriend === 'function' ? charaFriend().pts : 0) * 5;
-  return Math.max(0, earned + (toNum(m.bonus) || 0) - (toNum(m.spent) || 0));
+  return Math.max(0, earned + (toNum(m.bonus) || 0) - (toNum(m.spent) || 0) + petDaySum('coins') - petDaySum('spent'));
+}
+/* ===== 日と端末ごとの記録 ===== */
+function petDays(){ return (S.petDays && typeof S.petDays === 'object' && !Array.isArray(S.petDays)) ? S.petDays : {}; }
+function petDayAdd(field, n){
+  S.petDays = petDays();
+  var k = today() + '|' + DEV.id;
+  var o = Object.assign({}, S.petDays[k]);
+  o[field] = (toNum(o[field]) || 0) + n;
+  o.mt = Date.now();
+  S.petDays[k] = o;
+  touch('petDays');
+}
+/* ymd を渡すとその日だけ、渡さないと全部の合計 */
+function petDaySum(field, ymd){
+  var d = petDays(), n = 0;
+  Object.keys(d).forEach(function(k){
+    if(k.indexOf('m:') === 0) return;
+    if(ymd && k.slice(0, 10) !== ymd) return;
+    n += toNum(d[k] && d[k][field]) || 0;
+  });
+  return n;
+}
+function petMissionState(ymd){ return Object.assign({ got:{} }, petDays()['m:' + (ymd || today())] || {}); }
+function petMissions(){
+  var st = petMissionState();
+  return PET_MISSIONS.map(function(x){
+    var off = x.off ? !!x.off() : false;
+    return { id:x.id, icon:x.icon, name:x.name, coins:x.coins, off:off, done:!off && !!x.check(), got:!!st.got[x.id] };
+  });
+}
+function petMissionClaim(id){
+  var list = petMissions(), mi = list.filter(function(x){ return x.id === id; })[0];
+  var st = petMissionState();
+  if(id === 'all'){
+    if(st.got.all || !list.every(function(x){ return x.off || x.got; })) return 0;
+    st.got = Object.assign({}, st.got, { all:1 });
+    S.petDays = petDays(); S.petDays['m:' + today()] = { got:st.got, mt:Date.now() }; touch('petDays');
+    petDayAdd('coins', PET_MISSION_ALL);
+    return PET_MISSION_ALL;
+  }
+  if(!mi || mi.off || !mi.done || mi.got) return 0;
+  st.got = Object.assign({}, st.got); st.got[id] = 1;
+  S.petDays = petDays(); S.petDays['m:' + today()] = { got:st.got, mt:Date.now() }; touch('petDays');
+  petDayAdd('coins', mi.coins);
+  return mi.coins;
+}
+/* 暗記カードをやったごほうび（anki.js から呼ぶ） */
+function petStudyReward(n){
+  n = toNum(n);
+  if(n <= 0) return 0;
+  var coins = Math.max(0, Math.min(n, PET_STUDY_CAP - petDaySum('studyCoins', today())));
+  if(coins){ petDayAdd('coins', coins); petDayAdd('studyCoins', coins); }
+  var id = petActiveId();
+  if(petNow(id) && petNow(id).stage > 0){
+    petUpdate(id, function(o){ o.exp += Math.ceil(n / 5); o.joy += Math.min(15, n); });
+    petSay(n + 'まいもがんばったね！' + (coins ? 'コイン' + coins + 'まい' : ''), 'cheer');
+  }
+  return coins;
 }
 function petStage(exp){
   var s = 0;
@@ -77,16 +159,26 @@ function petMood(o){
   if(o.joy >= 65) return { expr:'happy', say:'きょうもたのしいね' };
   return { expr:'normal', say:'なにしよっか？' };
 }
-/* 様子を変えて保存する */
+/* 様子を変えて保存する（育ったら、ごほうびのコインを入れて、次のセリフで知らせる） */
+var petLevelMsg = '';
 function petUpdate(id, fn){
   S.pets = S.pets || {};
+  var had = !!petAll()[id];
   var cur = petNow(id) || { name:charaById(id).name, born:Date.now(), hun:70, joy:70, cln:80, eng:80, exp:0, sleep:0 };
+  var s0 = petStage(toNum(cur.exp));
   fn(cur);
   ['hun', 'joy', 'cln', 'eng'].forEach(function(k){ cur[k] = Math.max(0, Math.min(100, Math.round(cur[k]))); });
   var save = { name:cur.name || charaById(id).name, born:cur.born || Date.now(), exp:Math.max(0, Math.round(cur.exp)),
     hun:cur.hun, joy:cur.joy, cln:cur.cln, eng:cur.eng, sleep:cur.sleep ? 1 : 0, at:Date.now(), mt:Date.now() };
   S.pets[id] = save;
   touch('pets');
+  var s1 = petStage(save.exp);
+  if(had && s1 > s0){
+    var gift = 0;
+    for(var s = s0 + 1; s <= s1; s++) gift += PET_STAGE_GIFT[s] || 0;
+    if(gift) petDayAdd('coins', gift);
+    petLevelMsg = (s1 >= 2 ? PET_STAGES[s1][1] + 'になったよ！' : '') + (gift ? 'ごほうび🪙' + gift : '');
+  }
 }
 function petMetaUpdate(fn){
   S.pets = S.pets || {};
@@ -100,11 +192,12 @@ function petMetaUpdate(fn){
 }
 function petPay(price){
   if(petCoins() < price){ toast('コインがたりません（あと' + (price - petCoins()) + '）', true); return false; }
-  petMetaUpdate(function(m){ m.spent = (toNum(m.spent) || 0) + price; });
+  petDayAdd('spent', price);
   return true;
 }
 var petLog = [];
 function petSay(text, expr){
+  if(petLevelMsg){ text = text + ' ' + petLevelMsg; petLevelMsg = ''; expr = 'sparkle'; }
   petLog.unshift({ t:Date.now(), text:text });
   petLog = petLog.slice(0, 6);
   if(typeof charaCheer === 'function' && charaLevel() >= 2) charaCheer(text, expr || 'happy', { short:1 });
@@ -123,8 +216,10 @@ function petSvg(id, o, size){
       '</svg></span>';
   }
   var scale = [0, .72, .86, 1, 1.08][o.stage] || 1;
-  return charaSvg({ id:id, size:Math.round(size * scale), expr:mood.expr, anim:o.sleep ? 'sway' : 'bounce', still:true,
-                    prop:o.sleep ? 'moon' : (o.stage >= 4 ? 'trophy' : '') });
+  var opt = { id:id, size:Math.round(size * scale), expr:mood.expr, anim:o.sleep ? 'sway' : 'bounce', still:true,
+              prop:o.sleep ? 'moon' : (o.stage >= 4 ? 'trophy' : '') };
+  if(PET_STAGE_HAT[o.stage]) opt.hat = PET_STAGE_HAT[o.stage];
+  return '<span class="petstage s' + o.stage + '">' + charaSvg(opt) + '</span>';
 }
 function petBar(key, label, icon, v){
   var tone = v < 25 ? 'low' : v < 50 ? 'mid' : 'ok';
@@ -186,6 +281,7 @@ function viewPet(){
     h += '<div class="petlist">' +
       '<button data-act="pet-game" data-v="star"><span class="pi">⭐</span><span class="pn">ほしキャッチ</span><span class="pp">20びょう</span></button>' +
       '<button data-act="pet-game" data-v="memory"><span class="pi">🃏</span><span class="pn">おぼえてタッチ</span><span class="pp">ペアをさがす</span></button>' +
+      '<button data-act="pet-game" data-v="quiz"><span class="pi">📝</span><span class="pn">おべんきょうクイズ</span><span class="pp">暗記カードから4択</span></button>' +
       (toNum(m.bag.ball) ? '<button data-act="pet-toy"><span class="pi">⚽</span><span class="pn">ボールであそぶ</span><span class="pp">きげん＋</span></button>' : '') +
       '</div><p class="note">ミニゲームでコインがもらえます。遊ぶと、げんきを少し使います。</p>';
   }
@@ -202,10 +298,36 @@ function viewPet(){
       }).join('') + '</div>';
   }
   h += '</div>';
+  /* きょうのミッション */
+  if(o.stage > 0){
+    var ms = petMissions(), stM = petMissionState();
+    var allDone = ms.every(function(x){ return x.off || x.got; });
+    h += section('きょうのミッション', ms.filter(function(x){ return x.got; }).length + '/' + ms.filter(function(x){ return !x.off; }).length,
+      ms.map(function(x){
+        return '<div class="row pmis' + (x.got ? ' got' : '') + '"><span class="pmi">' + x.icon + '</span><div class="grow"><div class="t">' + esc(x.name) + '</div>' +
+          '<div class="s">' + (x.off ? '今日はなし' : '🪙' + x.coins) + '</div></div>' +
+          (x.off ? '' : x.got ? '<span class="s2">✔ もらった</span>'
+            : x.done ? '<button class="mini" data-act="pet-claim" data-v="' + x.id + '">受けとる</button>'
+            : '<span class="s2">まだ</span>') + '</div>';
+      }).join('') +
+      '<div class="row pmis' + (stM.got.all ? ' got' : '') + '"><span class="pmi">🌈</span><div class="grow"><div class="t">ぜんぶクリア</div><div class="s">🪙' + PET_MISSION_ALL + '</div></div>' +
+        (stM.got.all ? '<span class="s2">✔ もらった</span>' : allDone ? '<button class="mini" data-act="pet-claim" data-v="all">受けとる</button>' : '<span class="s2">まだ</span>') + '</div>');
+  }
+  /* 育ちかた */
+  h += section('育ちかた', null, '<div class="pstages">' + PET_STAGES.map(function(s, i){
+    var here = i === o.stage, past = i < o.stage;
+    return '<div class="pst' + (here ? ' here' : past ? ' past' : '') + '"><div class="pstn">' + s[1] + '</div>' +
+      '<div class="s2">' + (i ? '育ち' + s[0] : 'スタート') + (PET_STAGE_GIFT[i] ? '・🪙' + PET_STAGE_GIFT[i] : '') + '</div>' +
+      (PET_STAGE_HAT[i] ? '<div class="s2">' + esc((CHARA_HATS.filter(function(x){ return x.id === PET_STAGE_HAT[i]; })[0] || {}).name || '') + 'をかぶる</div>' : '') + '</div>';
+  }).join('') + '</div>');
   h += section('コインのもらいかた', null,
     '<div class="row"><div class="grow s">課題を1つ終える</div><div class="t">🪙10</div></div>' +
     '<div class="row"><div class="grow s">今日の評価をもらう</div><div class="t">🪙15</div></div>' +
     '<div class="row"><div class="grow s">予定・メモを1つ入れる</div><div class="t">🪙5</div></div>' +
+    '<div class="row"><div class="grow s">バイトのシフト2つ</div><div class="t">🪙5</div></div>' +
+    '<div class="row"><div class="grow s">暗記カード1まい（1日' + PET_STUDY_CAP + 'まで）</div><div class="t">🪙1</div></div>' +
+    '<div class="row"><div class="grow s">きょうのミッション</div><div class="t">🪙5〜' + PET_MISSION_ALL + '</div></div>' +
+    '<div class="row"><div class="grow s">育って、すがたが変わる</div><div class="t">🪙20〜200</div></div>' +
     '<div class="row"><div class="grow s">ミニゲーム</div><div class="t">とれた数ぶん</div></div>' +
     '<div class="pillrow" style="margin-top:8px"><button data-act="pet-pause" class="' + (m.pause ? 'on' : '') + '">' +
       (m.pause ? 'おせわおやすみ中（押すと再開）' : 'おせわおやすみ（テスト期間など）') + '</button></div>' +
@@ -230,6 +352,7 @@ function petGameEl(){
       if(b.dataset.g === 'close') petGameEnd(true);
       if(b.dataset.g === 'star') petStarHit(b);
       if(b.dataset.g === 'card') petCardFlip(b);
+      if(b.dataset.g === 'quiz') petQuizPick(b);
     });
   }
   return el;
@@ -239,11 +362,13 @@ function petGameStart(kind){
   if(!o) return;
   if(o.sleep){ toast('ねているよ。おこしてからあそぼう', true); return; }
   if(o.eng < 10){ toast('げんきがないみたい。ねかせてあげよう', true); return; }
+  if(kind === 'quiz' && !petQuizMake()){ toast('暗記カードが4まい以上あると遊べます（暗記タブで作れます）', true); return; }
   var el = petGameEl();
   el.classList.add('on');
   document.body.classList.add('petplaying');
   petGame = { kind:kind, id:id, score:0, t0:Date.now(), timers:[] };
   if(kind === 'star') petStarRun(el);
+  else if(kind === 'quiz') petQuizRun(el);
   else petMemoryRun(el);
 }
 function petStarRun(el){
@@ -337,11 +462,63 @@ function petGameEnd(quit){
     coins = g.score * 2 + (g.score >= 6 ? Math.max(0, 30 - Math.floor(secs / 4)) : 0);
     joy = g.score * 4;
   }
+  if(g.kind === 'quiz'){ coins = g.score * 3; joy = g.score * 4; }
   if(quit && !g.score){ render(); return; }
   petUpdate(g.id, function(o){ o.joy += joy; o.eng -= 10; o.exp += Math.ceil(coins / 2) + 2; });
-  petMetaUpdate(function(m){ m.bonus = (toNum(m.bonus) || 0) + coins; });
+  petDayAdd('coins', coins);
   commit();
-  petSay((g.kind === 'star' ? 'ほし ' + g.score + 'こ！' : 'ペア ' + g.score + 'こ！') + 'コイン' + coins + 'まいもらったよ', 'cheer');
+  petSay((g.kind === 'star' ? 'ほし ' + g.score + 'こ！' : g.kind === 'quiz' ? g.score + 'もん せいかい！' : 'ペア ' + g.score + 'こ！') + 'コイン' + coins + 'まいもらったよ', 'cheer');
+}
+/* ===== おべんきょうクイズ（暗記カードから4択） ===== */
+var PET_QUIZ_N = 5;
+function petQuizPool(){
+  return (Array.isArray(S.cards) ? S.cards : []).filter(function(c){ return c && c.q && c.a; });
+}
+function petQuizMake(){
+  var pool = petQuizPool();
+  var answers = [];
+  pool.forEach(function(c){ if(answers.indexOf(c.a) < 0) answers.push(c.a); });
+  if(pool.length < 4 || answers.length < 4) return null;
+  return ctShuffle(pool, Date.now() % 100000).slice(0, PET_QUIZ_N).map(function(c, i){
+    var wrong = ctShuffle(answers.filter(function(a){ return a !== c.a; }), (Date.now() >> 2) % 100000 + i).slice(0, 3);
+    var choices = ctShuffle(wrong.concat([c.a]), (Date.now() >> 4) % 100000 + i * 7);
+    return { id:c.id, q:c.q, a:c.a, choices:choices };
+  });
+}
+function petQuizRun(el){
+  var g = petGame;
+  g.qs = petQuizMake() || [];
+  g.i = 0; g.lock = false;
+  petQuizShow(el);
+}
+function petQuizShow(el){
+  var g = petGame, q = g.qs[g.i];
+  if(!q){ petGameEnd(false); return; }
+  el.innerHTML = '<div class="pgbox"><div class="pghd"><b>おべんきょうクイズ</b><span class="pgsc">⭕ <b id="pg_sc">' + g.score + '</b>/' + g.qs.length + '</span>' +
+    '<span id="pg_tm">' + (g.i + 1) + 'もんめ</span><button data-g="close" class="mini">やめる</button></div>' +
+    '<div class="pgquiz"><div class="pgpet">' + charaSvg({ id:g.id, size:56, expr:'think', still:true }) + '</div>' +
+    '<div class="pgq">' + esc(q.q) + '</div>' +
+    q.choices.map(function(c, i){ return '<button class="pgch" data-g="quiz" data-i="' + i + '">' + esc(c) + '</button>'; }).join('') +
+    '</div></div>';
+}
+function petQuizPick(b){
+  var g = petGame;
+  if(!g || g.lock) return;
+  var q = g.qs[g.i], pick = q.choices[toNum(b.dataset.i)];
+  var right = pick === q.a;
+  g.lock = true;
+  if(right) g.score++;
+  if(typeof ankiLog === 'function') ankiLog(right);      /* クイズも暗記の枚数に数える */
+  b.classList.add(right ? 'right' : 'wrong');
+  if(!right){
+    Array.prototype.forEach.call(document.querySelectorAll('.pgch'), function(x, i){ if(q.choices[i] === q.a) x.classList.add('right'); });
+  }
+  var sc = document.getElementById('pg_sc'); if(sc) sc.textContent = g.score;
+  setTimeout(function(){
+    if(!petGame) return;
+    g.i++; g.lock = false;
+    petQuizShow(document.getElementById('petgame'));
+  }, right ? 700 : 1400);
 }
 
 /* ============================== 操作 ============================== */
@@ -357,6 +534,13 @@ function petAction(act, t){
     commit(); petSay('たまごをもらったよ。あたためてね', 'surprise'); return true;
   }
   if(act === 'pet-panel'){ petPanel = (petPanel === t.dataset.v) ? '' : t.dataset.v; render(); return true; }
+  if(act === 'pet-claim'){
+    var got = petMissionClaim(t.dataset.v);
+    if(!got){ toast('まだ受けとれません', true); return true; }
+    var po = petNow(id);
+    if(po && po.stage > 0) petUpdate(id, function(x){ x.joy += 5; x.exp += 2; });
+    commit(); petSay('ミッションクリア！コイン' + got + 'まい', 'sparkle'); return true;
+  }
   var o = need();
   if(!o) return true;
   if(act === 'pet-warm'){
@@ -382,6 +566,7 @@ function petAction(act, t){
     if(toNum(m.bag[f.id]) > 0) petMetaUpdate(function(mm){ mm.bag[f.id] = toNum(mm.bag[f.id]) - 1; });
     else if(!petPay(f.price)) return true;
     petUpdate(id, function(x){ x.hun += f.hun; x.joy += f.joy + (f.id === 'fav' ? 8 : 0); x.cln += (f.cln || 0); x.exp += 3; });
+    petDayAdd('fed', 1);
     commit(); petSay((f.id === 'fav' ? (k.like || 'だいこうぶつ') : f.name) + '、おいしい！', 'eat'); return true;
   }
   if(act === 'pet-buy'){

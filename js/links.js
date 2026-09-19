@@ -47,10 +47,21 @@ function inboxApply(it){
   if(!it || !it.kind) return '';
   var d = new Date(Number(it.at) || Date.now()), ymd = toYmd(d), min = d.getHours() * 60 + d.getMinutes();
   if(it.kind === 'pay'){
-    var x = (typeof kbAdd === 'function') ? kbAdd({ amount:it.amount, title:it.shop || it.card || 'Apple Pay', date:ymd,
-      src:'wallet', acct:it.card || '', ref:'w-' + it.id }) : null;
-    return x ? 'Apple Pay ' + yen(x.amount) + 'を家計簿に記録' : '';
+    var mail = /^gm-/.test(String(it.ref || ''));      /* カードの利用メールから（橋わたしがGmailを読んだもの） */
+    var x = (typeof kbAdd === 'function') ? kbAdd({ amount:it.amount, title:it.shop || it.card || 'Apple Pay', date:isYmd(it.date) ? it.date : ymd,
+      src:mail ? 'mail' : 'wallet', acct:it.card || '', ref:it.ref || ('w-' + it.id) }) : null;
+    return x ? (mail ? (it.card || 'カード') + 'のメールから ' : 'Apple Pay ') + yen(x.amount) + 'を家計簿に記録' : '';
   }
+  if(it.kind === 'task' && it.text){
+    S.tasks.push({ id:uid('tk'), title:String(it.text).slice(0, 80), subject:'', due:isYmd(it.due) ? it.due : '', time:'', done:0,
+      memo:'Discord・ショートカットから', subs:[], photos:[], pri:1, how:'', url:'', mt:Date.now() });
+    return '課題を1件追加';
+  }
+  if(it.kind === 'notice' && it.text){
+    if(typeof notice_ === 'function') notice_(String(it.text).slice(0, 300), 'warn');
+    return String(it.text).split('\n')[0].slice(0, 40);
+  }
+  if(it.kind === 'ai' && typeof gasAiApply === 'function') return gasAiApply(it);
   if(it.kind === 'arrive') return arriveAttend(ymd, min);
   if(it.kind === 'leave'){
     S.transitLog = (S.transitLog || []).filter(function(r){ return r.date !== ymd; });
@@ -114,6 +125,12 @@ function buildSummary(){
   var b = (typeof budget === 'function') ? budget() : null;
   var nextItem = normItems().filter(function(x){ return isYmd(x.date) && x.date > td && !(x.src === 'task' && x.done) && x.src !== 'cls'; })
     .sort(function(a, b2){ return a.date.localeCompare(b2.date); })[0];
+  /* 明日（Discordで「明日の予定は？」と聞かれたとき用） */
+  var tm = shiftDate(td, 1), tlines = [];
+  classesForDate(tm).filter(function(c){ return !c.off; }).forEach(function(c){ tlines.push(c.period + '限 ' + shortName(c.name) + (c.room ? '（' + c.room + '）' : '')); });
+  normItems().filter(function(x){ return x.date === tm && x.src !== 'cls' && !(x.src === 'task' && x.done); }).slice(0, 5)
+    .forEach(function(x){ tlines.push((x.time ? x.time + ' ' : '') + x.title); });
+  if(typeof morningItems === 'function'){ var mi = morningItems(tm); if(mi.length) tlines.push('持ち物：' + mi.join('・')); }
   return {
     at: Date.now(),
     title: (now.getMonth() + 1) + '/' + now.getDate() + '（' + WDAY[now.getDay()] + '）',
@@ -121,7 +138,9 @@ function buildSummary(){
     next: nextItem ? { date:nextItem.date, title:nextItem.title } : null,
     money: b ? '自由に使えるお金 ' + yen(b.free) : '',
     chara: (typeof charaLevel === 'function' && charaLevel() > 0) ? charaNow().name + '「' + charaLine('greet') + '」' : '',
-    alarm: alarmPlan()
+    alarm: alarmPlan(),
+    tomorrow: { title:ymdLabel(tm), lines:tlines.slice(0, 10) },
+    study: (typeof ankiDueList === 'function') ? { due:ankiDueList('').length, today:ankiCountOn(td), streak:ankiStreak() } : null
   };
 }
 async function summaryPush(force){
@@ -343,6 +362,16 @@ function linksSettings(){
   /* メモ */
   h += '<h3 class="lk">📝 Siri・ショートカットからメモ</h3>'+
     '<p class="note" style="margin-top:0">「テキストを入力」→ そのテキストをURLの <b>メモ</b> に置きかえて「URLの内容を取得」。 '+copyBtn('URLをコピー', shortUrl('in', '&kind=memo&text=メモ'))+'</p>';
+
+  /* Goodnotes のページを送る（共有ボタンから） */
+  h += '<h3 class="lk">📓 Goodnotesのページを送る（AIが読んで、暗記カード・メモ・課題の候補に）</h3>'+
+    (toNum(GAS.ver) >= 3 ? '' : '<div class="bn amber"><span class="ic">!</span><span>橋わたしを新しい版（v3）にすると使えます。</span></div>')+
+    '<ol class="steps"><li>ショートカットアプリ →「＋」→ 名前を「くらしの手帳に送る」にする → 右上の ⓘ →「共有シートに表示」をオン（受け取る種類は「イメージ」と「PDF」）</li>'+
+    '<li>アクション「イメージのサイズを変更」（幅 1600）→「イメージを変換」（JPEG）→「Base64エンコード」</li>'+
+    '<li>アクション「URLの内容を取得」：URLは '+copyBtn('URLをコピー', String(GAS.url || ''))+'、方法は <b>POST</b>、本文は <b>JSON</b> にして、次の4つを足す：'+
+      '<br><b>k</b>＝'+copyBtn('短い合言葉をコピー', shortKey())+'　<b>action</b>＝in　<b>kind</b>＝img　<b>data</b>＝（「Base64エンコード」の結果）</li>'+
+    '<li>Goodnotesで送りたいページを開いて、共有 →「画像として書き出す」→「くらしの手帳に送る」</li></ol>'+
+    '<p class="note">⚠️ 実習記録など、患者さんの情報があるページは送らないでください。AIは10分ごとに読みます。「AIのカギ」を預けていないと読めません（設定 › ほかの端末・Gmail・AIの読み取り）。</p>';
   return h;
 }
 function tasksSettings(){
@@ -422,7 +451,8 @@ function linksTick(){
   if(Date.now() - (Number(GAS.pingAt) || 0) > 12 * 3600000){
     GAS.pingAt = Date.now(); saveGas();
     gasCall('ping').then(function(r){
-      GAS.ver = r.ver || 0; GAS.trigger = r.trigger ? 1 : 0; saveGas();
+      GAS.ver = r.ver || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; saveGas();
+      if(typeof gasUrlShare === 'function'){ gasUrlShare(); persist(); }
       if(r.ver && !r.trigger) return gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); });
     })['catch'](function(e){ logErr('Google連携', e.message); });
   }

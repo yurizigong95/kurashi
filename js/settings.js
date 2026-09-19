@@ -157,6 +157,8 @@ function viewSettings(){
   + (typeof voiceSettings === 'function' ? foldSection('voice', '声・AIの登録', S.ui.voiceEngine === 'gemini' ? 'AIの声' : '端末の声', voiceSettings()) : '')
 
   + foldSection('gas', 'Google連携（カレンダー・ドライブ・ToDo・通知）', gasReady() ? '✓ つながっています' : '未設定', gasSettings())
+  + (typeof gasPlusSettings === 'function' ? foldSection('gasplus', 'ほかの端末・Gmail・AIの読み取り・スプレッドシート',
+      !gasReady() ? (gasSharedUrl() ? 'コードでつなげます' : '未設定') : toNum(GAS.ver) >= 3 ? 'v3' : '新しい版にしてください', gasPlusSettings()) : '')
   + (typeof notifySettings === 'function' ? foldSection('notify', '通知（スマホ・Discord）', notifyPrefs().push || notifyPrefs().discord ? 'オン' : 'オフ', notifySettings()) : '')
   + (typeof linksSettings === 'function' ? foldSection('links', 'iPhone・ショートカット・ウィジェット', shortKey() ? '準備OK' : '未設定', linksSettings()) : '')
   + (typeof tasksSettings === 'function' ? foldSection('gtasks', 'Google ToDoリスト', linkPrefs().tasks ? '同期中' : 'オフ', tasksSettings()) : '')

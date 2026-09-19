@@ -226,10 +226,11 @@ function onLegacyDoc(data){
    WHOLE    … 設定のかたまり（新しい方で丸ごと入れ替える）
    MAPS     … 名前をキーにした表（両方の端末で足したぶんを残す）
    LOGS     … 記録の配列（重複を消してつなげる）                       */
-var LISTS = ['spends','income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices','breaks'];
+var LISTS = ['spends','income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices','breaks','cards','suggests'];
 var WHOLE_KEYS = ['terms','commute','ui','transit','termsList','chatQuick'];
 var MAP_KEYS = ['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone',
-                'progress','taskLog','syllabus','dayReview','aiUse','chatMeta','aiLog','cloud','pets','weekReview','charaTalk'];
+                'progress','taskLog','syllabus','dayReview','aiUse','chatMeta','aiLog','cloud','pets','weekReview','charaTalk',
+                'studyLog','petDays'];
 var LOG_KEYS = ['transitLog','aiFeedback','aiMemo','trash'];
 /* APIキー・Googleの合言葉は送らない（大事な鍵なので、端末ごとに入れる） */
 var SET_KEYS = ['smbcDay','rakutenDay','geminiModel','aiTone','aiLen','aiStyle',
@@ -245,11 +246,12 @@ var SYNC_PARTS = {
   plan:  { keys:['events','tasks','exams','health','holidays','breaks'], meta:[] },
   money: { keys:['income','fixed','balances','shifts','spends'], meta:[] },
   notes: { keys:['notes','notices'], meta:[] },
-  maps:  { keys:['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog','syllabus','dayReview','cloud','pets','weekReview'],
-           meta:['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog','syllabus','dayReview','cloud','pets','weekReview'] },
+  maps:  { keys:['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog','syllabus','dayReview','cloud','pets','weekReview','petDays'],
+           meta:['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog','syllabus','dayReview','cloud','pets','weekReview','petDays'] },
   ai:    { keys:['chat','chatRooms','chatMeta','chatQuick','aiUse','aiLog','aiFeedback','aiMemo','charaTalk'],
            meta:['chatMeta','chatQuick','aiUse','aiLog','aiFeedback','aiMemo','charaTalk'] },
-  logs:  { keys:['transitLog','trash'], meta:['transitLog','trash'] }
+  logs:  { keys:['transitLog','trash'], meta:['transitLog','trash'] },
+  study: { keys:['cards','studyLog','suggests'], meta:['studyLog'] }      /* おせわの毎日の記録（petDays）は、おせわと同じ maps に入れる（1回の操作で書くかたまりをふやさない） */
 };
 function syncSettingsOf(){
   /* どの端末でも同じキーがそろうように、ないものは null にする（合わせたときに古い値が残らない） */

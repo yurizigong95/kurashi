@@ -302,6 +302,13 @@ function viewDay(ymd, pageKey){
             '<span class="chev">›</span></div>';
         }).join(''));
   };
+  parts.items = function(){
+    if(typeof morningLines !== 'function') return '';
+    var lines = morningLines(ymd);
+    if(!lines.length) return '';
+    return secWrap('items', (isToday?'今日':'明日')+'の持ち物', null,
+      lines.map(function(l){ return '<div class="row"><div class="grow">'+esc(l)+'</div></div>'; }).join(''));
+  };
   parts.transit = function(){ var tr = transitFor(ymd); return tr ? '<div class="tsec">'+tr+'</div>' : ''; };
   parts.brief = function(){ return isToday ? morningBriefCard() : ''; };
   parts.review = function(){ return isToday ? (nightReviewCard() + (reviewHistOpen ? reviewHistory() : '')) : ''; };

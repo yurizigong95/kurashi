@@ -1364,3 +1364,50 @@ body[data-theme="dark"] .petlist button{background:rgba(255,255,255,.06)}
 .pgcard.open .front{transform:rotateY(0)}
 body.petplaying #buddy, body.petplaying #chwalk{display:none}
 @media (prefers-reduced-motion:reduce){ .pgcard .back, .pgcard .front{transition:none} .petegg svg{animation:none} }
+
+/* ================= 暗記カード ================= */
+.ankicard{text-align:center; padding:18px 16px 16px}
+.ankideck{margin-bottom:6px}
+.ankiq{font-size:1.15em; font-weight:700; line-height:1.6; margin:6px 0 14px; white-space:pre-wrap; word-break:break-word}
+.ankia{font-size:1.02em; line-height:1.65; padding:12px 10px; margin:0 0 14px; border-top:1px dashed var(--edge); white-space:pre-wrap; word-break:break-word; color:var(--ink)}
+.ankigrades{display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:6px}
+.ankigrades button{display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 4px; border-radius:14px;
+  border:1px solid var(--edge); background:rgba(255,255,255,.55); font:inherit; font-size:.82em; color:var(--ink); cursor:pointer}
+.ankigrades button .s{font-size:.8em}
+.ankigrades .g-again{border-color:#E7A0A0; background:#FDECEC}
+.ankigrades .g-hard{border-color:#E8C27A; background:#FFF4DE}
+.ankigrades .g-good{border-color:#8FCDA8; background:#E8F6EE}
+.ankigrades .g-easy{border-color:#98B8E8; background:#E9F0FC}
+body[data-theme="dark"] .ankigrades button{background:rgba(255,255,255,.06); color:var(--ink)}
+.ankidone{text-align:center}
+.ankidone .big{font-size:2.4em; line-height:1.2}
+.ankirow{align-items:flex-start; gap:8px}
+.ankirow input[type="checkbox"]{margin-top:4px; flex:0 0 auto}
+.ankirow .t{white-space:pre-wrap; word-break:break-word}
+.ankirow .s{white-space:pre-wrap; word-break:break-word}
+
+/* ================= おせわ：育ちかた・ミッション・クイズ ================= */
+.petstage{display:inline-block}
+.petstage.s3 svg{filter:drop-shadow(0 0 6px rgba(255,255,255,.9))}
+.petstage.s4 svg{filter:drop-shadow(0 0 10px rgba(255,214,102,.95)); animation:petGlow 2.4s ease-in-out infinite}
+@keyframes petGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(255,214,102,.7))} 50%{filter:drop-shadow(0 0 14px rgba(255,214,102,1))}}
+.pmis{align-items:center; gap:8px}
+.pmis .pmi{font-size:1.3em; width:1.6em; text-align:center; flex:0 0 auto}
+.pmis.got{opacity:.62}
+.pstages{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:6px}
+.pst{padding:8px 4px; border-radius:12px; border:1px solid var(--edge); text-align:center; font-size:.8em; line-height:1.4}
+.pst .pstn{font-weight:700}
+.pst.past{opacity:.6}
+.pst.here{box-shadow:0 0 0 2px var(--accent); background:rgba(255,255,255,.4)}
+.pgquiz{display:flex; flex-direction:column; gap:8px; padding:6px 2px 4px}
+.pgquiz .pgpet{text-align:center}
+.pgq{font-weight:700; line-height:1.6; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.7); color:#3A2A33; white-space:pre-wrap}
+.pgch{padding:11px 12px; border-radius:14px; border:1px solid var(--edge); background:#fff; color:#3A2A33; font:inherit; font-size:.9em; text-align:left; cursor:pointer; line-height:1.45}
+.pgch.right{background:#E3F5EA; border-color:#5DB885}
+.pgch.wrong{background:#FDE8E8; border-color:#E08A8A}
+@media (prefers-reduced-motion:reduce){ .petstage.s4 svg{animation:none} }
+
+/* ================= ほかの端末をつなぐ ================= */
+.pairbox{text-align:center; padding:12px; margin:0 0 10px; border-radius:16px; border:1px dashed var(--accent); background:rgba(255,255,255,.45)}
+.paircode{font-size:2.2em; font-weight:800; letter-spacing:.12em; color:var(--accent); margin-top:4px}
+body[data-theme="dark"] .pairbox{background:rgba(255,255,255,.05)}

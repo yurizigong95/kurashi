@@ -1,10 +1,10 @@
 {
-    "build":  "2026-09-19a",
-    "made":  "2026-09-19 11:29",
+    "build":  "2026-09-19b",
+    "made":  "2026-09-19 15:06",
     "files":  [
                   {
                       "path":  "css/app.css",
-                      "sha256":  "5999baafd1dda80f"
+                      "sha256":  "eb710166ce816536"
                   },
                   {
                       "path":  "css/styles.css",
@@ -12,11 +12,11 @@
                   },
                   {
                       "path":  "gas/appsscript.json",
-                      "sha256":  "0cbb9bd4ef7ce047"
+                      "sha256":  "d7f2fb582b3baefb"
                   },
                   {
                       "path":  "gas/Code.gs",
-                      "sha256":  "fcabe2485afeeb49"
+                      "sha256":  "f94251cd1cca7ace"
                   },
                   {
                       "path":  "icon-180.png"
@@ -29,7 +29,7 @@
                   },
                   {
                       "path":  "index.html",
-                      "sha256":  "54e719d5ee349232"
+                      "sha256":  "35d9d50870578ae2"
                   },
                   {
                       "path":  "js/ai.js",
@@ -38,6 +38,10 @@
                   {
                       "path":  "js/ai-plus.js",
                       "sha256":  "ff760a3c17c5b24c"
+                  },
+                  {
+                      "path":  "js/anki.js",
+                      "sha256":  "169151f9a89eebb3"
                   },
                   {
                       "path":  "js/calendar.js",
@@ -77,7 +81,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "1eb43f157f5814fe"
+                      "sha256":  "e6d41d5467ea77a7"
                   },
                   {
                       "path":  "js/data.js",
@@ -88,8 +92,12 @@
                       "sha256":  "dd061a7623e7e829"
                   },
                   {
+                      "path":  "js/gasplus.js",
+                      "sha256":  "9bd9019c9db1f418"
+                  },
+                  {
                       "path":  "js/google.js",
-                      "sha256":  "c6292da41d04fb43"
+                      "sha256":  "89430e10e957562f"
                   },
                   {
                       "path":  "js/kakeibo.js",
@@ -97,11 +105,11 @@
                   },
                   {
                       "path":  "js/links.js",
-                      "sha256":  "8f2907e429d6a566"
+                      "sha256":  "b8cae072ec377d6d"
                   },
                   {
                       "path":  "js/main.js",
-                      "sha256":  "33762010bbc57e1a"
+                      "sha256":  "6c777d24596b7f87"
                   },
                   {
                       "path":  "js/money.js",
@@ -109,7 +117,7 @@
                   },
                   {
                       "path":  "js/notify.js",
-                      "sha256":  "362da64065f65d14"
+                      "sha256":  "4af94db513326506"
                   },
                   {
                       "path":  "js/ops.js",
@@ -117,7 +125,7 @@
                   },
                   {
                       "path":  "js/pet.js",
-                      "sha256":  "af71021e6fbb9eac"
+                      "sha256":  "f151bb9d49fb49f7"
                   },
                   {
                       "path":  "js/review.js",
@@ -129,11 +137,11 @@
                   },
                   {
                       "path":  "js/settings.js",
-                      "sha256":  "0017282cb1a35252"
+                      "sha256":  "7c16e592b6b77660"
                   },
                   {
                       "path":  "js/sync.js",
-                      "sha256":  "1a3573327d068cb3"
+                      "sha256":  "6e0e8f54170982bf"
                   },
                   {
                       "path":  "js/timetable.js",
@@ -141,15 +149,15 @@
                   },
                   {
                       "path":  "js/today.js",
-                      "sha256":  "2a3bfbb360ab3517"
+                      "sha256":  "f331ba8aa52c7820"
                   },
                   {
                       "path":  "js/todo.js",
-                      "sha256":  "ceafcdd8b1413501"
+                      "sha256":  "e4d9cbe226d031ae"
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "35dd12c79e3c1814"
+                      "sha256":  "7efa3d729b9b53b3"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -161,7 +169,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "04aa5d6ab71c2d5a"
+                      "sha256":  "cc0399ae45f34d44"
                   }
               ]
 }

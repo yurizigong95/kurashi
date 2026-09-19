@@ -13,7 +13,85 @@ var PUSH = (function(){
 function savePush(){ try{ localStorage.setItem(PUSH_KEY, JSON.stringify(PUSH)); }catch(e){} }
 function notifyPrefs(){
   return Object.assign({ push:1, discord:0, dl3:1, dl1:1, dl0:1, dlTime:'20:00', dlMorning:'07:30',
-    exam:1, cls:1, clsLead:10, quiet:1, vapid:'' }, S.ui.notify || {});
+    exam:1, cls:1, clsLead:10, quiet:1, vapid:'', am:1, amTime:'06:45', pet:1 }, S.ui.notify || {});
+}
+
+/* ===== 朝の持ち物 =====
+   その日の授業・予定・テストの言葉から持ち物を決める。
+   ・「〜持参」と書いてあれば、そのまま持ち物にする
+   ・自分で決めたきまり（「実習」なら白衣…）に合うものを足す
+   ・天気（今日・明日だけ）と、暗記の復習の枚数も入れる */
+var AM_RULES_DEFAULT = [
+  { k:'実習', v:'白衣・名札・聴診器・ナースシューズ' },
+  { k:'テスト|試験|確認テスト', v:'筆記用具・学生証' },
+  { k:'体育|スポーツ', v:'運動ぐつ・運動着' }
+];
+function amRules(){ var r = notifyPrefs().amRules; return Array.isArray(r) ? r : AM_RULES_DEFAULT; }
+function amTexts(ymd){
+  var out = [];
+  if(typeof classesForDate === 'function') classesForDate(ymd).filter(function(c){ return !c.off; }).forEach(function(c){ out.push(c.name); });
+  (S.events || []).forEach(function(e){
+    if(e.date === ymd || (isYmd(e.dateEnd) && e.date <= ymd && ymd <= e.dateEnd)) out.push((e.title || '') + ' ' + (e.memo || ''));
+  });
+  (S.exams || []).forEach(function(x){ if(x.date === ymd) out.push((x.subject || '') + ' ' + (x.title || '') + ' テスト'); });
+  (S.tasks || []).forEach(function(t){ if(!t.done && t.due === ymd) out.push((t.title || '') + ' ' + (t.memo || '')); });
+  (S.shifts || []).forEach(function(s){ if(s.date === ymd) out.push('バイト'); });
+  return out;
+}
+function morningItems(ymd){
+  var items = [], seen = {};
+  var add = function(s){
+    String(s || '').split(/[、・,，\/／]/).forEach(function(x){
+      x = x.replace(/^[\s★☆●◆※]+|[\s。]+$/g, '').trim();
+      if(x && x.length <= 20 && !seen[x]){ seen[x] = 1; items.push(x); }
+    });
+  };
+  var texts = amTexts(ymd);
+  texts.forEach(function(t){
+    var re = /([^\s★☆。！!（(）)]+?)を?持参/g, m;
+    while((m = re.exec(t))) add(m[1]);
+  });
+  amRules().forEach(function(r){
+    if(!r || !r.k || !r.v) return;
+    var re; try{ re = new RegExp(r.k); }catch(e){ return; }
+    if(texts.some(function(t){ return re.test(t); })) add(r.v);
+  });
+  return items;
+}
+/* 天気（今日・明日のぶんだけ分かる） */
+function morningWx(ymd){
+  if(typeof weather === 'undefined' || weather.state !== 'ok') return [];
+  var idx = ymd === today() ? 0 : ymd === shiftDate(today(), 1) ? 1 : -1;
+  if(idx < 0) return [];
+  try{
+    var pick = function(w, key){ return Number(((w.daily || {})[key] || [])[idx]); };
+    var pop = Math.max(pick(weather.sanda, 'precipitation_probability_max') || 0, pick(weather.school, 'precipitation_probability_max') || 0);
+    var tmax = pick(weather.school, 'temperature_2m_max'), tmin = Math.min(pick(weather.sanda, 'temperature_2m_min'), pick(weather.school, 'temperature_2m_min'));
+    var out = [];
+    if(pop >= 50) out.push('☔ 傘（降水' + pop + '%）');
+    else if(pop >= 30) out.push('🌂 折りたたみ傘（降水' + pop + '%）');
+    if(isFinite(tmax) && isFinite(tmin) && (tmax - tmin >= 10 || tmin <= 8)) out.push('🧥 上着（' + Math.round(tmin) + '〜' + Math.round(tmax) + '℃）');
+    return out;
+  }catch(e){ return []; }
+}
+function morningLines(ymd){
+  var lines = [];
+  var items = morningItems(ymd);
+  if(items.length) lines.push('🎒 ' + items.join('・'));
+  lines = lines.concat(morningWx(ymd));
+  if(typeof ankiDueList === 'function'){
+    var n = ankiDueList('', ymd).length;
+    if(n) lines.push('📚 暗記の復習 ' + n + '枚');
+  }
+  return lines;
+}
+/* おせわの子が、おなかをすかせる・よごれる時刻（夜中なら、次の朝にずらす） */
+function petAlertAt(at, p){
+  var d = new Date(at), m = d.getHours() * 60 + d.getMinutes();
+  var mo = minutesOf(p.dlMorning) || 450;
+  if(m < 360){ d.setHours(Math.floor(mo / 60), mo % 60, 0, 0); return d.getTime(); }
+  if(m > 1410){ d.setDate(d.getDate() + 1); d.setHours(Math.floor(mo / 60), mo % 60, 0, 0); return d.getTime(); }
+  return at;
 }
 function notifySet(patch){ S.ui.notify = Object.assign({}, notifyPrefs(), patch); touch('ui'); }
 function pushSupported(){
@@ -32,10 +110,34 @@ function notifyAt(ymd, hhmm){
 function notifyJobs(){
   var p = notifyPrefs(), now = Date.now(), end = now + 7 * 86400000, out = [];
   if(!p.push && !p.discord) return out;
-  var add = function(id, at, title, body){
+  var add = function(id, at, title, body, extra){
     if(!at || at <= now || at > end) return;
-    out.push({ id:id, at:at, title:title, body:body || '', url:'./', push:p.push ? 1 : 0, discord:p.discord ? 1 : 0 });
+    out.push(Object.assign({ id:id, at:at, title:title, body:body || '', url:'./', push:p.push ? 1 : 0, discord:p.discord ? 1 : 0 }, extra || {}));
   };
+  /* 朝の持ち物（wx … 送る直前に、橋わたしがその日の天気を入れ直す） */
+  if(p.am){
+    for(var di = 0; di < 7; di++){
+      var dy = shiftDate(today(), di);
+      var lines = morningLines(dy);
+      if(lines.length) add('am-' + dy, notifyAt(dy, p.amTime), '🎒 今日の持ち物', lines.join('\n').slice(0, 190), { wx:1 });
+    }
+  }
+  /* おせわの子（おなか・きれい） */
+  if(p.pet && typeof petNow === 'function' && typeof petActiveId === 'function'){
+    var pid = petActiveId(), po = petNow(pid);
+    if(po && po.stage > 0 && !petMeta().pause){
+      var nm = po.name || charaById(pid).name;
+      var hr = PET_RATE.hun * (po.sleep ? 0.5 : 1);
+      if(po.hun > 20){
+        var ah = petAlertAt(now + (po.hun - 20) / hr * 3600000, p);
+        add('pet-h-' + pid + '-' + Math.round(ah / 600000), ah, '🍙 ' + nm + 'がおなかをすかせているよ', 'ごはんをあげてね（おせわタブ）');
+      }
+      if(po.cln > 20){
+        var ac = petAlertAt(now + (po.cln - 20) / PET_RATE.cln * 3600000, p);
+        add('pet-c-' + pid + '-' + Math.round(ac / 600000), ac, '🫧 ' + nm + 'がおふろに入りたいみたい', 'おふろに入れてあげてね（おせわタブ）');
+      }
+    }
+  }
   /* 締切の段階通知 */
   S.tasks.forEach(function(t){
     if(t.done || !isYmd(t.due)) return;
@@ -186,6 +288,19 @@ function notifySettings(){
     [5, 10, 15, 30].map(function(n){ return '<button data-act="nt-set" data-k="clsLead" data-v="'+n+'" class="'+(toNum(p.clsLead)===n?'on':'')+'">'+n+'分前</button>'; }).join('')+'</div>'+
     '<div class="pillrow"><button data-act="nt-set" data-k="quiet" data-v="'+(p.quiet ? 0 : 1)+'" class="'+(p.quiet?'on':'')+'">夜中（23:30〜6:00）は送らない</button></div>'+
     '<button class="btn ghost" data-act="nt-save">時刻を保存</button>';
+  /* 朝の持ち物・おせわ */
+  var tmr = shiftDate(today(), 1), prev = morningLines(tmr);
+  h += '<label class="f" style="margin-top:12px">朝の持ち物</label><div class="pillrow">'+
+    '<button data-act="nt-set" data-k="am" data-v="'+(p.am ? 0 : 1)+'" class="'+(p.am?'on':'')+'">'+(p.am ? '知らせる' : '知らせない')+'</button></div>'+
+    '<div class="field"><label class="f" for="nt_am">知らせる時刻</label><input id="nt_am" value="'+esc(p.amTime)+'"></div>'+
+    '<div class="field"><label class="f" for="nt_rules">持ち物のきまり（1行に「言葉＝持ち物」。言葉は | で「または」）</label>'+
+      '<textarea id="nt_rules" rows="4">'+esc(amRules().map(function(r){ return r.k + '＝' + r.v; }).join('\n'))+'</textarea></div>'+
+    '<button class="btn ghost" data-act="nt-am-save">持ち物の設定を保存</button>'+
+    '<p class="note">予定に「〜持参」と書いてあれば、それも持ち物に入ります。雨なら傘、寒暖差が大きい日は上着、暗記の復習の枚数も入ります。</p>'+
+    '<div class="row"><div class="grow s">明日（'+esc(ymdLabel(tmr))+'）の見本</div></div>'+
+    (prev.length ? '<div class="s" style="white-space:pre-wrap;margin:0 0 8px">'+esc(prev.join('\n'))+'</div>' : '<div class="empty" style="padding:4px 0 8px">明日は特にありません。</div>');
+  h += '<label class="f">おせわの子</label><div class="pillrow">'+
+    '<button data-act="nt-set" data-k="pet" data-v="'+(p.pet ? 0 : 1)+'" class="'+(p.pet?'on':'')+'">'+(p.pet ? 'おなかがすいたら知らせる' : '知らせない')+'</button></div>';
   h += '<div class="row" style="margin-top:10px"><div class="grow s">通知の予定を送った</div><div class="t num">'+
     (st.at ? agoText(st.at)+'（'+(st.n||0)+'件）' : 'まだ')+'</div><button class="mini" data-act="nt-push">今すぐ送る</button></div>'+
     (NOTIFY.msg ? '<div class="msg ng">送れませんでした：'+esc(NOTIFY.msg)+'</div>' : '');
@@ -233,6 +348,18 @@ function notifyAction(act, t){
     var a = val('nt_dl').trim(), b = val('nt_mo').trim();
     if(!/^\d{1,2}:\d{2}$/.test(a) || !/^\d{1,2}:\d{2}$/.test(b)){ toast('時刻は 20:00 の形で入れてください', true); return true; }
     notifySet({ dlTime:hhmmOf(minutesOf(a)), dlMorning:hhmmOf(minutesOf(b)) }); commit(); notifyPush(true); toast('保存しました'); return true;
+  }
+  if(act === 'nt-am-save'){
+    var am = val('nt_am').trim();
+    if(!/^\d{1,2}:\d{2}$/.test(am)){ toast('時刻は 6:45 の形で入れてください', true); return true; }
+    var rules = [];
+    val('nt_rules').split(/\r?\n/).forEach(function(line){
+      var m2 = line.match(/^\s*([^=＝]+?)\s*[=＝]\s*(.+?)\s*$/);
+      if(!m2) return;
+      try{ new RegExp(m2[1]); }catch(e){ return; }
+      rules.push({ k:m2[1].slice(0, 60), v:m2[2].slice(0, 80) });
+    });
+    notifySet({ amTime:hhmmOf(minutesOf(am)), amRules:rules.slice(0, 20) }); commit(); notifyPush(true); toast('保存しました'); return true;
   }
   if(act === 'nt-push'){ notifyPush(true).then(function(){ toast(NOTIFY.msg ? '送れませんでした' : '通知の予定を送りました', !!NOTIFY.msg); render(); }); return true; }
   if(act === 'nt-vapid'){

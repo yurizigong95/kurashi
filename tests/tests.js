@@ -61,6 +61,15 @@ function fakeAi(req){
     { date:'9/21', start:'17', end:'22:00', note:'レジ' },
     { date:'', start:'10:00', end:'12:00' }
   ]}));
+  if(tag === 'anki') return Promise.resolve(JSON.stringify({ deck:'成人看護学概論', cards:[
+    { q:'成人の呼吸数の正常値は？', a:'12〜20回/分' },
+    { q:'成人の体温の正常値は？', a:'36〜37℃' },
+    { q:'成人の脈拍の正常値は？', a:'60〜100回/分' },
+    { q:'SpO2の基準値は？', a:'96〜99%' },
+    { q:'成人の呼吸数の正常値は？', a:'（同じ問いは入れない）' },
+    { q:'答えのない問い', a:'' },
+    { q:'収縮期血圧の基準は？', a:'140mmHg未満' }
+  ]}));
   if(tag === 'summary') return Promise.resolve('・テストのまとめ\n・来週までにレポート');
   if(tag === 'stt') return Promise.resolve('明日の予定は？');
   if(tag === 'week') return Promise.resolve('よかったこと：出席をがんばった\n来週の目標：課題を早めに');
@@ -97,8 +106,20 @@ var fakeSt = {
 };
 function fakeGas(req){
   gasCalls.push(req);
+  /* ほかの端末：コードで合言葉を受け取る（合言葉なしで呼べる） */
+  if(req.action === 'pairClaim' && !req.token){
+    var pr = gasState.pair;
+    if(!pr || pr.code !== String(req.code)) return Promise.resolve({ ok:false, error:'コードがちがいます' });
+    gasState.pair = null;
+    return Promise.resolve({ ok:true, token:'tok' });
+  }
   if(req.token !== 'tok') return Promise.resolve({ ok:false, error:'合言葉がちがいます' });
-  if(req.action === 'ping') return Promise.resolve({ ok:true, user:'test@example.com', calendar:'くらしの手帳', ver:2, trigger:true });
+  if(req.action === 'ping') return Promise.resolve({ ok:true, user:'test@example.com', calendar:'くらしの手帳', ver:gasState.ver || 2, trigger:true, ai:!!gasState.aiKey });
+  if(req.action === 'pairOffer'){ gasState.pair = { code:String(req.code) }; return Promise.resolve({ ok:true, minutes:10 }); }
+  if(req.action === 'featSet'){ gasState.feat = req.feat; return Promise.resolve({ ok:true, feat:req.feat }); }
+  if(req.action === 'aiKeySet'){ gasState.aiKey = req.key; return Promise.resolve({ ok:true, ai:!!req.key }); }
+  if(req.action === 'sheetSync'){ gasState.sheets = req.sheets; return Promise.resolve({ ok:true, url:'https://docs.google.com/spreadsheets/d/test', sheets:Object.keys(req.sheets).length }); }
+  if(req.action === 'scanNow') return Promise.resolve({ ok:true, found:[], done:0, left:0 });
   if(req.action === 'calSync') return Promise.resolve({ ok:true, done:req.items.length, remaining:0, total:req.items.length, errors:[] });
   if(req.action === 'backup') return Promise.resolve({ ok:true, id:'f1', name:req.name, size:req.json.length, url:'' });
   if(req.action === 'photoNames') return Promise.resolve({ ok:true, names:[] });
@@ -730,6 +751,277 @@ test('Google：橋わたしの通知・ショートカット・ToDo（プログ�
   ok(r4.ok, '消す');
 });
 
+test('Google：橋わたしv3（コードでつなぐ・写真・メール・朝の天気・AIの読み取り・スプレッドシート）', async function(){
+  var src = await fetch('../gas/Code.gs', { cache:'no-store' }).then(function(r){ return r.text(); });
+  var manifest = await fetch('../gas/appsscript.json', { cache:'no-store' }).then(function(r){ return r.json(); });
+  var sc = manifest.oauthScopes;
+  ok(sc.indexOf('https://www.googleapis.com/auth/gmail.readonly') >= 0 && sc.indexOf('https://mail.google.com/') < 0, 'Gmailは読むだけの権限');
+  ok(sc.indexOf('https://www.googleapis.com/auth/spreadsheets') >= 0, 'スプレッドシートの権限');
+  ok(manifest.dependencies.enabledAdvancedServices.some(function(s){ return s.serviceId === 'gmail'; }), 'Gmailのサービス');
+  var pad = function(n){ return (n < 10 ? '0' : '') + n; };
+  var b64 = function(s){ return btoa(unescape(encodeURIComponent(s))); };
+  var props = {}, fetched = [], aiPrompts = [];
+  var P = {
+    getProperties:function(){ return Object.assign({}, props); }, getProperty:function(k){ return props[k] == null ? null : props[k]; },
+    setProperty:function(k, v){ props[k] = String(v); }, setProperties:function(o){ Object.keys(o).forEach(function(k){ props[k] = String(o[k]); }); },
+    deleteProperty:function(k){ delete props[k]; }
+  };
+  var iter = function(a){ var i = 0; return { hasNext:function(){ return i < a.length; }, next:function(){ return a[i++]; } }; };
+  var mkFile = function(name, mime, bytes, parent){
+    var f = { name:name, mime:mime, bytes:bytes, parent:parent, upd:Date.now(), id:'fi' + Math.random().toString(36).slice(2, 8) };
+    f.getId = function(){ return f.id; }; f.getName = function(){ return f.name; }; f.getMimeType = function(){ return f.mime; };
+    f.getSize = function(){ return f.bytes.length; }; f.getLastUpdated = function(){ return new Date(f.upd); };
+    f.getBlob = function(){ return { getBytes:function(){ return f.bytes; } }; }; f.getUrl = function(){ return 'https://drive.google.com/file/' + f.id; };
+    f.moveTo = function(to){ f.parent.files = f.parent.files.filter(function(x){ return x !== f; }); to.files.push(f); f.parent = to; };
+    return f;
+  };
+  var mkFolder = function(name){
+    var fo = { name:name, files:[], folders:[] };
+    fo.getId = function(){ return 'fo-' + name; }; fo.getName = function(){ return name; }; fo.getUrl = function(){ return 'https://drive.google.com/drive/' + name; };
+    fo.getFiles = function(){ return iter(fo.files.slice()); }; fo.getFolders = function(){ return iter(fo.folders.slice()); };
+    fo.getFoldersByName = function(n){ return iter(fo.folders.filter(function(x){ return x.name === n; })); };
+    fo.getFilesByName = function(n){ return iter(fo.files.filter(function(x){ return x.name === n; })); };
+    fo.createFolder = function(n){ var c = mkFolder(n); fo.folders.push(c); return c; };
+    fo.createFile = function(blob){ var f = mkFile(blob.name, blob.mime, blob.bytes, fo); fo.files.push(f); return f; };
+    return fo;
+  };
+  var rootFolders = [];
+  var sheetVals = {};
+  var mkSheet = function(n){ var sh = { name:n, clearContents:function(){}, setFrozenRows:function(){}, getLastRow:function(){ return 0; },
+    getRange:function(){ return { setValues:function(v){ sheetVals[n] = v; } }; } }; return sh; };
+  var ssSheets = [mkSheet('シート1')];
+  var ss = { getId:function(){ return 'ss1'; }, getUrl:function(){ return 'https://docs.google.com/spreadsheets/d/ss1'; },
+    getSheetByName:function(n){ return ssSheets.filter(function(s){ return s.name === n; })[0] || null; },
+    insertSheet:function(n){ var s = mkSheet(n); ssSheets.push(s); return s; }, getSheets:function(){ return ssSheets.slice(); },
+    deleteSheet:function(s){ ssSheets = ssSheets.filter(function(x){ return x !== s; }); } };
+  var mail = function(from, subject, mime, text){
+    return { payload:{ headers:[{ name:'From', value:from }, { name:'Subject', value:subject }],
+      mimeType:'multipart/alternative', parts:[{ mimeType:mime, headers:[{ name:'Content-Type', value:mime + '; charset=UTF-8' }],
+        body:{ data:b64(text).replace(/\+/g, '-').replace(/\//g, '_') } }] } };
+  };
+  var msgs = {
+    m1:mail('楽天カード <info@mail.rakuten-card.co.jp>', 'カード利用のお知らせ(本人ご利用分)', 'text/plain',
+      '■利用日: 2026/09/18\n■利用先: セブン－イレブン\n■利用者: 本人\n■支払方法: 1回\n■利用金額: 1,234 円'),
+    m2:mail('三井住友カード <statement@vpass.ne.jp>', 'ご利用のお知らせ【三井住友カード】', 'text/html',
+      '<p>◇利用日：2026/09/17 12:34</p><p>◇利用先：マクドナルド</p><p>◇利用取引：買物</p><p>◇利用金額：680円</p>'),
+    m3:mail('Yahoo!路線情報 <transit@mail.yahoo.co.jp>', '【運行情報】阪神本線 遅延', 'text/plain',
+      '阪神本線は、人身事故の影響で遅れています。\n配信の停止はこちら http://example.com'),
+    m4:mail('友だち <friend@example.com>', '週末の予定', 'text/plain', '遊びに行こう')
+  };
+  var aiAnswer = { course:'成人看護学概論', pages:12, summary:'・呼吸数の正常値\n・観察のポイント', tasks:[{ title:'事前課題を出す', due:'2026-10-03' }], cards:[{ q:'成人の呼吸数は？', a:'12〜20回/分' }] };
+  var env = {
+    CalendarApp:{ getCalendarsByName:function(){ return [{ getName:function(){ return 'くらしの手帳'; } }]; }, EventColor:{}, Color:{} },
+    PropertiesService:{ getScriptProperties:function(){ return P; } },
+    LockService:{ getScriptLock:function(){ return { waitLock:function(){}, tryLock:function(){ return true; }, releaseLock:function(){} }; } },
+    ContentService:{ MimeType:{ JSON:'json' }, createTextOutput:function(s){ return { s:s, setMimeType:function(){ return this; } }; } },
+    Utilities:{
+      formatDate:function(d, tz, fmt){
+        var j = new Date(d.getTime() + 9 * 3600000);
+        var Y = j.getUTCFullYear(), M = pad(j.getUTCMonth() + 1), D = pad(j.getUTCDate()), H = j.getUTCHours(), mi = j.getUTCMinutes();
+        if(fmt === 'H') return String(H);
+        if(fmt === 'm') return String(mi);
+        if(fmt === 'yyyyMMdd-HHmmss') return '' + Y + M + D + '-' + pad(H) + pad(mi) + pad(j.getUTCSeconds());
+        return Y + '-' + M + '-' + D;
+      },
+      base64Decode:function(s){ return Array.prototype.map.call(atob(s), function(c){ return c.charCodeAt(0); }); },
+      base64DecodeWebSafe:function(s){ return Array.prototype.map.call(atob(s.replace(/-/g, '+').replace(/_/g, '/')), function(c){ return c.charCodeAt(0); }); },
+      base64Encode:function(bytes){ return btoa(String.fromCharCode.apply(null, bytes)); },
+      newBlob:function(bytes, mime, name){ return { bytes:bytes, mime:mime, name:name, getDataAsString:function(){ return new TextDecoder().decode(new Uint8Array(bytes)); } }; }
+    },
+    Session:{ getEffectiveUser:function(){ return { getEmail:function(){ return 'me@example.com'; } }; } },
+    DriveApp:{
+      getFoldersByName:function(n){ return iter(rootFolders.filter(function(x){ return x.name === n; })); },
+      createFolder:function(n){ var c = mkFolder(n); rootFolders.push(c); return c; },
+      getFileById:function(){ return { moveTo:function(){} }; }
+    },
+    ScriptApp:{ getProjectTriggers:function(){ return [{ getHandlerFunction:function(){ return 'tick'; } }]; }, getOAuthToken:function(){ return 'oauth'; } },
+    UrlFetchApp:{ fetch:function(url, opt){
+      fetched.push({ url:url, opt:opt });
+      var body = '{}';
+      if(/open-meteo/.test(url)) body = JSON.stringify({ daily:{ precipitation_probability_max:[70], temperature_2m_max:[18], temperature_2m_min:[6] } });
+      if(/generativelanguage/.test(url)){
+        aiPrompts.push(JSON.parse(opt.payload));
+        body = JSON.stringify({ candidates:[{ content:{ parts:[{ text:JSON.stringify(aiAnswer) }] } }] });
+      }
+      return { getResponseCode:function(){ return 200; }, getContentText:function(){ return body; } };
+    } },
+    CacheService:{ getScriptCache:function(){ return { get:function(){ return null; }, put:function(){} }; } },
+    Gmail:{ Users:{ Messages:{
+      list:function(){ return { messages:Object.keys(msgs).map(function(id){ return { id:id }; }) }; },
+      get:function(me, id){ return msgs[id]; }
+    } } },
+    SpreadsheetApp:{ create:function(){ return ss; }, openById:function(){ return ss; } }
+  };
+  var names = Object.keys(env);
+  var run = new Function(names.join(','), src.replace("var TOKEN = 'ここに合言葉';", "var TOKEN = 'tok';") + '\nreturn { doPost:doPost, tick:tick };');
+  var G = run.apply(null, names.map(function(n){ return env[n]; }));
+  var raw = function(req){ return JSON.parse(G.doPost({ postData:{ contents:JSON.stringify(req) } }).s); };
+  var post = function(req){ req.token = 'tok'; return raw(req); };
+  eq(post({ action:'ping' }).ver, 3, '新しい版');
+  /* コードでつなぐ */
+  eq(raw({ action:'pairClaim', code:'123456' }).ok, false, 'コードを出す前は断る');
+  ok(post({ action:'pairOffer', code:'123456' }).ok, 'コードを出す');
+  eq(post({ action:'pairOffer', code:'12a456' }).ok, false, '6けたの数字だけ');
+  post({ action:'pairOffer', code:'123456' });
+  eq(raw({ action:'pairClaim', code:'111111' }).ok, false, 'ちがうコードは断る');
+  eq(raw({ action:'pairClaim', code:'123456' }).token, 'tok', '正しいコードで合言葉を渡す');
+  eq(raw({ action:'pairClaim', code:'123456' }).ok, false, '1回つかったら使えない');
+  post({ action:'pairOffer', code:'222222' });
+  for(var i = 0; i < 5; i++) raw({ action:'pairClaim', code:'999999' });
+  eq(raw({ action:'pairClaim', code:'222222' }).ok, false, '5回まちがえたら使えない');
+  post({ action:'pairOffer', code:'333333' });
+  var pr = JSON.parse(props.PAIR); pr.exp = Date.now() - 1000; props.PAIR = JSON.stringify(pr);
+  eq(raw({ action:'pairClaim', code:'333333' }).ok, false, '10分をすぎたら使えない');
+  eq(raw({ action:'calClear' }).ok, false, '合言葉なしでは、ほかのことはできない');
+  /* ショートカットから：課題・写真 */
+  ok(post({ action:'shortKey', key:'abcdefghijklmnop1234' }).ok, '短い合言葉');
+  ok(raw({ k:'abcdefghijklmnop1234', action:'in', kind:'task', text:'レポート', due:'2026-10-01' }).ok, '課題を預かる');
+  eq(raw({ k:'wrongkeywrongkey1234', action:'in', kind:'task', text:'x' }).ok, false, '短い合言葉がちがうと断る');
+  eq(raw({ k:'abcdefghijklmnop1234', action:'calClear' }).ok, false, '短い合言葉では預けることしかできない');
+  ok(raw({ k:'abcdefghijklmnop1234', action:'in', kind:'img', name:'ノート', data:'data:image/jpeg;base64,' + btoa('x'.repeat(300)) }).ok, '写真を預かる');
+  var back = rootFolders.filter(function(f){ return f.name === 'くらしの手帳バックアップ'; })[0];
+  var box = back.folders.filter(function(f){ return f.name === '受け取り'; })[0];
+  eq(box.files.length, 1, '「受け取り」フォルダに置く');
+  /* 使う機能・AIのカギ */
+  ok(post({ action:'featSet', feat:{ mailCard:1, mailUnkou:1, discord:0, lec:0, gnFolder:'GoodNotes', gnOnly:['講義'], courses:['成人看護学概論'] } }).ok, '使う機能');
+  eq(post({ action:'aiKeySet', key:'bad key!' }).ok, false, 'カギの形');
+  ok(post({ action:'aiKeySet', key:'AIzaSyTESTKEY_abcdefghijklmnopqrstu' }).ok, 'AIのカギを預かる');
+  ok(post({ action:'ping' }).ai, 'カギがあることが分かる');
+  /* Gmail：カード・運行情報 */
+  var found = post({ action:'scanNow', what:'mail' }).found;
+  eq(found.length, 3, 'カード2通と運行情報1通（ほかのメールは読まない）');
+  var p1 = found.filter(function(x){ return x.mid === 'm1'; })[0], p2 = found.filter(function(x){ return x.mid === 'm2'; })[0];
+  ok(p1 && p1.amount === 1234 && p1.date === '2026-09-18' && p1.card === '楽天カード' && /セブン/.test(p1.shop), '楽天カードのメール');
+  ok(p2 && p2.amount === 680 && p2.date === '2026-09-17' && p2.card === '三井住友カード' && /マクドナルド/.test(p2.shop), '三井住友カードのメール（HTML）');
+  eq(post({ action:'scanNow', what:'mail' }).found.length, 0, '同じメールは2回読まない');
+  var items = post({ action:'inboxTake' }).items;
+  ok(items.some(function(x){ return x.kind === 'pay' && x.ref === 'gm-m1'; }), '家計簿へ（二重にならない印つき）');
+  ok(items.some(function(x){ return x.kind === 'notice' && /阪神本線/.test(x.text) && !/http/.test(x.text); }), '運行情報のお知らせ（配信停止の案内は入れない）');
+  ok(items.some(function(x){ return x.kind === 'task' && x.due === '2026-10-01'; }), 'ショートカットの課題');
+  /* 朝の天気（送る直前に入れ直す） */
+  var fc0 = fetched.filter(function(f){ return /fcm/.test(f.url); }).length;
+  post({ action:'pushRegister', device:'dA', pushToken:'TOKEN_A', name:'iPhone' });
+  post({ action:'jobsPut', jobs:[
+    { id:'am-1', at:Date.now() - 60000, title:'🎒 今日の持ち物', body:'🎒 白衣\n☔ 傘（降水20%）\n📚 暗記の復習 3枚', push:1, wx:1 }
+  ] });
+  props.AI_AT = String(Date.now()); props.MAIL_AT = String(Date.now());     /* ここでは通知だけ確かめる（AIは下で） */
+  G.tick();
+  var fcm = fetched.filter(function(f){ return /fcm/.test(f.url); });
+  eq(fcm.length, fc0 + 1, '持ち物の通知を送る');
+  eq(JSON.parse(fcm[fcm.length - 1].opt.payload).message.data.body, '🎒 白衣\n☔ 傘（降水70%）\n🧥 上着（6〜18℃）\n📚 暗記の復習 3枚', 'その日の天気に入れ直す');
+  /* AIの読み取り（ショートカットの写真） */
+  var r1 = post({ action:'scanNow', what:'ai' });
+  eq(r1.done, 1, '写真を読む');
+  ok(/患者さん/.test(JSON.stringify(aiPrompts[0])) && aiPrompts[0].contents[0].parts[0].inline_data, '個人情報を書かないよう頼み、ファイルを渡す');
+  eq(box.files.length, 0, '読んだ写真は「読んだもの」へ');
+  var ai = post({ action:'inboxTake' }).items.filter(function(x){ return x.kind === 'ai'; })[0];
+  ok(ai && ai.cards.length === 1 && ai.tasks[0].due === '2026-10-03' && ai.course === '成人看護学概論', 'AIの結果を預かる');
+  eq(post({ action:'scanNow', what:'ai' }).done, 0, '同じものは2回読まない');
+  /* Goodnotes：名前に「講義」が入るノートだけ・書き足したページだけ */
+  var gn = env.DriveApp.createFolder('GoodNotes');
+  var sub = gn.createFolder('2年後期');
+  var lec = sub.createFile({ name:'成人看護 講義ノート.pdf', mime:'application/pdf', bytes:[37, 80, 68, 70] });
+  sub.createFile({ name:'実習記録.pdf', mime:'application/pdf', bytes:[37, 80, 68, 70] });
+  aiPrompts.length = 0;
+  eq(post({ action:'scanNow', what:'ai' }).done, 1, 'Goodnotesのノートを読む');
+  eq(post({ action:'scanNow', what:'ai' }).done, 0, '実習記録は読まない');
+  ok(/最後の3ページ/.test(aiPrompts[0].contents[0].parts[1].text), 'はじめてのノートは最後の数ページだけ');
+  lec.upd = Date.now() + 60000;
+  post({ action:'scanNow', what:'ai' });
+  ok(/13ページ目から/.test(aiPrompts[1].contents[0].parts[1].text), '書き足したページだけ読む');
+  /* スプレッドシート */
+  var sh = post({ action:'sheetSync', sheets:{ '家計簿':[['日付', '金額'], ['2026-09-18', 1234]], 'バイト':[['日付'], ['2026-09-20', 'x', 'y']] } });
+  ok(sh.ok && /spreadsheets/.test(sh.url), 'スプレッドシートに書き出す');
+  eq(sheetVals['家計簿'][1][1], 1234, '中身');
+  eq(sheetVals['バイト'][0].length, 3, '列の数をそろえる');
+  ok(!ss.getSheetByName('シート1'), '空の最初のシートは消す');
+});
+
+/* テストは何時間ぶんの操作を数分で行うので、重いテストの前に「書きこみすぎ防止」の数え方を始めからにする
+   （本当にくり返し書きこむこわれ方は、settle の「落ちつかない」で見つかる） */
+function freshWrites(ws){ ws.forEach(function(w){ w.syncState.writes = []; }); }
+
+test('Google連携v3：コードでつなぐ・メールとAIの結果・課題の候補・スプレッドシート（アプリ）', async function(){
+  var A = frames.A, B = frames.B, doc = A.document;
+  freshWrites([A, B]);
+  gasState.ver = 3;
+  A.GAS.url = 'https://script.google.com/macros/s/test/exec'; A.GAS.token = 'tok'; A.saveGas();
+  A.appId = 'set'; A.S.ui.setOpen = J(A, { gas:1, gasplus:1 }); A.render();
+  doc.getElementById('gas_url').value = A.GAS.url; doc.getElementById('gas_token').value = 'tok';
+  doc.querySelector('[data-act="gas-save"]').click();
+  await until(function(){ return A.GAS.ver === 3; }, 5000, '新しい版とつながる');
+  await until(function(){ return A.S.cloud.gasUrl === A.GAS.url; }, 3000, 'URLを同期で配る');
+  await until(function(){ return gasState.feat && Array.isArray(gasState.feat.courses); }, 3000, '使う機能を送る');
+  /* Bは、まだつながっていない */
+  B.GAS.url = ''; B.GAS.token = ''; B.saveGas();
+  await settle([A, B]);
+  eq(B.gasSharedUrl(), A.GAS.url, 'URLが相手に届く');
+  A.render();
+  doc.querySelector('[data-act="gas-pair-offer"]').click();
+  await until(function(){ return A.GASP.pair && doc.querySelector('.paircode'); }, 3000, 'コードが出る');
+  var code = A.GASP.pair.code;
+  B.appId = 'set'; B.S.ui.setOpen = J(B, { gasplus:1 }); B.render();
+  B.document.getElementById('pair_code').value = '000000';
+  B.document.querySelector('[data-act="gas-pair-claim"]').click();
+  await sleep(200);
+  ok(!B.gasReady(), 'ちがうコードではつながらない');
+  B.render();
+  B.document.getElementById('pair_code').value = code.slice(0, 3) + ' ' + code.slice(3);
+  B.document.querySelector('[data-act="gas-pair-claim"]').click();
+  await until(function(){ return B.gasReady() && B.GAS.token === 'tok' && B.GAS.ver === 3; }, 5000, 'コードでつながる');
+  /* 橋わたしから届いたもの */
+  var now = Date.now();
+  gasState.inbox = [
+    { id:'m1', kind:'pay', amount:1234, shop:'セブン－イレブン', card:'楽天カード', date:'2026-09-15', ref:'gm-abc', at:now },
+    { id:'m1b', kind:'pay', amount:1234, shop:'セブン－イレブン', card:'楽天カード', date:'2026-09-15', ref:'gm-abc', at:now },
+    { id:'t1', kind:'task', text:'Discordから足した課題', due:'2026-10-01', at:now },
+    { id:'n1', kind:'notice', text:'🚃 【運行情報】阪神本線 遅延\n人身事故の影響で遅れています', at:now },
+    { id:'a1', kind:'ai', src:'gn', file:'成人看護 講義ノート.pdf', url:'https://drive.google.com/file/x', course:'成人看護学概論',
+      summary:'・呼吸数の正常値\n・観察のポイント', tasks:[{ title:'事前課題を出す', due:'2026-10-02' }], cards:[{ q:'成人の呼吸数は？（v3）', a:'12〜20回/分' }], at:now }
+  ];
+  await A.inboxPull(true);
+  var sp = A.S.spends.filter(function(s){ return s.ref === 'gm-abc'; });
+  eq(sp.length, 1, 'カードのメールは二重に入らない');
+  ok(sp[0].date === '2026-09-15' && sp[0].amount === 1234 && sp[0].src === 'mail' && sp[0].acct === '楽天カード', 'メールの日付・金額・カード');
+  ok(A.S.tasks.some(function(t){ return t.title === 'Discordから足した課題' && t.due === '2026-10-01'; }), 'ショートカット・Discordの課題');
+  ok(A.S.notices.some(function(n){ return /阪神本線/.test(n.text); }), '運行情報のお知らせ');
+  ok(A.S.cards.some(function(c){ return c.q === '成人の呼吸数は？（v3）' && c.src === 'gn'; }), 'AIの暗記カード');
+  ok(A.S.notes.some(function(n){ return /成人看護 講義ノート/.test(n.title) && /呼吸数/.test(n.body); }), '講義メモ');
+  eq(A.S.suggests.length, 1, '課題は「候補」として出す');
+  ok(!A.S.tasks.some(function(t){ return t.title === '事前課題を出す'; }), 'まだ課題には入れない');
+  A.appId = 'todo'; A.render();
+  ok(doc.querySelector('[data-act="sg-add"]'), 'ToDoの上に候補が出る');
+  doc.querySelector('[data-act="sg-add"]').click();
+  ok(A.S.tasks.some(function(t){ return t.title === '事前課題を出す' && t.due === '2026-10-02'; }), '見てから課題に追加');
+  eq(A.S.suggests.length, 0, '候補は消える');
+  /* 使う機能・カギ・スプレッドシート */
+  A.appId = 'set'; A.S.ui.setOpen = J(A, { gasplus:1 }); A.render();
+  doc.querySelector('[data-act="gf-set"][data-k="mailCard"]').click();
+  await until(function(){ return gasState.feat && gasState.feat.mailCard === 1; }, 3000, 'カードのメールをオン');
+  A.S.settings.geminiKey = 'AIzaSyTESTKEY_abcdefghijklmnopqrstu';
+  A.render();
+  doc.querySelector('[data-act="gas-ai-key"]').click();
+  await until(function(){ return gasState.aiKey === 'AIzaSyTESTKEY_abcdefghijklmnopqrstu' && A.GAS.ai === 1; }, 3000, 'AIのカギを預ける');
+  A.S.settings.geminiKey = '';
+  doc.querySelector('[data-act="gas-sheet"]').click();
+  await until(function(){ return gasState.sheets && A.S.cloud.sheet; }, 3000, 'スプレッドシートに書き出す');
+  eq(gasState.sheets['家計簿'][0][0], '日付', '家計簿の見出し');
+  ok(gasState.sheets['暗記カード'].length > 1, '暗記カードも書き出す');
+  /* ウィジェット・Discord用のまとめに「明日」と暗記 */
+  var s = A.buildSummary();
+  ok(s.tomorrow && Array.isArray(s.tomorrow.lines) && s.study && typeof s.study.due === 'number', '明日と暗記のまとめ');
+  await settle([A, B]);
+  eq(B.S.suggests.length, 0, '候補を消したのも届く');
+  /* もとにもどす（あとの暗記のテストのために、作ったカードも片づける） */
+  A.S.cards.filter(function(c){ return /（v3）/.test(c.q); }).forEach(function(c){ A.removeItem('cards', c.id); });
+  A.commit();
+  await settle([A, B]);
+  eq(B.S.cards.filter(function(c){ return /（v3）/.test(c.q); }).length, 0, '片づけ');
+  gasState.ver = 2; gasState.feat = null; gasState.sheets = null; gasState.aiKey = null;
+  A.GAS.url = ''; A.GAS.token = ''; A.saveGas();
+  B.GAS.url = ''; B.GAS.token = ''; B.saveGas();
+});
+
 test('エラーの記録・新しい版のお知らせ・写真を大きく見る', async function(){
   var A = frames.A;
   A.logErr('テスト', 'わざと記録');
@@ -1056,6 +1348,147 @@ test('おせわ：たまご→生まれる・ごはん・時間でおなかが�
   ok(!doc.getElementById('petgame').classList.contains('on'), 'ゲームを閉じる');
   await settle([A, B]);
   eq(B.petNow(id) && B.petNow(id).stage, A.petNow(id).stage, 'おせわの様子が相手に届く');
+});
+
+test('暗記：AIでカードを作る・忘れにくい順に出す・相手に届く・おせわのごほうび', async function(){
+  var A = frames.A, B = frames.B, doc = A.document;
+  freshWrites([A, B]);
+  /* 次に出す日のきまり */
+  var fresh = { reps:0, ivl:0, ease:2.5 };
+  eq(A.ankiNext(fresh, 2, '2026-10-01').due, '2026-10-02', 'はじめて「おぼえた」は次の日');
+  eq(A.ankiNext(fresh, 3, '2026-10-01').ivl, 3, 'はじめて「かんたん」は3日後');
+  eq(A.ankiNext({ reps:2, ivl:6, ease:2.5 }, 2, '2026-10-01').ivl, 15, 'くり返すほど間があく');
+  var lapse = A.ankiNext({ reps:3, ivl:15, ease:2.5 }, 0, '2026-10-01');
+  ok(lapse.ivl === 0 && lapse.reps === 0 && lapse.lapses === 1 && lapse.ease < 2.5, '忘れたら最初から');
+  /* AIで作る（見てから追加） */
+  A.appId = 'anki'; A.ankiState.mode = ''; A.render();
+  ok(doc.querySelector('[data-act="anki-ai-file"]'), '写真・PDFをえらぶボタン');
+  await A.ankiMakeFrom([], '講義のまとめ：成人の呼吸数は12〜20回/分。体温は36〜37℃。');
+  ok(A.ankiState.preview, 'できたカードを見られる');
+  eq(A.ankiState.preview.cards.length, 5, '同じ問い・答えのない問いは入れない');
+  var call = aiCalls.filter(function(c){ return c.tag === 'anki'; }).pop();
+  ok(call && /患者さん/.test(JSON.stringify(call.contents)), '個人の情報を入れないように頼む');
+  doc.querySelector('[data-act="anki-pv-toggle"][data-i="4"]').click();
+  doc.querySelector('[data-act="anki-pv-add"]').click();
+  eq(A.S.cards.length, 4, 'チェックしたものだけ入る');
+  eq(A.S.cards[0].deck, '成人看護学概論', '科目');
+  /* 勉強する */
+  eq(A.ankiDueList('').length, 4, '新しいカードが出る');
+  var coins0 = A.petCoins();
+  doc.querySelector('[data-act="anki-start"]').click();
+  eq(A.ankiState.mode, 'study', '勉強の画面');
+  doc.querySelector('[data-act="anki-show"]').click();
+  ok(doc.querySelector('.ankia'), '答えが出る');
+  doc.querySelector('[data-act="anki-grade"][data-v="0"]').click();
+  ok(A.ankiPushTimer, '1まいごとには同期せず、まとめて送る（書きこみすぎ防止で止まらないように）');
+  for(var i = 0; i < 4; i++){
+    doc.querySelector('[data-act="anki-show"]').click();
+    doc.querySelector('[data-act="anki-grade"][data-v="2"]').click();
+  }
+  eq(A.ankiState.mode, 'done', '「もう一回」のカードも最後に出て、ぜんぶ終わる');
+  eq(A.ankiCountOn(A.today()), 5, '見た枚数');
+  eq(A.ankiDueList('').length, 0, '今日の分はおわり');
+  ok(A.S.cards.every(function(c){ return c.due === A.shiftDate(A.today(), 1); }), '次は明日');
+  eq(A.petCoins(), coins0 + 5, '暗記のごほうびコイン');
+  eq(A.ankiStreak(), 1, '連続の日数');
+  /* 自分で書く */
+  doc.querySelector('[data-act="anki-home"]').click();
+  doc.getElementById('anki_newdeck').value = '解剖生理学';
+  doc.getElementById('anki_q').value = '心臓の弁の数は？';
+  doc.getElementById('anki_a').value = '4つ';
+  doc.querySelector('[data-act="anki-add"]').click();
+  eq(A.S.cards.length, 5, '自分で書いたカード');
+  ok(A.ankiDecks().some(function(d){ return d.name === '解剖生理学'; }), '新しい科目');
+  /* 相手に届く・消す */
+  await settle([A, B]);
+  eq(B.S.cards.length, 5, 'カードが相手に届く');
+  eq(B.ankiCountOn(B.today()), 5, '勉強した枚数も届く');
+  A.appId = 'anki'; A.ankiState.mode = ''; A.render();
+  doc.querySelector('[data-act="anki-list"][data-deck="解剖生理学"]').click();
+  doc.querySelector('[data-act="anki-del"]').click();
+  eq(A.S.cards.length, 4, '消せる');
+  await settle([A, B]);
+  eq(B.S.cards.length, 4, '消したのも届く');
+});
+
+test('おせわ：育つとすがたが変わる・ミッション・クイズ・2台でもコインが消えない', async function(){
+  var A = frames.A, B = frames.B, doc = A.document;
+  freshWrites([A, B]);
+  var id = A.petActiveId();
+  ok(A.petNow(id) && A.petNow(id).stage >= 1, '前のテストで生まれている');
+  /* 育つ（こども → ごほうび・ベレー帽） */
+  var c0 = A.petCoins();
+  A.petUpdate(id, function(o){ o.exp = 85; });
+  eq(A.petNow(id).stage, 2, 'こどもになる');
+  eq(A.petCoins(), c0 + 50, '育ったごほうび');
+  ok(/こどもになったよ/.test(A.petLevelMsg), '育ったことを知らせる');
+  A.petSay('テスト');
+  eq(A.petLevelMsg, '', 'セリフで知らせたら消える');
+  ok(/petstage s2/.test(A.petSvg(id, A.petNow(id), 100)), 'すがたが変わる');
+  A.commit();
+  /* ミッション */
+  A.appId = 'pet'; A.petPanel = ''; A.render();
+  ok(doc.querySelector('[data-act="pet-claim"][data-v="visit"]'), '「会いにくる」は受けとれる');
+  var c1 = A.petCoins();
+  doc.querySelector('[data-act="pet-claim"][data-v="visit"]').click();
+  eq(A.petCoins(), c1 + 5, 'ミッションのコイン');
+  ok(!doc.querySelector('[data-act="pet-claim"][data-v="visit"]'), '2回はもらえない');
+  eq(A.petMissionClaim('visit'), 0, '2回目は0まい');
+  eq(A.petMissionClaim('anki'), 0, 'まだできていないミッションはもらえない');
+  /* おべんきょうクイズ */
+  A.ankiAddMany('テスト', [{ q:'問1', a:'答1' }, { q:'問2', a:'答2' }, { q:'問3', a:'答3' }, { q:'問4', a:'答4' }], 'hand');
+  A.petUpdate(id, function(o){ o.eng = 90; o.sleep = 0; });
+  A.commit();
+  A.petGameStart('quiz');
+  eq(doc.querySelectorAll('#petgame .pgch').length, 4, '4択');
+  var q = A.petGame.qs[0];
+  var right = Array.prototype.filter.call(doc.querySelectorAll('#petgame .pgch'), function(b){ return b.textContent === q.a; })[0];
+  var n0 = A.ankiCountOn(A.today());
+  right.click();
+  eq(A.petGame.score, 1, 'せいかい');
+  eq(A.ankiCountOn(A.today()), n0 + 1, 'クイズも暗記の枚数に入る');
+  await until(function(){ return A.petGame && A.petGame.i === 1; }, 3000, '次の問題');
+  var c2 = A.petCoins();
+  A.petGameEnd(true);
+  eq(A.petCoins(), c2 + 3, 'クイズのコイン');
+  /* 2台で同時にコインを使っても消えない */
+  await settle([A, B]);
+  var base = A.petCoins();
+  eq(B.petCoins(), base, 'コインがそろう');
+  A.petDayAdd('spent', 10); A.commit();
+  B.petDayAdd('spent', 20); B.commit();
+  await settle([A, B]);
+  eq(A.petCoins(), base - 30, 'どちらの分も残る（こちら）');
+  eq(B.petCoins(), base - 30, 'どちらの分も残る（相手）');
+});
+
+test('通知：朝の持ち物（持参・きまり・暗記）・おせわのおなか', async function(){
+  var A = frames.A, doc = A.document;
+  var d = A.shiftDate(A.today(), 2);
+  A.S.events.push(J(A, { id:'ev_am1', date:d, title:'★ 履修便覧、タブレット、パソコン持参', subject:'', kind:'imp', mt:Date.now() }));
+  A.S.events.push(J(A, { id:'ev_am2', date:d, title:'病院実習オリエンテーション', kind:'other', mt:Date.now() }));
+  A.commit();
+  var items = A.morningItems(d);
+  ok(['履修便覧', 'タブレット', 'パソコン'].every(function(x){ return items.indexOf(x) >= 0; }), '「持参」から：' + items.join('・'));
+  ok(items.indexOf('白衣') >= 0 && items.indexOf('聴診器') >= 0, 'きまりから（実習）');
+  ok(A.morningLines(d).some(function(l){ return /暗記の復習/.test(l); }), '暗記の復習の枚数');
+  A.notifySet({ am:1, amTime:'06:45', push:1, pet:1, quiet:1 });
+  var jobs = A.notifyJobs();
+  var j = jobs.filter(function(x){ return x.id === 'am-' + d; })[0];
+  ok(j && j.wx === 1 && /白衣/.test(j.body) && j.body.length <= 190, '持ち物の通知（送る前に天気を入れ直す印つき）');
+  eq(new Date(j.at).getHours() * 60 + new Date(j.at).getMinutes(), 6 * 60 + 45, '知らせる時刻');
+  ok(jobs.some(function(x){ return /^pet-h-/.test(x.id); }), 'おなかがすく前に知らせる');
+  ok(jobs.filter(function(x){ return /^pet-/.test(x.id); }).every(function(x){ var m = new Date(x.at).getHours() * 60 + new Date(x.at).getMinutes(); return m >= 360 && m <= 1410; }), 'おせわの通知は夜中に送らない');
+  /* 設定画面でのきまりの保存 */
+  A.appId = 'set'; A.S.ui.setOpen = J(A, { notify:1 }); A.render();
+  if(doc.getElementById('nt_rules')){
+    doc.getElementById('nt_rules').value = '病院＝上ばき\nこわれた(＝むし';
+    doc.querySelector('[data-act="nt-am-save"]').click();
+    eq(A.amRules().length, 1, 'まちがった書き方は入れない');
+    ok(A.morningItems(d).indexOf('上ばき') >= 0, '新しいきまり');
+    A.notifySet({ amRules:null });
+  }
+  A.removeItem('events', 'ev_am1'); A.removeItem('events', 'ev_am2'); A.commit();
 });
 
 test('週のふりかえり：AIで書く・AIなしでもまとめる・相手に届く', async function(){

@@ -1,5 +1,5 @@
 /* くらしの手帳：オフライン用・通知の受け取り・前の版にもどす */
-var CACHE = 'kurashi-v9';
+var CACHE = 'kurashi-v10';
 var PREV = 'kurashi-prev';      /* ひとつ前の版のファイル（「前の版にもどす」で使う） */
 var FLAGS = 'kurashi-flags';    /* 前の版を使っているかの印 */
 var FILES = [
@@ -9,7 +9,7 @@ var FILES = [
   './js/chara-data.js', './js/chara-art.js', './js/chara.js', './js/chara-make.js', './js/chara-talk.js', './js/pet.js',
   './js/commute.js', './js/today.js', './js/money.js', './js/kakeibo.js', './js/risyu.js', './js/calendar.js',
   './js/settings.js', './js/google.js', './js/links.js', './js/notify.js', './js/wx-plus.js', './js/timetable.js',
-  './js/todo.js', './js/chat.js', './js/ai-plus.js', './js/review.js', './js/whatsnew.js', './js/ops.js', './js/main.js',
+  './js/todo.js', './js/chat.js', './js/ai-plus.js', './js/anki.js', './js/gasplus.js', './js/review.js', './js/whatsnew.js', './js/ops.js', './js/main.js',
   './gas/Code.gs', './gas/appsscript.json'
 ];
 var usePrev = null;
