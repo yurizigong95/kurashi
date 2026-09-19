@@ -5,13 +5,13 @@ var FLAGS = 'kurashi-flags';    /* 前の版を使っているかの印 */
 var FILES = [
   './', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png', './files.json',
   './css/app.css', './css/styles.css',
-  './css/m-kokushi.css', './css/m-research.css', './css/m-anki2.css', './css/m-campus.css', './css/m-life.css', './css/m-petplus.css', './css/m-links2.css', './css/m-core2.css',
+  './css/m-kokushi.css', './css/m-research.css', './css/m-anki2.css', './css/m-campus.css', './css/m-life.css', './css/m-petplus.css', './css/m-chara2.css', './css/m-links2.css', './css/m-core2.css',
   './js/data.js', './js/core.js', './js/hooks.js', './js/aidata.js', './js/sync.js', './js/ai.js', './js/common.js', './js/decor.js',
   './js/chara-data.js', './js/chara-art.js', './js/chara.js', './js/chara-make.js', './js/chara-talk.js', './js/pet.js',
   './js/commute.js', './js/today.js', './js/money.js', './js/kakeibo.js', './js/risyu.js', './js/calendar.js',
   './js/settings.js', './js/google.js', './js/links.js', './js/notify.js', './js/wx-plus.js', './js/timetable.js',
   './js/todo.js', './js/chat.js', './js/ai-plus.js', './js/anki.js', './js/gasplus.js',
-  './js/m-kokushi.js', './js/m-research.js', './js/m-anki2.js', './js/m-campus.js', './js/m-life.js', './js/m-petplus.js', './js/m-links2.js', './js/m-core2.js', './js/review.js', './js/whatsnew.js', './js/ops.js', './js/main.js',
+  './js/m-kokushi.js', './js/m-research.js', './js/m-anki2.js', './js/m-campus.js', './js/m-life.js', './js/m-petplus.js', './js/m-chara2.js', './js/m-links2.js', './js/m-core2.js', './js/review.js', './js/whatsnew.js', './js/ops.js', './js/main.js',
   './gas/Code.gs', './gas/appsscript.json'
 ];
 var usePrev = null;

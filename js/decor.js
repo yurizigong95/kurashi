@@ -170,6 +170,55 @@ var DECOR = {
       '</g></svg>',
     fall:{ ch:['🍁','🍂','·'], color:'rgba(200,90,50,.5)', n:12, speed:12 }
   },
+  /* ===== 行事（キャラ＋で足したもの） ===== */
+  omisoka: {
+    name:'大みそか',
+    art:'<svg viewBox="0 0 400 150" preserveAspectRatio="xMidYMax slice">'+
+      '<g opacity=".5">'+
+      '<path d="M330 22 a20 20 0 1 0 16 30 a16 16 0 1 1-16-30z" fill="#EFE6C8"/>'+
+      '<path d="M36 58 h64 v6 h-64 z" fill="#8A5A3A"/><path d="M42 64 v76 M94 64 v76" stroke="#8A5A3A" stroke-width="5"/>'+
+      '<path d="M56 68 q-6 0 -8 30 h40 q-2 -30 -8 -30 z" fill="#B08A4E"/><path d="M50 98 h36" stroke="#8A6A3A" stroke-width="4"/>'+
+      '<path d="M178 120 q32 24 64 0 z" fill="#C9543E"/>'+
+      '<path d="M184 118 q10 -10 20 0 q10 -10 20 0 q8 -8 14 0" stroke="#E8D5A8" stroke-width="3" fill="none"/>'+
+      '</g>'+
+      '<g opacity=".45" fill="#F0EAD0"><circle cx="120" cy="30" r="2.2"/><circle cx="250" cy="40" r="2"/><circle cx="290" cy="80" r="1.8"/><circle cx="160" cy="60" r="1.6"/></g></svg>',
+    fall:{ ch:['✦','·'], color:'rgba(240,234,208,.55)', n:10, speed:20 }
+  },
+  whiteday: {
+    name:'ホワイトデー',
+    art:'<svg viewBox="0 0 400 150" preserveAspectRatio="xMidYMax slice">'+
+      '<g opacity=".45">'+
+      '<circle cx="64" cy="104" r="14" fill="#B8D8F0"/><path d="M50 104 l-12 -8 v16 z M78 104 l12 -8 v16 z" fill="#B8D8F0"/>'+
+      '<circle cx="110" cy="122" r="9" fill="#F5C8D8"/><path d="M101 122 l-8 -5 v10 z M119 122 l8 -5 v10 z" fill="#F5C8D8"/>'+
+      '<circle cx="330" cy="70" r="10" fill="#F5E6A8"/><path d="M320 70 l-9 -6 v12 z M340 70 l9 -6 v12 z" fill="#F5E6A8"/>'+
+      '</g></svg>',
+    fall:{ ch:['♡','·'], color:'rgba(170,200,230,.5)', n:10, speed:16 }
+  },
+  shingakki: {
+    name:'新学期',
+    art:'<svg viewBox="0 0 400 150" preserveAspectRatio="xMidYMax slice">'+
+      '<g opacity=".45">'+
+      '<path d="M40 72 L80 50 L120 72 Z" fill="#D98C7A"/>'+
+      '<rect x="48" y="72" width="64" height="44" rx="3" fill="#F3E6D8"/>'+
+      '<rect x="56" y="82" width="10" height="10" fill="#9CC3D8"/><rect x="75" y="82" width="10" height="10" fill="#9CC3D8"/><rect x="94" y="82" width="10" height="10" fill="#9CC3D8"/>'+
+      '<rect x="74" y="100" width="12" height="16" fill="#B98A62"/>'+
+      '<g transform="rotate(-8 320 99)"><rect x="300" y="84" width="40" height="30" rx="3" fill="#8FB5E0"/>'+
+      '<path d="M306 92 h26 M306 100 h22 M306 108 h18" stroke="#fff" stroke-width="2"/></g>'+
+      '<path d="M352 118 l24 -30" stroke="#E8B04A" stroke-width="5" stroke-linecap="round"/>'+
+      '</g></svg>',
+    fall:{ ch:['✿','·'], color:'rgba(242,181,203,.5)', n:10, speed:15 }
+  },
+  natsuyasumi: {
+    name:'夏休み',
+    art:'<svg viewBox="0 0 400 150" preserveAspectRatio="xMidYMax slice">'+
+      '<g opacity=".45">'+
+      '<path d="M60 140 L60 86" stroke="#6E9A4A" stroke-width="4"/><path d="M60 110 q-14 -4 -18 -14 q12 0 18 14" fill="#7FAF5A"/>'+
+      '<circle cx="60" cy="76" r="16" fill="#F5C842"/><circle cx="60" cy="76" r="7" fill="#8A5A2A"/>'+
+      '<circle cx="330" cy="112" r="16" fill="#F29A8A"/><path d="M314 112 h32 M330 96 v32" stroke="#fff" stroke-width="3"/>'+
+      '<path d="M0 136 q40 10 80 0 q40-10 80 0 q40 10 80 0 q40-10 80 0 q40 10 80 0 v20 H0 z" fill="#8FD4E4" opacity=".4"/>'+
+      '</g></svg>',
+    fall:null
+  },
   holiday: {
     name:'祝日',
     art:'<svg viewBox="0 0 400 150" preserveAspectRatio="xMidYMax slice">'+
@@ -229,10 +278,29 @@ var DECOR = {
     fall:{ ch:['·'], color:'rgba(230,220,245,.35)', n:10, speed:26 } }
 };
 
+/* ===== 季節のイベント（キャラ＋）=====
+   本体の行事（festivalOn）に、大みそか・ホワイトデー・新学期（4月・後期のはじめ）・夏休み を足す。
+   c2FesOn(ymd) … その日の行事ぜんぶ（はじめが、いちばんその日らしいもの）／c2FesMain(ymd) … かざりに使う1つ */
+var c2FesExtra = { omisoka:'大みそか', whiteday:'ホワイトデー', shingakki:'新学期', natsuyasumi:'夏休み' };
+function c2FesName(key){ return c2FesExtra[key] || ((typeof FES_NAME !== 'undefined' && FES_NAME[key]) || key || ''); }
+function c2FesOn(ymd){
+  var d = isYmd(ymd) ? ymd : today(), m = +d.slice(5, 7), dd = +d.slice(8, 10), out = [];
+  var push = function(k){ if(k && out.indexOf(k) < 0) out.push(k); };
+  if(m === 12 && dd === 31) push('omisoka');
+  if(m === 3 && dd === 14) push('whiteday');
+  push(typeof festivalOn === 'function' ? festivalOn(d) : '');
+  if((m === 4 && dd <= 14) || (m === 9 && dd >= 21) || (m === 10 && dd <= 4)) push('shingakki');
+  if(m === 8 || (m === 9 && dd <= 20)) push('natsuyasumi');
+  var hi = out.indexOf('holiday');
+  if(hi >= 0 && out.length > 1){ out.splice(hi, 1); out.push('holiday'); }
+  return out;
+}
+function c2FesMain(ymd){ return c2FesOn(ymd)[0] || ''; }
+
 /* いま出すかざりを決める */
 function decorNow(){
   var mode = S.ui.bgMode || 'fixed';
-  var fes = (S.ui.fesMode === 0) ? '' : (festivalNow() || '');
+  var fes = (S.ui.fesMode === 0) ? '' : (c2FesMain() || '');
   if(fes && DECOR[fes]) return { key:fes, d:DECOR[fes] };
   if((mode === 'time' || mode === 'mix')){
     var b = timeBandNow();
@@ -262,6 +330,10 @@ var DECOR_TOP = {
   tsukimi:['🌕','🍡','🐰','🌾'],
   kouyou:['🍁','🍂','🌰','🍄'],
   holiday:['🎌','🌸','☀'],
+  omisoka:['🔔','🍜','🌙','✨'],
+  whiteday:['🍬','🤍','🎀','🍪'],
+  shingakki:['🏫','📓','✏️','🌸'],
+  natsuyasumi:['🌻','🏖','🍉','🎐'],
   dawn:['🌄','🐦','☁'],
   morning:['🌱','☀','🐝','🍀'],
   noon:['☁','🕊','🌤'],
