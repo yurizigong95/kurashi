@@ -1,10 +1,46 @@
 {
-    "build":  "2026-09-19b",
-    "made":  "2026-09-19 15:06",
+    "build":  "2026-09-19c",
+    "made":  "2026-09-19 22:47",
     "files":  [
                   {
                       "path":  "css/app.css",
-                      "sha256":  "eb710166ce816536"
+                      "sha256":  "1800bf78fbc379be"
+                  },
+                  {
+                      "path":  "css/m-anki2.css",
+                      "sha256":  "7551b7a229776059"
+                  },
+                  {
+                      "path":  "css/m-campus.css",
+                      "sha256":  "1f56fa542a49e470"
+                  },
+                  {
+                      "path":  "css/m-chara2.css",
+                      "sha256":  "1af997f65020907f"
+                  },
+                  {
+                      "path":  "css/m-core2.css",
+                      "sha256":  "d3b557972932a288"
+                  },
+                  {
+                      "path":  "css/m-kokushi.css",
+                      "sha256":  "9570152943b4d5db"
+                  },
+                  {
+                      "path":  "css/m-life.css",
+                      "sha256":  "dc968f57b0f7af9f"
+                  },
+                  {
+                      "path":  "css/m-links2.css",
+                      "sha256":  "f6f8ffa551ac0a09"
+                  },
+                  {
+                      "path":  "css/m-petplus.css",
+                      "sha256":  "d1ef2dd745e4f57b"
+                  },
+                  {
+                      "path":  "css/m-research.css",
+                      "sha256":  "ac8f946c2191e482"
                   },
                   {
                       "path":  "css/styles.css",
@@ -16,7 +52,7 @@
                   },
                   {
                       "path":  "gas/Code.gs",
-                      "sha256":  "f94251cd1cca7ace"
+                      "sha256":  "ea9afad5ae17d806"
                   },
                   {
                       "path":  "icon-180.png"
@@ -29,27 +65,31 @@
                   },
                   {
                       "path":  "index.html",
-                      "sha256":  "35d9d50870578ae2"
+                      "sha256":  "85bf457a6475f07e"
                   },
                   {
                       "path":  "js/ai.js",
                       "sha256":  "570144f23387ad97"
                   },
                   {
+                      "path":  "js/aidata.js",
+                      "sha256":  "24655613ae9ae571"
+                  },
+                  {
                       "path":  "js/ai-plus.js",
-                      "sha256":  "ff760a3c17c5b24c"
+                      "sha256":  "bbab8e84def28b9a"
                   },
                   {
                       "path":  "js/anki.js",
-                      "sha256":  "169151f9a89eebb3"
+                      "sha256":  "a192dbd4eff2aac1"
                   },
                   {
                       "path":  "js/calendar.js",
-                      "sha256":  "2e1a159367a9f75f"
+                      "sha256":  "11c5a8c1690df818"
                   },
                   {
                       "path":  "js/chara.js",
-                      "sha256":  "0740769913e48c1d"
+                      "sha256":  "bc687e6448faaac6"
                   },
                   {
                       "path":  "js/chara-art.js",
@@ -57,7 +97,7 @@
                   },
                   {
                       "path":  "js/chara-data.js",
-                      "sha256":  "d083af461185cd5d"
+                      "sha256":  "eb7459ae0f68ab16"
                   },
                   {
                       "path":  "js/chara-make.js",
@@ -65,11 +105,11 @@
                   },
                   {
                       "path":  "js/chara-talk.js",
-                      "sha256":  "93330aab89c83585"
+                      "sha256":  "621718f62a73c020"
                   },
                   {
                       "path":  "js/chat.js",
-                      "sha256":  "ef52362be3a5bf85"
+                      "sha256":  "21b4fe09e3b32138"
                   },
                   {
                       "path":  "js/common.js",
@@ -77,11 +117,11 @@
                   },
                   {
                       "path":  "js/commute.js",
-                      "sha256":  "2b5ed09191468a8b"
+                      "sha256":  "a0e23cd62bc690f1"
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "e6d41d5467ea77a7"
+                      "sha256":  "c10e40bf0ad80d2d"
                   },
                   {
                       "path":  "js/data.js",
@@ -89,15 +129,19 @@
                   },
                   {
                       "path":  "js/decor.js",
-                      "sha256":  "dd061a7623e7e829"
+                      "sha256":  "4ca21f5f3e619964"
                   },
                   {
                       "path":  "js/gasplus.js",
-                      "sha256":  "9bd9019c9db1f418"
+                      "sha256":  "f73273f17b67a0ba"
                   },
                   {
                       "path":  "js/google.js",
-                      "sha256":  "89430e10e957562f"
+                      "sha256":  "283568867999fe85"
+                  },
+                  {
+                      "path":  "js/hooks.js",
+                      "sha256":  "629ec45422d2d19d"
                   },
                   {
                       "path":  "js/kakeibo.js",
@@ -105,19 +149,55 @@
                   },
                   {
                       "path":  "js/links.js",
-                      "sha256":  "b8cae072ec377d6d"
+                      "sha256":  "cdbb587136a72189"
                   },
                   {
                       "path":  "js/main.js",
-                      "sha256":  "6c777d24596b7f87"
+                      "sha256":  "1b05503be2dd76c4"
+                  },
+                  {
+                      "path":  "js/m-anki2.js",
+                      "sha256":  "680f705ee7d42b60"
+                  },
+                  {
+                      "path":  "js/m-campus.js",
+                      "sha256":  "e2e477ca25589157"
+                  },
+                  {
+                      "path":  "js/m-chara2.js",
+                      "sha256":  "baf4a9ee47e8f2e5"
+                  },
+                  {
+                      "path":  "js/m-core2.js",
+                      "sha256":  "5ddf4cd5716b51dd"
+                  },
+                  {
+                      "path":  "js/m-kokushi.js",
+                      "sha256":  "065a7013384f3362"
+                  },
+                  {
+                      "path":  "js/m-life.js",
+                      "sha256":  "4460f9d541491c0b"
+                  },
+                  {
+                      "path":  "js/m-links2.js",
+                      "sha256":  "5e6c4a882ae796d4"
                   },
                   {
                       "path":  "js/money.js",
-                      "sha256":  "fab9f185699953e6"
+                      "sha256":  "d2dce8adeedee066"
+                  },
+                  {
+                      "path":  "js/m-petplus.js",
+                      "sha256":  "5f508e5d98f0ef4d"
+                  },
+                  {
+                      "path":  "js/m-research.js",
+                      "sha256":  "d1524770956fefc9"
                   },
                   {
                       "path":  "js/notify.js",
-                      "sha256":  "4af94db513326506"
+                      "sha256":  "39208b50f7cb96ad"
                   },
                   {
                       "path":  "js/ops.js",
@@ -125,11 +205,11 @@
                   },
                   {
                       "path":  "js/pet.js",
-                      "sha256":  "f151bb9d49fb49f7"
+                      "sha256":  "e846825fda012dcc"
                   },
                   {
                       "path":  "js/review.js",
-                      "sha256":  "33cc874e5607b067"
+                      "sha256":  "c92389bcc3365197"
                   },
                   {
                       "path":  "js/risyu.js",
@@ -137,31 +217,31 @@
                   },
                   {
                       "path":  "js/settings.js",
-                      "sha256":  "7c16e592b6b77660"
+                      "sha256":  "fa5fb0221003c27b"
                   },
                   {
                       "path":  "js/sync.js",
-                      "sha256":  "6e0e8f54170982bf"
+                      "sha256":  "46748beaefb31bac"
                   },
                   {
                       "path":  "js/timetable.js",
-                      "sha256":  "115d2a69efbfc8cd"
+                      "sha256":  "c8d08672fad9b928"
                   },
                   {
                       "path":  "js/today.js",
-                      "sha256":  "f331ba8aa52c7820"
+                      "sha256":  "9cdd2d6be5f17226"
                   },
                   {
                       "path":  "js/todo.js",
-                      "sha256":  "e4d9cbe226d031ae"
+                      "sha256":  "41e2cebcfed82530"
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "7efa3d729b9b53b3"
+                      "sha256":  "3f8c68f80affd621"
                   },
                   {
                       "path":  "js/wx-plus.js",
-                      "sha256":  "9542e6d6bf5fa3b8"
+                      "sha256":  "202588ff400f9ade"
                   },
                   {
                       "path":  "manifest.json",
@@ -169,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "cc0399ae45f34d44"
+                      "sha256":  "766d5f5e3ba2ed27"
                   }
               ]
 }
