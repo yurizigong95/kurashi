@@ -6,7 +6,12 @@
    ・コインは、課題を終える・今日の評価・予定やメモを入れる（なかよし度）と、ミニゲームでふえる。
    S.petDays = { 'YYYY-MM-DD|端末ID':{ coins, spent, fed, study, mt }, 'm:YYYY-MM-DD':{ got:{ミッション:1}, mt } }
    ・あとから足したコインの出入りは、日と端末ごとに分けて記録する（2台で同時に使っても、同期で消えない）。
-   ・きょうのミッション（授業・課題・暗記・おせわ・家計簿）をこなすと、ごほうびがもらえる。 */
+   ・きょうのミッション（授業・課題・暗記・おせわ・家計簿）をこなすと、ごほうびがもらえる。
+   あとから足したもの（くわしくは js/m-petplus.js）
+   ・子の記録 … pts:{ 道:点 }（育ち方）・path（おとなで決まった道）・path2（マスターの道）・wear:{ 場所:服 }・worn:{ 服:1 }・hatch（生まれた時刻）・gen
+     （知らない項目も、petUpdate はそのまま残す）
+   ・買ったもの（服・かべがみ・ゆか・かざり）は、日と端末ごとの記録（petDays）の ppBuy にも書く（2台で同時に買っても消えない）
+   ・おさんぽ・卒業・お祝いでもらったコインは、S.kmItems / S.kmData の記録から数える（ppCoinsExtra） */
 var PET_FOODS = [
   { id:'onigiri', name:'おにぎり', icon:'🍙', price:10, hun:30, joy:2 },
   { id:'bread',   name:'パン',     icon:'🍞', price:12, hun:32, joy:3 },
@@ -30,8 +35,29 @@ var PET_DECO = [
   { id:'garland', name:'星のかざり', icon:'✨', price:120, x:30, y:10 },
   { id:'bed',     name:'ベッド',     icon:'🛏️', price:150, x:78, y:86 },
   { id:'clock',   name:'とけい',     icon:'🕰️', price:70,  x:66, y:12 },
-  { id:'music',   name:'レコード',   icon:'🎶', price:110, x:20, y:62 }
+  { id:'music',   name:'レコード',   icon:'🎶', price:110, x:20, y:62 },
+  /* もようがえで足した家具（months … その月だけ売っている） */
+  { id:'chair',   name:'いす',       icon:'🪑', price:60,  x:30, y:78 },
+  { id:'picture', name:'えのがくぶち', icon:'🖼️', price:90, x:14, y:18 },
+  { id:'teddy',   name:'くまのぬいぐるみ', icon:'🧸', price:100, x:92, y:84 },
+  { id:'mirror',  name:'かがみ',     icon:'🪞', price:90,  x:94, y:50 },
+  { id:'fish',    name:'きんぎょばち', icon:'🐠', price:120, x:70, y:60 },
+  { id:'cactus',  name:'サボテン',   icon:'🌵', price:50,  x:6,  y:84 },
+  { id:'sunflower', name:'ひまわり', icon:'🌻', price:70,  x:40, y:62 },
+  { id:'lantern', name:'ちょうちん', icon:'🏮', price:80,  x:44, y:8 },
+  { id:'piano',   name:'ピアノ',     icon:'🎹', price:180, x:24, y:88 },
+  { id:'tv',      name:'テレビ',     icon:'📺', price:150, x:60, y:40 },
+  { id:'xmastree', name:'クリスマスツリー', icon:'🎄', price:150, x:8, y:62, months:[11, 12] },
+  { id:'pumpkin', name:'かぼちゃのランタン', icon:'🎃', price:80, x:62, y:88, months:[10] },
+  { id:'kadomatsu', name:'かどまつ', icon:'🎍', price:100, x:8, y:62, months:[12, 1] },
+  { id:'koinobori', name:'こいのぼり', icon:'🎏', price:100, x:80, y:16, months:[4, 5] },
+  { id:'furin',   name:'ふうりん',   icon:'🎐', price:60,  x:28, y:22, months:[7, 8] }
 ];
+/* その月に売っているか（季節の限定品） */
+function petInSeason(x){
+  if(!x || !Array.isArray(x.months) || !x.months.length) return true;
+  return x.months.indexOf(Number(today().slice(5, 7))) >= 0;
+}
 var PET_STAGES = [[0, 'たまご'], [10, 'あかちゃん'], [80, 'こども'], [250, 'おとな'], [600, 'なかよしマスター']];
 var PET_STAGE_HAT = ['', '', 'beret', 'nurse', 'crown'];    /* 育つと、すがたが変わる（こども→ベレー帽、おとな→ナースキャップ、マスター→おうかん） */
 var PET_STAGE_GIFT = [0, 20, 50, 100, 200];                  /* 育ったときのごほうびコイン */
@@ -66,8 +92,24 @@ function petActiveId(){
 function petCoins(){
   var m = petMeta();
   var earned = (typeof charaFriend === 'function' ? charaFriend().pts : 0) * 5;
-  return Math.max(0, earned + (toNum(m.bonus) || 0) - (toNum(m.spent) || 0) + petDaySum('coins') - petDaySum('spent'));
+  var extra = toNum(petPlus('ppCoinsExtra')) || 0;       /* おさんぽ・卒業・お祝いでもらったぶん */
+  return Math.max(0, earned + (toNum(m.bonus) || 0) - (toNum(m.spent) || 0) + petDaySum('coins') - petDaySum('spent') + extra);
 }
+/* 足した機能（js/m-petplus.js）を呼ぶ。なければ ''。まちがいがあっても、おせわの画面はこわさない */
+function petPlus(name){
+  var f = (typeof window !== 'undefined') ? window[name] : null;
+  if(typeof f !== 'function') return '';
+  try{ return f.apply(null, Array.prototype.slice.call(arguments, 1)); }
+  catch(e){ if(typeof kmErr === 'function') kmErr('おせわ＋ ' + name, e); return ''; }
+}
+/* 育ち方の点（進化の道）をふやす（o … petUpdate の中の子） */
+function petPt(o, path, n){
+  if(!path) return;
+  o.pts = Object.assign({}, (o.pts && typeof o.pts === 'object') ? o.pts : {});
+  o.pts[path] = (toNum(o.pts[path]) || 0) + (n == null ? 1 : n);
+}
+var PET_FOOD_PATH = { onigiri:'nurse', bread:'nurse', salad:'genki', straw:'nonbiri', pudding:'nonbiri', cake:'idol', fav:'nonbiri' };
+var PET_MISSION_PATH = { visit:'nonbiri', 'class':'nurse', task:'hakase', anki:'hakase', care:'nurse', kakeibo:'hakase' };
 /* ===== 日と端末ごとの記録 ===== */
 function petDays(){ return (S.petDays && typeof S.petDays === 'object' && !Array.isArray(S.petDays)) ? S.petDays : {}; }
 function petDayAdd(field, n){
@@ -121,7 +163,7 @@ function petStudyReward(n){
   if(coins){ petDayAdd('coins', coins); petDayAdd('studyCoins', coins); }
   var id = petActiveId();
   if(petNow(id) && petNow(id).stage > 0){
-    petUpdate(id, function(o){ o.exp += Math.ceil(n / 5); o.joy += Math.min(15, n); });
+    petUpdate(id, function(o){ o.exp += Math.ceil(n / 5); o.joy += Math.min(15, n); petPt(o, 'hakase', Math.ceil(n / 10)); });
     petSay(n + 'まいもがんばったね！' + (coins ? 'コイン' + coins + 'まい' : ''), 'cheer');
   }
   return coins;
@@ -161,6 +203,7 @@ function petMood(o){
 }
 /* 様子を変えて保存する（育ったら、ごほうびのコインを入れて、次のセリフで知らせる） */
 var petLevelMsg = '';
+var PET_CALC = { sick:1, stage:1 };        /* petNow が計算して足すもの（保存しない） */
 function petUpdate(id, fn){
   S.pets = S.pets || {};
   var had = !!petAll()[id];
@@ -168,16 +211,23 @@ function petUpdate(id, fn){
   var s0 = petStage(toNum(cur.exp));
   fn(cur);
   ['hun', 'joy', 'cln', 'eng'].forEach(function(k){ cur[k] = Math.max(0, Math.min(100, Math.round(cur[k]))); });
-  var save = { name:cur.name || charaById(id).name, born:cur.born || Date.now(), exp:Math.max(0, Math.round(cur.exp)),
-    hun:cur.hun, joy:cur.joy, cln:cur.cln, eng:cur.eng, sleep:cur.sleep ? 1 : 0, at:Date.now(), mt:Date.now() };
+  /* 知らない項目（着せかえ・進化の道など）は、そのまま残す */
+  var save = {};
+  Object.keys(cur).forEach(function(k){ if(!PET_CALC[k] && cur[k] !== undefined && typeof cur[k] !== 'function') save[k] = cur[k]; });
+  Object.assign(save, { name:cur.name || charaById(id).name, born:cur.born || Date.now(), exp:Math.max(0, Math.round(cur.exp)),
+    hun:cur.hun, joy:cur.joy, cln:cur.cln, eng:cur.eng, sleep:cur.sleep ? 1 : 0, at:Date.now(), mt:Date.now() });
+  var s1 = petStage(save.exp);
+  if(s0 === 0 && s1 >= 1 && !save.hatch) save.hatch = Date.now();          /* たまごから生まれた日（たんじょうび） */
+  var p0 = save.path || '';
+  petPlus('ppPathFix', id, save, s1);                                       /* おとな・マスターになったら、進む道を決める */
   S.pets[id] = save;
   touch('pets');
-  var s1 = petStage(save.exp);
   if(had && s1 > s0){
     var gift = 0;
     for(var s = s0 + 1; s <= s1; s++) gift += PET_STAGE_GIFT[s] || 0;
     if(gift) petDayAdd('coins', gift);
-    petLevelMsg = (s1 >= 2 ? PET_STAGES[s1][1] + 'になったよ！' : '') + (gift ? 'ごほうび🪙' + gift : '');
+    var ttl = (s1 >= 3 && save.path && save.path !== p0) ? petPlus('ppTitle', save) : '';
+    petLevelMsg = (s1 >= 2 ? PET_STAGES[s1][1] + 'になったよ！' : '') + (ttl ? '「' + ttl + '」の道にすすんだよ。' : '') + (gift ? 'ごほうび🪙' + gift : '');
   }
 }
 function petMetaUpdate(fn){
@@ -219,7 +269,11 @@ function petSvg(id, o, size){
   var opt = { id:id, size:Math.round(size * scale), expr:mood.expr, anim:o.sleep ? 'sway' : 'bounce', still:true,
               prop:o.sleep ? 'moon' : (o.stage >= 4 ? 'trophy' : '') };
   if(PET_STAGE_HAT[o.stage]) opt.hat = PET_STAGE_HAT[o.stage];
-  return '<span class="petstage s' + o.stage + '">' + charaSvg(opt) + '</span>';
+  /* 着せかえ・進化の道・天気・お祝い（js/m-petplus.js）。opt を変えて、上に重ねる絵を返す */
+  var look = petPlus('ppLook', id, o, opt) || {};
+  var html = charaSvg(opt);
+  if(look.svg) html = petPlus('ppInject', html, look.svg, opt.size) || html;
+  return '<span class="petstage s' + o.stage + (look.cls ? ' ' + look.cls : '') + '">' + html + (look.after || '') + '</span>';
 }
 function petBar(key, label, icon, v){
   var tone = v < 25 ? 'low' : v < 50 ? 'mid' : 'ok';
@@ -240,22 +294,29 @@ function viewPet(){
       '<div class="petnew">' + charaSvg({ id:id, size:110, expr:'happy', anim:'bounce', still:true }) +
       '<p><b>' + esc(k.name) + '</b>のたまごをもらって、育ててみませんか？</p>' +
       '<p class="note">ごはん・おふろ・なでる・ミニゲームで育ちます。時間がたつとおなかがすくので、ときどき見に来てね。テスト期間は「おせわおやすみ」で時間を止められます。</p>' +
-      '<button class="btn" data-act="pet-adopt" data-id="' + esc(id) + '">たまごをもらう</button></div>');
+      '<button class="btn" data-act="pet-adopt" data-id="' + esc(id) + '">たまごをもらう</button></div>' +
+      '<div class="pillrow" style="margin-top:10px;justify-content:center"><button data-act="pet-panel" data-v="anniv" class="' + (petPanel === 'anniv' ? 'on' : '') + '">🎂 誕生日・記念日</button>' +
+        '<button data-act="pet-panel" data-v="dex" class="' + (petPanel === 'dex' ? 'on' : '') + '">📖 図鑑</button></div>') +
+      ((petPanel === 'anniv' || petPanel === 'dex') ? petPlus('ppPanel', petPanel, id, null) : '');
   }
   var mood = petMood(o);
   var stageName = PET_STAGES[o.stage][1];
   var nextExp = PET_STAGES[o.stage + 1] ? PET_STAGES[o.stage + 1][0] : null;
-  /* へや */
+  var title = o.stage >= 3 ? petPlus('ppTitle', o, id) : '';
+  /* へや（かべがみ・ゆか・家具の場所は、もようがえで変えられる） */
   var deco = (m.room || []).map(function(did){
     var d = PET_DECO.filter(function(x){ return x.id === did; })[0];
-    return d ? '<span class="pdeco' + (d.big ? ' big' : '') + '" style="left:' + d.x + '%;top:' + d.y + '%" aria-hidden="true">' + d.icon + '</span>' : '';
+    if(!d) return '';
+    var pos = (m.pos && m.pos[did] && typeof m.pos[did] === 'object') ? m.pos[did] : null;
+    var x = pos ? toNum(pos.x) : d.x, y = pos ? toNum(pos.y) : d.y;
+    return '<span class="pdeco' + (d.big ? ' big' : '') + '" data-pp="' + esc(did) + '" style="left:' + x + '%;top:' + y + '%" aria-hidden="true">' + d.icon + '</span>';
   }).join('');
-  h += '<section><div class="petroom' + (o.sleep ? ' night' : '') + '">' + deco +
+  h += '<section><div class="petroom' + (o.sleep ? ' night' : '') + (petPlus('ppRoomCls', m, o) || '') + '">' + (petPlus('ppRoomBg', m, o, id) || '') + deco +
     '<div class="petme" data-act="pet-pat" role="button" aria-label="' + esc(o.name || k.name) + 'をなでる">' +
-      '<div class="chbubble">' + esc(chTicFor(k, mood.say)) + '</div>' + petSvg(id, o, 120) + '</div>' +
+      '<div class="chbubble">' + esc(chTicFor(k, petPlus('ppLine', id, o, mood) || mood.say)) + '</div>' + petSvg(id, o, 120) + '</div>' +
     (m.pause ? '<span class="ppause">おせわおやすみ中</span>' : '') +
     '<span class="pcoin" aria-label="コイン">🪙 <b class="num">' + coins + '</b></span></div>';
-  h += '<div class="box"><div class="pethead"><div><div class="t"><b>' + esc(o.name || k.name) + '</b>　<span class="s2">' + stageName + '</span></div>' +
+  h += '<div class="box"><div class="pethead"><div><div class="t"><b>' + esc(o.name || k.name) + '</b>　<span class="s2">' + stageName + (title ? '・' + esc(title) : '') + '</span></div>' +
     '<div class="s">育ち ' + o.exp + (nextExp ? ' / ' + nextExp + '（つぎは' + PET_STAGES[o.stage + 1][1] + '）' : '（さいこう！）') + '</div></div>' +
     '<button class="mini" data-act="pet-rename">名前</button></div>' +
     (o.stage === 0 ? '<p class="note">たまごは、あたためると生まれます（あと' + (10 - o.exp) + '）。</p>'
@@ -268,7 +329,10 @@ function viewPet(){
         '<button data-act="pet-bath">🛁 おふろ</button>' +
         '<button data-act="pet-sleep">' + (o.sleep ? '☀️ おこす' : '🌙 ねかせる') + '</button>' +
         (o.sick ? '<button data-act="pet-med">💊 おくすり</button>' : '')) +
-      '<button data-act="pet-panel" data-v="shop" class="' + (petPanel === 'shop' ? 'on' : '') + '">🛍️ おみせ</button></div>';
+      '<button data-act="pet-panel" data-v="shop" class="' + (petPanel === 'shop' ? 'on' : '') + '">🛍️ おみせ</button></div>' +
+    '<div class="petacts pp-acts">' + [['dress', '👗 きせかえ', 1], ['room', '🏠 もようがえ', 0], ['walk', '🚶 おさんぽ', 1], ['dex', '📖 図鑑', 0], ['anniv', '🎂 記念日', 0]]
+      .filter(function(b){ return !(b[2] && o.stage === 0); })
+      .map(function(b){ return '<button data-act="pet-panel" data-v="' + b[0] + '" class="' + (petPanel === b[0] ? 'on' : '') + '">' + b[1] + '</button>'; }).join('') + '</div>';
   if(petPanel === 'food'){
     h += '<div class="petlist">' + PET_FOODS.map(function(f){
       var have = toNum(m.bag[f.id]);
@@ -292,12 +356,15 @@ function viewPet(){
           '<span class="pp">🪙' + f.price + (toNum(m.bag[f.id]) ? '・×' + toNum(m.bag[f.id]) : '') + '</span></button>';
       }).join('') + '</div>' +
       '<div class="s2" style="margin:10px 0 4px">へやのかざり</div><div class="petlist">' + PET_DECO.map(function(d){
-        var own = (m.room || []).indexOf(d.id) >= 0;
+        var own = (m.room || []).indexOf(d.id) >= 0, bought = petDecoBought(d.id);
+        if(!own && !bought && !petInSeason(d)) return '';           /* 季節の限定品は、その月だけ */
         return '<button data-act="pet-deco" data-v="' + d.id + '" class="' + (own ? 'on' : '') + '"><span class="pi">' + d.icon + '</span><span class="pn">' + d.name + '</span>' +
-          '<span class="pp">' + (own ? 'かざってる' : '🪙' + d.price) + '</span></button>';
-      }).join('') + '</div>';
+          '<span class="pp">' + (own ? 'かざってる' : bought ? 'もってる' : '🪙' + d.price + (d.months ? '・きせつ限定' : '')) + '</span></button>';
+      }).join('') + '</div><p class="note">かべがみ・ゆか・家具を置く場所は「🏠 もようがえ」で変えられます。</p>';
   }
   h += '</div>';
+  /* きせかえ・もようがえ・おさんぽ・図鑑・記念日（js/m-petplus.js） */
+  if(['dress', 'room', 'walk', 'dex', 'anniv'].indexOf(petPanel) >= 0) h += petPlus('ppPanel', petPanel, id, o);
   /* きょうのミッション */
   if(o.stage > 0){
     var ms = petMissions(), stM = petMissionState();
@@ -318,8 +385,11 @@ function viewPet(){
     var here = i === o.stage, past = i < o.stage;
     return '<div class="pst' + (here ? ' here' : past ? ' past' : '') + '"><div class="pstn">' + s[1] + '</div>' +
       '<div class="s2">' + (i ? '育ち' + s[0] : 'スタート') + (PET_STAGE_GIFT[i] ? '・🪙' + PET_STAGE_GIFT[i] : '') + '</div>' +
-      (PET_STAGE_HAT[i] ? '<div class="s2">' + esc((CHARA_HATS.filter(function(x){ return x.id === PET_STAGE_HAT[i]; })[0] || {}).name || '') + 'をかぶる</div>' : '') + '</div>';
+      (i === 3 ? '<div class="s2">育ち方で道が分かれる</div>'
+        : PET_STAGE_HAT[i] ? '<div class="s2">' + esc((CHARA_HATS.filter(function(x){ return x.id === PET_STAGE_HAT[i]; })[0] || {}).name || '') + 'をかぶる</div>' : '') + '</div>';
   }).join('') + '</div>');
+  /* 進化の道（いまどの道に近いか） */
+  h += petPlus('ppPathSection', id, o) || '';
   h += section('コインのもらいかた', null,
     '<div class="row"><div class="grow s">課題を1つ終える</div><div class="t">🪙10</div></div>' +
     '<div class="row"><div class="grow s">今日の評価をもらう</div><div class="t">🪙15</div></div>' +
@@ -329,6 +399,9 @@ function viewPet(){
     '<div class="row"><div class="grow s">きょうのミッション</div><div class="t">🪙5〜' + PET_MISSION_ALL + '</div></div>' +
     '<div class="row"><div class="grow s">育って、すがたが変わる</div><div class="t">🪙20〜200</div></div>' +
     '<div class="row"><div class="grow s">ミニゲーム</div><div class="t">とれた数ぶん</div></div>' +
+    '<div class="row"><div class="grow s">おさんぽで見つける</div><div class="t">🪙3〜12</div></div>' +
+    '<div class="row"><div class="grow s">誕生日・記念日のプレゼント</div><div class="t">🪙20〜50</div></div>' +
+    '<div class="row"><div class="grow s">マスターの子が卒業する</div><div class="t">🪙100</div></div>' +
     '<div class="pillrow" style="margin-top:8px"><button data-act="pet-pause" class="' + (m.pause ? 'on' : '') + '">' +
       (m.pause ? 'おせわおやすみ中（押すと再開）' : 'おせわおやすみ（テスト期間など）') + '</button></div>' +
     (petLog.length ? '<div class="s2" style="margin-top:8px">さいきん：' + petLog.map(function(l){ return esc(l.text); }).join('／') + '</div>' : ''));
@@ -464,7 +537,12 @@ function petGameEnd(quit){
   }
   if(g.kind === 'quiz'){ coins = g.score * 3; joy = g.score * 4; }
   if(quit && !g.score){ render(); return; }
-  petUpdate(g.id, function(o){ o.joy += joy; o.eng -= 10; o.exp += Math.ceil(coins / 2) + 2; });
+  petUpdate(g.id, function(o){
+    o.joy += joy; o.eng -= 10; o.exp += Math.ceil(coins / 2) + 2;
+    if(g.kind === 'star') petPt(o, 'genki', 2 + Math.floor(g.score / 5));
+    else if(g.kind === 'quiz') petPt(o, 'hakase', 1 + g.score);
+    else { petPt(o, 'hakase', 1); petPt(o, 'genki', 1); }
+  });
   petDayAdd('coins', coins);
   commit();
   petSay((g.kind === 'star' ? 'ほし ' + g.score + 'こ！' : g.kind === 'quiz' ? g.score + 'もん せいかい！' : 'ペア ' + g.score + 'こ！') + 'コイン' + coins + 'まいもらったよ', 'cheer');
@@ -538,7 +616,7 @@ function petAction(act, t){
     var got = petMissionClaim(t.dataset.v);
     if(!got){ toast('まだ受けとれません', true); return true; }
     var po = petNow(id);
-    if(po && po.stage > 0) petUpdate(id, function(x){ x.joy += 5; x.exp += 2; });
+    if(po && po.stage > 0) petUpdate(id, function(x){ x.joy += 5; x.exp += 2; petPt(x, PET_MISSION_PATH[t.dataset.v], 2); });
     commit(); petSay('ミッションクリア！コイン' + got + 'まい', 'sparkle'); return true;
   }
   var o = need();
@@ -554,7 +632,7 @@ function petAction(act, t){
     var last = petPatAt[id] || 0;
     if(Date.now() - last < 20000){ petSay('えへへ、くすぐったい', 'shy'); return true; }
     petPatAt[id] = Date.now();
-    petUpdate(id, function(x){ x.joy += 5; x.exp += 1; });
+    petUpdate(id, function(x){ x.joy += 5; x.exp += 1; petPt(x, 'nonbiri', 1); });
     commit(); petSay('なでなで、うれしい！', 'love'); return true;
   }
   if(act === 'pet-feed'){
@@ -565,7 +643,7 @@ function petAction(act, t){
     var m = petMeta();
     if(toNum(m.bag[f.id]) > 0) petMetaUpdate(function(mm){ mm.bag[f.id] = toNum(mm.bag[f.id]) - 1; });
     else if(!petPay(f.price)) return true;
-    petUpdate(id, function(x){ x.hun += f.hun; x.joy += f.joy + (f.id === 'fav' ? 8 : 0); x.cln += (f.cln || 0); x.exp += 3; });
+    petUpdate(id, function(x){ x.hun += f.hun; x.joy += f.joy + (f.id === 'fav' ? 8 : 0); x.cln += (f.cln || 0); x.exp += 3; petPt(x, PET_FOOD_PATH[f.id], f.id === 'onigiri' || f.id === 'bread' ? 1 : 2); });
     petDayAdd('fed', 1);
     commit(); petSay((f.id === 'fav' ? (k.like || 'だいこうぶつ') : f.name) + '、おいしい！', 'eat'); return true;
   }
@@ -580,31 +658,33 @@ function petAction(act, t){
     if(!d) return true;
     var own = petMeta().room.indexOf(d.id) >= 0;
     if(own){ petMetaUpdate(function(mm){ mm.room = mm.room.filter(function(x){ return x !== d.id; }); }); commit(); toast('しまいました（また無料でかざれます）'); return true; }
-    var bought = (petMeta().owned || []).indexOf(d.id) >= 0;
+    var bought = petDecoBought(d.id);
+    if(!bought && !petInSeason(d)){ toast('いまは売っていません（きせつの限定品）', true); return true; }
     if(!bought && !petPay(d.price)) return true;
-    petMetaUpdate(function(mm){ mm.room.push(d.id); mm.owned = (mm.owned || []).concat(bought ? [] : [d.id]); });
-    petUpdate(id, function(x){ x.joy += 6; });
+    if(!bought) petPlus('ppLogBuy', 'deco:' + d.id);      /* 買った記録（2台で同時に買っても消えない） */
+    petMetaUpdate(function(mm){ mm.room.push(d.id); mm.owned = (mm.owned || []).filter(function(x){ return x !== d.id; }).concat([d.id]); });
+    petUpdate(id, function(x){ x.joy += 6; if(!bought) petPt(x, 'idol', 1); });
     commit(); petSay(d.name + '、すてき！', 'sparkle'); return true;
   }
   if(act === 'pet-bath'){
     if(o.sleep){ toast('ねているよ'); return true; }
-    petUpdate(id, function(x){ x.cln = 100; x.joy += 3; x.exp += 2; });
+    petUpdate(id, function(x){ x.cln = 100; x.joy += 3; x.exp += 2; petPt(x, 'nurse', 1); petPt(x, 'idol', 1); });
     commit(); petSay('さっぱり！', 'happy'); return true;
   }
   if(act === 'pet-sleep'){
-    petUpdate(id, function(x){ x.sleep = x.sleep ? 0 : 1; });
+    petUpdate(id, function(x){ if(!x.sleep) petPt(x, 'nonbiri', 1); x.sleep = x.sleep ? 0 : 1; });
     commit(); petSay(o.sleep ? 'おはよう！' : 'おやすみなさい…', o.sleep ? 'happy' : 'sleep'); return true;
   }
   if(act === 'pet-med'){
     var mb = petMeta();
     if(toNum(mb.bag.medicine) > 0) petMetaUpdate(function(mm){ mm.bag.medicine = toNum(mm.bag.medicine) - 1; });
     else if(!petPay(30)) return true;
-    petUpdate(id, function(x){ x.hun = Math.max(x.hun, 40); x.cln = Math.max(x.cln, 40); x.joy += 5; });
+    petUpdate(id, function(x){ x.hun = Math.max(x.hun, 40); x.cln = Math.max(x.cln, 40); x.joy += 5; petPt(x, 'nurse', 3); });
     commit(); petSay('げんきになったよ、ありがとう', 'happy'); return true;
   }
   if(act === 'pet-toy'){
     if(o.sleep){ toast('ねているよ'); return true; }
-    petUpdate(id, function(x){ x.joy += 15; x.eng -= 5; x.exp += 3; });
+    petUpdate(id, function(x){ x.joy += 15; x.eng -= 5; x.exp += 3; petPt(x, 'genki', 2); });
     commit(); petSay('ボール、たのしい！', 'cheer'); return true;
   }
   if(act === 'pet-game'){ petGameStart(t.dataset.v); return true; }
@@ -623,3 +703,7 @@ function petAction(act, t){
   return true;
 }
 var petPatAt = {};
+/* かざりを買ったことがあるか（前からの記録＋日と端末ごとの記録） */
+function petDecoBought(did){
+  return (petMeta().owned || []).indexOf(did) >= 0 || !!petPlus('ppOwned', 'deco:' + did);
+}
