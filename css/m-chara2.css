@@ -1,0 +1,43 @@
+/* くらしの手帳：キャラクターのセリフ・性格（キャラ＋）の見た目 */
+.c2-set{ margin-top:14px; border-top:1px dashed var(--rule); padding-top:4px }
+.c2-h{ font-size:.86em; margin:14px 0 6px; color:var(--ink) }
+
+/* なかよし度のメーター */
+.c2-meter{ margin:4px 0 6px }
+.c2-meter .c2-mt{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:.8em; margin-bottom:4px }
+.c2-meter .c2-mt span{ color:var(--sub); font-size:.92em }
+.c2-bar{ height:10px; border-radius:999px; background:var(--soft); border:1px solid var(--rule); overflow:hidden }
+.c2-bar i{ display:block; height:100%; border-radius:999px; background:linear-gradient(90deg, #F7A9BE, #F0587A); transition:width .4s }
+.c2-meter.sm{ margin:10px 0 0 }
+.c2-meter.sm .c2-bar{ height:7px }
+body[data-theme="dark"] .c2-bar i{ background:linear-gradient(90deg, #B96C88, #F58CA8) }
+.c2-unlock{ display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 2px }
+.c2-ul{ font-size:.7em; padding:3px 8px; border-radius:999px; border:1px solid var(--rule); color:var(--sub); background:var(--soft) }
+.c2-ul.on{ color:#fff; border-color:transparent; background:linear-gradient(180deg, var(--accent2), var(--accent)) }
+
+/* 今週AIが足したセリフ */
+.c2-wlist{ max-height:260px; overflow:auto; margin:2px 0 6px; padding-right:2px }
+.c2-wline{ padding:6px 0; gap:8px }
+.c2-wline .s{ color:var(--ink); line-height:1.45 }
+
+/* キャラどうしの会話・話しかけ */
+.c2-dlg{ display:flex; flex-direction:column; gap:6px; margin:4px 0 8px }
+.c2-dl{ display:flex; align-items:flex-end; gap:6px }
+.c2-dl.r{ flex-direction:row-reverse }
+.c2-dl .chbubble{ max-width:min(260px, 72vw); font-size:.8em }
+.c2-dl.l .chbubble{ border-bottom-left-radius:5px }
+.c2-dl.r .chbubble{ border-bottom-right-radius:5px; background:#FFF4F7 }
+body[data-theme="dark"] .c2-dl.r .chbubble{ background:#F8E4EC }
+.c2-av{ flex:0 0 auto; display:inline-flex }
+.c2-talk{ margin:8px 0 4px }
+.c2-said{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px }
+.c2-q{ display:flex; justify-content:flex-end }
+.c2-q .chbubble{ font-size:.8em; background:linear-gradient(180deg, var(--accent2), var(--accent)); color:#fff; border-color:transparent; border-bottom-right-radius:5px }
+body[data-theme="dark"] .c2-q .chbubble{ color:#fff }
+.c2-ai{ margin-left:6px; font-size:.72em; font-weight:700; color:var(--sub) }
+.c2-say{ display:flex; align-items:center; gap:6px }
+.c2-say input{ flex:1 1 auto; min-width:0 }
+.c2-mic{ flex:0 0 auto; width:40px; height:40px; border-radius:50%; border:1px solid var(--edge); background:var(--pill); font-size:1.1em; cursor:pointer; color:var(--ink) }
+.c2-mic.on{ background:linear-gradient(180deg, #F7A9BE, #F0587A); color:#fff; animation:c2Pulse 1.2s ease-in-out infinite }
+@keyframes c2Pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(240,88,122,.45) } 50%{ box-shadow:0 0 0 8px rgba(240,88,122,0) } }
+@media (prefers-reduced-motion:reduce){ .c2-mic.on{ animation:none } .c2-bar i{ transition:none } }

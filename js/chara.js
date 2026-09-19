@@ -30,13 +30,21 @@ function charaLevel(){ return charaCfg().level; }
 function charaTouch(){ return charaCfg().touch; }
 function charaById(id){
   var k = CHARAS.filter(function(x){ return x.id === id; })[0];
-  if(k) return k;
-  var u = charaCustomList().filter(function(x){ return x.id === id; })[0];
-  if(u){
-    return { id:u.id, custom:1, pid:u.pid, cat:'mine', name:u.name || '自分の子', tic:u.tic || '',
-             like:u.like || '', desc:u.note || '自分の画像から作った子', line:'#6E5A66', cheek:'#F7A9BE' };
+  if(!k){
+    var u = charaCustomList().filter(function(x){ return x.id === id; })[0];
+    if(u){
+      k = { id:u.id, custom:1, pid:u.pid, cat:'mine', name:u.name || '自分の子', tic:u.tic || '',
+            like:u.like || '', desc:u.note || '自分の画像から作った子', line:'#6E5A66', cheek:'#F7A9BE' };
+    }
   }
-  return CHARAS[0];
+  if(!k) k = CHARAS[0];
+  return c2PersonaApply(k);
+}
+/* 設定で直した口ぐせ・好きなもの（キャラ＋。S.kmData 'chara2:persona:<id>'） */
+function c2PersonaApply(k){
+  var v = (S && S.kmData) ? S.kmData['chara2:persona:' + k.id] : null;
+  if(!v || typeof v !== 'object' || v.reset || (v.tic == null && !v.like)) return k;
+  return Object.assign({}, k, { tic:(v.tic != null) ? String(v.tic).slice(0, 6) : k.tic, like:v.like ? String(v.like).slice(0, 16) : k.like });
 }
 var __charaRandom = null;
 /* 今日の子 */
@@ -91,9 +99,10 @@ function charaHatAuto(){
   var exam = (S.exams || []).some(function(x){ return isYmd(x.date) && x.date >= td && daysFromToday(x.date) <= 1; });
   if(exam) v = 'hachimaki';
   else{
-    var fes = (typeof festivalNow === 'function') ? festivalNow() : '';
+    var fes = (typeof c2FesMain === 'function') ? c2FesMain() : (typeof festivalNow === 'function') ? festivalNow() : '';
     var map = { xmas:'santa', halloween:'witch', kodomo:'kabuto', sakura:'sakura', tanabata:'star', natsu:'straw',
-                newyear:'ribbon', valentine:'ribbon', kouyou:'leaf', hinamatsuri:'flower' };
+                newyear:'ribbon', valentine:'ribbon', kouyou:'leaf', hinamatsuri:'flower',
+                omisoka:'scarf', whiteday:'ribbon', shingakki:'beret', natsuyasumi:'straw' };
     var m = Number(td.slice(5, 7));
     v = map[fes] || ((m === 12 || m <= 2) ? 'scarf' : '');
   }
@@ -122,7 +131,8 @@ var CHARA_FES_LINE = {
   xmas:'メリークリスマス！', newyear:'あけましておめでとう！', halloween:'トリックオアトリート！', tanabata:'ねがいごと、なににする？',
   tsukimi:'お月見だんご、食べたいな', valentine:'チョコ、だれにあげる？', setsubun:'鬼は外〜！', hinamatsuri:'ひなまつりだね',
   kodomo:'こどもの日だね。こいのぼり見た？', natsu:'夏だね！水分とってね', sakura:'お花見日和かも', tsuyu:'雨の季節だね。足もと気をつけてね',
-  kouyou:'紅葉がきれいな季節だね', holiday:'今日は祝日だね'
+  kouyou:'紅葉がきれいな季節だね', holiday:'今日は祝日だね',
+  omisoka:'ことしも、よくがんばったね', whiteday:'ホワイトデーだね。あまいもの、ちょっとだけね', shingakki:'新学期だね。どきどきするね', natsuyasumi:'夏休み、生活リズムをくずさないようにね'
 };
 function charaLine(kind){
   var h = new Date().getHours(), td = today(), out = [], k = charaNow();
@@ -151,7 +161,7 @@ function charaLine(kind){
             : h < 18 ? ['午後もあとすこし！', 'おやつの時間かも？', 'ちょっと甘いものほしくなるね']
             : h < 22 ? ['おつかれさま〜', '今日もえらかったね', 'お風呂でゆっくりしてね']
             : ['今日もおつかれさま。ゆっくり休んでね', 'あしたの準備、できた？'];
-  var fes = (typeof festivalNow === 'function') ? festivalNow() : '';
+  var fes = (typeof c2FesMain === 'function') ? c2FesMain() : (typeof festivalNow === 'function') ? festivalNow() : '';
   if(fes && CHARA_FES_LINE[fes]) greet.push(CHARA_FES_LINE[fes]);
   if(dow === 1 && h < 14) greet.push('あたらしい1週間。ゆっくりいこ');
   if(dow === 5) greet.push('あと1日で週末だよ！');
@@ -250,7 +260,7 @@ function charaBuddy(){
       var now = Date.now();
       __buddy.taps = (now - __buddy.tapAt < 1500) ? __buddy.taps + 1 : 1;
       __buddy.tapAt = now;
-      if(__buddy.taps >= 3){ __buddy.bubble = true; charaBuddyDraw(chTic('なでなで、うれしい！'), 'love'); return; }
+      if(__buddy.taps >= 3){ __buddy.bubble = true; charaBuddyDraw(chTic('なでなで、うれしい！'), 'love'); c2BondTap('pats'); return; }
       __buddy.bubble = !__buddy.bubble;
       charaBuddyDraw(__buddy.bubble ? charaLine('any') : '');
     });
@@ -295,15 +305,35 @@ function charaWalk(){
   if(typeof photoFill === 'function') photoFill();
   setTimeout(function(){ if(el.parentNode) el.remove(); }, 13000);
 }
-/* キャラの口調で相談に答える（たっぷり以上、または設定でオン） */
+/* キャラの口調で相談に答える（「キャラと話す」がオンのとき。まだ決めていなければ、たっぷり以上か「相談もこの子の口調で」でオン） */
+function c2ChatOn(){
+  var c = (S.ui && S.ui.chara) || {};
+  if(charaLevel() < 1) return false;
+  if(c.chatChara === 1) return true;
+  if(c.chatChara === 0) return false;
+  return !!(c.talk || charaLevel() >= 3);
+}
+/* いまの子の性格・口調の説明（AIそうだんの system に足す）。オフなら '' */
+function charaChatPersona(){
+  if(!c2ChatOn()) return '';
+  return c2PersonaText(charaNow().id);
+}
+function c2PersonaText(id){
+  var p = (typeof c2Persona === 'function') ? c2Persona(id) : null;
+  var k = charaById(id);
+  if(!p) return '\n【キャラと話す】あなたは、このアプリのキャラクター「' + k.name + '」（' + k.desc + '）として話す。' +
+    (k.tic ? '文の終わりに、ときどき「' + k.tic + '」をつける（毎回ではない）。' : '') + 'ただし、大事な中身は正確に伝える。';
+  return '\n【キャラと話す】あなたは、このアプリのキャラクター「' + p.name + '」（' + p.desc + '）として話す。' +
+    '性格：' + p.type + '（' + p.typeDesc + '）。一人称は「' + p.me + '」。使う人のことは「' + p.you + '」と呼ぶ。' +
+    '話し方：' + p.style + '。' + (p.tic ? '文の終わりに、ときどき「' + p.tic + '」をつける（毎回ではない）。' : '') +
+    (p.like ? '好きなものは「' + p.like + '」。' : '') +
+    'やさしく、短めに。ただし、お金・健康・締切・薬などの大事な中身は正確に伝え、キャラの口調でも内容はまちがえない。';
+}
+/* 前からの呼び口。AIそうだん（chat.js）が charaChatPersona() を直接足すようになったら、二重にならないよう '' を返す */
 function charaTalkRule(){
-  var c = charaCfg();
-  if(c.level < 1 || !(c.talk || c.level >= 3)) return '';
-  var k = charaNow();
-  return '\n【話し方】あなたは、このアプリのキャラクター「' + k.name + '」（' + k.desc + '）として話す。' +
-    'やさしく、短めに、かわいらしく。' + (k.tic ? '文の終わりに、ときどき「' + k.tic + '」をつける（毎回ではない）。' : '') +
-    (k.like ? '好きなものは「' + k.like + '」。' : '') +
-    'ただし、お金・健康・締切などの大事な中身は正確に伝える。';
+  var direct = false;
+  try{ direct = typeof chatSystem === 'function' && String(chatSystem).indexOf('charaChatPersona') >= 0; }catch(e){}
+  return direct ? '' : charaChatPersona();
 }
 
 /* ============================== 設定画面 ============================== */
@@ -379,8 +409,10 @@ function charaSettings(){
         (typeof charaDayPool === 'function' ? '</div><p class="note">今日の'+esc(now.name)+'のセリフ：<b>'+charaDayPool(now.id).total+'種類</b>'+(charaDayPool(now.id).ai ? '（AIが考えたセリフ入り）' : '')+'</p><div class="pillrow">'+
           '<button data-act="chara-aitalk" class="'+(charaTalkAiOn() ? 'on' : '')+'">'+(charaTalkAiOn() ? 'AIが毎日セリフを考える（1日1〜3回）' : 'AIのセリフは使わない')+'</button></div><div class="pillrow">' : '')+
         '<button data-act="chara-talk">話しかけてみる</button>'+
-        '<button data-act="chara-talkai" class="'+(c.talk || c.level >= 3 ? 'on' : '')+'">'+(c.level >= 3 ? '相談もこの子の口調（たっぷり以上では常にオン）' : '相談もこの子の口調で')+'</button>'+
+        '<button data-act="chara-talkai" class="'+(c2ChatOn() ? 'on' : '')+'">'+(c2ChatOn() ? 'AIそうだんでキャラと話す：オン' : 'AIそうだんでキャラと話す：オフ')+'</button>'+
       '</div>';
+    /* セリフ・性格・なかよし度・声・キャラどうしの会話（キャラ＋） */
+    if(typeof c2Settings === 'function') h += c2Settings();
   }
   h += '<p class="note">用意した子は、どれもこのアプリのために作ったオリジナルのキャラクターです。</p>';
   return h;
@@ -388,6 +420,16 @@ function charaSettings(){
 function charaSet(patch){
   S.ui.chara = Object.assign({}, S.ui.chara || {}, patch);
   touch('ui');
+}
+/* 話しかけた・なでた回数を、なかよし度に入れる（キャラ＋。30秒に1回まで・画面は描き直さない） */
+var c2TapAt = {};
+function c2BondTap(field){
+  if(typeof c2BondAdd !== 'function' || charaLevel() < 1) return;
+  var id = charaNow().id, key = id + ':' + field;
+  if(Date.now() - (c2TapAt[key] || 0) < 30000) return;
+  c2TapAt[key] = Date.now();
+  c2BondAdd(id, field);
+  persist(); pushRemote();
 }
 function charaAction(act, t){
   if(act === 'chara-level'){ charaSet({ level:toNum(t.dataset.v) }); commit(); return true; }
@@ -417,9 +459,10 @@ function charaAction(act, t){
     var line = charaLine('any');
     charaCheer(line, chPick(['happy', 'wink', 'love', 'sparkle', 'proud', 'shy']));
     if(charaLevel() < 2) toast(line);
+    c2BondTap('talks');
     return true;
   }
-  if(act === 'chara-talkai'){ charaSet({ talk: charaCfg().talk ? 0 : 1 }); commit(); return true; }
+  if(act === 'chara-talkai'){ charaSet({ chatChara: c2ChatOn() ? 0 : 1 }); commit(); return true; }
   if(act === 'chara-aitalk'){ charaSet({ aiTalk: charaTalkAiOn() ? 0 : 1 }); commit(); if(charaTalkAiOn()) charaTalkAiToday(); return true; }
   if(act === 'chara-make'){ if(typeof charaMakeOpen === 'function') charaMakeOpen(''); return true; }
   if(act === 'chara-edit'){ if(typeof charaMakeOpen === 'function') charaMakeOpen(t.dataset.id); return true; }
