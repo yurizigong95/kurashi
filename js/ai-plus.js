@@ -84,8 +84,26 @@ function aiRunFunc(call){
       if(!it) return { result:'金額がありません' };
       return { result:'家計簿に記録しました', op:{ t:'add', list:'spends', id:it.id, label:'家計簿 ' + yen(it.amount) + (it.title ? '（' + it.title + '）' : '') } };
     default:
+      /* 手帳を読む道具（aidata.js）・足した機能の道具（kmChatTool） */
+      if(typeof aiDataRun === 'function'){ var rd = aiDataRun(call); if(rd) return rd; }
+      if(typeof KM !== 'undefined'){
+        var kt = KM.chatTools.filter(function(x){ return x.decl.name === call.name; })[0];
+        if(kt){ try{ return kt.run(a) || { result:'できました' }; }catch(e){ return { result:'できませんでした：' + (e && e.message || e) }; } }
+      }
       return { result:'この道具は使えません' };
   }
+}
+function chatIsWrite(name){
+  if(CHAT_FUNCS.some(function(f){ return f.name === name; })) return true;
+  return typeof KM !== 'undefined' && KM.chatTools.some(function(x){ return x.write && x.decl.name === name; });
+}
+/* そうだんで使う道具：読む道具はいつも、書く道具は「直接登録」がオンのときだけ */
+function chatFuncDecls(){
+  var list = [];
+  if(aiDirectOn()) list = list.concat(CHAT_FUNCS);
+  if(typeof AI_DATA_FUNCS !== 'undefined') list = list.concat(AI_DATA_FUNCS);
+  if(typeof KM !== 'undefined') KM.chatTools.forEach(function(x){ if(!x.write || aiDirectOn()) list.push(x.decl); });
+  return list;
 }
 function aiUndoOps(ops){
   (ops || []).slice().reverse().forEach(function(op){
@@ -99,8 +117,12 @@ function aiUndoOps(ops){
 
 /* ============================== ネットで調べる・URLを読む ============================== */
 var chatWeb = false;
+/* 手帳の中のことを「調べて」と言われたときは、ネットではなく手帳を調べる */
+var CHAT_APP_WORDS = /手帳|アプリ|家計簿|予定|課題|メモ|カード|暗記|国試|過去問|時間割|授業|出席|成績|バイト|シフト|お金|残高|おせわ|健康|睡眠|歩数|記録|ノート|テスト|ToDo|やること|明細/;
 function chatWantsWeb(text){
-  return chatWeb || /https?:\/\//.test(text) || /調べて|検索して|ネットで|最新の|ニュース|今の(値段|価格)|公式サイト/.test(text);
+  if(chatWeb || /https?:\/\//.test(text)) return true;
+  if(/検索して|ネットで|ウェブで|最新の|ニュース|今の(値段|価格)|公式サイト/.test(text)) return true;
+  return /調べて/.test(text) && !CHAT_APP_WORDS.test(text);
 }
 function groundSources(g){
   var out = [], seen = {};
@@ -121,10 +143,14 @@ async function chatAsk(opt){
   if(web){
     tools.push({ google_search:{} });
     if(/https?:\/\//.test(opt.text || '')) tools.push({ url_context:{} });
-  }else if(aiDirectOn()){
-    tools.push({ functionDeclarations:CHAT_FUNCS });
+  }else{
+    var decls = chatFuncDecls();
+    if(decls.length) tools.push({ functionDeclarations:decls });
   }
   var system = opt.system + (web ? '\n【ネット】必要ならGoogle検索や、送られたURLの中身を使って答える。出典のない思いこみは書かない。' : '') +
+    (!web && typeof AI_DATA_FUNCS !== 'undefined' ? '\n【手帳を調べる】最初にわたした「アプリの中身」は要約です。家計簿の明細・暗記カード・国試の記録・メモの全文・おせわ・健康・設定など、' +
+      '要約にないことや、くわしいことを聞かれたら、道具 app_overview / get_app_data / search_app で手帳を調べてから答える。調べても無いときだけ「アプリに登録がありません」と言う。' +
+      '\n【分野と件数】' + aiIndexText() : '') +
     (!web && aiDirectOn() ? '\n【登録】「入れて」「登録して」「追加して」「完了にして」「記録して」とはっきり頼まれたときだけ、道具（関数）を使って手帳に直接登録する。登録したら、何をいつ入れたかを短く伝える。頼まれていないときは道具を使わない。' : '') +
     (opt.talk ? '\n【声の会話】いまは声だけで話している。2文以内で、記号や箇条書きを使わずに話し言葉で答える。' : '');
   var contents = opt.contents.slice();
@@ -135,7 +161,8 @@ async function chatAsk(opt){
     if(!res.calls.length) break;
     var replies = [];
     res.calls.forEach(function(call){
-      var r = aiRunFunc(call);
+      /* 「直接登録」がオフのときは、書きこむ道具は動かさない（読む道具だけ） */
+      var r = (!aiDirectOn() && chatIsWrite(call.name)) ? { result:'直接登録はオフです。手帳には入れずに、入れ方だけを伝えてください。' } : aiRunFunc(call);
       if(r.op) ops.push(r.op);
       replies.push({ functionResponse:{ name:call.name, response:{ result:r.result } } });
     });

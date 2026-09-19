@@ -649,6 +649,7 @@ function viewCalendar(){
       '<p class="note" style="margin-top:6px">'+(GAS.cal ? '自動で送っています。' : '自動送信はオフです。')+
       (c.at ? '最後に送ったのは'+agoText(c.at)+'。' : '')+'通知は前日の0時です。</p>';
   };
+  if(typeof kmParts === 'function') kmParts('cal', parts, { ym:calYm });
   pageOrder('cal').forEach(function(id){ if(parts[id] && !pageHidden('cal', id)) h += parts[id](); });
   return '<section>'+h+'</section>';
 }

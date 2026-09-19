@@ -47,13 +47,13 @@ async function gasPairClaim(code){
 
 /* ============================== 使う機能（どの端末でも同じ） ============================== */
 function gfeat(){
-  return Object.assign({ mailCard:0, mailUnkou:0, lec:0, gnFolder:'GoodNotes', gnOnly:[] }, S.ui.gfeat || {});
+  return Object.assign({ mailCard:0, mailUnkou:0, lec:0, gnFolder:'GoodNotes', gnOnly:[], uniDomain:'' }, S.ui.gfeat || {});
 }
 function gfeatSet(patch){ S.ui.gfeat = Object.assign({}, gfeat(), patch); touch('ui'); }
 async function gfeatPush(){
   if(!gasReady() || !(toNum(GAS.ver) >= 3)) return;
   var f = gfeat(), np = (typeof notifyPrefs === 'function') ? notifyPrefs() : {};
-  await gasCall('featSet', { feat:{ mailCard:f.mailCard, mailUnkou:f.mailUnkou, lec:f.lec, gnFolder:f.gnFolder, gnOnly:f.gnOnly,
+  await gasCall('featSet', { feat:{ mailCard:f.mailCard, mailUnkou:f.mailUnkou, lec:f.lec, gnFolder:f.gnFolder, gnOnly:f.gnOnly, uniDomain:f.uniDomain,
     discord:np.discord ? 1 : 0, push:np.push === 0 ? 0 : 1, quiet:np.quiet === 0 ? 0 : 1,
     courses:termCourses().map(function(c){ return c.name; }) } });
 }

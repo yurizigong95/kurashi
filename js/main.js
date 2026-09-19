@@ -8,7 +8,7 @@ var MONEY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ
 var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
 var TODAY_TABS = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
 var CAL_TABS = [['cal','カレンダー'],['add','追加'],['imp','重要'],['health','健康']];
-var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', anki:'暗記', notes:'メモ', news:'お知らせ', set:'設定' };
+var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', anki:'暗記', study:'勉強', notes:'メモ', news:'お知らせ', set:'設定' };
 var FOOTS = {
   today:'天気は Open-Meteo の予報です。バスや電車の運行状況は各社の公式情報も確認してください。',
   money:'金額に分割手数料（金利）は含まれていません。引き落とし日の前日までに入金しておくと安心です。',
@@ -20,6 +20,7 @@ var FOOTS = {
   chat:'アプリに登録した予定をもとに、AIが相談に乗ります。',
   pet:'課題を終えたり、暗記カードをやったり、きょうのミッションをこなしたりすると、コインがたまります。',
   anki:'「おぼえた」ほど、次に出るまでの日があきます。毎日少しずつが近道です。',
+  study:'AIの答えや基準値は、教科書・先生の資料で確かめてから使ってください。',
   notes:'ピン留めしたメモは今日ページにも出ます。',
   news:'今日ページに出たお知らせの履歴です。',
   set:'合言葉は他人に教えないでください。Firestoreのセキュリティルールを必ず設定してください。'
@@ -79,6 +80,10 @@ function renderInner(){
   else if(appId==='news'){ html += viewNews(); }
   else if(appId==='pet'){ html += viewPet(); }
   else if(appId==='anki'){ html += viewAnki(); }
+  else if(typeof KM !== 'undefined' && KM.views[appId]){
+    try{ html += KM.views[appId](); }
+    catch(e){ kmErr('画面 ' + appId, e); html += '<div class="msg ng">この画面を表示できませんでした：' + esc(e.message || e) + '</div>'; }
+  }
   else if(appId==='cal'){
     html += calTab==='health' ? viewHealth() : calTab==='kind' ? viewKindTab() : calTab==='add' ? viewCalAdd() : viewCalendar();
   }else{
@@ -179,6 +184,7 @@ function appClick(e, t, act){
   if(act.indexOf('cal-')===0 || act.indexOf('ev-')===0 || act==='add-health' || act==='del-health'){
     if(calAction(act, t)) return;
   }
+  if(typeof kmRunAction === 'function' && kmRunAction(act, t, e)) return;     /* 足した機能（js/m-*.js）の操作 */
   if(chatAction(act, t)) return;
   if(typeof aiPlusAction === 'function' && aiPlusAction(act, t)) return;
   if(typeof linksAction === 'function' && linksAction(act, t)) return;

@@ -52,6 +52,8 @@ var aiCalls = [];
 function fakeAi(req){
   aiCalls.push(req);
   var tag = req.tag;
+  /* 足した機能のテスト（tests/tests-m-*.js）が用意した答え */
+  for(var hi = 0; hi < KT.ai.length; hi++){ var hr = KT.ai[hi](req); if(hr != null) return Promise.resolve(hr); }
   if(tag === 'syllabus') return Promise.resolve(JSON.stringify({
     exam:60, report:30, attend:10, other:null, other_detail:'', notes:'出席2/3以上で受験資格',
     tests:[{ title:'中間試験', kind:'exam', date:'11/12', week:'' }, { title:'小テスト', kind:'quiz', date:null, week:'第3回' }]
@@ -106,6 +108,11 @@ var fakeSt = {
 };
 function fakeGas(req){
   gasCalls.push(req);
+  for(var hi = 0; hi < KT.gas.length; hi++){ var hr = KT.gas[hi](req); if(hr != null) return Promise.resolve(hr); }
+  if(req.token === 'tok' && req.action === 'proxyGet'){
+    var px = fakeApi(req.url);
+    return Promise.resolve(px == null ? { ok:false, error:'読めませんでした' } : { ok:true, status:200, text:px });
+  }
   /* ほかの端末：コードで合言葉を受け取る（合言葉なしで呼べる） */
   if(req.action === 'pairClaim' && !req.token){
     var pr = gasState.pair;
@@ -139,6 +146,13 @@ function fakeGas(req){
   }
   return Promise.resolve({ ok:false, error:'unknown ' + req.action });
 }
+
+/* 外のAPI（論文・本・天気など）のにせもの：足した機能のテストが KT.api に答えを入れる */
+function fakeApi(url){
+  for(var hi = 0; hi < KT.api.length; hi++){ var hr = KT.api[hi](url); if(hr != null) return typeof hr === 'string' ? hr : JSON.stringify(hr); }
+  return null;
+}
+window.__FAKE_API = function(url){ return Promise.resolve(fakeApi(url)); };
 
 /* ============ 道具 ============ */
 var FS = null;
@@ -1669,7 +1683,19 @@ test('同期：2台でランダムに操作・開き直しを続けても、最�
   });
 });
 
-/* ============ 実行 ============ */
+/* ============ 足した機能のテスト（tests/tests-m-*.js）から使う道具 ============
+   KT.test(名前, fn) でテストを足す。KT.ai / KT.gas / KT.api に、にせの答えを返す関数を足せる（答えないときは null）。 */
+var KT = window.KT = {
+  test:function(name, fn){ T.push({ name:name, fn:fn }); },
+  ok:ok, eq:eq, J:J, sleep:sleep, until:until, settle:settle, clean:clean, openFrame:openFrame,
+  frames:function(){ return frames; }, fs:function(){ return FS; },
+  gasState:gasState, aiCalls:aiCalls, gasCalls:gasCalls,
+  freshWrites:function(ws){ ws.forEach(function(w){ w.syncState.writes = []; }); },
+  ai:[], gas:[], api:[]
+};
+
+/* ============ 実行 ============
+   ?only=ことば|ことば … 名前にふくまれるテストだけ（はじめの準備のテストは、いつも動かす） */
 async function runAll(){
   var list = document.getElementById('list'), sum = document.getElementById('sum');
   list.innerHTML = ''; sum.className = ''; sum.textContent = '準備しています…';
@@ -1688,15 +1714,17 @@ async function runAll(){
     sum.className = 'ng'; sum.textContent = '起動できませんでした：' + e.message; return;
   }
   var pass = 0, fail = 0;
-  for(var i = 0; i < T.length; i++){
+  var only = (new URLSearchParams(location.search).get('only') || '').split('|').filter(Boolean);
+  var TT = only.length ? T.filter(function(t, i){ return i < 2 || only.some(function(w){ return t.name.indexOf(w) >= 0; }); }) : T;
+  for(var i = 0; i < TT.length; i++){
     var li = document.createElement('li');
     li.className = 'run';
     li.innerHTML = '<span class="mark">…</span> <span class="t"></span><span class="ms"></span>';
-    li.querySelector('.t').textContent = T[i].name;
+    li.querySelector('.t').textContent = TT[i].name;
     list.appendChild(li);
     var t0 = performance.now();
     try{
-      await T[i].fn();
+      await TT[i].fn();
       li.className = 'ok'; li.querySelector('.mark').textContent = '✓'; pass++;
     }catch(e){
       li.className = 'ng'; li.querySelector('.mark').textContent = '✗'; fail++;
@@ -1704,13 +1732,14 @@ async function runAll(){
       li.appendChild(m);
     }
     li.querySelector('.ms').textContent = Math.round(performance.now() - t0) + 'ms';
-    sum.textContent = pass + '件 成功 ／ ' + fail + '件 失敗（' + (i + 1) + '/' + T.length + '）';
+    sum.textContent = pass + '件 成功 ／ ' + fail + '件 失敗（' + (i + 1) + '/' + TT.length + '）';
   }
   sum.className = fail ? 'ng' : 'ok';
   sum.textContent = (fail ? '失敗があります：' : 'すべて成功：') + pass + '件 成功 ／ ' + fail + '件 失敗';
-  window.__TEST_RESULT = { pass:pass, fail:fail, total:T.length,
+  window.__TEST_RESULT = { pass:pass, fail:fail, total:TT.length,
     fails: [].slice.call(document.querySelectorAll('li.ng')).map(function(x){ return x.textContent; }) };
 }
 document.getElementById('again').addEventListener('click', runAll);
-runAll();
+/* 足した機能のテストのファイルを読み終えてから始める */
+if(document.readyState === 'complete') runAll(); else window.addEventListener('load', runAll);
 })();

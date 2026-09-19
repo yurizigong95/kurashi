@@ -685,6 +685,7 @@ function viewShifts(){
       '<div class="s" style="margin-top:4px">'+ymdLabel(np.from)+' 〜 '+ymdLabel(np.to)+'　'+nl.length+'回ぶん</div>');
   };
   var h = '';
+  if(typeof kmParts === 'function') kmParts('work', partsW, { ym:ym });
   pageOrder('work').forEach(function(id){ if(partsW[id] && !pageHidden('work', id)) h += partsW[id](); });
   return h;
 }

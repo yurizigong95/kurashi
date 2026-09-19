@@ -167,6 +167,9 @@ function notifyJobs(){
       });
     }
   }
+  /* 足した機能の通知（js/m-*.js） */
+  if(typeof kmJobsAdd === 'function') kmJobsAdd(add, p, now);
+  if(typeof kmJobsText === 'function') out = kmJobsText(out);
   /* 夜中は送らない（6:00〜23:30だけ） */
   if(p.quiet){
     out = out.filter(function(j){ var d = new Date(j.at), m = d.getHours() * 60 + d.getMinutes(); return m >= 360 && m <= 1410; });

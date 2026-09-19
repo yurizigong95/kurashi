@@ -1411,3 +1411,16 @@ body[data-theme="dark"] .ankigrades button{background:rgba(255,255,255,.06); col
 .pairbox{text-align:center; padding:12px; margin:0 0 10px; border-radius:16px; border:1px dashed var(--accent); background:rgba(255,255,255,.45)}
 .paircode{font-size:2.2em; font-weight:800; letter-spacing:.12em; color:var(--accent); margin-top:4px}
 body[data-theme="dark"] .pairbox{background:rgba(255,255,255,.05)}
+
+/* ================= 勉強タブ（道具の一覧） ================= */
+.studygrid{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px}
+@media (min-width:760px){ .studygrid{grid-template-columns:repeat(3, minmax(0, 1fr))} }
+.studycard{display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:12px; border-radius:16px; border:1px solid var(--edge);
+  background:rgba(255,255,255,.5); font:inherit; color:var(--ink); text-align:left; cursor:pointer; min-height:96px}
+body[data-theme="dark"] .studycard{background:rgba(255,255,255,.06)}
+.studycard .si{font-size:1.5em; line-height:1}
+.studycard .st{font-weight:700; font-size:.92em; line-height:1.35}
+.studycard .sb{font-style:normal; margin-left:6px; font-size:.72em; padding:1px 7px; border-radius:999px; background:var(--accent); color:#fff; vertical-align:1px}
+.studycard .sd{font-size:.72em; color:var(--sub); line-height:1.45}
+.studyback{align-items:center; margin-bottom:6px}
+.studyback .studyttl{margin-left:6px}

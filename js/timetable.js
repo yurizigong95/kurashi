@@ -308,6 +308,7 @@ function viewCourse(){
     '</section>';
   var partsC = { list: function(){ return listHtml; }, add: courseAddBox };
   var outC = '';
+  if(typeof kmParts === 'function') kmParts('course', partsC, {});
   pageOrder('course').forEach(function(id){ if(partsC[id] && !pageHidden('course', id)) outC += partsC[id](); });
   return outC;
 }

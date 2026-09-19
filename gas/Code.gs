@@ -74,6 +74,11 @@ function doPost(e){
       case 'aiKeySet':      return out_(aiKeySet_(req.key, req.model));
       case 'sheetSync':     return out_(sheetSync_(req.sheets || {}));
       case 'scanNow':       return out_(scanNow_(req.what));
+      case 'proxyGet':      return out_(proxyGet_(req.url, req.enc));
+      case 'deeplKeySet':   return out_(deeplKeySet_(req.key));
+      case 'translate':     return out_(translate_(req.text, req.target));
+      case 'gcalList':      return out_(gcalList_(req.from, req.to));
+      case 'icsPut':        return out_(icsPut_(req.ics));
       default:              return out_({ ok:false, error:'知らないお願いです：' + req.action });
     }
   }catch(err){
@@ -90,6 +95,7 @@ function doGet(e){
   if(!key || p.k !== key) return out_({ ok:false, error:'合言葉がちがいます' });
   if(p.a === 'widget') return out_(widget_());
   if(p.a === 'alarm') return out_(alarm_());
+  if(p.a === 'ics') return icsGet_();
   if(p.a === 'in'){
     var lock = LockService.getScriptLock();
     try{ lock.waitLock(20000); return out_(inboxAdd_(p)); }
@@ -144,6 +150,7 @@ function featSet_(f){
   var clean = function(a, n, len){ return (Array.isArray(a) ? a : []).map(function(x){ return clip_(x, len).trim(); }).filter(Boolean).slice(0, n); };
   var o = { mailCard:f.mailCard ? 1 : 0, mailUnkou:f.mailUnkou ? 1 : 0, discord:f.discord ? 1 : 0, push:f.push === 0 ? 0 : 1,
             lec:f.lec ? 1 : 0, gnFolder:clip_(f.gnFolder, 60).trim(), gnOnly:clean(f.gnOnly, 10, 30),
+            uniDomain:/^[a-z0-9.\-]{3,60}$/i.test(String(f.uniDomain || '')) ? String(f.uniDomain).toLowerCase() : '',
             courses:clean(f.courses, 60, 60), quiet:f.quiet === 0 ? 0 : 1 };
   props_().setProperty('FEAT', JSON.stringify(o));
   if(!hasTrigger_()) setup_();
@@ -466,7 +473,7 @@ function extras_(){
   if(running && now - running < 6 * 60000) return;            // 前の回がまだ動いている
   p.setProperty('EXTRA_RUN', String(now));
   try{
-    if((f.mailCard || f.mailUnkou) && now - (Number(p.getProperty('MAIL_AT')) || 0) >= 10 * 60000){
+    if((f.mailCard || f.mailUnkou || f.uniDomain) && now - (Number(p.getProperty('MAIL_AT')) || 0) >= 10 * 60000){
       p.setProperty('MAIL_AT', String(now));
       try{ mailScan_(f, false); }catch(e){ extraErr_('Gmail', e); }
     }
@@ -568,6 +575,12 @@ function mailParse_(from, subject, body, f){
       }
     }
   }
+  /* 大学からのメール（休講・補講・教室変更・課題・フォーム）：中身はアプリのAIが読む */
+  if(f.uniDomain && String(from || '').toLowerCase().indexOf(f.uniDomain) >= 0 &&
+     /休講|補講|教室|変更|課題|提出|締切|〆切|フォーム|アンケート|forms\.gle|docs\.google\.com\/forms/.test(String(subject || '') + t)){
+    var forms = (t.match(/https:\/\/(?:forms\.gle\/[A-Za-z0-9]+|docs\.google\.com\/forms\/[^\s"<>)]+)/g) || []).slice(0, 5);
+    return { kind:'uni', title:clip_(subject, 120), text:clip_(t.replace(/\n{3,}/g, '\n\n'), 1500), forms:forms };
+  }
   if(f.mailUnkou && /運行|遅延|遅れ|見合わせ|運転再開|運休/.test(String(subject || ''))){
     var lines = t.split('\n').map(function(l){ return l.trim(); })
       .filter(function(l){ return l && !/^[-=＿_─━*＊]+$/.test(l) && !/配信|登録|解除|http/i.test(l); }).slice(0, 4);
@@ -579,6 +592,7 @@ function mailScan_(f, dry){
   var q = [];
   if(f.mailCard) q.push('from:(vpass.ne.jp OR smbc-card.com OR rakuten-card.co.jp) OR subject:(ご利用のお知らせ OR カード利用のお知らせ)');
   if(f.mailUnkou) q.push('subject:(運行情報 OR 遅延 OR 運転見合わせ OR 運転再開 OR 運休)');
+  if(f.uniDomain) q.push('from:(' + f.uniDomain + ')');
   if(!q.length) return [];
   var seen = bigGet_('mailSeen', []), seenMap = {};
   seen.forEach(function(id){ seenMap[id] = 1; });
@@ -595,6 +609,8 @@ function mailScan_(f, dry){
   found.forEach(function(it){
     if(it.kind === 'pay'){
       inboxPush_({ kind:'pay', amount:it.amount, shop:it.shop, card:it.card, date:it.date, ref:'gm-' + it.mid });
+    }else if(it.kind === 'uni'){
+      inboxPush_({ kind:'uni', title:it.title, text:it.text, forms:it.forms, ref:'gm-' + it.mid });
     }else if(it.kind === 'unkou'){
       inboxPush_({ kind:'notice', text:'🚃 ' + it.title + (it.text ? '\n' + it.text : '') });
       var h = Number(Utilities.formatDate(new Date(), TZ, 'H')) * 60 + Number(Utilities.formatDate(new Date(), TZ, 'm'));
@@ -719,6 +735,83 @@ function aiScan_(f, max){
   return { ok:true, done:done, left:Math.max(0, cands.length - done), made:made };
 }
 
+/* ===================== 外のサービスを代わりに読む（読んでよい場所だけ） ===================== */
+var PROXY_HOSTS = [
+  'eutils.ncbi.nlm.nih.gov', 'api.jstage.jst.go.jp', 'cir.nii.ac.jp', 'ci.nii.ac.jp', 'ndlsearch.ndl.go.jp', 'iss.ndl.go.jp',
+  'api.openbd.jp', 'www.googleapis.com', 'ja.wikipedia.org', 'en.wikipedia.org', 'laws.e-gov.go.jp', 'elaws.e-gov.go.jp',
+  'www.wbgt.env.go.jp', 'www.jma.go.jp', 'api.rainviewer.com', 'holidays-jp.github.io', 'www8.cao.go.jp',
+  'overpass-api.de', 'api.open-meteo.com', 'www.mhlw.go.jp'
+];
+function proxyGet_(url, enc){
+  var m = /^https:\/\/([^\/?#:]+)(?:[\/?#]|$)/.exec(String(url || ''));
+  if(!m || PROXY_HOSTS.indexOf(m[1].toLowerCase()) < 0) return { ok:false, error:'読んではいけない場所です' };
+  var res = UrlFetchApp.fetch(url, { muteHttpExceptions:true, followRedirects:true, headers:{ 'User-Agent':'kurashi-bridge' } });
+  var blob = res.getBlob(), bytes = blob.getBytes();
+  if(bytes.length > 3 * 1024 * 1024) return { ok:false, error:'大きすぎます' };
+  var cs = enc || (/charset=([^;\s]+)/i.exec(String(res.getHeaders()['Content-Type'] || res.getHeaders()['content-type'] || '')) || [])[1] || 'UTF-8';
+  var text;
+  try{ text = blob.getDataAsString(cs); }catch(e){ text = blob.getDataAsString('UTF-8'); }
+  return { ok:res.getResponseCode() < 400, status:res.getResponseCode(), text:text, error:res.getResponseCode() >= 400 ? ('エラー ' + res.getResponseCode()) : undefined };
+}
+
+/* ===================== DeepLで翻訳（カギは橋わたしにだけ置く） ===================== */
+function deeplKeySet_(key){
+  key = String(key || '').trim();
+  if(!key){ props_().deleteProperty('DEEPL_KEY'); return { ok:true, deepl:false }; }
+  if(!/^[A-Za-z0-9\-]{20,60}(:fx)?$/.test(key)) return { ok:false, error:'DeepLのカギの形がちがいます' };
+  props_().setProperty('DEEPL_KEY', key);
+  return { ok:true, deepl:true };
+}
+function translate_(text, target){
+  var key = props_().getProperty('DEEPL_KEY');
+  if(!key) return { ok:false, error:'DeepLのカギがまだ預けられていません' };
+  text = clip_(text, 20000);
+  if(!text) return { ok:false, error:'文章がありません' };
+  var host = /:fx$/.test(key) ? 'https://api-free.deepl.com' : 'https://api.deepl.com';
+  var res = UrlFetchApp.fetch(host + '/v2/translate', { method:'post', muteHttpExceptions:true,
+    headers:{ Authorization:'DeepL-Auth-Key ' + key }, contentType:'application/json',
+    payload:JSON.stringify({ text:[text], target_lang:/^(EN|EN-US|EN-GB)$/i.test(String(target || '')) ? 'EN-US' : 'JA' }) });
+  var j = null; try{ j = JSON.parse(res.getContentText()); }catch(e){}
+  if(res.getResponseCode() !== 200 || !j || !j.translations) return { ok:false, error:'翻訳できませんでした（' + res.getResponseCode() + '）' };
+  return { ok:true, text:j.translations[0].text, from:j.translations[0].detected_source_language };
+}
+
+/* ===================== Googleカレンダーの予定を読む（くらしの手帳のカレンダーはのぞく） ===================== */
+function gcalList_(from, to){
+  var f = /^\d{4}-\d{2}-\d{2}$/.test(String(from || '')) ? new Date(from + 'T00:00:00+09:00') : new Date();
+  var t = /^\d{4}-\d{2}-\d{2}$/.test(String(to || '')) ? new Date(to + 'T23:59:59+09:00') : new Date(f.getTime() + 60 * 86400000);
+  if(t - f > 120 * 86400000) t = new Date(f.getTime() + 120 * 86400000);
+  var out = [];
+  CalendarApp.getAllCalendars().forEach(function(cal){
+    var nm = cal.getName();
+    if(nm === CAL_NAME || /holiday|祝日/i.test(cal.getId() + nm)) return;
+    cal.getEvents(f, t).forEach(function(ev){
+      if(out.length >= 300) return;
+      var all = ev.isAllDayEvent();
+      out.push({ id:clip_(ev.getId(), 120), title:clip_(ev.getTitle(), 120), cal:clip_(nm, 60), allDay:all ? 1 : 0,
+        start:Utilities.formatDate(ev.getStartTime(), TZ, all ? 'yyyy-MM-dd' : "yyyy-MM-dd'T'HH:mm"),
+        end:Utilities.formatDate(ev.getEndTime(), TZ, all ? 'yyyy-MM-dd' : "yyyy-MM-dd'T'HH:mm"),
+        where:clip_(ev.getLocation(), 120) });
+    });
+  });
+  return { ok:true, items:out };
+}
+
+/* ===================== iPhoneのカレンダーで「照会」できる予定表（.ics） ===================== */
+function icsPut_(ics){
+  ics = String(ics || '');
+  if(ics.indexOf('BEGIN:VCALENDAR') !== 0 || ics.length > 1500000) return { ok:false, error:'予定表の形がちがいます' };
+  var f = folder_(), it = f.getFilesByName('kurashi.ics');
+  if(it.hasNext()) it.next().setContent(ics);
+  else f.createFile('kurashi.ics', ics, 'text/calendar');
+  return { ok:true };
+}
+function icsGet_(){
+  var it = folder_().getFilesByName('kurashi.ics');
+  var text = it.hasNext() ? it.next().getBlob().getDataAsString('UTF-8') : 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//kurashi//JA\r\nEND:VCALENDAR\r\n';
+  return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.ICAL);
+}
+
 /* ===================== スプレッドシートに書き出す ===================== */
 function sheetSync_(sheets){
   var p = props_(), id = p.getProperty('SHEET_ID'), ss = null;
@@ -753,7 +846,7 @@ function sheetSync_(sheets){
 /* ===================== ショートカットから届く記録 ===================== */
 function inboxAdd_(p){
   var kind = String(p.kind || '');
-  if(['arrive', 'leave', 'pay', 'memo', 'task', 'img'].indexOf(kind) < 0) return { ok:false, error:'kind がちがいます' };
+  if(['arrive', 'leave', 'pay', 'memo', 'task', 'img', 'health'].indexOf(kind) < 0) return { ok:false, error:'kind がちがいます' };
   /* 写真（Goodnotesのページなど）：ドライブの「受け取り」に置いて、あとでAIが読む */
   if(kind === 'img'){
     var raw = String(p.data || ''), mm = raw.match(/^data:([^;]+);base64,(.*)$/);
@@ -778,6 +871,14 @@ function inboxAdd_(p){
     item.text = clip_(p.text, 200);
     if(!item.text) return { ok:false, error:'課題の名前がありません' };
     if(/^\d{4}-\d{2}-\d{2}$/.test(String(p.due || ''))) item.due = p.due;
+  }
+  /* 睡眠・歩数（iPhoneのヘルスケアから、ショートカットで） */
+  if(kind === 'health'){
+    item.date = /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? p.date : Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+    var sl = Number(String(p.sleep == null ? '' : p.sleep).replace(/[^0-9.]/g, '')), st = Number(String(p.steps == null ? '' : p.steps).replace(/[^0-9.]/g, ''));
+    if(!sl && !st) return { ok:false, error:'睡眠か歩数がありません' };
+    if(sl) item.sleep = sl < 24 ? Math.round(sl * 60) : Math.round(sl);      // 24より小さければ「時間」、それ以外は「分」
+    if(st) item.steps = Math.round(st);
   }
   if(p.place) item.place = clip_(p.place, 40);
   inboxPush_(item, true);

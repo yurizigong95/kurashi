@@ -213,6 +213,7 @@ function viewTodayLife(){
     return '<section>' + bs.map(function(b){ return '<div class="bn '+b.c+'"><span class="ic">'+b.ic+'</span><span>'+b.t+'</span></div>'; }).join('') + '</section>';
   };
   parts.next10 = function(){ return next10Card(); };
+  if(typeof kmParts === 'function') kmParts('life', parts, {});
   pageOrder('life').forEach(function(id){ if(parts[id] && !pageHidden('life', id)) html += parts[id](); });
   return html;
 }
@@ -323,6 +324,7 @@ function viewDay(ymd, pageKey){
       (pinned.length ? pinned.map(noteRow).join('') : '<div class="empty">ピン留めしたメモがここに出ます。</div>')+
       '<button class="btn ghost" style="margin-top:8px" data-act="note-new">メモを作る</button>');
   };
+  if(typeof kmParts === 'function') kmParts(pageKey, parts, { ymd:ymd, isToday:isToday });
   pageOrder(pageKey).forEach(function(id){ if(parts[id] && !pageHidden(pageKey, id)) html += parts[id](); });
   return html;
 }

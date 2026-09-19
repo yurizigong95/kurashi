@@ -46,6 +46,8 @@ async function inboxPull(manual){
 function inboxApply(it){
   if(!it || !it.kind) return '';
   var d = new Date(Number(it.at) || Date.now()), ymd = toYmd(d), min = d.getHours() * 60 + d.getMinutes();
+  /* 足した機能が受け取るもの（健康の記録・大学のメールなど） */
+  if(typeof kmInboxApply === 'function'){ var km = kmInboxApply(it, ymd, min); if(km !== null) return km; }
   if(it.kind === 'pay'){
     var mail = /^gm-/.test(String(it.ref || ''));      /* カードの利用メールから（橋わたしがGmailを読んだもの） */
     var x = (typeof kbAdd === 'function') ? kbAdd({ amount:it.amount, title:it.shop || it.card || 'Apple Pay', date:isYmd(it.date) ? it.date : ymd,
@@ -131,7 +133,7 @@ function buildSummary(){
   normItems().filter(function(x){ return x.date === tm && x.src !== 'cls' && !(x.src === 'task' && x.done); }).slice(0, 5)
     .forEach(function(x){ tlines.push((x.time ? x.time + ' ' : '') + x.title); });
   if(typeof morningItems === 'function'){ var mi = morningItems(tm); if(mi.length) tlines.push('持ち物：' + mi.join('・')); }
-  return {
+  var s0 = {
     at: Date.now(),
     title: (now.getMonth() + 1) + '/' + now.getDate() + '（' + WDAY[now.getDay()] + '）',
     lines: lines.slice(0, 8),
@@ -142,6 +144,7 @@ function buildSummary(){
     tomorrow: { title:ymdLabel(tm), lines:tlines.slice(0, 10) },
     study: (typeof ankiDueList === 'function') ? { due:ankiDueList('').length, today:ankiCountOn(td), streak:ankiStreak() } : null
   };
+  return (typeof kmSummaryAdd === 'function') ? kmSummaryAdd(s0) : s0;
 }
 async function summaryPush(force){
   if(!gasReady() || !shortKey()) return;

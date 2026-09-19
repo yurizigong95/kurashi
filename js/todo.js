@@ -65,6 +65,7 @@ function viewTodo(){
         '<p class="note">ここで足したものは白色で、今日・明日・ToDoにだけ出ます。カレンダーには出ません。</p>'); }
   };
   var out = (typeof suggestsCard === 'function') ? suggestsCard() : '';     /* AIが見つけた課題の候補（あるときだけ） */
+  if(typeof kmParts === 'function') kmParts('todo', parts, {});
   pageOrder('todo').forEach(function(id){ if(parts[id] && !pageHidden('todo', id)) out += parts[id](); });
   return out;
 }

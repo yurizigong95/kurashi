@@ -313,7 +313,7 @@ function chatContext(){
 
 function chatSystem(){
   return 'あなたは看護学部1年生の学習と生活をささえる相談相手です。' +
-    '下の「アプリの中身」に書かれた情報だけを根拠にして、日本語で答えてください。\n' +
+    '下の「アプリの中身」と、道具で手帳を調べた結果だけを根拠にして、日本語で答えてください。\n' +
     '【話し方】' + toneRule() + '\n' +
     '【長さ】' + lenRule() + '\n' +
     '【書き方】' + styleRule() + '\n' +
@@ -330,6 +330,8 @@ function chatSystem(){
     '・病気の診断や薬の判断はしない。つらそうなときは人に相談するようすすめる。\n' +
     '・患者さんの個人情報は扱わない。\n' +
     '【答えの終わりに】根拠にした予定があれば、最後の行に「根拠：9/17の課題、9/20のテスト」のように短く書く。\n' +
+    '【勉強の質問の出典】看護・医療の知識を答えるときは、手帳のメモ・講義メモ・暗記カード・保存した論文にあればそれを「出典：講義メモ「〇〇」」のように示す。' +
+    '手帳に無い一般的な知識なら「出典：一般的な知識（教科書・先生の資料で確かめてください）」と書く。数値や薬の量は、必ず確かめるようにそえる。\n' +
     '【予定の提案】新しく予定を入れるとよさそうなときは、いちばん最後に次の形式だけの行を足す（複数可・説明は書かない）：\n' +
     '[[ADD|種類|タイトル|YYYY-MM-DD|HH:MM|終了HH:MM]]\n' +
     '  種類は task/quiz/exam/kousa/work/imp/other のどれか。時刻がいらないときは空でよい。\n' +
@@ -608,7 +610,7 @@ function quickAddText(q){
   if(list.indexOf(q) >= 0){ toast('もうボタンになっています'); return; }
   if(list.length >= 12){ toast('ボタンは12個までです', true); return; }
   list.push(q);
-  S.chatQuick = list;
+  S.chatQuick = list; touch('chatQuick');
   toast('「' + q + '」をボタンにしました'); commit();
 }
 
@@ -792,11 +794,11 @@ function chatAction(act, t){
   if(act === 'quick-edit'){ quickEdit = !quickEdit; render(); return true; }
   if(act === 'quick-del'){
     var ql = (S.chatQuick || []).slice(); ql.splice(toNum(t.dataset.i), 1);
-    S.chatQuick = ql; commit(); return true;
+    S.chatQuick = ql; touch('chatQuick'); commit(); return true;
   }
   if(act === 'quick-reset'){
     if(!confirm('ボタンを、はじめの見本にもどしますか？')) return true;
-    S.chatQuick = []; quickEdit = false; commit(); return true;
+    S.chatQuick = []; touch('chatQuick'); quickEdit = false; commit(); return true;
   }
   if(act === 'chat-sum'){ chatMaybeSummarize(true); return true; }
   if(act === 'chat-add'){

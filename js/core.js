@@ -867,7 +867,7 @@ var COMMUTE_DEFAULT = {
   ends:    PERIOD_DEFAULT.map(function(x){ return x[1]; })
 };
 var TAB_DEFS = [
-  ['today','今日'],['tt','時間割'],['course','授業'],['cal','予定'],['todo','ToDo'],['anki','暗記'],
+  ['today','今日'],['tt','時間割'],['course','授業'],['cal','予定'],['todo','ToDo'],['anki','暗記'],['study','勉強'],
   ['money','お金'],['chat','相談'],['notes','メモ'],['pet','おせわ'],['news','お知らせ'],['risyu','履修'],['set','⚙']
 ];
 var TODAY_SECTIONS = [
@@ -938,8 +938,14 @@ function pageHidden(page, id){
   S.ui.pageHide = S.ui.pageHide || {};
   return !!(S.ui.pageHide[page] && S.ui.pageHide[page][id]);
 }
+/* 足した機能のデータ（どれも同期する）
+   一覧（id と mt を持つ）… kqs 国試の問題／books 教科書／vaccines 予防接種・健診／abbrs 自分で足した略語／
+                            annivs 誕生日・記念日／anatomy 解剖図の穴うめ／papers 保存した論文
+   表（名前→中身）       … kqLog 国試の答えた記録／healthLog 睡眠・歩数／examPlan テスト範囲の計画 */
+var EXTRA_LISTS = ['kqs','books','vaccines','abbrs','annivs','anatomy','papers'];
+var EXTRA_MAPS = ['kqLog','healthLog','examPlan'];
 var UI_DEFAULT = { theme:'pink', fs:'m', weather:1,
-  tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['anki',1],['money',1],['chat',1],['notes',1],['pet',1],['news',0],['risyu',0],['set',1]],
+  tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['anki',1],['study',1],['money',1],['chat',1],['notes',1],['pet',1],['news',0],['risyu',0],['set',1]],
   todayOrder: TODAY_SECTIONS.map(function(x){ return x[0]; }),
   todayClosed: {}, pageOrder:{}, pageHide:{}, subOrder:{}, subHide:{}, setOpen:{}, customColor:'#E8C8E8', autoClean:1 };
 var S = {
@@ -956,6 +962,8 @@ var S = {
   attendLog: {}, grades: {}, holidays: [], biweek: {}, notes: [], notices: [],
   cards: [], studyLog: {}, petDays: {},   /* 暗記カード・勉強した枚数・おせわの毎日の記録 */
   suggests: [],                           /* AIが見つけた課題の候補（見てから追加する） */
+  kqs: [], books: [], vaccines: [], abbrs: [], annivs: [], anatomy: [], papers: [],   /* EXTRA_LISTS */
+  kqLog: {}, healthLog: {}, examPlan: {},                                                /* EXTRA_MAPS */
   termsList: null, termId: '2026-2', termsDone: {},
   transit: { sannomiyaTransfer:10, workBuffer:10, fav:[], custom:{ busGo:[], trainGo:[], trainBack:[], busBack:[], busWork:[] } },
   attend: {}, terms: { first:{} },
@@ -1134,13 +1142,18 @@ try{
     S.suggests = Array.isArray(d0.suggests) ? d0.suggests : [];
     if(!Array.isArray(S.ui.tabs)) S.ui.tabs = UI_DEFAULT.tabs.map(function(x){ return x.slice(); });
     TAB_DEFS.forEach(function(t){ if(!S.ui.tabs.some(function(x){ return x[0]===t[0]; })) S.ui.tabs.push([t[0], t[0]==='news'||t[0]==='risyu' ? 0 : 1]); });
-    /* 暗記タブは、ToDoのうしろに入れる（あとから足した人も、⚙のうしろにならないように） */
-    (function(){
-      var i = S.ui.tabs.findIndex(function(x){ return x[0]==='anki'; });
+    /* 暗記・勉強タブは、ToDoのうしろに入れる（あとから足した人も、⚙のうしろにならないように） */
+    [['anki','todo'],['study','anki']].forEach(function(pr){
+      var i = S.ui.tabs.findIndex(function(x){ return x[0]===pr[0]; });
       var j = S.ui.tabs.findIndex(function(x){ return x[0]==='set'; });
-      var k = S.ui.tabs.findIndex(function(x){ return x[0]==='todo'; });
-      if(i > j && j >= 0){ var it = S.ui.tabs.splice(i,1)[0]; S.ui.tabs.splice(k >= 0 ? k+1 : j, 0, it); }
-    })();
+      if(i > j && j >= 0){
+        var it = S.ui.tabs.splice(i,1)[0];
+        var k = S.ui.tabs.findIndex(function(x){ return x[0]===pr[1]; });
+        S.ui.tabs.splice(k >= 0 ? k+1 : S.ui.tabs.findIndex(function(x){ return x[0]==='set'; }), 0, it);
+      }
+    });
+    EXTRA_LISTS.forEach(function(k){ S[k] = Array.isArray(d0[k]) ? d0[k] : []; });
+    EXTRA_MAPS.forEach(function(k){ S[k] = (d0[k] && typeof d0[k]==='object' && !Array.isArray(d0[k])) ? d0[k] : {}; });
     /* そうだんタブは、お金のうしろに入れる */
     (function(){
       var i = S.ui.tabs.findIndex(function(x){ return x[0]==='chat'; });
@@ -1217,7 +1230,7 @@ function autoTouch(){
 }
 /* ===== どの端末で直したかを、1件ずつ記録する ===== */
 var __itemSig = null;
-var STAMP_LISTS = ['spends','income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices','breaks','plans','cards','suggests'];
+var STAMP_LISTS = ['spends','income','fixed','balances','events','tasks','exams','health','shifts','holidays','notes','notices','breaks','plans','cards','suggests'].concat(EXTRA_LISTS);
 function itemSigAll(){
   var all = {};
   STAMP_LISTS.forEach(function(k){
