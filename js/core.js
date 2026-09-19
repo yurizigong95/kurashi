@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-09-18a';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-09-19a';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -117,6 +117,33 @@ var UI_STYLES = [
 function uiStyleNow(){
   var id = S.ui.style || 'glass';
   return UI_STYLES.filter(function(s){ return s.id === id; })[0] || UI_STYLES[0];
+}
+/* 文字の形（フォント）。gf は Google Fonts の名前で、選んだときだけ読みこむ。
+   読みこむ前や電波がないときは、いつもの文字（FONT_BASE）で出る */
+var FONT_BASE = '"Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic Medium",sans-serif';   /* app.css の body と同じ */
+var UI_FONTS = [
+  { id:'std',     name:'いつもの',       tag:'いつもの', desc:'いままでの文字。iPhoneでは丸ゴシックになります', css:'' },
+  { id:'bizud',   name:'UDゴシック',     tag:'見やすい', desc:'小さくても読みまちがえにくい文字', gf:'BIZ+UDPGothic:wght@400;700', css:'"BIZ UDPGothic"' },
+  { id:'zenmaru', name:'やさしい丸文字', tag:'かわいい', desc:'角がまるくて、すっきり読める文字', gf:'Zen+Maru+Gothic:wght@400;500;700', css:'"Zen Maru Gothic"' },
+  { id:'mplus',   name:'ころころ丸文字', tag:'かわいい', desc:'ころんと丸い、元気な文字', gf:'M+PLUS+Rounded+1c:wght@400;500;700;800', css:'"M PLUS Rounded 1c"' },
+  { id:'kiwi',    name:'ほっこり',       tag:'かわいい', desc:'ふっくらして、あたたかい文字', gf:'Kiwi+Maru:wght@400;500', css:'"Kiwi Maru"' },
+  { id:'klee',    name:'えんぴつ',       tag:'おしゃれ', desc:'えんぴつで書いたような、ていねいな手書き', gf:'Klee+One:wght@400;600', css:'"Klee One"' },
+  { id:'yomogi',  name:'ゆる手書き',     tag:'かわいい', desc:'ペンでさらっと書いた、ゆるい手書き', gf:'Yomogi', css:'"Yomogi"' },
+  { id:'hachi',   name:'まるもじ',       tag:'かわいい', desc:'手紙に書くような、まるっこい文字', gf:'Hachi+Maru+Pop', css:'"Hachi Maru Pop"' },
+  { id:'mincho',  name:'明朝',           tag:'おしゃれ', desc:'本のような、上品な文字', gf:'Shippori+Mincho:wght@400;500;700;800', css:'"Shippori Mincho"' }
+];
+function uiFontNow(){
+  var id = S.ui.font || 'std';
+  return UI_FONTS.filter(function(f){ return f.id === id; })[0] || UI_FONTS[0];
+}
+function uiFontStack(f){ return f.css ? f.css + ',' + FONT_BASE : FONT_BASE; }
+/* Google Fonts を読みこむ（1回だけ）。テストのときはネットに出ない */
+function loadUiFont(f){
+  if(!f || !f.gf || TEST_MODE || document.getElementById('gf-' + f.id)) return;
+  var l = document.createElement('link');
+  l.id = 'gf-' + f.id; l.rel = 'stylesheet';
+  l.href = 'https://fonts.googleapis.com/css2?family=' + f.gf + '&display=swap';
+  document.head.appendChild(l);
 }
 /* 自分で選んだ色から、明るさ違いを作る */
 function hexToRgb(h){ h=String(h||'').replace('#',''); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
@@ -1247,6 +1274,9 @@ function applyUi(){
   document.body.setAttribute('data-fs', S.ui.fs || 'm');
   var stl = uiStyleNow().id;
   if(stl !== 'glass') document.body.setAttribute('data-style', stl); else document.body.removeAttribute('data-style');
+  var fnt = uiFontNow();
+  if(fnt.css){ document.body.setAttribute('data-font', fnt.id); document.body.style.setProperty('--ff', uiFontStack(fnt)); loadUiFont(fnt); }
+  else { document.body.removeAttribute('data-font'); document.body.style.removeProperty('--ff'); }
   if(th === 'custom') applyCustomTheme(); else clearCustomTheme();
   document.body.setAttribute('data-season', (mode==='season'||mode==='mix') ? seasonNow() : '');
   /* 行事のかざりは、背景の設定とは別に選べる */

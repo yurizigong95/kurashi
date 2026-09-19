@@ -651,6 +651,8 @@ setTimeout(function(){
 setTimeout(movePills, 60);
 setTimeout(movePills, 400);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(movePills)['catch'](function(){});
+/* 選んだ文字（フォント）があとから届いたときも、タブの印の幅を合わせ直す */
+if(document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', movePills);
 /* 写真を大きく見る画面は、どこを押しても閉じる */
 (function(){
   var v = document.getElementById('viewer');

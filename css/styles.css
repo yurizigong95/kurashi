@@ -537,6 +537,10 @@ body[data-theme="dark"] .stylegrid button{background:rgba(255,255,255,.06)}
   background:rgba(255,255,255,.92); color:#4A3A44; box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .stylegrid button.on .stt{background:var(--accent); color:#fff}
 body[data-theme="dark"] .stylegrid button.on .stt{color:#111}
+/* 文字の形の見本 */
+.fontgrid .fnpv{display:flex; align-items:flex-end; justify-content:center; gap:5px; height:58px; padding-bottom:9px; border-radius:12px;
+  overflow:hidden; white-space:nowrap; background:var(--paper); color:var(--ink); font-size:1.3em; line-height:1}
+.fontgrid .fnpv small{font-size:.6em; color:var(--sub)}
 /* 小さな見本 */
 .stpv{position:relative; display:block; height:66px; border-radius:12px; overflow:hidden; background:var(--paper)}
 .stpv i{position:absolute; display:block}

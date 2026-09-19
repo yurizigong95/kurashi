@@ -2,8 +2,9 @@
 /* ============================== 設定 ============================== */
 function viewSettings(){
   var c = S.commute;
-  var look = foldSection('s1', '見た目', uiStyleNow().name + '・' + ((THEMES.filter(function(t){ return t.id===S.ui.theme; })[0] || THEMES[0]).name),
-    styleSettings() +
+  var look = foldSection('s1', '見た目', uiStyleNow().name + '・' + ((THEMES.filter(function(t){ return t.id===S.ui.theme; })[0] || THEMES[0]).name) +
+      (uiFontNow().css ? '・' + uiFontNow().name : ''),
+    styleSettings() + fontSettings() +
     '<label class="f">カラー（背景ごと変わります）</label><div class="themes">'+
       THEMES.map(function(t){
         var sw = t.custom ? 'linear-gradient(150deg,'+(S.ui.customColor||'#E8C8E8')+','+(S.ui.customColor||'#E8C8E8')+')'
@@ -324,6 +325,11 @@ function settingsAction(act, t){
     var stNew = UI_STYLES.filter(function(s){ return s.id === t.dataset.v; })[0];
     if(!stNew) return true;
     S.ui.style = stNew.id; touch('ui'); applyUi(); toast('「' + stNew.name + '」にしました'); commit(); return true;
+  }
+  if(act==='set-font'){
+    var fnNew = UI_FONTS.filter(function(f){ return f.id === t.dataset.v; })[0];
+    if(!fnNew) return true;
+    S.ui.font = fnNew.id; touch('ui'); applyUi(); toast('文字を「' + fnNew.name + '」にしました'); commit(); return true;
   }
   if(act==='set-theme'){ S.ui.theme = t.dataset.v; touch('ui'); applyUi(); toast('テーマを変えました'); commit(); return true; }
   if(act==='mycolor-add'){
@@ -1005,4 +1011,21 @@ function styleSettings(){
         '<span class="stn">'+esc(s.name)+'</span></button>';
     }).join('')+'</div>'+
     '<p class="note" style="margin:-2px 0 12px">いまは<b>「'+esc(cur.name)+'」</b>：'+esc(cur.desc)+'。下のカラーと組み合わせられます。</p>';
+}
+
+/* 文字の形（フォント）を選ぶ（見本つき） */
+function fontSettings(){
+  var cur = uiFontNow();
+  /* 見た目を開いているときだけ、見本のために全部読みこむ（届くのは見本の字の分だけ） */
+  if(S.ui.setOpen && S.ui.setOpen.s1) UI_FONTS.forEach(loadUiFont);
+  return '<label class="f">文字の形（フォント）</label>'+
+    '<div class="stylegrid fontgrid">'+UI_FONTS.map(function(f){
+      var on = (f.id === cur.id);
+      return '<button data-act="set-font" data-v="'+f.id+'" class="'+(on?'on':'')+'" aria-pressed="'+(on?'true':'false')+'">'+
+        '<span class="fnpv" aria-hidden="true" style="font-family:'+esc(uiFontStack(f))+'">あいう<small>Aa</small></span>'+
+        '<span class="stt">'+esc(f.tag)+'</span>'+
+        '<span class="stn">'+esc(f.name)+'</span></button>';
+    }).join('')+'</div>'+
+    '<p class="note" style="margin:-2px 0 12px">いまは<b>「'+esc(cur.name)+'」</b>：'+esc(cur.desc)+'。'+
+      (cur.gf ? 'はじめての端末では、ネットから文字を読みこむまで少しだけ時間がかかります。' : '')+'</p>';
 }

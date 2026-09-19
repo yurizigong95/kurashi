@@ -748,7 +748,7 @@ test('エラーの記録・新しい版のお知らせ・写真を大きく見�
 test('見た目：画面のスタイルとキャラクターを選べて、相手にも届く', async function(){
   var A = frames.A, B = frames.B, doc = A.document;
   A.S.ui.setOpen = J(A, { s1:1, chara:1 }); A.appId = 'set'; A.render();
-  eq(doc.querySelectorAll('.stylegrid button').length, A.UI_STYLES.length, 'スタイルの見本の数');
+  eq(doc.querySelectorAll('.stylegrid:not(.fontgrid) button').length, A.UI_STYLES.length, 'スタイルの見本の数');
   doc.querySelector('[data-act="set-style"][data-v="liquid"]').click();
   eq(doc.body.getAttribute('data-style'), 'liquid', 'スタイルが変わる');
   /* どのスタイルでも、どの画面もこわれない */
@@ -852,6 +852,28 @@ test('見た目：画面のスタイルとキャラクターを選べて、相�
   /* もとにもどす */
   A.S.ui.style = 'glass'; A.S.ui.chara = J(A, { level:2 }); A.touch('ui'); A.applyUi(); A.commit();
   await settle([A, B]);
+});
+
+test('見た目：文字の形（フォント）を選べて、相手にも届く', async function(){
+  var A = frames.A, B = frames.B, doc = A.document;
+  A.S.ui.setOpen = J(A, { s1:1 }); A.appId = 'set'; A.render();
+  eq(doc.querySelectorAll('.fontgrid button').length, A.UI_FONTS.length, 'フォントの見本の数');
+  eq(new Set(A.UI_FONTS.map(function(f){ return f.id; })).size, A.UI_FONTS.length, 'フォントのIDが重なっている');
+  ok(!doc.querySelector('link[id^="gf-"]'), 'テストではネットから文字を読みこまない');
+  doc.querySelector('[data-act="set-font"][data-v="klee"]').click();
+  eq(doc.body.getAttribute('data-font'), 'klee', 'フォントが変わる');
+  ok(/Klee One/.test(A.getComputedStyle(doc.body).fontFamily), '画面の文字に使われる');
+  ok(/Klee One/.test(A.getComputedStyle(doc.querySelector('.pillrow button') || doc.body).fontFamily), 'ボタンの文字にも使われる');
+  ok(doc.querySelector('[data-act="set-font"][data-v="klee"]').classList.contains('on'), '選んだものに印');
+  await settle([A, B]);
+  eq(B.S.ui.font, 'klee', 'フォントが相手に届く');
+  eq(B.document.body.getAttribute('data-font'), 'klee', '相手の画面も変わる');
+  /* もとにもどす */
+  A.appId = 'set'; A.render();
+  doc.querySelector('[data-act="set-font"][data-v="std"]').click();
+  ok(!doc.body.hasAttribute('data-font') && !doc.body.style.getPropertyValue('--ff'), 'いつものにもどすと印が消える');
+  await settle([A, B]);
+  ok(!B.document.body.hasAttribute('data-font'), '相手もいつものにもどる');
 });
 
 test('家計簿：CSVの読みこみ（二重に入らない）・手入力・相手に届く', async function(){
