@@ -1,1 +1,149 @@
 /* くらしの手帳：勉強①（国試・略語・基準値・薬・解剖・手技） の見た目 */
+/* ===== 共通 ===== */
+.kq-src{font-size:.74em; color:var(--sub); margin-top:6px; line-height:1.5; word-break:break-word}
+.kq-src a{color:var(--accent); text-decoration:underline}
+.kq-bn{margin:0 0 10px}
+.kq-chips{margin-bottom:8px}
+.kq-chips button{padding:6px 11px}
+.kq-clamp{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal}
+.kq-chrow input[type="checkbox"], .kq-pvhd input[type="checkbox"], .kq-step input[type="checkbox"], .kq-pvs input[type="checkbox"]{
+  width:22px; height:22px; min-width:22px; padding:0; margin:0; flex:0 0 auto; border-radius:6px; accent-color:var(--accent); box-shadow:none}
+.kq-link{display:block; padding:10px 12px; margin:0 0 8px; border-radius:14px; border:1px solid var(--edge); color:var(--ink);
+  text-decoration:none; font-size:.88em; background:rgba(255,255,255,.45)}
+body[data-theme="dark"] .kq-link{background:rgba(255,255,255,.06)}
+.kq-end{text-align:center}
+.kq-big{font-size:2.4em; line-height:1.2}
+.kq-new{background:var(--okbg); border-radius:10px}
+
+/* ===== 国試ドリル ===== */
+.kq-modes{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin:6px 0 4px}
+.kq-mode{display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:11px 12px; border-radius:16px; border:1px solid var(--edge);
+  background:linear-gradient(180deg, rgba(255,255,255,.7), var(--glasstint2), rgba(255,255,255,.36)); font:inherit; color:var(--ink); text-align:left; cursor:pointer}
+.kq-mode b{font-size:.9em}
+.kq-mode[disabled]{opacity:.5; cursor:default}
+body[data-theme="dark"] .kq-mode{background:rgba(255,255,255,.07)}
+.kq-frow{cursor:pointer}
+.kq-bar{height:6px; border-radius:999px; background:var(--rule); overflow:hidden; margin:4px 0 3px}
+.kq-bar i{display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, var(--accent2), var(--accent))}
+.kq-rate{min-width:3em; text-align:right; font-weight:700}
+.kq-q{font-weight:700; line-height:1.65; margin:2px 0 12px; white-space:pre-wrap; word-break:break-word}
+.kq-q-s{font-size:.92em; margin-bottom:8px}
+.kq-choices{display:flex; flex-direction:column; gap:7px; margin-bottom:10px}
+.kq-ch{display:flex; align-items:flex-start; gap:9px; width:100%; padding:11px 12px; border-radius:14px; border:1px solid var(--edge);
+  background:rgba(255,255,255,.66); font:inherit; font-size:.9em; color:var(--ink); text-align:left; line-height:1.5; cursor:pointer}
+.kq-ch b{flex:0 0 auto; color:var(--accent)}
+.kq-ch span{flex:1; min-width:0; word-break:break-word}
+.kq-ch i{flex:0 0 auto; font-style:normal; font-size:.78em; font-weight:700; color:var(--ok)}
+.kq-ch.on{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent2)}
+.kq-ch.ok{background:var(--okbg); border-color:var(--ok)}
+.kq-ch.ng{background:var(--rakutenbg); border-color:var(--rakuten)}
+.kq-ch[disabled]{cursor:default; opacity:1}
+body[data-theme="dark"] .kq-ch{background:rgba(255,255,255,.07)}
+body[data-theme="dark"] .kq-ch.ok{background:var(--okbg)}
+body[data-theme="dark"] .kq-ch.ng{background:var(--rakutenbg)}
+.kq-res{margin:4px 0 8px}
+.kq-exp, .kq-aiexp{padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.5); border:1px solid var(--edge); margin-bottom:8px; font-size:.88em; line-height:1.65}
+.kq-exp p, .kq-aiexp p{margin:4px 0; white-space:pre-wrap; word-break:break-word}
+.kq-aiexp{border-style:dashed}
+.kq-aiexp ul{margin:4px 0 4px 1.2em; padding:0}
+body[data-theme="dark"] .kq-exp, body[data-theme="dark"] .kq-aiexp{background:rgba(255,255,255,.05)}
+.kq-acts{margin:4px 0 2px}
+.kq-chrow{display:flex; align-items:center; gap:8px; margin-bottom:7px}
+.kq-chrow>span{flex:0 0 auto; min-width:1.4em; text-align:center; color:var(--accent); font-weight:700}
+.kq-chrow input:not([type="checkbox"]){flex:1; min-width:0}
+.kq-chrow .mini{flex:0 0 auto}
+.kq-chrow.sel input:not([type="checkbox"]){border-color:var(--accent)}
+.kq-pv{padding:10px 0; border-bottom:1px solid var(--rule)}
+.kq-pv.off{opacity:.5}
+.kq-pvhd{display:flex; align-items:center; gap:8px; margin-bottom:6px}
+.kq-pvhd label{display:flex; align-items:center; gap:6px; flex:1; min-width:0}
+.kq-pvhd select{width:auto; max-width:55%; padding:6px 10px}
+.kq-pvc{margin:0 0 6px 1.4em; padding:0; font-size:.88em; line-height:1.6}
+.kq-okc{font-weight:700; color:var(--ok)}
+
+/* ===== 辞書・薬の一覧 ===== */
+#kq_dq, #kq_lq, #kq_gq{margin-bottom:10px}
+.kq-dres{margin-top:4px}
+.kq-drow{padding:9px 4px; border-bottom:1px solid var(--rule); cursor:pointer}
+.kq-drow:last-child{border-bottom:0}
+.kq-drow.on{background:rgba(255,255,255,.35); border-radius:12px}
+body[data-theme="dark"] .kq-drow.on{background:rgba(255,255,255,.05)}
+.kq-dhd{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+.kq-abbr{font-size:1.02em; color:var(--accent)}
+.kq-ja{font-size:.9em}
+.kq-dhd .s2{margin-left:auto}
+.kq-dbody{padding:6px 2px 2px; font-size:.88em; line-height:1.65; cursor:auto}
+.kq-dbody p{margin:4px 0; word-break:break-word}
+.kq-wikibtn{margin-top:10px}
+.kq-wiki p{font-size:.88em; line-height:1.7; margin:6px 0; word-break:break-word}
+.kq-dl{margin:4px 0; font-size:.9em; line-height:1.6}
+.kq-dl dt{font-size:.78em; color:var(--sub); margin-top:6px}
+.kq-dl dd{margin:0; word-break:break-word}
+.kq-hi{color:var(--rakuten)}
+.kq-fcard{text-align:center; padding:18px 16px}
+.kq-fg{font-size:1.25em; font-weight:800; margin:6px 0 4px}
+.kq-fn{font-size:.95em; color:var(--sub); margin-bottom:10px}
+.kq-fback{text-align:left; border-top:1px dashed var(--edge); padding-top:8px}
+
+/* ===== 基準値 ===== */
+.kq-lcat{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:14px 0 2px; padding-bottom:4px; border-bottom:2px solid var(--accent2)}
+.kq-lcat:first-child{margin-top:4px}
+.kq-lcat b{font-size:.88em}
+.kq-lrow{align-items:center}
+.kq-lrow .s{white-space:normal}
+.kq-lv{flex:0 0 auto; text-align:right; font-weight:700; font-size:.92em; max-width:44%; word-break:break-word}
+.kq-lv small{display:block; font-weight:400; font-size:.78em; color:var(--sub)}
+
+/* ===== 解剖図 ===== */
+.kq-anatbox{position:relative; width:100%; min-height:80px; border-radius:12px; overflow:hidden; background:#fff; user-select:none; -webkit-user-select:none}
+body[data-theme="dark"] .kq-anatbox{background:#f4f1f3}
+.kq-anatbox img, .kq-anatbox svg{display:block; width:100%; height:auto; pointer-events:none}
+.kq-anatedit{touch-action:none; cursor:crosshair; min-height:160px; outline:2px dashed var(--accent2); outline-offset:-2px}
+.kq-hole{position:absolute; display:flex; align-items:center; justify-content:center; border-radius:6px; background:var(--accent); color:#fff;
+  font-size:11px; font-weight:700; line-height:1; box-shadow:0 1px 3px rgba(0,0,0,.25); cursor:pointer; overflow:visible; box-sizing:border-box}
+.kq-hole.open{background:transparent; box-shadow:none; outline:2px dashed var(--ok); outline-offset:1px}
+.kq-hole.cur{background:#F2B233; color:#3a2a10; animation:kqPulse 1.2s ease-in-out infinite}
+@keyframes kqPulse{0%,100%{box-shadow:0 0 0 0 rgba(242,178,51,.8)} 50%{box-shadow:0 0 0 5px rgba(242,178,51,0)}}
+.kq-hole.edit{background:rgba(217,115,143,.78); cursor:move; touch-action:none}
+.kq-hole.edit.sel{background:rgba(242,178,51,.9); color:#3a2a10}
+.kq-hrs{position:absolute; right:-6px; bottom:-6px; width:14px; height:14px; border-radius:4px; background:#fff; border:2px solid var(--accent); cursor:nwse-resize; touch-action:none}
+.kq-draw{position:absolute; border:2px dashed var(--accent); background:rgba(217,115,143,.2); border-radius:6px; pointer-events:none}
+.kq-htag{position:absolute; left:50%; top:100%; transform:translate(-50%, 2px); white-space:nowrap; font-size:11px; padding:2px 6px; border-radius:6px;
+  background:rgba(47,143,107,.92); color:#fff; pointer-events:none; z-index:2}
+.kq-anslist{margin:8px 0 4px 1.6em; padding:0; font-size:.88em; line-height:1.7; columns:2}
+@media (prefers-reduced-motion:reduce){ .kq-hole.cur{animation:none} }
+/* 図の中の色（図は明るい地に描くので、ダークテーマでも同じ色） */
+.kq-svg text{font-family:inherit}
+.kq-sv-v{fill:#DCE9FA; stroke:#4E7FC0; stroke-width:1.4}
+.kq-sv-a{fill:#FBE0E0; stroke:#C65454; stroke-width:1.4}
+.kq-sv-n{fill:#F4F1F3; stroke:#8E8290; stroke-width:1.2}
+.kq-sv-y{fill:#FFF3C7; stroke:#B8932E; stroke-width:1.2}
+.kq-sv-p{fill:#F9E1EE; stroke:#B96C95; stroke-width:1.2}
+.kq-sv-line{fill:none; stroke:#6B6070; stroke-width:1.8}
+.kq-sv-lv{stroke:#4E7FC0; stroke-width:2.4}
+.kq-sv-la{stroke:#C65454; stroke-width:2.4}
+.kq-sv-dash{stroke-dasharray:4 4; stroke-width:1.2}
+.kq-sv-arw{fill:#6B6070}
+.kq-sv-lbl{fill:#2A2230; font-weight:700}
+.kq-sv-note{fill:#5E5462}
+
+/* ===== 看護技術の手順 ===== */
+.kq-srow{cursor:pointer}
+.kq-steps{list-style:none; margin:10px 0 6px; padding:0; counter-reset:kqs}
+.kq-step{counter-increment:kqs; padding:8px 0; border-bottom:1px solid var(--rule)}
+.kq-step:last-child{border-bottom:0}
+.kq-stepm{display:flex; align-items:flex-start; gap:8px}
+.kq-stepm label{display:flex; align-items:flex-start; gap:8px; flex:1; min-width:0; font-size:.9em; line-height:1.55; cursor:pointer}
+.kq-stepm label::before{content:counter(kqs); flex:0 0 auto; min-width:1.5em; height:1.5em; border-radius:999px; background:var(--accent2); color:#fff;
+  font-size:.8em; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:2px}
+.kq-stepm label span{word-break:break-word}
+.kq-stepm .mini{flex:0 0 auto}
+.kq-step.on label span{color:var(--sub); text-decoration:line-through}
+.kq-why{display:none; margin:6px 0 0 2.2em; padding:7px 10px; border-radius:10px; background:var(--okbg); color:var(--ink); font-size:.82em; line-height:1.6}
+.kq-step.why .kq-why{display:block}
+.kq-timer{display:flex; align-items:baseline; gap:10px; padding:8px 12px; margin-bottom:6px; border-radius:14px; background:var(--warnbg)}
+.kq-tnum{font-size:1.8em; font-weight:800; color:var(--warn)}
+.kq-miss{padding:8px 10px; border-radius:12px; background:var(--warnbg); color:var(--warn); font-size:.84em; line-height:1.6; margin-bottom:6px}
+.kq-pvs{align-items:flex-start}
+.kq-pvs.off{opacity:.5}
+.kq-pvs .t, .kq-pvs .s{white-space:normal}
