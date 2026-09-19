@@ -329,12 +329,6 @@ function c2PersonaText(id){
     (p.like ? '好きなものは「' + p.like + '」。' : '') +
     'やさしく、短めに。ただし、お金・健康・締切・薬などの大事な中身は正確に伝え、キャラの口調でも内容はまちがえない。';
 }
-/* 前からの呼び口。AIそうだん（chat.js）が charaChatPersona() を直接足すようになったら、二重にならないよう '' を返す */
-function charaTalkRule(){
-  var direct = false;
-  try{ direct = typeof chatSystem === 'function' && String(chatSystem).indexOf('charaChatPersona') >= 0; }catch(e){}
-  return direct ? '' : charaChatPersona();
-}
 
 /* ============================== 設定画面 ============================== */
 var charaCatNow = 'all';
