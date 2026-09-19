@@ -2,6 +2,9 @@
 /* ============================== 新しい版のお知らせ ==============================
    版が上がって初めて開いたときに、1回だけ出す。設定からいつでも見られる。     */
 var CHANGELOG = [
+  { build:'2026-09-20a', items:[
+    ['AI', 'AIそうだんの答えが長いときも、途中で切らずに、最後まで1回で出すようにしました（「途中までです」のお知らせは出なくなります）。']
+  ]},
   { build:'2026-09-19c', items:[
     ['勉強', '上に「勉強」タブができました。国試の練習問題ドリル（72問・写真やAIで足せる・まちがえた問題はまた出る）、略語・用語の辞書（334語・Wikipediaでも調べる）、基準値の早見表、薬のカード、解剖図の穴うめクイズ、看護技術の手順チェックが入っています。どれも「出典」を出します。'],
     ['勉強', '看護過程の考え方コーチと看護計画の枠（O-P・T-P・E-P）、レポートの文字数と構成のチェック、参考文献の書き方チェック、AIの添削ができます。'],
@@ -116,8 +119,11 @@ function showWhatsNew(){
       if(e.target === box || (e.target.closest && e.target.closest('[data-wn-close]'))) closeWhatsNew();
     });
   }
+  /* 前に見た版より新しい版のお知らせを、ぜんぶ出す（あいだの版を開かなかった人にも届くように。多すぎないよう3つまで） */
+  var seen = String(SYNC_LOCAL.seenBuild || '');
+  var builds = CHANGELOG.filter(function(c){ return c.build === APP_BUILD || (seen && c.build > seen && c.build < APP_BUILD); }).slice(0, 3);
   box.innerHTML = '<div class="wn-card"><h3>新しくなりました</h3>'+
-    '<div class="wn-body">'+whatsNewHtml(APP_BUILD)+'</div>'+
+    '<div class="wn-body">'+builds.map(function(c){ return whatsNewHtml(c.build); }).join('')+'</div>'+
     '<button class="btn" data-wn-close="1">わかった</button></div>';
   box.classList.add('on');
 }

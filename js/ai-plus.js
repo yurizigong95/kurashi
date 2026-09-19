@@ -155,7 +155,8 @@ async function chatAsk(opt){
     (opt.talk ? '\n【声の会話】いまは声だけで話している。2文以内で、記号や箇条書きを使わずに話し言葉で答える。' : '');
   var contents = opt.contents.slice();
   var ops = [], res = null;
-  var maxTok = (S.ui.aiLen === 'long') ? 3000 : 2048;
+  /* 考えるモデルは、考えた分も上限に入る。少ないと答えが途中で切れるので、多めにする（切れても aiCall が続きをつなぐ） */
+  var maxTok = 8192;
   for(var round = 0; round < 4; round++){
     res = await aiCall({ system:system, contents:contents, tools:tools, temperature:0.3, maxTokens:maxTok, signal:opt.signal, tag:'chat' });
     if(!res.calls.length) break;

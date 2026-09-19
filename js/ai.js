@@ -18,10 +18,39 @@ async function aiGenerate(opt){
 function aiTextOf(parts){
   return (parts || []).filter(function(p){ return typeof p.text === 'string' && !p.thought; }).map(function(p){ return p.text; }).join('');
 }
-/* くわしい答え：{ text, parts, calls:[{name,args}], grounding, urlMeta, content }
-   opt.tools … Geminiの道具（関数・Google検索・URLの読み取り）。道具が使えないモデルでは、道具なしでやり直す */
+/* くわしい答え：{ text, parts, calls:[{name,args}], grounding, urlMeta, content, cut }
+   opt.tools … Geminiの道具（関数・Google検索・URLの読み取り）。道具が使えないモデルでは、道具なしでやり直す
+   長い答えが途中で切れたら（cut）、続きを自動でもらって1つの答えにつなぐ（JSON・道具を呼ぶ答えはのぞく） */
+var AI_MORE_MAX = 4;
+var AI_MORE_ASK = 'いまの答えは、長さの上限で途中で切れました。切れたところの直後から、続きだけを書いてください。' +
+  '前に書いた文はくり返さず、あいさつや前置きも書かないでください。';
 async function aiCall(opt){
   opt = opt || {};
+  var r = await aiCallOnce(opt);
+  var n = 0;
+  /* 道具を使ったあとの会話は、道具の説明もいっしょに送らないと受けつけてもらえないことがある */
+  var usedTools = (opt.contents || []).some(function(c){ return (c.parts || []).some(function(p){ return p.functionCall || p.functionResponse; }); });
+  while(r.cut && !opt.json && !r.calls.length && r.text.trim() && n < AI_MORE_MAX){
+    n++;
+    var more;
+    try{
+      more = await aiCallOnce(Object.assign({}, opt, { tools:usedTools ? opt.tools : null, contents:(opt.contents || []).concat([
+        { role:'model', parts:[{ text:r.text }] },
+        { role:'user', parts:[{ text:AI_MORE_ASK }] }
+      ]) }));
+    }catch(e){
+      if(opt.signal && opt.signal.aborted) throw e;
+      break;                                   /* 続きがもらえなかったときは、そこまでの答えを出す */
+    }
+    if(more.calls.length || !more.text.trim()) break;
+    r.text += more.text;
+    r.cut = more.cut;
+    r.parts = [{ text:r.text }];
+    r.content = { role:'model', parts:r.parts };
+  }
+  return r;
+}
+async function aiCallOnce(opt){
   if(TEST_MODE){
     var f = aiFake();
     if(!f) throw new Error('テストモードではAIを使えません');
@@ -32,10 +61,10 @@ async function aiCall(opt){
     if(t && typeof t === 'object'){
       var parts0 = t.parts || [{ text:String(t.text || '') }];
       return { text:aiTextOf(parts0), parts:parts0, calls:parts0.filter(function(p){ return p.functionCall; }).map(function(p){ return p.functionCall; }),
-               grounding:t.grounding || null, urlMeta:null, content:{ role:'model', parts:parts0 } };
+               grounding:t.grounding || null, urlMeta:null, content:{ role:'model', parts:parts0 }, cut:t.finishReason === 'MAX_TOKENS' };
     }
     var s = String(t == null ? '' : t);
-    return { text:s, parts:[{ text:s }], calls:[], grounding:null, urlMeta:null, content:{ role:'model', parts:[{ text:s }] } };
+    return { text:s, parts:[{ text:s }], calls:[], grounding:null, urlMeta:null, content:{ role:'model', parts:[{ text:s }] }, cut:false };
   }
   var key = aiKey();
   if(!key) throw new Error('先に設定タブでGemini APIキーを登録してください');
@@ -65,10 +94,10 @@ async function aiCall(opt){
       var c = (j.candidates || [])[0] || {};
       var parts = (c.content || {}).parts || [];
       var text = aiTextOf(parts);
-      if(c.finishReason === 'MAX_TOKENS') text += '\n\n（長くなったので途中までです。「続きを教えて」と送ると続きが読めます）';
       return { text:text, parts:parts, content:c.content || { role:'model', parts:parts },
                calls:parts.filter(function(p){ return p.functionCall; }).map(function(p){ return p.functionCall; }),
-               grounding:c.groundingMetadata || null, urlMeta:c.urlContextMetadata || c.url_context_metadata || null };
+               grounding:c.groundingMetadata || null, urlMeta:c.urlContextMetadata || c.url_context_metadata || null,
+               cut:c.finishReason === 'MAX_TOKENS' };
     }
     lastErr = (j && j.error && j.error.message) ? j.error.message : ('エラー ' + res.status);
     /* 道具が使えないと言われたら、道具なしでもう一度 */

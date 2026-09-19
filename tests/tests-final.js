@@ -226,3 +226,66 @@ KT.test('総点検：看護過程の記録は、AIの道具で読むときも患
   }finally{ A.S.kmItems = A.S.kmItems.filter(function(x){ return x.id !== 'km_final_np'; }); }
 });
 })();
+
+(function(){
+'use strict';
+var ok = KT.ok, eq = KT.eq;
+/* にせAI：「ながい答えのテスト」には、上限で2回切れる答えを返す */
+KT.ai.push(function(req){
+  var cs = req.contents || [], last = cs[cs.length - 1] || {};
+  var said = (last.parts || []).map(function(p){ return p.text || ''; }).join('');
+  if(/ながい答えのテスト/.test(said)) return { text:'前半の答え。', finishReason:'MAX_TOKENS' };
+  if(/続きだけを書いて/.test(said)){
+    var sofar = ((cs[cs.length - 2] || {}).parts || []).map(function(p){ return p.text || ''; }).join('');
+    if(sofar === '前半の答え。') return { text:'まんなか。', finishReason:'MAX_TOKENS' };
+    if(sofar === '前半の答え。まんなか。') return '後半でおわり。';
+  }
+  return null;
+});
+KT.test('総点検：AIそうだんの答えが長くても、途中で切らずに1回で全部出す', async function(){
+  var A = KT.frames().A;
+  A.appId = 'chat'; A.chatRoom = 'main'; A.render();
+  var n0 = KT.aiCalls.length;
+  await A.chatSend('ながい答えのテスト');
+  var m = A.roomMsgs()[A.roomMsgs().length - 1];
+  eq(m.text, '前半の答え。まんなか。後半でおわり。', '切れた答えを、続きとつないで1つにする');
+  ok(!/途中まで|続きを教えて/.test(m.text), '「途中までです」のお知らせを出さない');
+  eq(KT.aiCalls.length - n0, 3, 'AIに聞いた回数（はじめ＋続き2回）');
+  var cont = KT.aiCalls[KT.aiCalls.length - 1];
+  eq(cont.tools.length, 0, '手帳を調べていないときは、続きに道具を渡さない');
+  ok(/後半でおわり/.test(A.document.getElementById('app').textContent), '画面にも全部出る');
+  A.appId = 'today'; A.render();
+});
+})();
+
+(function(){
+'use strict';
+var ok = KT.ok, eq = KT.eq;
+function txt(c){ return ((c || {}).parts || []).map(function(p){ return p.text || ''; }).join(''); }
+/* にせAI：続きをもらうときに通信が切れる／手帳を調べたあとで答えが切れる */
+KT.ai.push(function(req){
+  var cs = req.contents || [], last = cs[cs.length - 1] || {}, said = txt(last);
+  var asked = cs.filter(function(c){ return c.role === 'user'; }).map(txt).join('|');
+  if(/つうしんが切れるテスト/.test(said)) return { text:'ここまでは届いた答え。', finishReason:'MAX_TOKENS' };
+  if(/続きだけを書いて/.test(said) && txt(cs[cs.length - 2]) === 'ここまでは届いた答え。') return Promise.reject(new Error('通信が切れました'));
+  if(/しらべてながく答えるテスト/.test(said)) return { parts:[{ functionCall:{ name:'search_app', args:{ query:'ながく答える' } } }] };
+  var fr = (last.parts || []).filter(function(p){ return p.functionResponse; })[0];
+  if(fr && /しらべてながく答えるテスト/.test(asked)) return { text:'調べた前半。', finishReason:'MAX_TOKENS' };
+  if(/続きだけを書いて/.test(said) && txt(cs[cs.length - 2]) === '調べた前半。'){
+    return req.tools.indexOf('functions') >= 0 ? '調べた後半。' : '（道具の説明がなかった）';
+  }
+  return null;
+});
+KT.test('総点検：AIそうだんの続きがもらえなくても、届いたところまでは出す・手帳を調べたあとの続き', async function(){
+  var A = KT.frames().A;
+  A.appId = 'chat'; A.chatRoom = 'main'; A.render();
+  await A.chatSend('つうしんが切れるテスト');
+  var m = A.roomMsgs()[A.roomMsgs().length - 1];
+  eq(m.text, 'ここまでは届いた答え。', '続きで失敗しても、届いた答えは消さない');
+  await A.chatSend('しらべてながく答えるテスト');
+  m = A.roomMsgs()[A.roomMsgs().length - 1];
+  eq(m.text, '調べた前半。調べた後半。', '手帳を調べたあとの答えも、続きとつなぐ（道具の説明もいっしょに送る）');
+  ok(!/途中まで/.test(m.text), 'お知らせを出さない');
+  A.appId = 'today'; A.render();
+});
+})();
