@@ -1,1 +1,97 @@
-/* くらしの手帳：授業・バイト・通学 の見た目 */
+/* くらしの手帳：授業・バイト・通学 の見た目（cp-） */
+/* ===== 出席率のグラフ ===== */
+.cp-legend{display:flex; flex-wrap:wrap; gap:4px 12px; font-size:.74em; color:var(--sub); margin-bottom:6px}
+.cp-legend span{display:inline-flex; align-items:center; gap:4px}
+.cp-legend i{display:inline-block; width:12px; height:9px; border-radius:3px}
+.cp-p{background:var(--ok)} .cp-l{background:var(--warn)} .cp-a{background:var(--rakuten)} .cp-d{background:var(--accent2); opacity:.55}
+.cp-legend i.cp-g{background:transparent; border:1.5px solid var(--sub)}
+.cp-att{padding:9px 0 10px; border-bottom:1px solid var(--rule)}
+.cp-att:last-of-type{border-bottom:0}
+.cp-att.big{padding:2px 0 12px; border-bottom:0}
+.cp-atthd{display:flex; align-items:baseline; gap:8px; margin-bottom:5px}
+.cp-attnm{flex:1; min-width:0; text-align:left; background:none; border:0; padding:0; font:inherit; font-weight:700; color:var(--ink);
+  cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.cp-attnum{flex:none; font-size:.8em; color:var(--sub); font-variant-numeric:tabular-nums}
+.cp-bar{display:flex; height:12px; border-radius:999px; overflow:hidden; background:var(--soft); box-shadow:inset 0 1px 3px rgba(0,0,0,.14)}
+.cp-bar i{display:block; height:100%; transition:width .3s}
+.cp-attft{display:flex; align-items:center; gap:8px; margin-top:6px; font-size:.8em; flex-wrap:wrap}
+.cp-attmsg{color:var(--sub)}
+.cp-attsub{font-size:.72em; color:var(--sub); margin-top:3px}
+.cp-gauge{display:inline-flex; gap:3px; flex:none}
+.cp-gauge i{display:block; width:11px; height:11px; border-radius:3px; border:1.5px solid var(--sub); box-sizing:border-box}
+.cp-gauge i.on{background:var(--warn); border-color:var(--warn)}
+.cp-gauge i.x{border-style:dashed}
+.cp-gbar{display:inline-block; width:90px; height:8px; border-radius:999px; background:var(--soft); overflow:hidden}
+.cp-gbar i{display:block; height:100%; background:var(--warn)}
+.cp-ok .cp-gauge i.on{background:var(--ok); border-color:var(--ok)}
+.cp-ok .cp-gbar i{background:var(--ok)}
+.cp-ng .cp-gauge i.on, .cp-over .cp-gauge i.on{background:var(--rakuten); border-color:var(--rakuten)}
+.cp-ng .cp-gbar i, .cp-over .cp-gbar i{background:var(--rakuten)}
+.cp-ng .cp-attmsg, .cp-over .cp-attmsg{color:var(--rakuten)}
+.cp-warn .cp-attmsg{color:var(--warn)}
+.cp-over .cp-attnm{color:var(--rakuten)}
+
+/* ===== GPA・単位・成績の見込み ===== */
+.cp-cr{padding:8px 0; border-bottom:1px solid var(--rule)}
+.cp-crhd{display:flex; justify-content:space-between; gap:8px; font-size:.9em; margin-bottom:5px}
+.cp-crhd span{color:var(--sub)}
+.cp-crhd span b{color:var(--ink)}
+.cp-det{margin-top:10px; border-top:1px solid var(--rule); padding-top:8px}
+.cp-det > summary{font-size:.85em; color:var(--accent); font-weight:600; cursor:pointer; padding:2px 0}
+.cp-det[open] > summary{margin-bottom:8px}
+.cp-fc .row{padding:8px 0}
+input.cp-sc{flex:0 0 76px; width:76px; text-align:center; padding:8px 6px}
+.cp-need{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:6px}
+.cp-needrow{display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:14px; background:var(--soft); font-size:.86em}
+.cp-needrow.no{opacity:.6}
+.cp-gr{flex:none; display:inline-grid; place-items:center; min-width:2.2em; height:1.9em; border-radius:999px;
+  background:linear-gradient(180deg, var(--accent2), var(--accent)); color:#fff; font-weight:700; font-size:.9em; padding:0 6px}
+
+/* ===== 大学のメール ===== */
+.cp-mail{padding:8px 0 12px; border-bottom:1px solid var(--rule)}
+.cp-mailhd{display:flex; gap:8px; align-items:flex-start; margin-bottom:6px}
+.cp-mailtx{white-space:pre-wrap; font-size:.8em; color:var(--sub); max-height:240px; overflow:auto; word-break:break-word}
+.cp-cand{padding:8px 10px; margin:6px 0; border-radius:16px; background:var(--soft)}
+.cp-cand.done{opacity:.6}
+.cp-candhd{display:flex; gap:8px; align-items:baseline}
+.cp-candhd .grow{min-width:0; word-break:break-word}
+.cp-candf{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0}
+.cp-candf > input, .cp-candf > select{flex:1 1 140px; width:auto; min-width:0; padding:8px 12px}
+.cp-dl{display:flex; align-items:center; gap:6px; flex:1 1 170px; font-size:.8em; color:var(--sub)}
+.cp-dl input{flex:1; min-width:0; padding:8px 10px}
+.cp-cand .pillrow{margin:4px 0 0}
+
+/* ===== 学年暦 ===== */
+.cp-calrow{gap:8px}
+.cp-calrow select{flex:0 0 138px; width:138px; padding:8px 10px; font-size:.85em}
+@media (max-width:420px){ .cp-calrow{flex-wrap:wrap} .cp-calrow select{flex:1 1 100%; width:100%} }
+
+/* ===== いまから間に合う？・地図 ===== */
+.cp-nowhd{font-size:.9em; margin-bottom:6px}
+.cp-nowmsg{margin:0 0 8px}
+.cp-nowlegs{padding:4px 2px 2px}
+.cp-from{margin-top:8px}
+.cp-maps{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:8px}
+.cp-maps .s2{margin-right:2px}
+.cp-maps a.mini{text-decoration:none}
+.cp-maprow .cp-maps{margin-top:4px}
+.cp-route{padding:2px 0 6px; border-bottom:1px solid var(--rule)}
+.cp-route .row{border-bottom:0}
+
+/* ===== 近くの薬局 ===== */
+.cp-near{gap:8px}
+.cp-nic{flex:none; font-size:1.3em; width:1.6em; text-align:center}
+.cp-near a.mini{text-decoration:none; flex:none}
+
+/* ===== シフト ===== */
+.cp-so-diff .t{color:var(--warn)}
+.cp-wgrid{display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px}
+.cp-wh{text-align:center; font-size:.72em; color:var(--sub)}
+.cp-wd{display:flex; flex-direction:column; align-items:center; gap:1px; padding:5px 0 4px; border-radius:12px; border:1px solid var(--edge);
+  background:var(--card); color:var(--ink); font:inherit; font-size:.78em; cursor:pointer; min-width:0}
+.cp-wd b{font-size:.95em}
+.cp-wd span{font-size:.82em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%}
+.cp-wd.cp-wok{background:var(--okbg); color:var(--ok)}
+.cp-wd.cp-wpart{background:var(--warnbg); color:var(--warn)}
+.cp-wd.cp-wng{background:var(--rakutenbg); color:var(--rakuten)}
+.cp-wd.ed{box-shadow:inset 0 0 0 2px var(--accent2)}

@@ -79,6 +79,7 @@ function doPost(e){
       case 'translate':     return out_(translate_(req.text, req.target));
       case 'gcalList':      return out_(gcalList_(req.from, req.to));
       case 'icsPut':        return out_(icsPut_(req.ics));
+      case 'route':         return out_(route_(req));
       default:              return out_({ ok:false, error:'知らないお願いです：' + req.action });
     }
   }catch(err){
@@ -1016,4 +1017,42 @@ function tasksSync_(items){
   if(Object.keys(setP).length) p.setProperties(setP, false);
   delP.forEach(function(k){ p.deleteProperty(k); });
   return { ok:true, changes:changes, created:created, remaining:remaining, done:ops };
+}
+
+/* ===== 通学の経路（campus） =====
+   Googleマップの経路（Apps Script の Maps サービス）で、出発地→行き先の所要時間・乗りかえ・出発時刻を調べる。
+   req: { from, to, arriveAt | departAt（ミリ秒 または 日時の文字）, mode:'transit'|'walking'|'driving'|'bicycling' } */
+function route_(req){
+  req = req || {};
+  var from = clip_(String(req.from || '').trim(), 200), to = clip_(String(req.to || '').trim(), 200);
+  if(!from || !to) return { ok:false, error:'出発地と行き先を入れてください' };
+  var M = Maps.DirectionFinder.Mode;
+  var mode = { transit:M.TRANSIT, walking:M.WALKING, driving:M.DRIVING, bicycling:M.BICYCLING }[String(req.mode || 'transit')] || M.TRANSIT;
+  var when = function(v){
+    if(v == null || v === '') return null;
+    var d = new Date(typeof v === 'number' || /^\d+$/.test(String(v)) ? Number(v) : String(v));
+    return isNaN(d.getTime()) ? null : d;
+  };
+  var arrive = when(req.arriveAt), depart = when(req.departAt);
+  var f = Maps.newDirectionFinder().setOrigin(from).setDestination(to).setMode(mode).setLanguage('ja').setRegion('jp');
+  if(arrive) f.setArrive(arrive); else if(depart) f.setDepart(depart);
+  var d = f.getDirections();
+  if(!d || d.status !== 'OK' || !(d.routes || []).length) return { ok:false, error:'経路が見つかりませんでした（' + (d && d.status || '返事なし') + '）' };
+  var leg = (d.routes[0].legs || [])[0];
+  if(!leg) return { ok:false, error:'経路が見つかりませんでした' };
+  var hm = function(t){ return (t && t.value) ? Utilities.formatDate(new Date(t.value * 1000), TZ, 'HH:mm') : ''; };
+  var steps = (leg.steps || []).map(function(s){
+    var td = s.transit_details || null;
+    var min = Math.round(((s.duration && s.duration.value) || 0) / 60);
+    if(!td) return { mode:String(s.travel_mode || '').toLowerCase() === 'walking' ? 'walk' : String(s.travel_mode || '').toLowerCase(), min:min };
+    var line = td.line || {}, vh = (line.vehicle || {});
+    return { mode:'transit', min:min, line:clip_(line.short_name || line.name || '', 60), vehicle:clip_(vh.name || vh.type || '', 20),
+             from:clip_((td.departure_stop || {}).name || '', 60), to:clip_((td.arrival_stop || {}).name || '', 60),
+             dep:hm(td.departure_time), arr:hm(td.arrival_time), stops:Number(td.num_stops) || 0, head:clip_(td.headsign || '', 40) };
+  }).slice(0, 20);
+  var rides = steps.filter(function(s){ return s.mode === 'transit'; }).length;
+  return { ok:true, from:clip_(leg.start_address || from, 120), to:clip_(leg.end_address || to, 120),
+           dur:Math.round(((leg.duration && leg.duration.value) || 0) / 60), dist:Math.round(((leg.distance && leg.distance.value) || 0) / 100) / 10,
+           dep:hm(leg.departure_time), arr:hm(leg.arrival_time), transfers:Math.max(0, rides - 1), legs:steps,
+           summary:clip_(d.routes[0].summary || '', 80) };
 }

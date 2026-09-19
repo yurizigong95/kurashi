@@ -402,8 +402,9 @@ function findRoute(from, to, hhmm, mode){
       '</div>';
   }).join('') + '</div>';
 }
-function routeLegs(from, to){
-  var T = function(k){ return tbl(k, findDate || today()).map(function(p){ return { dep:p[0], arr:p[1], kind:p[2]||'' }; }); };
+function routeLegs(from, to, ymd){
+  /* ymd … その日のダイヤで（なければ「時間を決めて調べる」で選んだ日） */
+  var T = function(k){ return tbl(k, ymd || findDate || today()).map(function(p){ return { dep:p[0], arr:p[1], kind:p[2]||'' }; }); };
   if(from==='home' && to==='univ')      return [{kind:'バス', name:'弥生ヶ丘五丁目→三ノ宮', table:T('busGo')},   {kind:'電車', name:'三ノ宮→鳴尾', table:T('trainGo')}];
   if(from==='univ' && to==='home')      return [{kind:'電車', name:'鳴尾→三ノ宮', table:T('trainBack')},        {kind:'バス', name:'三ノ宮→三田', table:T('busBack')}];
   if(from==='home' && to==='sannomiya') return [{kind:'バス', name:'弥生ヶ丘五丁目→三ノ宮', table:T('busGo')}];

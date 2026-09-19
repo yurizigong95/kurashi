@@ -92,28 +92,60 @@ function flowCard(){
   return section('今月のお金の流れ', ymLabel(thisYm()), h);
 }
 
-/* ===== シフト表の写真から、シフトをまとめて登録 ===== */
-var shiftOcr = { busy:false, list:null, err:'' };
+/* ===== シフト表の写真から、シフトをまとめて登録 =====
+   month … '' なら写真にあるシフトをぜんぶ。'YYYY-MM' なら、1か月の表（何人ぶんも並んだ表）から自分の行だけを読む */
+var shiftOcr = { busy:false, list:null, err:'', month:'' };
+/* 読み取ったシフトと、登録ずみのシフトをくらべる（new … 新しい／same … 同じ／diff … 時間がちがう） */
+function shiftOcrCmp(x){
+  var on = S.shifts.filter(function(w){ return w.date === x.date; });
+  if(on.some(function(w){ return w.start === x.start && (!w.end || w.end === x.end); })) return { st:'same' };
+  if(on.length) return { st:'diff', old:on.filter(function(w){ return w.start === x.start; })[0] || on[0] };
+  return { st:'new' };
+}
 function shiftOcrCard(){
+  var thisM = thisYm(), nextM = addMonths(thisM, 1), mo = shiftOcr.month || '';
   var h = '<div class="field"><label class="f">表の中のあなたの名前（何人分も書いてある表のとき）</label>'+
     '<input id="so_name" value="'+esc(S.settings.shiftName||'')+'" placeholder="例：山田"></div>'+
+    '<label class="f">どんな表？</label>'+
+    '<div class="pillrow">'+
+      '<button data-act="cp-shift-month" data-v="" class="'+(!mo?'on':'')+'">数日ぶんの表</button>'+
+      [thisM, nextM].map(function(ym){
+        return '<button data-act="cp-shift-month" data-v="'+ym+'" class="'+(mo===ym?'on':'')+'">'+(+ym.slice(5,7))+'月の1か月の表</button>';
+      }).join('')+
+    '</div>'+
     '<button class="btn" data-act="shift-ocr"'+(shiftOcr.busy?' disabled':'')+'>'+(shiftOcr.busy ? '読み取っています…' : 'シフト表の写真をえらぶ')+'</button>'+
     (shiftOcr.err ? '<p class="note" style="color:var(--rakuten)">'+esc(shiftOcr.err)+'</p>' : '');
   if(shiftOcr.list){
     var L = shiftOcr.list;
+    var cnt = { 'new':0, same:0, diff:0 };
+    L.forEach(function(x){ cnt[shiftOcrCmp(x).st]++; });
+    /* 1か月の表のときは、写真にない登録ずみのシフトも見せる */
+    var gone = [];
+    if(shiftOcr.listMonth){
+      var inPic = {}; L.forEach(function(x){ inPic[x.date] = 1; });
+      gone = S.shifts.filter(function(w){ return String(w.date).slice(0, 7) === shiftOcr.listMonth && !inPic[w.date]; })
+        .sort(function(a, b){ return String(a.date).localeCompare(String(b.date)); });
+    }
     h += '<div style="margin-top:12px">'+(L.length
-      ? '<label class="f">読み取ったシフト（登録するものにチェック）</label>'+L.map(function(x, i){
-          var dup = S.shifts.some(function(w){ return w.date === x.date && w.start === x.start; });
-          return '<label class="row" style="gap:8px"><input type="checkbox" class="so-pick" data-i="'+i+'"'+(dup?'':' checked')+' style="width:auto">'+
-            '<div class="grow"><div class="t">'+ymdLabel(x.date)+'　'+esc(x.start)+'〜'+esc(x.end)+'</div>'+
-            '<div class="s">'+(dup ? 'もう登録されています' : (Math.round(shiftMinutes({start:x.start,end:x.end})/6)/10)+'時間')+(x.note ? '・'+esc(x.note) : '')+'</div></div></label>';
+      ? '<label class="f">読み取ったシフト（登録するものにチェック）</label>'+
+        '<div class="s2" style="margin-bottom:6px">新しい '+cnt['new']+'件・時間がちがう '+cnt.diff+'件・もう登録ずみ '+cnt.same+'件</div>'+
+        L.map(function(x, i){
+          var c = shiftOcrCmp(x);
+          return '<label class="row cp-so-'+c.st+'" style="gap:8px"><input type="checkbox" class="so-pick" data-i="'+i+'"'+(c.st==='same'?'':' checked')+' style="width:auto">'+
+            '<div class="grow"><div class="t">'+ymdLabel(x.date)+'　'+esc(x.start)+'〜'+esc(x.end)+
+              (c.st==='new' ? '<span class="b cat" style="margin-left:6px">新しい</span>' : c.st==='diff' ? '<span class="b r2" style="margin-left:6px">ちがう</span>' : '')+'</div>'+
+            '<div class="s">'+(c.st==='same' ? 'もう登録されています'
+              : c.st==='diff' ? 'いまの登録は '+esc(c.old.start||'')+'〜'+esc(c.old.end||'')+'　→ チェックすると写真の時間に直します'
+              : (Math.round(shiftMinutes({start:x.start,end:x.end})/6)/10)+'時間')+(x.note ? '・'+esc(x.note) : '')+'</div></div></label>';
         }).join('')+
+        (gone.length ? '<div class="bn amber" style="margin-top:8px"><span class="ic">!</span><span>写真にはない、登録ずみのシフトがあります：'+
+          gone.map(function(w){ return ymdLabel(w.date)+' '+esc(w.start||''); }).join('、')+'（休みになったなら、カレンダーから消してください）</span></div>' : '')+
         '<div class="pair" style="margin-top:10px"><button class="btn" data-act="shift-ocr-add">チェックしたシフトを登録</button>'+
         '<button class="btn ghost" style="flex:0 0 auto;padding:11px 14px" data-act="shift-ocr-cancel">やめる</button></div>'
       : '<div class="empty">シフトを見つけられませんでした。名前や写真の明るさをたしかめてください。'+
         '<br><button class="mini" data-act="shift-ocr-cancel" style="margin-top:6px">とじる</button></div>')+'</div>';
   }
-  h += '<p class="note">写真はGoogleのAIに送られて読み取られます（Gemini APIキーが必要です）。登録したあと、カレンダーやこの画面で直せます。</p>';
+  h += '<p class="note">写真はGoogleのAIに送られて読み取られます（Gemini APIキーが必要です）。1か月の表は、上の名前の行（または列）だけを読みます。登録したあと、カレンダーやこの画面で直せます。</p>';
   return section('シフト表の写真から登録', null, h);
 }
 /* 「17」「9時半」「0930」「9:00」などを分に直す */
@@ -130,27 +162,44 @@ function looseMinutes(v){
 }
 async function shiftOcrRun(file){
   if(!aiReady()){ toast('先に設定タブでGemini APIキーを登録してください', true); return; }
-  shiftOcr = { busy:true, list:null, err:'' }; render();
+  var month = shiftOcr.month || '';
+  var nm = String(S.settings.shiftName || '').trim();
+  if(month && !nm){ toast('1か月の表のときは、表の中のあなたの名前を入れてください', true); return; }
+  shiftOcr = { busy:true, list:null, err:'', month:month }; render();
   try{
     var data = await resizeImage(file, 2000, 0.85);
-    var nm = String(S.settings.shiftName || '').trim();
-    var r = await aiJson(
-      'これはアルバイトのシフト表の写真です。' + (nm ? '「' + nm + '」さんの勤務だけ' : 'この表の勤務（1人分の表として）') + 'を取り出して、JSONだけを返してください。\n' +
-      '{"shifts":[{"date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","note":"備考（なければ空）"}]}\n' +
-      '・休み（×、休、公休、空欄など）は入れない。\n' +
-      '・年が書いていないときは、今日（' + today() + '）に近い年にする。\n' +
-      '・「9-17」「9:00〜17:00」「9~17」「17-22」などの書き方も HH:MM に直す。24時間表記にする。\n' +
-      '・読み取れない日は入れない。', [data], 'shift');
+    var r;
+    if(month){
+      r = await aiJson(
+        'これはアルバイト先の1か月分のシフト表の写真です（何人ぶんも並んでいる表）。\n' +
+        '「' + nm + '」さんの行（または列）だけを読んで、' + (+month.slice(0, 4)) + '年' + (+month.slice(5, 7)) + '月の勤務をJSONだけで返してください。\n' +
+        '{"shifts":[{"date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","note":"備考（なければ空）"}],"notFound":名前が見つからないとき true}\n' +
+        '・休み（×、休、公休、空欄、－など）は入れない。\n' +
+        '・「9-17」「9:00〜17:00」「9~17」「17-22」などの書き方も HH:MM に直す。24時間表記にする。\n' +
+        '・ほかの人の行は読まない。読み取れない日は入れない。', [data], 'cp-shiftm');
+      if(r && r.notFound && !(r.shifts || []).length) throw new Error('表の中に「' + nm + '」さんの名前が見つかりませんでした');
+    }else{
+      r = await aiJson(
+        'これはアルバイトのシフト表の写真です。' + (nm ? '「' + nm + '」さんの勤務だけ' : 'この表の勤務（1人分の表として）') + 'を取り出して、JSONだけを返してください。\n' +
+        '{"shifts":[{"date":"YYYY-MM-DD","start":"HH:MM","end":"HH:MM","note":"備考（なければ空）"}]}\n' +
+        '・休み（×、休、公休、空欄など）は入れない。\n' +
+        '・年が書いていないときは、今日（' + today() + '）に近い年にする。\n' +
+        '・「9-17」「9:00〜17:00」「9~17」「17-22」などの書き方も HH:MM に直す。24時間表記にする。\n' +
+        '・読み取れない日は入れない。', [data], 'shift');
+    }
     var list = (r && Array.isArray(r.shifts)) ? r.shifts : (Array.isArray(r) ? r : []);
     shiftOcr.list = list.map(function(x){
       x = x || {};
       var d = String(x.date || '');
       var m = d.match(/(\d{1,2})[-\/月](\d{1,2})/);
-      if(!isYmd(d) && m) d = guessYear(+m[1], +m[2]) + '-' + pad(+m[1]) + '-' + pad(+m[2]);
+      if(!isYmd(d) && m) d = (month ? month.slice(0, 4) : guessYear(+m[1], +m[2])) + '-' + pad(+m[1]) + '-' + pad(+m[2]);
+      if(!isYmd(d) && month && /^\d{1,2}日?$/.test(d.trim())) d = month + '-' + pad(toNum(d));
       var st = looseMinutes(x.start), en = looseMinutes(x.end);
       return { date:d, start: st == null ? '' : hhmmOf(st), end: en == null ? '' : hhmmOf(en), note:String(x.note || '').slice(0, 60) };
-    }).filter(function(x){ return isYmd(x.date) && x.start && x.end; })
+    }).filter(function(x){ return isYmd(x.date) && x.start && x.end && (!month || x.date.slice(0, 7) === month); })
+      .filter(function(x, i, a){ return !a.slice(0, i).some(function(y){ return y.date === x.date && y.start === x.start; }); })
       .sort(function(a, b){ return a.date.localeCompare(b.date) || a.start.localeCompare(b.start); });
+    shiftOcr.listMonth = month;
   }catch(e){
     shiftOcr.err = '読み取れませんでした：' + e.message;
     logErr('シフト表', e.message);
@@ -163,15 +212,24 @@ function shiftOcrAdd(){
   var picks = Array.prototype.filter.call(document.querySelectorAll('.so-pick'), function(el){ return el.checked; })
     .map(function(el){ return L[toNum(el.dataset.i)]; }).filter(Boolean);
   if(!picks.length){ toast('登録するシフトにチェックを入れてください', true); return; }
-  var now = Date.now(), n = 0;
+  var now = Date.now(), n = 0, fixed = 0;
   picks.forEach(function(x){
-    if(S.shifts.some(function(w){ return w.date === x.date && w.start === x.start; })) return;
+    var c = shiftOcrCmp(x);
+    if(c.st === 'same') return;
+    if(c.st === 'diff'){
+      /* 同じ日の登録を、写真の時間に直す（実際に終わった時間・残業は消す） */
+      c.old.start = x.start; c.old.end = x.end; c.old.realEnd = ''; c.old.ot = 0;
+      if(x.note && !c.old.memo) c.old.memo = x.note;
+      c.old.mt = now; fixed++;
+      return;
+    }
     S.shifts.push({ id:uid('wk'), title:'バイト', date:x.date, start:x.start, end:x.end, realEnd:'', ot:0, rate:0,
       memo:x.note || '', photos:[], rid:'', mt:now });
     n++;
   });
-  shiftOcr = { busy:false, list:null, err:'' };
-  toast(n + '件のシフトを登録しました'); commit();
+  var month = shiftOcr.month;
+  shiftOcr = { busy:false, list:null, err:'', month:month };
+  toast(n + '件のシフトを登録しました' + (fixed ? '（' + fixed + '件の時間を直しました）' : '')); commit();
 }
 function viewHome(d){
   var cur=thisYm(), g=d.byMonth[cur];
@@ -473,11 +531,12 @@ function moneyAction(act, t){
     var nmS = val('so_name').trim();
     if(nmS !== String(S.settings.shiftName||'')){ S.settings.shiftName = nmS; persist(); pushRemote(); }
     if(!aiReady()){ toast('先に設定タブでGemini APIキーを登録してください', true); return true; }
+    if(shiftOcr.month && !nmS){ toast('1か月の表のときは、表の中のあなたの名前を入れてください', true); return true; }
     var fi = document.getElementById('shiftimg'); if(fi) fi.click();
     return true;
   }
   if(act==='shift-ocr-add'){ shiftOcrAdd(); return true; }
-  if(act==='shift-ocr-cancel'){ shiftOcr = { busy:false, list:null, err:'' }; render(); return true; }
+  if(act==='shift-ocr-cancel'){ shiftOcr = { busy:false, list:null, err:'', month:shiftOcr.month || '' }; render(); return true; }
   if(act==='paid'){ var k=t.dataset.key; setPaid(k, !isPaid(k)); commit(); }
   else if(act==='toggle-past'){ hidePast=!hidePast; render(); }
   else if(act==='range'){ chartRange=Number(t.dataset.v); render(); }
