@@ -214,13 +214,14 @@ function nightReviewCard(){
       '<button class="mini" data-act="rev-ai" data-len="long">くわしく講評</button>'+
     '</div>'+
     '<div class="pair">'+
-      '<button class="btn" data-act="rev-save" data-g="'+jd.grade+'" data-p="'+jd.point+'">この評価で記録する</button>'+
+      '<button class="btn" data-act="rev-save" data-d="'+td+'" data-g="'+jd.grade+'" data-p="'+jd.point+'">この評価で記録する</button>'+
       '<button class="btn ghost" style="flex:0 0 auto;padding:13px 16px" data-act="rev-close">とじる</button></div>');
 }
 /* これまでの振り返り */
 var revHistOff = 0;
 function reviewHistory(){
   var base = new Date();
+  base.setDate(1);                 /* 31日に「前の月」を見ても、月がずれないように（9月31日→10月1日 にならない） */
   base.setMonth(base.getMonth() + revHistOff);
   var y = base.getFullYear(), mo = base.getMonth() + 1;
   var ym = y + '-' + pad(mo);
@@ -328,7 +329,9 @@ function reviewAction(act, t){
     return true;
   }
   if(act === 'rev-save'){
-    var td2 = today();
+    /* 夜のうちに開いて、0時をすぎてから押したときも、見ていた日（きのう）の記録にする */
+    var dd = t.dataset.d, td2 = today();
+    if(isYmd(dd) && dd < td2 && dd >= shiftDate(td2, -1)) td2 = dd;
     var prev = (S.dayReview||{})[td2] || {};
     S.dayReview = S.dayReview || {};
     var jd3 = dayGrade(td2);

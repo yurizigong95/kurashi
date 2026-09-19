@@ -64,8 +64,9 @@ function c9AiNorm(s){
   try{ s = s.normalize('NFKC'); }catch(e){}
   return s.toLowerCase();
 }
-/* どの深さでも出さないキー（カギ・合言葉・同期の部屋） */
-var AI_SECRET = /^(apiKey|geminiKey|deeplKey|token|shortKey|fbConfig|password|secret|vapid|webhook|discordUrl|gasUrl)$/i;
+/* どの深さでも出さないキー（カギ・合言葉・同期の部屋）。
+   足した機能が別の名前で置いても出さないように、おわりが合えば外す（pushToken・accessToken・clientSecret・discordWebhook など） */
+var AI_SECRET = /(apiKey|geminiKey|deeplKey|token|shortKey|fbConfig|password|passwd|secret|vapid|vapidKey|webhook|webhookUrl|discordUrl|gasUrl)$/i;
 /* 設定の中だけで外すもの（room は同期の部屋の名前。授業の room＝教室 は外さない） */
 var AI_SECRET_SETTINGS = ['room'];
 
@@ -92,7 +93,30 @@ function aiItemDate(x){
   if(!x || typeof x !== 'object') return '';
   return String(x.date || x.due || x.start || x.from || x.first || x.last || '').slice(0, 10);
 }
-function aiItemText(x){ try{ return JSON.stringify(x); }catch(e){ return ''; } }
+/* さがすための文（カギは入れない・写真は短く。ここから切り出した文をAIに見せるので、カギがもれないように） */
+function aiItemText(x){
+  try{
+    return JSON.stringify(x, function(k, v){
+      if(k && AI_SECRET.test(k)) return undefined;
+      if(typeof v === 'string' && /^data:[^;,]+;base64,/.test(v)) return '[画像・ファイル]';
+      return v;
+    }) || '';
+  }catch(e){ return ''; }
+}
+/* 足した機能が「AIに見せる前に伏せ字にする」もの（kmAiMask。例：看護過程に書いた患者さんの名前） */
+function aiMaskDeep(v, fn, depth){
+  if(typeof v === 'string') return fn(v);
+  if(!v || typeof v !== 'object' || depth > 6) return v;
+  if(Array.isArray(v)) return v.map(function(x){ return aiMaskDeep(x, fn, depth + 1); });
+  var o = {};
+  Object.keys(v).forEach(function(kk){ o[kk] = /^(id|mod|type|mt|ct)$/.test(kk) ? v[kk] : aiMaskDeep(v[kk], fn, depth + 1); });
+  return o;
+}
+function aiMaskItem(k, x){
+  var fn = (k === 'kmItems' && x && typeof KM !== 'undefined' && KM.aiMask) ? KM.aiMask[x.mod] : null;
+  if(typeof fn !== 'function') return x;
+  try{ return aiMaskDeep(x, function(s){ var r = fn(s); return typeof r === 'string' ? r : s; }, 0); }catch(e){ return x; }
+}
 /* 1つの分野を読む。opt: { from, to, query, limit } */
 function aiSectionData(id, opt){
   opt = opt || {};
@@ -105,7 +129,7 @@ function aiSectionData(id, opt){
   sec.keys.forEach(function(k){
     var v = S[k];
     if(Array.isArray(v)){
-      var list = v.filter(function(x){
+      var list = v.map(function(x){ return aiMaskItem(k, x); }).filter(function(x){
         var d = aiItemDate(x);
         if((from || to) && isYmd(d)){ if(from && d < from) return false; if(to && d > to) return false; }
         if(q && c9AiNorm(aiItemText(x)).indexOf(q) < 0) return false;
@@ -202,7 +226,7 @@ function aiSearchAll(query, limit){
           title:String((item && (item.title || item.name || item.q || item.text || item.subject)) || key || '').slice(0, 80),
           snippet:txt.slice(Math.max(0, at - 60), at + 140).replace(/data:[^"]+/g, '[画像]') });
       };
-      if(Array.isArray(v)) v.forEach(function(x){ push(x); });
+      if(Array.isArray(v)) v.forEach(function(x){ push(aiMaskItem(k, x)); });
       else if(v && typeof v === 'object') Object.keys(v).forEach(function(kk){ if(!AI_SECRET.test(kk)) push(v[kk], kk); });
     });
   });

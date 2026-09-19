@@ -24,10 +24,10 @@ var rsSt = {
   np:{ tab:'proc', id:'', d:null, step:'info', pat:'', prob:'', busy:false, sent:'', sentKey:'', masked:0, dirty:false,
        newTitle:'', newFrame:'gordon', plId:'', pl:null, plDirty:false },
   rep:{ tab:'count', text:'', target:'', taskId:'', refs:'', style:'jans', pick:false, sel:{}, proof:null, busy:false, sent:'', masked:0 },
-  find:{ src:'pubmed', q:'', busy:false, list:[], total:0, err:'', resSrc:'', lastQ:'', abs:{}, absBusy:'', kw:null, kwBusy:false, memoId:'', memo:'', hl:'' },
+  find:{ src:'pubmed', q:'', busy:false, list:[], total:0, next:0, err:'', resSrc:'', lastQ:'', abs:{}, absBusy:'', kw:null, kwBusy:false, memoId:'', memo:'', hl:'' },
   books:{ d:null, editId:'', busy:false, msg:'', hl:'' },
   eng:{ tab:'easy', text:'', files:[], busy:false, out:null, paperId:'', tr:'', dir:'auto', trOut:'', trBy:'', trNote:'', trBusy:false },
-  law:{ q:'', mode:'title', busy:false, list:null, err:'', id:'', title:'', arts:null, filter:'', show:30, cache:{} },
+  law:{ q:'', mode:'title', busy:false, loading:'', list:null, err:'', id:'', title:'', arts:null, filter:'', show:30, cache:{} },
   lec:{ course:'', min:5, rec:false, t0:0, segs:[], busy:false, sum:null, sumBusy:false, err:'', full:1 },
   lastCopy:''
 };
@@ -263,11 +263,14 @@ async function rsPubmed(q, start){
       pages:x.pages || '', doi:doi, url:'https://pubmed.ncbi.nlm.nih.gov/' + id + '/',
       hasAbs:(x.attributes || []).indexOf('Has Abstract') >= 0 };
   }).filter(Boolean);
-  return { total:toNum(r.count), list:list };
+  /* n … 読んだ件数（こわれた記録をのぞく前）。「つぎの20件」はここから */
+  return { total:toNum(r.count), list:list, n:ids.length };
 }
 async function rsPubmedAbs(pmid){
   var x = rsXml(await rsFetch(RS_EUTILS + 'efetch.fcgi?db=pubmed&retmode=xml&rettype=abstract&id=' + encodeURIComponent(pmid)));
-  return rsKids(x, 'AbstractText').map(function(n){
+  /* OtherAbstract（ほかの言葉の要旨）はのぞき、Abstract の中だけを読む */
+  var ab = rsKid(x, 'Abstract');
+  return rsKids(ab, 'AbstractText').map(function(n){
     var lb = n.getAttribute('Label');
     return (lb ? lb + ': ' : '') + String(n.textContent || '').trim();
   }).join('\n');
@@ -281,9 +284,11 @@ async function rsJstage(q, start){
     var at = rsKid(en, 'article_title'), au = rsKid(en, 'author'), mt = rsKid(en, 'material_title'), al = rsKid(en, 'article_link');
     var ja = au && rsKid(au, 'ja'), enA = au && rsKid(au, 'en');
     var holder = (ja && rsKids(ja, 'name').length) ? ja : enA;
-    return { src:'jstage', kind:'article', title:rsTxt(at, 'ja') || rsTxt(at, 'en') || rsTxt(en, 'title') || '(題名なし)',
+    /* 題名には <sub> などのタグが文字のまま入ってくる（CDATA）。号の「0」は号なし */
+    var no = rsTxt(en, 'number');
+    return { src:'jstage', kind:'article', title:rsStrip(rsTxt(at, 'ja') || rsTxt(at, 'en') || rsTxt(en, 'title')) || '(題名なし)',
       authors:holder ? rsKids(holder, 'name').map(function(n){ return String(n.textContent || '').trim(); }).filter(Boolean) : [],
-      journal:rsTxt(mt, 'ja') || rsTxt(mt, 'en'), year:rsTxt(en, 'pubyear'), vol:rsTxt(en, 'volume'), issue:rsTxt(en, 'number'),
+      journal:rsStrip(rsTxt(mt, 'ja') || rsTxt(mt, 'en')), year:rsTxt(en, 'pubyear'), vol:rsTxt(en, 'volume'), issue:no === '0' ? '' : no,
       pages:rsPages(rsTxt(en, 'startingPage'), rsTxt(en, 'endingPage')), doi:rsTxt(en, 'doi'),
       url:rsTxt(al, 'ja') || rsTxt(al, 'en') || rsTxt(en, 'id') };
   });
@@ -301,7 +306,7 @@ async function rsCinii(q, start, books){
       if(/ISBN/i.test(t) && !isbn) isbn = v;
       if(/DOI/i.test(t) && !doi) doi = v;
     });
-    return { src:books ? 'ciniib' : 'cinii', kind:books ? 'book' : 'article', title:str(it.title) || '(題名なし)',
+    return { src:books ? 'ciniib' : 'cinii', kind:books ? 'book' : 'article', title:rsStrip(str(it.title)) || '(題名なし)',
       authors:[].concat(it['dc:creator'] || []).map(str).filter(Boolean),
       journal:books ? '' : str(it['prism:publicationName']), publisher:str(it['dc:publisher']),
       year:rsYear(it['prism:publicationDate']), vol:str(it['prism:volume']), issue:str(it['prism:number']),
@@ -720,10 +725,16 @@ function rsSoonSave(){
     ['rs_np_state', 'rs_pl_state'].forEach(function(id){ var st = document.getElementById(id); if(st) st.textContent = '保存しました'; });
   }, 4000);
 }
+/* iPhoneでほかのアプリに切りかえると、待っている間にアプリが止められることがある → 見えなくなったら、すぐしまう */
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState !== 'hidden') return;
+  if(rsSaveTimer){ clearTimeout(rsSaveTimer); rsSaveTimer = null; if(rsNpStore()){ persist(); pushRemote(); } }
+  if(rsRepKeep.t){ clearTimeout(rsRepKeep.t); rsRepKeep.t = null; rsRepSaveNow(); }
+});
 function rsNpOpen(id){
   var it = rsItem(id);
   if(!it) return false;
-  rsNpStore();
+  if(rsNpStore()){ persist(); pushRemote(); }        /* 開いていた方の書きかけを先にしまう */
   var P = rsSt.np;
   P.id = id; P.d = rsNpFix(rsCopy(it)); P.step = 'info'; P.pat = ''; P.prob = ''; P.dirty = false; P.sent = ''; P.sentKey = ''; P.tab = 'proc';
   return true;
@@ -731,7 +742,7 @@ function rsNpOpen(id){
 function rsPlOpen(id){
   var it = rsItem(id);
   if(!it) return false;
-  rsNpStore();
+  if(rsNpStore()){ persist(); pushRemote(); }
   var P = rsSt.np;
   P.plId = id; P.pl = rsCopy(it); P.plDirty = false; P.tab = 'plan';
   if(!Array.isArray(P.pl.shorts) || !P.pl.shorts.length) P.pl.shorts = [{ text:'', date:'' }];
@@ -748,7 +759,8 @@ async function rsNpCoach(){
   if(rsNpStore()){ persist(); pushRemote(); }
   render();
   try{
-    var t = await aiGenerate({ system:RS_COACH_SYS, json:true, temperature:0.4, maxTokens:1500, tag:'rs-coach',
+    /* 考えるモデルは、考えた分も maxTokens に入る → 少なすぎるとJSONがとちゅうで切れる */
+    var t = await aiGenerate({ system:RS_COACH_SYS, json:true, temperature:0.4, maxTokens:4096, tag:'rs-coach',
       contents:[{ role:'user', parts:[{ text:'枠組み：' + rsFrame(d).name + '\n段：' + rsStepName(step) + '\n\n' + m.text }] }] });
     var j = parseJsonLoose(t) || {};
     var c = { at:Date.now(), good:rsStrs(j.good, 3), hints:rsStrs(j.hints, 5), questions:rsStrs(j.questions, 4), missing:rsStrs(j.missing, 4) };
@@ -912,12 +924,13 @@ function rsViewPlanEdit(){
 }
 
 /* ============================== 画面：レポート ============================== */
+function rsRepSaveNow(){
+  var R = rsSt.rep;
+  rsLs('rep', { text:R.text, refs:R.refs, target:R.target, taskId:R.taskId, style:R.style });
+}
 function rsRepKeep(){
   clearTimeout(rsRepKeep.t);
-  rsRepKeep.t = setTimeout(function(){
-    var R = rsSt.rep;
-    rsLs('rep', { text:R.text, refs:R.refs, target:R.target, taskId:R.taskId, style:R.style });
-  }, 600);
+  rsRepKeep.t = setTimeout(function(){ rsRepKeep.t = null; rsRepSaveNow(); }, 600);
 }
 function rsViewRep(){
   var R = rsSt.rep;
@@ -1027,7 +1040,7 @@ function rsViewProof(){
       (pr.overall ? '<div class="rs-ref">' + esc(pr.overall) + '</div>' : '') +
       (pr.items.length ? pr.items.map(function(it, i){
         var found = it.from && String(R.text).indexOf(it.from) >= 0;
-        var canFix = it.replace && found && it.to && !it.done;
+        var canFix = it.replace && found && it.to && !it.done && !rsHasMaskMark(it);
         return '<div class="rs-fix' + (it.done || it.skip ? ' done' : '') + '"><span class="rs-tag">' + esc(it.kind || '直し') + '</span>' +
           (it.from ? '<div class="s">元の文：「' + esc(it.from) + '」' + (!found && !it.done ? '（本文に見つかりません）' : '') + '</div>' : '') +
           (it.to ? '<div>' + (it.replace ? '直し方：「' + esc(it.to) + '」' : '直し方のヒント：' + esc(it.to)) + '</div>' : '') +
@@ -1038,6 +1051,8 @@ function rsViewProof(){
   }
   return h;
 }
+/* AIは＊＊にかくした文を読んでいるので、直し方に＊＊が入っていたら本文には入れない（本文の名前が＊＊になってしまう） */
+function rsHasMaskMark(it){ return /＊＊/.test(String(it.to || '')) || /＊＊/.test(String(it.from || '')); }
 async function rsRepProof(){
   var R = rsSt.rep;
   if(R.busy) return;
@@ -1087,18 +1102,22 @@ function rsBookFind(r){
 }
 function rsResKey(r){ return r.pmid || r.doi || r.url || r.title; }
 async function rsFindRun(more){
-  var F = rsSt.find, q = String(F.q || '').trim();
-  if(!q){ toast('さがすことばを入れてください', true); return; }
+  var F = rsSt.find;
   if(F.busy) return;
-  var src = F.src;
+  /* 「つぎの20件」は、いま出ている一覧と同じことば・同じところでさがす（入力欄を書きかえていても混ぜない） */
+  if(more && !(F.list.length && F.lastQ && F.resSrc)) return;
+  var q = more ? F.lastQ : String(F.q || '').trim();
+  if(!q){ toast('さがすことばを入れてください', true); return; }
+  var src = more ? F.resSrc : F.src;
   F.busy = true; F.err = '';
-  if(!more){ F.list = []; F.total = 0; F.abs = {}; }
+  if(!more){ F.list = []; F.total = 0; F.abs = {}; F.next = 0; }
   rsPaint();
   try{
-    var start = more ? F.list.length : 0;
+    var start = more ? (F.next || F.list.length) : 0;
     var r = src === 'pubmed' ? await rsPubmed(q, start) : src === 'jstage' ? await rsJstage(q, start) :
       src === 'cinii' ? await rsCinii(q, start, false) : src === 'ciniib' ? await rsCinii(q, start, true) : await rsNdl(q, start);
     F.total = r.total || r.list.length; F.list = (more ? F.list : []).concat(r.list); F.lastQ = q; F.resSrc = src;
+    F.next = start + (r.n || r.list.length);
     if(!r.list.length && !more) F.err = '見つかりませんでした。ことばを変えてみてください。';
   }catch(e){
     F.err = (e && e.message) || String(e); F.resSrc = src;
@@ -1108,6 +1127,7 @@ async function rsFindRun(more){
 }
 async function rsFindKw(){
   var F = rsSt.find, q = String(F.q || '').trim();
+  if(F.kwBusy) return;
   if(!q){ toast('日本語のことばを入れてください', true); return; }
   if(!aiReady()){ toast('先に設定タブでAI（Gemini）のカギを登録してください', true); return; }
   F.kwBusy = true; render();
@@ -1157,7 +1177,7 @@ function rsViewFind(){
   if(F.list.length){
     h += section(rsSrcName(F.resSrc) + 'で見つかったもの', F.total + '件中 ' + F.list.length + '件',
       F.list.map(function(r, i){ return rsResRow(r, i); }).join('') +
-      (F.list.length < F.total && F.list.length < 200 ? '<button class="btn ghost" data-act="rs-find-more"' + (F.busy ? ' disabled' : '') + '>つぎの20件</button>' : ''));
+      ((F.next || F.list.length) < F.total && F.list.length < 200 ? '<button class="btn ghost" data-act="rs-find-more"' + (F.busy ? ' disabled' : '') + '>つぎの20件</button>' : ''));
   }
   var pp = (S.papers || []).slice().sort(rsByMt);
   h += section('保存した論文', pp.length + '件', pp.length ? pp.map(rsPaperRow).join('') :
@@ -1255,33 +1275,38 @@ async function rsBookIsbn(){
   if(!B.d || B.busy) return;
   var isbn = rsIsbnNorm(B.d.isbn);
   if(!rsIsbnOk(isbn)){ toast('ISBNの数字がちがうようです（978か979ではじまる13けた）', true); return; }
-  B.d.isbn = isbn; B.busy = true; B.msg = ''; render();
+  var d0 = B.d;
+  d0.isbn = isbn; B.busy = true; B.msg = ''; render();
   try{
     var r = await rsIsbnLookup(isbn);
+    if(B.d !== d0) return;           /* 調べている間に「やめる」「本を足す」を押した → 別の下書きに入れない */
     if(!r){ B.msg = 'この本は見つかりませんでした。題名などを手で入れてください。'; }
     else{
-      var d = B.d, x = r.info;
+      var d = d0, x = r.info;
       d.title = x.title || d.title; d.author = x.author || d.author; d.publisher = x.publisher || d.publisher;
       d.year = x.year || d.year; d.cover = x.cover || d.cover;
       if(!toNum(d.price) && x.price) d.price = String(x.price);
       B.msg = '「' + r.by + '」で見つかりました。まちがいがないか見てから入れてください。';
     }
-  }catch(e){ B.msg = (e && e.message) || String(e); }
+  }catch(e){ if(B.d === d0) B.msg = (e && e.message) || String(e); }
   finally{ B.busy = false; rsPaint(); }
 }
 async function rsBookPhoto(files){
   var B = rsSt.books;
+  if(B.busy) return;
   if(!B.d) B.d = rsBookNew();
+  var d0 = B.d;
   B.busy = true; B.msg = ''; render();
   try{
     var url = typeof files[0] === 'string' ? files[0] : await resizeImage(files[0], 1600, 0.85);
     var j = await aiJson('この写真の本のバーコードまたはISBNの数字（978か979ではじまる13けた、または10けた）を読みとってください。' +
       'JSONだけ：{"isbn":"数字だけ"}。読めないときは {"isbn":""}', [url], 'rs-isbn');
+    if(B.d !== d0){ B.busy = false; rsPaint(); return; }     /* とちゅうで「やめる」を押した */
     var isbn = rsIsbnNorm(j && j.isbn);
     if(!rsIsbnOk(isbn)) throw new Error('ISBNの数字を読みとれませんでした。明るいところで、バーコードを大きく写してください');
-    B.d.isbn = isbn; B.busy = false;
+    d0.isbn = isbn; B.busy = false;
     await rsBookIsbn();
-  }catch(e){ B.msg = (e && e.message) || String(e); B.busy = false; rsPaint(); }
+  }catch(e){ if(B.d === d0) B.msg = (e && e.message) || String(e); B.busy = false; rsPaint(); }
 }
 function rsBookSave(){
   var B = rsSt.books, d = B.d;
@@ -1334,6 +1359,7 @@ function rsViewTr(){
   return section('翻訳', null,
     '<div class="chips">' + rsChip('rs-tr-dir', 'auto', '自動', E.dir === 'auto') + rsChip('rs-tr-dir', 'EN', '日本語→英語', E.dir === 'EN') + rsChip('rs-tr-dir', 'JA', '英語→日本語', E.dir === 'JA') + '</div>' +
     rsTa('eng.tr', '訳したい文', 6, '文') +
+    '<p class="note">文はそのまま DeepL・AI に送られます。患者さんの名前など、個人の情報は入れないでください。</p>' +
     '<button class="btn" data-act="rs-tr-go"' + (E.trBusy ? ' disabled' : '') + '>' + (E.trBusy ? '訳しています…' : '翻訳する') + '</button>' +
     (E.trOut ? '<div class="rs-ref rs-trout"><div class="s2">' + esc(E.trBy) + 'で訳しました' + (E.trNote ? '（' + esc(E.trNote) + '）' : '') + '</div><div class="rs-pre">' + esc(E.trOut) + '</div>' +
       '<button class="mini" data-act="rs-copy" data-k="tr">コピー</button></div>' : '') +
@@ -1474,7 +1500,8 @@ async function rsLawOpen(id, title){
   if(!/^[0-9A-Za-z_]{8,40}$/.test(String(id || ''))) return;
   L.id = id; L.title = title || ''; L.filter = ''; L.show = 30; L.err = '';
   if(L.cache[id]){ L.arts = L.cache[id].arts; L.title = L.cache[id].title || L.title; render(); window.scrollTo(0, 0); return; }
-  L.arts = null; L.busy = true; render(); window.scrollTo(0, 0);
+  /* 読みこみ中のしるしは「さがす」（L.busy）とは別にする（とちゅうで一覧にもどったり、別の法令を開いても、まざらない） */
+  L.arts = null; L.loading = id; render(); window.scrollTo(0, 0);
   try{
     var j = await rsFetchJson(RS_EGOV + 'law_data/' + encodeURIComponent(id));
     var arts = rsLawParse(j && j.law_full_text);
@@ -1483,7 +1510,7 @@ async function rsLawOpen(id, title){
     L.cache[id] = { arts:arts, title:t };
     if(L.id === id){ L.arts = arts; L.title = t; }
   }catch(e){ if(L.id === id) L.err = (e && e.message) || String(e); }
-  finally{ L.busy = false; rsPaint(); }
+  finally{ if(L.loading === id) L.loading = ''; rsPaint(); }
 }
 function rsLawFilter(arts, f){
   f = String(f || '').trim();
@@ -1513,7 +1540,7 @@ function rsViewLaw(){
     var url = 'https://laws.e-gov.go.jp/law/' + encodeURIComponent(L.id);
     return rsHead(L.title || '法令', '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">e-Govで見る</a>',
       '<div class="pillrow"><button data-act="rs-law-back">‹ 法令の一覧</button></div>' +
-      (L.busy ? '<p class="note">読みこんでいます…（大きな法令は少し時間がかかります）</p>' : '') +
+      (L.loading === L.id ? '<p class="note">読みこんでいます…（大きな法令は少し時間がかかります）</p>' : '') +
       (L.err ? rsBn('amber', esc(L.err)) : '') +
       (L.arts ? rsIn('law.filter', '例：5（第5条）・守秘・免許', '条文の中をさがす（数字なら条の番号）') + '<div id="rs_law_arts">' + rsLawArtsHtml() + '</div>' : '') + warn);
   }
@@ -1567,41 +1594,70 @@ function rsLecTick(){
   var e = document.getElementById('rs_lec_time');
   if(e && rsSt.lec.rec) e.textContent = rsMmss((Date.now() - rsSt.lec.t0) / 1000);
 }
+var rsLecStarting = false;
 async function rsLecStart(){
   var L = rsSt.lec;
-  if(L.rec) return;
+  if(L.rec || rsLecStarting) return;           /* 2回押しても、マイクを2つ開かない */
   if(!aiReady()){ toast('AI（Gemini）のカギが無いので使えません', true); return; }
   if(!(window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ L.err = 'この端末では録音が使えません。'; render(); return; }
   var stream;
+  rsLecStarting = true;
   try{ stream = await navigator.mediaDevices.getUserMedia({ audio:true }); }
   catch(e){ L.err = 'マイクが使えません。端末の設定でマイクを許可してください。'; render(); return; }
+  finally{ rsLecStarting = false; }
+  if(L.rec){ rsLecEndStream(stream); return; }
   L.err = ''; L.sum = null; L.rec = true; L.t0 = Date.now();
   if(!L.course) L.course = rsLecCourse() || '-';
-  rsLecRec = { stream:stream, running:true, mr:null, segTimer:null, tick:setInterval(rsLecTick, 1000), wake:null };
-  try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(function(w){ if(rsLecRec) rsLecRec.wake = w; }, function(){}); }catch(e){}
+  var R = rsLecRec = { stream:stream, running:true, mr:null, segTimer:null, tick:setInterval(rsLecTick, 1000), wake:null };
+  try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(function(w){ if(rsLecRec === R) R.wake = w; else try{ w.release(); }catch(e){} }, function(){}); }catch(e){}
   rsLecNext();
   render();
 }
+function rsLecEndStream(stream){ try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} }
+/* 録音をおしまいにして、マイクを閉じる（止めるボタン・止まってしまったとき） */
+function rsLecClose(R){
+  clearInterval(R.tick); clearTimeout(R.segTimer); clearTimeout(R.closeTimer);
+  rsLecEndStream(R.stream);
+  try{ if(R.wake) R.wake.release(); }catch(e){}
+  if(rsLecRec === R) rsLecRec = null;
+}
+/* マイクが切れた・録音を始められない（iPhoneで画面を消した・ほかのアプリに切りかえた など） */
+function rsLecFail(R, why){
+  var cur = rsLecRec === R, L = rsSt.lec;
+  R.running = false;
+  rsLecClose(R);
+  if(cur && L.rec){ L.rec = false; L.err = why; }
+  rsPaint();
+}
+var RS_LEC_MAX = 3 * 3600000;   /* 止め忘れ（ほかの画面に行ったまま）でも、3時間で止める */
 function rsLecNext(){
   var R = rsLecRec;
   if(!R || !R.running) return;
+  if(Date.now() - rsSt.lec.t0 >= RS_LEC_MAX){ rsLecFail(R, '3時間たったので、録音を止めました。ここまでの分は文字にします。'); return; }
+  var live = false;
+  try{ live = R.stream.getAudioTracks().some(function(t){ return t.readyState === 'live'; }); }catch(e){}
+  if(!live){ rsLecFail(R, '録音が止まりました（画面を消したり、ほかのアプリに切りかえると止まることがあります）。ここまでの分は文字にします。'); return; }
   var mime = rsLecMime(), mr, chunks = [];
-  try{ mr = mime ? new MediaRecorder(R.stream, { mimeType:mime, audioBitsPerSecond:32000 }) : new MediaRecorder(R.stream); }
-  catch(e){ mr = new MediaRecorder(R.stream); }
+  try{
+    try{ mr = mime ? new MediaRecorder(R.stream, { mimeType:mime, audioBitsPerSecond:32000 }) : new MediaRecorder(R.stream); }
+    catch(e){ mr = new MediaRecorder(R.stream); }
+  }catch(e2){ rsLecFail(R, '録音を始められませんでした：' + ((e2 && e2.message) || e2)); return; }
   mr.ondataavailable = function(ev){ if(ev.data && ev.data.size) chunks.push(ev.data); };
+  mr.onerror = function(ev){
+    var er = ev && ev.error;
+    try{ if(mr.state !== 'inactive') mr.stop(); }catch(e){}
+    rsLecFail(R, '録音が止まりました：' + ((er && (er.message || er.name)) || 'エラー') + '。ここまでの分は文字にします。');
+  };
   mr.onstop = function(){
     clearTimeout(R.segTimer);
     var type = String(mr.mimeType || mime || 'audio/webm').split(';')[0];
     if(chunks.length) rsLecAddSegment(new Blob(chunks, { type:type }));
     if(R.running) rsLecNext();
-    else{
-      try{ R.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
-      try{ if(R.wake) R.wake.release(); }catch(e){}
-      if(rsLecRec === R) rsLecRec = null;
-    }
+    else rsLecClose(R);
   };
   R.mr = mr;
-  mr.start(1000);
+  try{ mr.start(1000); }
+  catch(e){ rsLecFail(R, '録音を始められませんでした：' + ((e && e.message) || e)); return; }
   R.segTimer = setTimeout(function(){ if(mr.state === 'recording') mr.stop(); }, Math.max(1, toNum(rsSt.lec.min) || 5) * 60000);
 }
 function rsLecStop(){
@@ -1610,9 +1666,13 @@ function rsLecStop(){
   if(R){
     R.running = false; clearInterval(R.tick); clearTimeout(R.segTimer);
     try{
-      if(R.mr && R.mr.state !== 'inactive') R.mr.stop();
-      else{ R.stream.getTracks().forEach(function(t){ t.stop(); }); rsLecRec = null; }
-    }catch(e){}
+      if(R.mr && R.mr.state !== 'inactive'){
+        R.mr.stop();
+        /* 止まった知らせ（onstop）が来ないときも、マイクは必ず閉じる */
+        R.closeTimer = setTimeout(function(){ rsLecClose(R); }, 8000);
+      }
+      else rsLecClose(R);
+    }catch(e){ rsLecClose(R); }
   }
   render();
 }
@@ -1833,7 +1893,8 @@ var RS_ACTS = {
   'rs-rep-proof':function(){ rsRepProof(); },
   'rs-rep-fix':function(ds){
     var R = rsSt.rep, it = R.proof && R.proof.items[toNum(ds.i)];
-    if(!it || it.done) return;
+    if(!it || it.done || !it.replace || !it.from || !it.to) return;
+    if(rsHasMaskMark(it)){ toast('かくした文字（＊＊）が入っているので、自分で直してください', true); return; }
     var at = String(R.text).indexOf(it.from);
     if(at < 0){ toast('本文に見つかりませんでした', true); return; }
     R.text = R.text.slice(0, at) + it.to + R.text.slice(at + it.from.length);
@@ -1911,12 +1972,15 @@ var RS_ACTS = {
   'rs-eng-file':function(){
     rsPickFiles('image/*,.pdf,application/pdf', true, async function(fs){
       try{
-        var out = [];
+        /* AIに一度に送れるのは20MBくらいまで（文字にすると4/3倍になる）。PDFは合わせて12MBまで */
+        var out = [], pdfBytes = 0;
         for(var i = 0; i < fs.length && i < 3; i++){
           var f = fs[i];
           if(/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)){
-            if(f.size > 15 * 1024 * 1024) throw new Error('PDFは15MBまでです（' + f.name + '）');
-            out.push(await rsReadFile(f));
+            pdfBytes += f.size || 0;
+            if(pdfBytes > 12 * 1024 * 1024) throw new Error('PDFは合わせて12MBまでです（' + f.name + '）');
+            /* iPhoneのファイルでは種類が空のことがある → PDFとして送る */
+            out.push(String(await rsReadFile(f)).replace(/^data:[^;,]*/, 'data:application/pdf'));
           }else out.push(await resizeImage(f, 1800, 0.82));
         }
         rsSt.eng.files = out; rsPaint();
@@ -2097,12 +2161,13 @@ function rsAiBooks(){
 rsAiBooks.section = 'study';
 kmAiData('rs_books', '教科書の本だな（授業ごと）・買う予定の本の数と合計金額・保存した論文の数', rsAiBooks);
 KM.aiData.rs_books.section = 'study';
+/* AIそうだんに見せる文も、名前らしい文字などは＊＊にかくす（レポートには患者さんの事例が入ることがある） */
 function rsAiDevice(){
   var R = rsSt.rep, st = rsReportStats(R.text, R.target), L = rsSt.lec;
   return {
     report:R.text ? { chars:st.noWs, target:st.target, percent:st.pct, sentences:st.sents, longSentences:st.long.length, mixedStyle:st.mixed,
-      text:rsClip(R.text, 3000), references:rsRefLines(R.refs).length } : null,
-    lecture:L.segs.length ? { course:rsLecCourse(), recording:!!L.rec, parts:L.segs.length, text:rsClip(rsLecText(), 3000) } : null,
+      text:rsMask(rsClip(R.text, 3000)).text, references:rsRefLines(R.refs).length } : null,
+    lecture:L.segs.length ? { course:rsLecCourse(), recording:!!L.rec, parts:L.segs.length, text:rsMask(rsClip(rsLecText(), 3000)).text } : null,
     deepl:rsLs('deepl') === 1 ? '預けてある' : 'なし'
   };
 }
@@ -2112,10 +2177,12 @@ KM.aiData.rs_device.section = 'study';
 function rsAiNursing(){
   return rsItems('nproc').map(function(x){
     var d = rsNpFix(rsCopy(x));
-    return { id:x.id, title:x.title, frame:rsFrame(d).name, progress:rsNpProgress(d), problems:rsNpProbs(d).map(function(p, i){ return '#' + (i + 1) + ' ' + p.text; }) };
+    return { id:x.id, title:rsMask(x.title).text, frame:rsFrame(d).name, progress:rsNpProgress(d), problems:rsNpProbs(d).map(function(p, i){ return '#' + (i + 1) + ' ' + rsMask(p.text).text; }) };
   });
 }
 rsAiNursing.section = 'more';
+/* 看護過程・看護計画の記録は、AIの道具で読まれる前に伏せ字にする（患者さんの名前など） */
+if(typeof kmAiMask === 'function') kmAiMask('research', function(s){ return rsMask(s).text; });
 kmAiData('rs_nursing', '看護過程（書いているもの）の一覧と看護問題。くわしい中身は kmItems（mod:research, type:nproc / nplan / lawclip）', rsAiNursing);
 KM.aiData.rs_nursing.section = 'more';
 
@@ -2130,7 +2197,7 @@ kmSearch(function(q){
   if(!w) return [];
   var hit = function(){ return norm(Array.prototype.slice.call(arguments).join(' ')).indexOf(w) >= 0; }, out = [];
   (S.papers || []).forEach(function(p){
-    if(hit(p.title, (p.authors || []).join(' '), p.journal, p.memo, p.easy)) out.push({ kind:'論文', title:p.title, sub:rsMetaLine(p), act:'rs-open', attrs:rsAttrs({ 'data-tool':'rs-find', 'data-id':p.id }) });
+    if(hit(p.title, rsAuthorsOf(p).join(' '), p.journal, p.memo, p.easy)) out.push({ kind:'論文', title:p.title, sub:rsMetaLine(p), act:'rs-open', attrs:rsAttrs({ 'data-tool':'rs-find', 'data-id':p.id }) });
   });
   (S.books || []).forEach(function(b){
     if(hit(b.title, b.author, b.publisher, b.course, b.memo, b.isbn)) out.push({ kind:'教科書', title:b.title, sub:[b.course ? shortName(b.course) : '', b.status, b.where].filter(Boolean).join('・'), act:'rs-open', attrs:rsAttrs({ 'data-tool':'rs-books', 'data-id':b.id }) });

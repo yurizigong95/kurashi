@@ -154,6 +154,12 @@ KT.test('雨雲：RainViewer に切りかえ（タイルはズーム7まで・�
     eq(doc.querySelector('.radar').getAttribute('data-src'), 'rv', '出どころ');
     ok(/RainViewer/.test(doc.querySelector('.radarbox').textContent), '出典');
     eq(A.radar.frames.filter(function(f){ return f.f; }).length, 0, 'RainViewer に予報はない');
+    ok(!doc.querySelector('.l2-rnow') && /（いま）/.test(doc.querySelector('.l2-rt').textContent), '予報がないときは、右はしが「いま」（目盛りを重ねない）');
+    /* 画面が前の出どころのまま（入力中で描き直せなかった）でこまを動かす → 気象庁のURLを RainViewer のこまで作らない */
+    doc.querySelector('.radar').setAttribute('data-src', 'jma');
+    A.radarShow(0);
+    eq(doc.querySelector('.radar').getAttribute('data-src'), 'rv', 'こまを動かすと、描き直してそろえる');
+    ok(doc.querySelector('.radar img.rn').getAttribute('data-u').indexOf('https://tilecache.rainviewer.com/v2/radar/aaa/') === 0, 'RainViewer のいちばん古いこま');
     await KT.settle([A, B]);
     await KT.until(function(){ return B.l2Prefs().radarSrc === 'rv'; }, 10000, '相手の端末にも');
     doc.querySelector('[data-act="l2-radar-src"][data-v="jma"]').click();
@@ -540,10 +546,75 @@ KT.test('連携＋：iPhoneのカレンダーに直接（予定表 .ics・webcal
     ok(/新しい版にすると使えます/.test(doc.getElementById('app').textContent), '古い橋わたしでは「新しい版にすると使えます」');
   }finally{
     off();
-    A.L2.icsDelay = 3 * 60000; clearTimeout(A.L2.icsT);
+    A.L2.icsDelay = 3 * 60000; clearTimeout(A.L2.icsT); A.L2.icsT = null;
     A.removeItem('events', 'l2ev_ics'); A.l2PrefSet({ ics:0 }); A.commit();
     A.l2Local('ics', null);
     gasOff(A); A.appId = 'today'; A.render();
+    await KT.settle([A, B]);
+  }
+});
+
+KT.test('連携＋：予定表の折り返しで絵文字を分けない・変え続けても置き直す・くり返しのGoogleの予定は回ごと', async function(){
+  var A = KT.frames().A, B = KT.frames().B, doc = A.document;
+  KT.freshWrites([A, B]);
+  /* 折り返し：絵文字（2つで1文字）が、どの位置で行の切れ目に来ても分けない */
+  var lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+  for(var i = 0; i < 8; i++){
+    var line = 'SUMMARY:' + new Array(i + 1).join('a') + new Array(21).join('あ') + '📝🐰メモ📚' + new Array(40).join('い') + '✅';
+    var f = A.l2IcsFold(line), parts = f.split('\r\n');
+    ok(parts.every(function(p){ return !lone.test(p); }), '絵文字を分けない（' + i + '）');
+    ok(parts.every(function(p){ return new TextEncoder().encode(p).length <= 75; }), '1行は75バイトまで（' + i + '）');
+    eq(f.replace(/\r\n /g, ''), line, '元にもどる（' + i + '）');
+  }
+  /* 予定表：アプリを使い続けて（保存が続いて）も、最初に変えてから決まった時間で置く */
+  var puts = [], gcalls = 0, pingApi = 4;
+  var off = front(KT.gas, function(req){
+    if(req.action === 'icsPut'){ puts.push(req.ics); return { ok:true }; }
+    if(req.action === 'ping') return { ok:true, user:'test@example.com', ver:3, api:pingApi, trigger:true };
+    if(req.action !== 'gcalList') return null;
+    gcalls++;
+    var td = A.today();
+    return { ok:true, items:[
+      { id:'rep1@google.com', title:'毎週のゼミ', cal:'マイカレンダー', allDay:0, start:td + 'T10:00', end:td + 'T11:00', where:'' },
+      { id:'rep1@google.com', title:'毎週のゼミ', cal:'マイカレンダー', allDay:0, start:A.shiftDate(td, 7) + 'T10:00', end:A.shiftDate(td, 7) + 'T11:00', where:'' },
+      { id:'one@google.com', title:'1回だけ', cal:'マイカレンダー', allDay:0, start:td + 'T15:00', end:td + 'T16:00', where:'' }
+    ] };
+  });
+  try{
+    gasOn(A, 3);
+    A.l2Local('ics', null); A.l2PrefSet({ ics:1 }); A.commit();
+    A.L2.icsDelay = 400; clearTimeout(A.L2.icsT); A.L2.icsT = null;
+    var t0 = Date.now();
+    while(Date.now() - t0 < 2500 && !puts.length){ A.l2Soon(); await new Promise(function(r){ setTimeout(r, 100); }); }
+    eq(puts.length, 1, '保存が続いても、待ち時間をのばし続けない');
+    /* くり返しの予定：どの回も同じ id で届く → 回ごとに取りこめる */
+    await A.l2GcalLoad(true);
+    var items = A.l2GcalCache().items;
+    eq(items.length, 3, 'Googleの予定');
+    var reps = items.filter(function(x){ return x.title === '毎週のゼミ'; });
+    ok(reps.length === 2 && reps[0].id !== reps[1].id, 'くり返しの回ごとに id を分ける');
+    eq(items.filter(function(x){ return x.title === '1回だけ'; })[0].id, 'one@google.com', '1回だけの予定の id はそのまま');
+    ok(A.l2GcImport(reps[1].id), '2回目を取りこむ');
+    ok(!A.l2GcImported(reps[0]), '1回目は、まだ取りこんでいない');
+    ok(A.l2GcImport(reps[0].id), '1回目も取りこめる');
+    var evs = A.S.events.filter(function(e){ return /^rep1@google\.com/.test(e.gid || ''); });
+    eq(evs.map(function(e){ return e.date; }).sort().join(','), [A.today(), A.shiftDate(A.today(), 7)].join(','), 'それぞれの日に入る');
+    A.commit();
+    /* 橋わたしを新しくしたあと、「確かめる」ですぐ使えるようになる */
+    gasOn(A, 3);
+    A.appId = 'study'; A.studyTool = 'l2-notes'; A.render();
+    ok(doc.querySelector('[data-act="l2-ping"]'), '「新しい版にしたので確かめる」ボタン');
+    doc.querySelector('[data-act="l2-ping"]').click();
+    await KT.until(function(){ return A.l2V4(); }, 3000, '版を確かめる');
+    A.render();
+    ok(!doc.querySelector('[data-act="l2-ping"]') && doc.getElementById('l2_gnq'), '新しい版の画面になる');
+  }finally{
+    off();
+    A.L2.icsDelay = 3 * 60000; clearTimeout(A.L2.icsT); A.L2.icsT = null;
+    A.S.events.filter(function(e){ return /^rep1@google\.com/.test(e.gid || ''); }).forEach(function(e){ A.removeItem('events', e.id); });
+    A.l2PrefSet({ ics:0 }); A.commit();
+    A.l2Local('ics', null); A.L2.gcal = null; A.l2Local('gcal', null);
+    gasOff(A); A.studyTool = ''; A.appId = 'today'; A.render();
     await KT.settle([A, B]);
   }
 });

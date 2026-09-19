@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-09-19b';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-09-19c';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -736,8 +736,9 @@ function trashLabel(t){
   var o = t.obj || {};
   var names = { events:'予定', tasks:'課題', exams:'テスト', shifts:'バイト', notes:'メモ',
                 income:'収入', fixed:'固定費', balances:'口座', health:'健康', holidays:'授業の変更',
-                notices:'お知らせ', breaks:'長いお休み' };
-  return (names[t.list] || t.list) + '：' + (o.title || o.subject || o.name || '（無題）');
+                notices:'お知らせ', breaks:'長いお休み', spends:'家計簿', cards:'暗記カード', kmItems:'足した機能の記録' };
+  var amt = (t.list === 'spends' && o.amount) ? '　' + yen(Math.abs(Number(o.amount) || 0)) + (isYmd(o.date) ? '（' + o.date + '）' : '') : '';
+  return (names[t.list] || t.list) + '：' + String(o.title || o.subject || o.name || o.q || o.text || '（無題）').slice(0, 60) + amt;
 }
 function toastUndo(text, fn){
   if(window.__undoWatch) window.__undoWatch.hasUndo = true;

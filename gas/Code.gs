@@ -1109,7 +1109,7 @@ function weekSend_(f){
   if(!text) return false;
   var title = '📅 来週の予定（くらしの手帳）';
   if(p.getProperty('DISCORD_URL')) discordSend_(title, text);
-  else{ var bot = dcBot_(); if(bot && bot.channel) dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:('**' + title + '**\n' + text).slice(0, 1900) }); }
+  else{ var bot = dcBot_(); if(bot && bot.channel) dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:('**' + title + '**\n' + text).slice(0, 1900), allowed_mentions:{ parse:[] } }); }
   return true;
 }
 /* 聞かれたことに答える（Siri・Discordボット）。q は「明日の1限は？」のような文、または tomorrow1・due などの合図 */
@@ -1231,7 +1231,7 @@ function dcBotPoll_(){
     var text = String(msg.content || '').replace(/<@!?\d+>/g, '').trim();
     if(!text) return;
     dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:clip_(ask_(text, { from:'discord' }), 1900),
-      message_reference:{ message_id:String(msg.id) }, allowed_mentions:{ parse:[] } });
+      message_reference:{ message_id:String(msg.id), fail_if_not_exists:false }, allowed_mentions:{ parse:[] } });
     n++;
   });
   if(bot.after !== after0) props_().setProperty('DC_BOT', JSON.stringify(bot));
@@ -1378,7 +1378,12 @@ function route_(req){
   var f = Maps.newDirectionFinder().setOrigin(from).setDestination(to).setMode(mode).setLanguage('ja').setRegion('jp');
   if(arrive) f.setArrive(arrive); else if(depart) f.setDepart(depart);
   var d = f.getDirections();
-  if(!d || d.status !== 'OK' || !(d.routes || []).length) return { ok:false, error:'経路が見つかりませんでした（' + (d && d.status || '返事なし') + '）' };
+  if(!d || d.status !== 'OK' || !(d.routes || []).length){
+    var st = (d && d.status) || '返事なし';
+    /* Googleの経路サービス（API）は、日本の電車・バスの経路を返さないことがある */
+    return { ok:false, error:'経路が見つかりませんでした（' + st + '）' +
+      (st === 'ZERO_RESULTS' && mode === M.TRANSIT ? '。日本の電車・バスの経路は、この仕組みでは出ないことがあります。地図のボタンで調べてください' : '') };
+  }
   var leg = (d.routes[0].legs || [])[0];
   if(!leg) return { ok:false, error:'経路が見つかりませんでした' };
   var hm = function(t){ return (t && t.value) ? Utilities.formatDate(new Date(t.value * 1000), TZ, 'HH:mm') : ''; };

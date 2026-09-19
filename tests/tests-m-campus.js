@@ -642,4 +642,55 @@ cpTest('授業＋：AIの道具で読める・全体検索に出る・AIそう�
   A.touch('syllabus'); A.commit();
   await KT.settle([A, B]);
 });
+
+cpTest('バイト＋：1日に2回あるシフトは、ほかの登録を上書きしない', async function(){
+  var A = KT.frames().A, doc = A.document;
+  var d = A.shiftDate(A.today(), 40);
+  A.S.shifts.push(J(A, { id:'wk_cp2a', title:'バイト', date:d, start:'10:00', end:'13:00', realEnd:'', ot:0, rate:0, memo:'', photos:[], mt:Date.now() }));
+  var L = J(A, [{ date:d, start:'10:00', end:'13:00', note:'' }, { date:d, start:'17:00', end:'21:00', note:'' }]);
+  eq(A.shiftOcrCmp(L[0], L).st, 'same', '朝のシフトは同じ');
+  eq(A.shiftOcrCmp(L[1], L).st, 'new', '夕方のシフトは新しい（朝のシフトを直さない）');
+  var L2 = J(A, [{ date:d, start:'12:00', end:'16:00', note:'' }]);
+  var c = A.shiftOcrCmp(L2[0], L2);
+  ok(c.st === 'diff' && c.old.id === 'wk_cp2a', '1つずつなら「時間がちがう」');
+  A.shiftOcr.list = L; A.shiftOcr.listMonth = '';
+  A.appId = 'money'; A.payTab = 'work'; A.render();
+  eq(doc.querySelectorAll('.cp-so-new').length + '/' + doc.querySelectorAll('.cp-so-same').length, '1/1', '新しい・同じ');
+  A.shiftOcrAdd();
+  var mine = A.S.shifts.filter(function(w){ return w.date === d; });
+  eq(mine.length, 2, '夕方のシフトを足す');
+  ok(mine.some(function(w){ return w.id === 'wk_cp2a' && w.start === '10:00' && w.end === '13:00'; }), '朝のシフトはそのまま');
+  mine.forEach(function(w){ A.removeItem('shifts', w.id); });
+  A.appId = 'today'; A.commit();
+});
+
+cpTest('授業＋：補講の時限がわからないときは入れない・シラバスの古いうちわけを残さない', async function(){
+  var A = KT.frames().A, doc = A.document;
+  var name = A.termCourses()[0].name, h0 = A.S.holidays.length;
+  var it = A.cpUniMake('補講のお知らせ（時限のテスト）', '補講をします', [], 'cp-test-noperiod', A.today());
+  it.parsed = 1;
+  it.cands = J(A, [{ k:'a0', type:'makeup', course:name, courseRaw:name, date:A.shiftDate(A.today(), 30), period:0, room:'', title:'補講', due:'', time:'', url:'', note:'', st:'' }]);
+  A.courseView = ''; A.appId = 'course'; A.render();
+  var sel = doc.getElementById('cpu_p_' + it.id + '_a0');
+  ok(sel && sel.value === '', '時限は「何限？」のまま（1限にしない）');
+  doc.querySelector('[data-act="cp-uni-add"][data-id="' + it.id + '"][data-k="a0"]').click();
+  eq(A.S.holidays.length, h0, 'えらぶまで入れない');
+  doc.getElementById('cpu_p_' + it.id + '_a0').value = '2';
+  doc.querySelector('[data-act="cp-uni-add"][data-id="' + it.id + '"][data-k="a0"]').click();
+  eq(A.S.holidays.length, h0 + 1, 'えらぶと入る');
+  var hx = A.S.holidays[A.S.holidays.length - 1];
+  eq(hx.period, 2, 'えらんだ時限');
+  A.removeItem('holidays', hx.id); A.removeItem('kmItems', it.id);
+  /* シラバス：うちわけのない読み直しで割合がかわったら、前のうちわけは使わない */
+  var sn = A.termCourses()[1].name, saveSy = A.S.syllabus[sn];
+  A.S.syllabus[sn] = J(A, { url:'', exam:'50', rep:'20', att:'10', other:'20', memo:'', mt:Date.now(),
+    items:[{ name:'期末試験', pct:50, kind:'exam' }, { name:'小テスト', pct:20, kind:'quiz' }, { name:'レポート', pct:20, kind:'report' }, { name:'出席', pct:10, kind:'attend' }] });
+  A.sylAi = J(A, { name:sn, busy:false, err:'', files:[], fileNames:[],
+    result:{ exam:70, report:30, attend:null, other:null, notes:'', other_detail:'', tests:[], items:[], plan:[], books:[], teacher:'' } });
+  A.syllabusApply(sn);
+  ok(!A.S.syllabus[sn].items && A.S.syllabus[sn].exam === '70', '古いうちわけを消す');
+  eq(A.cpEvalItems(sn)[0].pct, 70, '成績の見込みは新しい割合で');
+  if(saveSy) A.S.syllabus[sn] = saveSy; else A.S.syllabus[sn] = J(A, { url:'', exam:'', rep:'', att:'', other:'', memo:'', mt:Date.now() });
+  A.touch('syllabus'); A.appId = 'today'; A.commit();
+});
 })();

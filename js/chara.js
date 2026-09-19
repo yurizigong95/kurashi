@@ -78,7 +78,8 @@ function charaFriend(){
   if(__cf && Date.now() - __cf.t < 3000) return __cf.v;
   var p = 0;
   (S.tasks || []).forEach(function(t){ if(t && t.done) p += 2; });
-  Object.keys(S.dayReview || {}).forEach(function(k){ if((S.dayReview[k] || {}).grade) p += 3; });
+  /* 自分でふりかえった日だけ数える（アプリが自動でつけた評価 auto:1 は数えない） */
+  Object.keys(S.dayReview || {}).forEach(function(k){ var r = S.dayReview[k] || {}; if(r.grade && !r.auto) p += 3; });
   p += (S.events || []).length + (S.notes || []).length + Math.floor((S.shifts || []).length / 2);
   var lv = 0;
   CHARA_FRIEND_STEPS.forEach(function(s, i){ if(p >= s) lv = i; });

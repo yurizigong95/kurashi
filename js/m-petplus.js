@@ -388,6 +388,8 @@ function ppLook(id, o, opt){
   if(!o || !o.stage) return null;
   var k = charaById(id), f = ppLayout(k), L = k.line || '#6E5A66';
   var wear = (o.wear && typeof o.wear === 'object' && !o.ppPlain) ? o.wear : {};
+  /* 帽子を決めていないとき（あかちゃん）は、キャラの設定の帽子（季節のマフラー・めがねなど）がかぶさる */
+  var hat0 = function(){ return (opt.hat !== undefined) ? opt.hat : (typeof charaHatNow === 'function' ? charaHatNow() : ''); };
   var lay = { body:'', neck:'', face:'', head:'', hand:'', fx:'', prop:'' };
   var cls = ['pp-rel'], after = '';
   /* 進化の道（おとな・マスター） */
@@ -409,8 +411,8 @@ function ppLook(id, o, opt){
       cls.push('pp-wx-' + wx.kind);
       var g = function(x){ return '<g class="pp-fx-' + wx.kind + '">' + x + '</g>'; };
       if(wx.kind === 'rain'){ opt.prop = 'umbrella'; lay.prop = ''; lay.fx += g(ppFxDraw('boots', f, L)); }
-      else if(wx.kind === 'snow'){ if(!wear.neck) lay.neck = g(ppFxDraw('scarf', f, L)); after += '<span class="pp-snowman" aria-hidden="true">⛄</span>'; }
-      else if(wx.kind === 'cold'){ if(!wear.neck) lay.neck = g(ppFxDraw('scarf', f, L)); }
+      else if(wx.kind === 'snow'){ if(!wear.neck && hat0() !== 'scarf') lay.neck = g(ppFxDraw('scarf', f, L)); after += '<span class="pp-snowman" aria-hidden="true">⛄</span>'; }
+      else if(wx.kind === 'cold'){ if(!wear.neck && hat0() !== 'scarf') lay.neck = g(ppFxDraw('scarf', f, L)); }
       else if(wx.kind === 'hot'){ lay.fx += g(ppFxDraw('sweat', f, L) + (wear.hand ? '' : ppFxDraw('fan', f, L))); }
       else if(wx.kind === 'sunny'){ if(opt.expr === 'normal') opt.expr = 'happy'; lay.fx += g(ppFxDraw('sun', f, L)); }
     }
@@ -421,8 +423,10 @@ function ppLook(id, o, opt){
     if(!it || it.slot !== sl[0]) return;
     lay[sl[0]] = '<g class="pp-w pp-w-' + it.id + '">' + ppWearDraw(it.id, f, L) + '</g>';
   });
+  /* 着ている服と、キャラの帽子が重ならないように（ぼうし・めがね・マフラーが二重にならない） */
   if(wear.head && PP_WEAR_BY[wear.head]) opt.hat = '';
-  if(wear.face && PP_WEAR_BY[wear.face] && opt.hat === 'megane') opt.hat = '';
+  if(wear.face && PP_WEAR_BY[wear.face] && hat0() === 'megane') opt.hat = '';
+  if(wear.neck && PP_WEAR_BY[wear.neck] && hat0() === 'scarf') opt.hat = '';
   return { svg:lay.body + lay.neck + lay.face + lay.head + lay.hand + lay.prop + lay.fx, cls:cls.join(' '), after:after };
 }
 
@@ -692,8 +696,10 @@ function ppWalkEnd(){
   if(goal) coins += 10;
   var st = ppStepsOn(w.ymd), base = toNum(w.steps0);
   var o = petNow(w.chara);
-  S.kmItems = Array.isArray(S.kmItems) ? S.kmItems : [];
-  S.kmItems.push({ id:uid('km'), mt:Date.now(), mod:'petplus', type:'walk', ymd:w.ymd, chara:w.chara,
+  /* 記録の id は、おさんぽの id から決める（2台でそれぞれ「かえる」を押しても、同期で1つになる＝コインが二重にならない） */
+  var rid = 'km' + String(w.id).replace(/[^A-Za-z0-9_-]/g, '');
+  S.kmItems = (Array.isArray(S.kmItems) ? S.kmItems : []).filter(function(x){ return !(x && x.id === rid); });
+  S.kmItems.push({ id:rid, mt:Date.now(), mod:'petplus', type:'walk', ymd:w.ymd, chara:w.chara,
     name:(o && o.name) || charaById(w.chara).name, start:toNum(w.start), end:Date.now(), squares:p, goal:goal ? 1 : 0,
     route:(w.route || []).slice(0, p), found:found, coins:coins, steps:(st != null && base >= 0) ? Math.max(0, st - base) : null });
   if(Object.keys(foods).length) petMetaUpdate(function(mm){ Object.keys(foods).forEach(function(f){ mm.bag[f] = toNum(mm.bag[f]) + foods[f]; }); });
@@ -712,8 +718,10 @@ function ppGrad(){
   var nm = o.name || k.name;
   if(!confirm(nm + 'を卒業させますか？\n図鑑にのこって、' + k.name + 'の新しいたまごから育てられます。')) return;
   var b = ppYmdOf(o.hatch || o.born);
-  S.kmItems = Array.isArray(S.kmItems) ? S.kmItems : [];
-  S.kmItems.push({ id:uid('km'), mt:Date.now(), mod:'petplus', type:'grad', chara:id, name:nm, born:toNum(o.born), hatch:toNum(o.hatch),
+  /* 記録の id は、その子（キャラと生まれた時刻）から決める（2台でそれぞれ卒業させても、同期で1つになる＝コインが二重にならない） */
+  var gid = (toNum(o.born) || toNum(o.hatch)) ? 'kmg' + String(id).replace(/[^A-Za-z0-9_-]/g, '') + '-' + (toNum(o.born) || toNum(o.hatch)).toString(36) : uid('km');
+  S.kmItems = (Array.isArray(S.kmItems) ? S.kmItems : []).filter(function(x){ return !(x && x.id === gid); });
+  S.kmItems.push({ id:gid, mt:Date.now(), mod:'petplus', type:'grad', chara:id, name:nm, born:toNum(o.born), hatch:toNum(o.hatch),
     gradAt:Date.now(), gradYmd:today(), days:b ? (daysBetween(b, today()) || 0) + 1 : 0, exp:toNum(o.exp),
     path:o.path || ppPathOf(id, o), path2:o.path2 || o.path || ppPathOf(id, o), title:ppTitle(o, id), gen:toNum(o.gen) || 1,
     wear:Object.assign({}, o.wear || {}), coins:100 });
@@ -861,7 +869,7 @@ function ppWalkView(id, o){
   if(logs.length){
     h += '<div class="s2" style="margin:12px 0 4px">おさんぽの思い出</div>' + logs.map(function(x){
       var photos = (x.found || []).filter(function(f){ return f && f.kind === 'photo'; });
-      return '<div class="row pp-wlog"><div class="grow"><div class="t">' + ymdLabel(x.ymd) + '　' + esc(x.name || '') + '</div>' +
+      return '<div class="row pp-wlog"><div class="grow"><div class="t">' + esc(ymdLabel(x.ymd)) + '　' + esc(x.name || '') + '</div>' +
         '<div class="s">' + toNum(x.squares) + 'マス' + (x.goal ? '・ゴール' : '') + (x.steps != null ? '・' + x.steps + '歩' : '') + '・🪙' + toNum(x.coins) + '</div>' +
         (photos.length ? '<div class="pp-photos">' + photos.map(function(f){ return '<span class="pp-photo"><b>' + esc(f.v || '📷') + '</b>' + esc((PP_SPOT_BY[f.spot] || {}).name || '') + '<br>' + esc(f.text) + '</span>'; }).join('') + '</div>' : '') +
         '</div></div>';
@@ -921,7 +929,7 @@ function ppDexView(id, o){
     return '<div class="row pp-kid"><span class="pp-kidimg">' + charaSvg({ id:x.chara, size:36, still:true, hat:'' }) + '</span><div class="grow">' +
       '<div class="t">' + esc(x.name) + (x.gen > 1 ? ' <span class="s2">' + x.gen + '代目</span>' : '') + '　<span class="s2">' + (x.cur ? '育てている' : '🎓 卒業') + '</span></div>' +
       '<div class="s">' + esc(PET_STAGES[x.stage][1]) + (x.title ? '「' + esc(x.title) + '」' : '') + '・育てた日数 ' + days + '日</div>' +
-      '<div class="s2">' + (x.born ? '🎂 たんじょうび ' + ppMd(x.born) : '') + (x.gradYmd ? '・卒業 ' + ymdLabel(x.gradYmd) : '') + '</div></div></div>';
+      '<div class="s2">' + (x.born ? '🎂 たんじょうび ' + ppMd(x.born) : '') + (x.gradYmd ? '・卒業 ' + esc(ymdLabel(x.gradYmd)) : '') + '</div></div></div>';
   }).join('') : '<div class="empty">まだいません。</div>');
   return section('📖 育てた子の図鑑', '', h);
 }
@@ -969,6 +977,9 @@ function ppTodayCard(ctx){
   if(ctx && ctx.isToday === false) return '';
   var id = petActiveId(), o = petNow(id), k = charaById(id);
   if(!o){
+    /* 「おせわ」のタブを出していない人には、さそわない */
+    var tab = (S.ui && Array.isArray(S.ui.tabs)) ? S.ui.tabs.filter(function(x){ return Array.isArray(x) && x[0] === 'pet'; })[0] : null;
+    if(tab && !tab[1]) return '';
     return secWrap('pp-pet', 'おせわの子', null, '<div class="row"><span class="pp-tmini">' + charaSvg({ id:id, size:40, expr:'happy', still:true }) + '</span>' +
       '<div class="grow pp-txt">' + esc(k.name) + 'のたまごをもらって、育ててみませんか？</div><button class="mini" data-act="go" data-app="pet">おせわへ</button></div>');
   }

@@ -14,8 +14,10 @@
    ・kmSearch(fn)                     … アプリ全体の検索（fn(q) → [{ kind, title, sub, act, attrs }]）
    ・kmCheck(fn)                      … データの自動チェック（fn() → [{ level:'warn'|'ng', msg, fix:function }]）
    ・kmAiData(name, desc, fn)         … AIが読めるデータ（fn(opt) → JSON にできるもの）
-   ・kmChatTool(decl, run)            … AIそうだんの道具（decl … Geminiの関数の説明、run(args) → { result, op }）  */
-var KM = { views:{}, actions:[], settings:[], parts:{}, study:[], jobs:[], jobText:[], inbox:{}, summary:[], search:[], checks:[], aiData:{}, chatTools:[] };
+   ・kmChatTool(decl, run)            … AIそうだんの道具（decl … Geminiの関数の説明、run(args) → { result, op }）
+   ・kmAiMask(mod, fn)                … AIに見せる前に、その機能の kmItems の文を伏せ字にする（fn(文) → 文）
+   ・kmAiData の4つめの引数で、AIに見せる分野（AI_SECTIONS の id）を決められる  */
+var KM = { views:{}, actions:[], settings:[], parts:{}, study:[], jobs:[], jobText:[], inbox:{}, summary:[], search:[], checks:[], aiData:{}, chatTools:[], aiMask:{} };
 function kmView(appId, fn){ KM.views[appId] = fn; }
 function kmAction(fn){ KM.actions.push(fn); }
 function kmSettings(o){ KM.settings.push(o); }
@@ -36,6 +38,7 @@ function kmSearch(fn){ KM.search.push(fn); }
 function kmCheck(fn){ KM.checks.push(fn); }
 function kmAiData(name, desc, fn){ KM.aiData[name] = { desc:desc, fn:fn }; }
 function kmChatTool(decl, run){ KM.chatTools.push({ decl:decl, run:run }); }
+function kmAiMask(mod, fn){ KM.aiMask[mod] = fn; }          /* AIに見せる前に、その機能の記録（kmItems）の文を伏せ字にする（fn(文) → 文） */
 
 /* ===== 本体から呼ぶ ===== */
 /* ページの枠に、登録された枠を足す（エラーが出ても、ほかの枠は出す） */

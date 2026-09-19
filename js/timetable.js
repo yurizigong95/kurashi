@@ -560,7 +560,11 @@ async function syllabusRead(name, opt){
   try{
     if(url){
       if(!/^https?:\/\//i.test(url)) throw new Error('URLは https:// からはじまるものを入れてください');
-      var page = syllabusPageText(await apiGet(url));
+      /* 大学のページは、アプリから直接読めない（橋わたしでも読めない場所）ことが多いので、わかる言葉で知らせる */
+      var raw;
+      try{ raw = await apiGet(url); }
+      catch(e0){ throw new Error('このページは読めませんでした（' + e0.message + '）。大学のシラバスのページは、アプリから読めないことが多いので、ページの文章をコピーして貼るか、写真・PDFで読んでください'); }
+      var page = syllabusPageText(raw);
       if(page.length < 20) throw new Error('ページの中身を読めませんでした（ログインが必要なページかもしれません。文章をコピーして貼ってください）');
       text = (text ? text + '\n' : '') + page;
     }
@@ -642,6 +646,8 @@ function syllabusApply(name){
   var sy = S.syllabus[name];
   if(r.teacher) sy.teacher = r.teacher;
   if((r.items || []).length) sy.items = r.items;
+  /* うちわけがなく、割合が前とかわったときは、前に読んだ古い「うちわけ」は使わない（成績の見込みがずれるので） */
+  else if(['exam','rep','att','other'].some(function(k){ return String(toNum(cur[k])) !== String(toNum(sy[k])); })) delete sy.items;
   if((r.plan || []).length) sy.plan = r.plan;
   if((r.books || []).length) sy.books = r.books;
   var picks = Array.prototype.map.call(document.querySelectorAll('.syl-pick'), function(el){ return el.checked ? toNum(el.dataset.i) : -1; })

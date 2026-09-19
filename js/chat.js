@@ -563,8 +563,12 @@ async function chatSend(text, opt){
       var tdr = today();
       var jj = dayGrade(tdr);
       var pr = S.dayReview[tdr] || {};
-      S.dayReview[tdr] = { grade: pr.grade || jj.grade, point: pr.point || jj.point,
-        memo: pr.memo || '', ai: out, mt: Date.now() };
+      /* 前にある内わけ・よかったこと・ひとことは残す（自分で頼んだ講評なので、自動の印は外す） */
+      var nr = Object.assign({}, pr, { grade: pr.grade || jj.grade, point: pr.point || jj.point,
+        memo: pr.memo || '', ai: out, mt: Date.now() });
+      if(!Array.isArray(nr.items)){ nr.items = jj.items; nr.good = jj.good; nr.next = jj.next; }
+      delete nr.auto;
+      S.dayReview[tdr] = nr;
       touch('dayReview'); persist();
     }
   }catch(e){

@@ -92,6 +92,16 @@ function cpPickFiles(cb, multi){
   };
   inp.click();
 }
+/* aiJson と同じ。ただし答えの長さの上限を変えられる（1年ぶんの学年暦は、ふつうの上限では途中で切れて読めなくなる） */
+async function cpAiJson(prompt, files, tag, maxTokens){
+  var parts = [];
+  (files || []).forEach(function(u){
+    var m = String(u).match(/^data:([^;]+);base64,(.*)$/);
+    if(m) parts.push({ inline_data:{ mime_type:m[1], data:m[2] } });
+  });
+  parts.push({ text:prompt });
+  return parseJsonLoose(await aiGenerate({ contents:[{ role:'user', parts:parts }], json:true, temperature:0.1, maxTokens:maxTokens || 4096, tag:tag }));
+}
 var CP_AI_NOTE = '<p class="note">⚠️ 写真・PDF・文章はGoogleのAI（Gemini）に送られます。患者さんの情報や、ほかの人の個人の情報は入れないでください。AIはまちがえることがあるので、入れる前にたしかめてください。</p>';
 
 /* ============================== 21 出席率のグラフ ============================== */
@@ -305,7 +315,8 @@ function cpForecast(name){
   var need = null;
   if(target && P && (cur != null || !others.length)){
     var base = ks + others.reduce(function(a, x){ return a + x.pct * (cur || 0); }, 0);
-    need = cpCfg().cut.map(function(c, i){ return { grade:CP_GRADES[i], cut:c, score:Math.ceil((c * P - base) / target.pct) }; });
+    /* 小数の計算の誤差（60.0000001 → 61点）で1点多くならないように */
+    need = cpCfg().cut.map(function(c, i){ return { grade:CP_GRADES[i], cut:c, score:Math.ceil((c * P - base) / target.pct - 1e-9) }; });
   }
   var nowPct = fin != null ? fin : (cur != null ? Math.round(cur * 10) / 10 : null);
   return { name:name, items:items, P:P, cur:nowPct, fixed:fin != null, grade:nowPct != null ? cpScoreLabel(nowPct) : null,
@@ -417,7 +428,7 @@ function cpUniParse(id){
         var type = CP_UNI_TYPE[x.type] ? x.type : 'info';
         if(type === 'form') type = 'info';
         cands.push({ k:'a' + (n++), type:type, course:x.all ? '*' : cpCourse(x.course), courseRaw:String(x.course || '').slice(0, 40),
-          date:cpYmd(x.date), period:Math.max(0, Math.min(7, toNum(x.period))), room:String(x.room || '').slice(0, 30),
+          date:cpYmd(x.date), period:Math.max(0, Math.min(PERIODS[PERIODS.length - 1], toNum(x.period))), room:String(x.room || '').slice(0, 30),
           title:String(x.title || '').slice(0, 80), due:cpYmd(x.due), time:cpHm(x.time), url:'', note:String(x.note || '').slice(0, 200), st:'' });
       });
       (Array.isArray(r && r.forms) ? r.forms : []).forEach(function(f){
@@ -449,7 +460,8 @@ function cpUniParse(id){
 }
 /* 橋わたしが受け取った大学のメール（kind:'uni'） */
 kmInbox('uni', function(item, ymd){
-  var it = cpUniMake(item.title, item.text, item.forms, item.ref || ('in-' + (item.id || '')), ymd);
+  /* ref も id もないときは、ほかのメールと取りちがえないように、くらべない */
+  var it = cpUniMake(item.title, item.text, item.forms, item.ref || (item.id ? 'in-' + item.id : ''), ymd);
   if(!it) return '大学のメール（もう受け取りずみ）';
   if(aiReady()) cpUniParse(it.id);
   return '大学のメール「' + String(it.title).slice(0, 24) + '」を受け取りました';
@@ -522,7 +534,8 @@ function cpUniCandHtml(it, c){
     (c.type === 'form' || c.type === 'task' ? '<input id="cpu_t_' + it.id + '_' + c.k + '" value="' + esc(c.title || '') + '" placeholder="名前" aria-label="名前">' : '') +
     (c.type !== 'form' ? courseSel() : '') +
     '<label class="cp-dl">' + (isDue ? '締切' : '日') + '<input type="date" id="cpu_d_' + it.id + '_' + c.k + '" value="' + esc(d || '') + '"></label>' +
-    (c.type === 'makeup' ? '<select id="cpu_p_' + it.id + '_' + c.k + '" aria-label="何限">' + PERIODS.map(function(p){ return '<option value="' + p + '"' + (toNum(c.period) === p ? ' selected' : '') + '>' + p + '限</option>'; }).join('') + '</select>' : '') +
+    /* 時限がわからないときは「何限？」のままにして、えらぶまで入れない（だまって1限にしない） */
+    (c.type === 'makeup' ? '<select id="cpu_p_' + it.id + '_' + c.k + '" aria-label="何限">' + '<option value="">何限？</option>' + PERIODS.map(function(p){ return '<option value="' + p + '"' + (toNum(c.period) === p ? ' selected' : '') + '>' + p + '限</option>'; }).join('') + '</select>' : '') +
     '</div>';
   return '<div class="cp-cand' + (done ? ' done' : '') + '">' +
     '<div class="cp-candhd"><span class="b ' + (ty[1] === 'red' ? 'warn' : ty[1] === 'amber' ? 'r2' : 'cat') + '">' + ty[0] + '</span>' +
@@ -611,12 +624,12 @@ async function cpCalRead(files, text){
   if(!aiReady()){ toast('先に設定タブでGemini APIキーを登録してください', true); return; }
   cpCal = { busy:true, list:null, err:'', files:[] }; cpRender();
   try{
-    var r = await aiJson(
+    var r = await cpAiJson(
       'これは大学の学年暦（1年間の予定表）です。手帳に入れるため、JSONだけを返してください。\n' +
       '{"items":[{"kind":"start(授業開始)|end(授業終了)|exam(試験期間)|break(休業・休み)|noclass(休講日・授業のない日)|holclass(祝日だけど授業がある日)|event(行事：入学式・大学祭・健康診断・補講日など)",' +
       '"title":"名前","from":"YYYY-MM-DD","to":"YYYY-MM-DD（1日だけなら from と同じ）","note":"短いメモ（なければ空）"}]}\n' +
       '・今は' + today() + '。「2026年度」のように年度で書いてあるときは、1〜3月は次の年にする。\n' +
-      '・前期・後期のどちらも読む。読めないところは入れない。' + (text ? '\n【学年暦】\n' + text.slice(0, 15000) : ''), files, 'cp-cal');
+      '・前期・後期のどちらも読む。読めないところは入れない。' + (text ? '\n【学年暦】\n' + text.slice(0, 15000) : ''), files, 'cp-cal', 8192);
     var kinds = { start:1, end:1, exam:1, 'break':1, noclass:1, holclass:1, event:1 };
     cpCal.list = (Array.isArray(r && r.items) ? r.items : []).map(function(x){
       x = x || {};
@@ -710,11 +723,14 @@ function cpDestOf(src, o){
   if(src === 'work') return cpPlaceQ('work');
   var where = o.where || o.place || o.loc || '';
   if(!where){
-    var m = String(o.memo || '').match(/(?:場所|会場|集合)\s*[:：]\s*([^\n、。]+)/) || String(o.memo || '').match(/[@＠]\s*([^\n、。\s]+)/);
+    /* 「@ 保健センター」は場所。メールアドレス（abc@example.jp）の @ は場所にしない */
+    var memo = String(o.memo || '');
+    var m = memo.match(/(?:場所|会場|集合)\s*[:：]\s*([^\n、。]+)/) || memo.match(/(?:^|[\s　(（])[@＠]\s*([^\n、。\s@＠]+)/);
     if(m) where = m[1].trim();
   }
   if(where) return where;
-  if(src === 'quiz' || src === 'exam' || src === 'kousa' || (o.subject && courseByName(o.subject))) return cpPlaceQ('school');
+  /* 課題は出かける先がないので、科目があっても学校の地図は出さない */
+  if(src === 'quiz' || src === 'exam' || src === 'kousa' || (src !== 'task' && o.subject && courseByName(o.subject))) return cpPlaceQ('school');
   return '';
 }
 /* 予定の詳細に「地図で行き方」を足す（calendar.js の openDetail のあとに） */
@@ -946,9 +962,12 @@ var CP_NEAR_KIND = { pharmacy:['薬局', '💊'], chemist:['ドラッグスト�
 var CP_NEAR_CAT = { all:'ぜんぶ', drug:'薬局・ドラッグストア', convenience:'コンビニ', medical:'病院・クリニック' };
 function cpNearQuery(c){
   var a = function(r){ return '(around:' + r + ',' + c.lat + ',' + c.lng + ')'; };
-  return '[out:json][timeout:20];(' +
-    'nwr["amenity"="pharmacy"]' + a(1200) + ';nwr["shop"="chemist"]' + a(1200) + ';' +
-    'nwr["shop"="convenience"]' + a(800) + ';nwr["amenity"~"^(hospital|clinic|doctors)$"]' + a(1500) + ';);out center tags 80;';
+  /* 種類ごとに出す。数で切ると、近い順ではなく番号の順で切られて、近くの薬局が落ちることがあるので切らない
+     （timeout は、アプリが待つ15秒より短く） */
+  return '[out:json][timeout:14];' +
+    '(nwr["amenity"="pharmacy"]' + a(1200) + ';nwr["shop"="chemist"]' + a(1200) + ';);out tags center;' +
+    'nwr["shop"="convenience"]' + a(800) + ';out tags center;' +
+    'nwr["amenity"~"^(hospital|clinic|doctors)$"]' + a(1500) + ';out tags center;';
 }
 function cpNearParse(js, c){
   var out = [], seen = {};
@@ -1364,7 +1383,7 @@ kmChatTool({ name:'campus_class_change', description:'授業の休講・補講�
     var date = cpYmd(a.date), course = a.course === '*' ? '*' : cpCourse(a.course), type = { cancel:1, makeup:1, online:1 }[a.type] ? a.type : '';
     if(!isYmd(date) || !type) return { result:'日付か種類がわかりません' };
     if(!course) return { result:'授業「' + (a.course || '') + '」が時間割に見つかりません。授業名をたしかめてください' };
-    if(type === 'makeup' && (course === '*' || !toNum(a.period))) return { result:'補講は授業名と時限が必要です' };
+    if(type === 'makeup' && (course === '*' || PERIODS.indexOf(toNum(a.period)) < 0)) return { result:'補講は授業名と時限（' + PERIODS[0] + '〜' + PERIODS[PERIODS.length - 1] + '限）が必要です' };
     var id = uid('hx');
     S.holidays.push({ id:id, date:date, course:course, type:type, period:type === 'makeup' ? toNum(a.period) : 0, room:String(a.room || '').slice(0, 30), mt:Date.now() });
     var label = (course === '*' ? 'ぜんぶの授業' : course) + 'の' + ({ cancel:'休講', makeup:'補講', online:'遠隔' })[type] + '（' + ymdLabel(date) + '）';

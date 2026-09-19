@@ -160,12 +160,18 @@ async function chatAsk(opt){
     res = await aiCall({ system:system, contents:contents, tools:tools, temperature:0.3, maxTokens:maxTok, signal:opt.signal, tag:'chat' });
     if(!res.calls.length) break;
     var replies = [];
-    res.calls.forEach(function(call){
+    for(var ci = 0; ci < res.calls.length; ci++){
+      var call = res.calls[ci], r;
       /* 「直接登録」がオフのときは、書きこむ道具は動かさない（読む道具だけ） */
-      var r = (!aiDirectOn() && chatIsWrite(call.name)) ? { result:'直接登録はオフです。手帳には入れずに、入れ方だけを伝えてください。' } : aiRunFunc(call);
+      try{
+        r = (!aiDirectOn() && chatIsWrite(call.name)) ? { result:'直接登録はオフです。手帳には入れずに、入れ方だけを伝えてください。' } : aiRunFunc(call);
+        /* 足した機能の道具が、あとで答えるもの（Promise）を返したときは待つ */
+        if(r && typeof r.then === 'function') r = await r;
+      }catch(e){ r = { result:'できませんでした：' + (e && e.message || e) }; }
+      if(!r || typeof r !== 'object') r = { result:r == null ? 'できました' : String(r) };
       if(r.op) ops.push(r.op);
-      replies.push({ functionResponse:{ name:call.name, response:{ result:r.result } } });
-    });
+      replies.push({ functionResponse:{ name:call.name, response:{ result:r.result == null ? '' : r.result } } });
+    }
     contents.push(res.content);
     contents.push({ role:'user', parts:replies });
   }

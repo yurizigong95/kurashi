@@ -172,7 +172,11 @@ async function radarLoad(force){
     logErr('雨雲レーダー', radar.err);
   }finally{
     radar.busy = false;
-    if(radar.open && !isTyping()) render();
+    /* 時刻のつまみに指が乗っていても描き直す（入力中あつかいのままだと、古いこまの画面が残る） */
+    var ae = document.activeElement;
+    if(radar.open && (!isTyping() || (ae && ae.id === 'radar_t'))) render();
+    /* 読んでいる間に出どころが変えられた（そのときの読みこみは断っている）→ 新しい出どころで読み直す */
+    if(radar.open && src !== radarSrcId()) setTimeout(function(){ radarLoad(true); }, 0);
   }
 }
 function lonToX(lng, z){ return (lng + 180) / 360 * Math.pow(2, z); }
@@ -180,7 +184,8 @@ function latToY(lat, z){ var r = lat * Math.PI / 180; return (1 - Math.log(Math.
 function radarPoints(){
   var pts = [{ lat:34.8890, lng:135.2250, name:'家（三田）' }];
   var pl = (typeof linkPrefs === 'function') ? linkPrefs().place : null;
-  pts.push(pl ? { lat:Number(pl.lat), lng:Number(pl.lng), name:'学校' } : { lat:34.7376, lng:135.3416, name:'西宮' });
+  var la = pl ? parseFloat(pl.lat) : NaN, lo = pl ? parseFloat(pl.lng) : NaN;      /* 変な値で地図がこわれないように */
+  pts.push(isFinite(la) && isFinite(lo) && Math.abs(la) < 85 ? { lat:la, lng:lo, name:'学校' } : { lat:34.7376, lng:135.3416, name:'西宮' });
   return pts;
 }
 /* 枠の中の位置（計算用の点。枠は RADAR_W × RADAR_H）
@@ -242,8 +247,10 @@ function radarHtml(){
       tiles + rain + marks + (fr ? '<span class="rtime">' + esc(radarText(radar.idx)) + '</span>' : '') + '</div>' +
     (n ? '<input type="range" id="radar_t" min="0" max="' + (n - 1) + '" value="' + radar.idx + '" aria-label="時刻">' +
       '<div class="rticks l2-rt"><span>' + radarJst(radar.frames[0].t) + '</span>' +
-        '<span class="l2-rnow" style="left:calc(' + (nowPct * 100).toFixed(2) + '% + ' + ((0.5 - nowPct) * 16).toFixed(1) + 'px)">▲いま</span>' +
-        '<span>' + radarJst(radar.frames[n - 1].t) + '</span></div>' : '') +
+        /* 予報がない（RainViewer・予報を読めなかった）ときは、右はしが「いま」。目盛りを重ねない */
+        (nowIdx < n - 1 ? '<span class="l2-rnow" style="left:calc(' + (nowPct * 100).toFixed(2) + '% + ' + ((0.5 - nowPct) * 16).toFixed(1) + 'px)">▲いま</span>' +
+          '<span>' + radarJst(radar.frames[n - 1].t) + '</span>'
+          : '<span>' + radarJst(radar.frames[n - 1].t) + '（いま）</span>') + '</div>' : '') +
     '<div class="pillrow" style="margin-top:6px">' +
       '<button class="mini" data-act="radar-play">' + (radar.play ? '■ 止める' : '▶ 動かす') + '</button>' +
       '<button class="mini" data-act="radar-now">いま</button>' +
@@ -283,6 +290,9 @@ function radarShow(i){
   var fr = frs[radar.idx];
   var box = document.querySelector('.radar');
   if(!box) return;
+  /* 画面が、前の出どころ・前の時刻の一覧のまま（描き直せなかった）→ 絵のURLを作らずに描き直す */
+  var sl0 = document.getElementById('radar_t');
+  if(box.getAttribute('data-src') !== radar.src || (sl0 && Number(sl0.max) !== frs.length - 1)){ render(); return; }
   var s = RADAR_SRC[box.getAttribute('data-src')] || RADAR_SRC.jma;
   Array.prototype.forEach.call(box.querySelectorAll('img.rn'), function(img){
     var u = s.url(fr, toNum(img.getAttribute('data-z')), toNum(img.getAttribute('data-x')), toNum(img.getAttribute('data-y')));

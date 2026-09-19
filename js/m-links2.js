@@ -30,7 +30,9 @@ function l2Local(name, v){
 function l2Ver(){ return gasReady() ? toNum(GAS.ver) : 0; }
 function l2V4(){ return gasReady() && toNum(GAS.api) >= L2_VER; }     /* 窓口の版（ping の api）。ver は 3 のまま */
 function l2NeedNew(what){
-  return '<div class="bn amber"><span class="ic">!</span><span>' + esc(what) + 'は、Google連携を新しい版にすると使えます（設定 › Google連携 の「プログラムをコピー」で貼り直して、「デプロイを管理」→ ✏️ →「新バージョン」）。</span></div>';
+  /* 版は12時間ごとにしか確かめないので、貼り直したあとすぐ使えるように「確かめる」ボタンをつける */
+  return '<div class="bn amber"><span class="ic">!</span><span>' + esc(what) + 'は、Google連携を新しい版にすると使えます（設定 › Google連携 の「プログラムをコピー」で貼り直して、「デプロイを管理」→ ✏️ →「新バージョン」）。</span></div>' +
+    (gasReady() ? '<div class="pillrow"><button class="mini" data-act="l2-ping">新しい版にしたので確かめる</button></div>' : '');
 }
 function l2NeedGas(){
   return '<div class="bn amber"><span class="ic">!</span><span>先に「Google連携」をつないでください。</span></div>';
@@ -178,6 +180,10 @@ async function l2GcalLoad(manual){
       return { id:String(x.id).slice(0, 160), title:String(x.title || '（無題）').slice(0, 120), cal:String(x.cal || '').slice(0, 60), allDay:x.allDay ? 1 : 0,
         start:String(x.start).slice(0, 16), end:String(x.end || x.start).slice(0, 16), where:String(x.where || '').slice(0, 120) };
     });
+    /* くり返しの予定は、どの回も同じ id（iCalUID）で届く → 回ごとに分ける（取りこみ・「取りこみずみ」が1回ずつになるように） */
+    var cnt = {};
+    items.forEach(function(x){ cnt[x.id] = (cnt[x.id] || 0) + 1; });
+    items.forEach(function(x){ if(cnt[x.id] > 1) x.id = x.id + '@' + x.start; });
     L2.gcal = { at:Date.now(), items:items, from:from, to:to };
     l2Local('gcal', L2.gcal);
     L2.gcalErr = '';
@@ -255,10 +261,11 @@ function l2GcalSettings(){
 
 /* ============================== iPhoneのカレンダーに直接（照会カレンダー .ics）（#173） ============================== */
 function l2IcsFold(line){
-  /* 1行は75バイトまで（日本語は1文字3バイト）。長い行は、次の行の頭に空白を入れてつなぐ */
+  /* 1行は75バイトまで（日本語は1文字3バイト・絵文字は4バイト）。長い行は、次の行の頭に空白を入れてつなぐ
+     （絵文字などの「2つで1文字」を、行の切れ目で分けない） */
   var out = [], cur = '', bytes = 0, lim = 73;
-  Array.prototype.forEach.call(String(line), function(ch){
-    var b = ch.charCodeAt(0) < 0x80 ? 1 : ch.charCodeAt(0) < 0x800 ? 2 : 3;
+  (String(line).match(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\s\S]/g) || []).forEach(function(ch){
+    var c = ch.charCodeAt(0), b = ch.length > 1 ? 4 : c < 0x80 ? 1 : c < 0x800 ? 2 : 3;
     if(bytes + b > lim){ out.push(cur); cur = ' '; bytes = 1; lim = 74; }
     cur += ch; bytes += b;
   });
@@ -293,7 +300,7 @@ function l2IcsText(items){
 function l2IcsUrl(){ return shortUrl('ics'); }
 function l2Webcal(){ return l2IcsUrl().replace(/^https?:/, 'webcal:'); }
 async function l2IcsPush(manual){
-  if(L2.icsBusy) return;
+  if(L2.icsBusy){ if(!manual) setTimeout(function(){ l2IcsPush(false); }, 30000); return; }     /* 置いている最中に変わった分も、あとで置く */
   if(!gasReady() || l2Ver() < 3){ if(manual) toast('Google連携を新しい版にすると使えます', true); return; }
   if(!manual && !l2Prefs().ics) return;
   var items = calItemsForGoogle(), sig = hash53(canon(items)), st = l2Local('ics') || {};
@@ -312,13 +319,17 @@ async function l2IcsPush(manual){
     L2.icsBusy = false;
   }
 }
-/* 予定が変わったら：アイコンの数字をすぐ、予定表は数分まとめて置き直す */
+/* 予定が変わったら：アイコンの数字をすぐ、予定表は数分まとめて置き直す
+   （persist のたびに呼ばれるので、待ち時間を毎回のばさない。最初に変わってから数分後に1回置く） */
 function l2Soon(){
   clearTimeout(L2.soonT);
   L2.soonT = setTimeout(l2BadgeUpdate, 1500);
   if(!l2Prefs().ics || !gasReady()) return;
+  var now = Date.now(), due = now + L2.icsDelay;
+  if(L2.icsT && L2.icsDue > now && L2.icsDue <= due) return;       /* もう待っている */
   clearTimeout(L2.icsT);
-  L2.icsT = setTimeout(function(){ l2IcsPush(false); }, L2.icsDelay);
+  L2.icsDue = due;
+  L2.icsT = setTimeout(function(){ L2.icsT = null; l2IcsPush(false); }, L2.icsDelay);
 }
 (function(){
   if(typeof gasCalSoon !== 'function') return;
@@ -468,7 +479,7 @@ function l2BgmView(){
     }).join('') + '</div>' +
     '<iframe class="l2-sp" title="Spotify ' + esc(cur.name) + '" ' + (TEST_MODE ? 'data-src' : 'src') + '="' + esc(src) + '" height="352" frameborder="0" ' +
       'allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>' +
-    '<div class="pillrow"><a class="btn ghost" href="https://open.spotify.com/' + cur.type + '/' + cur.id + '" target="_blank" rel="noopener">Spotifyのアプリで開く</a></div>' +
+    '<div class="pillrow"><a class="btn ghost" href="' + esc('https://open.spotify.com/' + cur.type + '/' + cur.id) + '" target="_blank" rel="noopener">Spotifyのアプリで開く</a></div>' +
     '<p class="note">ここでは30秒ずつのことがあります。ぜんぶ聞くときは「Spotifyのアプリで開く」を押してください。</p>') +
     section('自分のプレイリスト', mine.length ? mine.length + 'こ' : null,
       mine.map(function(x){
@@ -678,7 +689,7 @@ function l2HolDiff(y){
 }
 function l2HolSettings(){
   var o = l2HolData(), y = new Date().getFullYear(), diff = l2HolDiff(y).concat(l2HolDiff(y + 1));
-  return '<div class="row"><div class="grow"><div class="t">' + (o ? '新しい一覧を使っています（' + o.years.join('・') + '年）' : '計算で出しています') + '</div>' +
+  return '<div class="row"><div class="grow"><div class="t">' + (o ? '新しい一覧を使っています（' + esc(o.years.join('・')) + '年）' : '計算で出しています') + '</div>' +
       '<div class="s">' + (o ? '最後に新しくした：' + esc(new Date(o.at).toLocaleDateString('ja-JP')) + '（' + agoText(o.at) + '）' : 'まだ新しくしていません') + '</div></div>' +
       '<button class="mini" data-act="l2-hol-update">' + (L2.holBusy ? '読んでいます…' : 'いま新しくする') + '</button></div>' +
     (L2.holErr ? '<div class="msg ng">読めませんでした（今の一覧のまま）：' + esc(L2.holErr) + '</div>' : '') +
@@ -719,6 +730,14 @@ kmAction(function(act, t){
     if(!RADAR_SRC[v]) return true;
     l2PrefSet({ radarSrc:v }); commit();
     if(typeof radarLoad === 'function'){ radarStop(); radarLoad(true); }
+    return true;
+  }
+  if(act === 'l2-ping'){
+    gasCall('ping').then(function(r){
+      GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.pingAt = Date.now(); saveGas();
+      toast(l2V4() ? '新しい版になっています' : 'まだ前の版のようです（「新バージョン」でデプロイしたか確かめてください）', !l2V4());
+      render();
+    }, function(e){ toast('つながりませんでした：' + e.message, true); });
     return true;
   }
   if(act === 'l2-gc-load'){ l2GcalLoad(true); render(); return true; }

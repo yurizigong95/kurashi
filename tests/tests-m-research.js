@@ -36,7 +36,8 @@ KT.ai.push(function(req){
     questions:['夜に眠れないのは、いつからでしょう？'], missing:['昼間の過ごし方'] });
   if(req.tag === 'rs-proof') return JSON.stringify({ overall:'事例がわかりやすいです。根拠をもう少し。', items:[
     { kind:'誤字・脱字', from:'おこなた', to:'おこなった', why:'「っ」がぬけています', replace:true },
-    { kind:'根拠', from:'痛みを訴えていた', to:'痛みの強さ（NRSなど）を書くと根拠になります', why:'数字があると伝わる', replace:false } ] });
+    { kind:'根拠', from:'痛みを訴えていた', to:'痛みの強さ（NRSなど）を書くと根拠になります', why:'数字があると伝わる', replace:false },
+    { kind:'言い回し', from:'事例について述べる', to:'＊＊さんの事例をのべる', why:'かくした文字が入った直し', replace:true } ] });
   if(req.tag === 'rs-kw') return JSON.stringify({ query:'rstest pressure ulcer AND prevention', words:[{ ja:'褥瘡', en:'pressure ulcer' }, { ja:'予防', en:'prevention' }] });
   if(req.tag === 'rs-easy') return JSON.stringify({ title_ja:'股関節骨折の手術を受けた人の褥瘡のリスク', ja:'手術のあとは長く横になるので、褥瘡（とこずれ）ができやすくなります。',
     points:['手術の時間が長いと危ない', '栄養が足りないと危ない', '早めに体の向きを変える'],
@@ -55,7 +56,7 @@ KT.ai.push(function(req){
 /* ============ にせAPI（本物のネットにはつながない） ============ */
 var JSTAGE_XML = '<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:prism="http://prismstandard.org/namespaces/basic/2.0/" ' +
   'xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><result><status>0</status><message/></result><opensearch:totalResults>528</opensearch:totalResults>' +
-  '<entry><article_title><en><![CDATA[Physical Therapists and Pressure Injury]]></en><ja><![CDATA[褥瘡ケアで理学療法士だからできること]]></ja></article_title>' +
+  '<entry><article_title><en><![CDATA[Physical Therapists and Pressure Injury]]></en><ja><![CDATA[褥瘡ケアで<i>理学療法士</i>だからできること]]></ja></article_title>' +
   '<article_link><en>https://www.jstage.jst.go.jp/article/cjpt/44S1/0/44S1_47/_article</en><ja>https://www.jstage.jst.go.jp/article/cjpt/44S1/0/44S1_47/_article/-char/ja/</ja></article_link>' +
   '<author><en><name><![CDATA[Yoshiyuki Yoshikawa]]></name></en><ja><name><![CDATA[吉川 義之]]></name></ja></author>' +
   '<material_title><en><![CDATA[Congress of the JPTA]]></en><ja><![CDATA[理学療法学Supplement]]></ja></material_title>' +
@@ -70,7 +71,8 @@ var NDL_XML = '<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:openSearch
   '<dc:identifier xsi:type="dcndl:ISBN">4-8180-0941-5</dc:identifier><dc:identifier xsi:type="dcndl:NDLBibID">000004220608</dc:identifier></item></channel></rss>';
 var EFETCH_XML = '<?xml version="1.0" ?><PubmedArticleSet><PubmedArticle><MedlineCitation><Article><Abstract>' +
   '<AbstractText Label="BACKGROUND">Pressure injuries are common after hip fracture surgery.</AbstractText>' +
-  '<AbstractText Label="CONCLUSION">Early repositioning helps.</AbstractText></Abstract></Article></MedlineCitation></PubmedArticle></PubmedArticleSet>';
+  '<AbstractText Label="CONCLUSION">Early repositioning helps.</AbstractText></Abstract></Article>' +
+  '<OtherAbstract Type="Publisher" Language="jpn"><AbstractText>rstestほかの言葉の要旨</AbstractText></OtherAbstract></MedlineCitation></PubmedArticle></PubmedArticleSet>';
 function node(tag, kids, attr){ return { tag:tag, attr:attr || {}, children:kids || [] }; }
 function sentence(t){ return node('Sentence', [t]); }
 var LAW_JSON = { law_info:{ law_id:'323AC0000000203', law_num:'昭和二十三年法律第二百三号' }, revision_info:{ law_title:'保健師助産師看護師法' },
@@ -98,6 +100,7 @@ KT.api.push(function(url){
   var u = String(url);
   if(!/rstest|99000001|9784260031769|9784567890120|323AC0000000203/.test(u)) return null;
   urls.push(u);
+  if(/esearch\.fcgi.*rstestmany/.test(u)) return { esearchresult:{ count:'45', idlist:['99000001', '99000002'] } };
   if(/eutils\.ncbi\.nlm\.nih\.gov\/entrez\/eutils\/esearch\.fcgi/.test(u)) return { esearchresult:{ count:'2', idlist:['99000001', '99000002'] } };
   if(/esummary\.fcgi/.test(u)) return { result:{ uids:['99000001', '99000002'],
     '99000001':{ uid:'99000001', title:'Risk Factors Associated With Hospital-Acquired Pressure Injuries.', pubdate:'2026 Sep-Oct 01', source:'J Wound Ostomy Continence Nurs',
@@ -354,10 +357,14 @@ KT.test('勉強②：レポートの添削（名前をかくして送る→1つ�
   await KT.until(function(){ return A.rsSt.rep.proof && !A.rsSt.rep.busy; }, 8000, '添削の答え');
   var sent = sentText(calls('rs-proof')[n0]);
   ok(sent.indexOf('鈴木') < 0 && sent.indexOf('＊＊さん') >= 0, '名前をかくして送る：' + sent);
-  eq(doc.querySelectorAll('[data-act="rs-rep-fix"]').length, 1, '置きかえられるものだけ「直す」がある');
+  eq(doc.querySelectorAll('[data-act="rs-rep-fix"]').length, 1, '置きかえられるものだけ「直す」がある（＊＊が入った直しは出さない）');
+  A.kmRunAction('rs-rep-fix', { dataset:{ i:'2' } });
+  ok(A.rsSt.rep.text.indexOf('＊＊') < 0, '＊＊（かくした文字）を本文に入れない');
   press(A, 'rs-rep-fix', '[data-i="0"]');
   ok(A.rsSt.rep.text.indexOf('おこなった') >= 0 && A.rsSt.rep.text.indexOf('おこなた') < 0, '本文に反映');
   ok(A.rsSt.rep.text.indexOf('鈴木さん') === 0, '自分の本文の名前はそのまま');
+  var dv = A.aiSectionData('study').rs_device;
+  ok(dv.report && dv.report.text.indexOf('鈴木') < 0 && dv.report.text.indexOf('＊＊さん') >= 0, 'AIそうだんに見せるレポートの文も名前をかくす：' + (dv.report && dv.report.text));
   press(A, 'rs-rep-skip', '[data-i="1"]');
   ok(A.rsSt.rep.proof.items[1].skip, 'しないを選べる');
   A.rsSt.rep.text = ''; A.rsSt.rep.proof = null; A.rsSt.rep.tab = 'count';
@@ -381,6 +388,7 @@ KT.test('勉強②：PubMedでさがす→要旨→保存（相手に届く）�
   press(A, 'rs-find-abs', '[data-i="0"]');
   await KT.until(function(){ return !F.absBusy && F.abs['99000001']; }, 8000, '要旨');
   ok(F.abs['99000001'].indexOf('BACKGROUND: Pressure injuries') === 0, 'efetch で要旨を読む');
+  ok(F.abs['99000001'].indexOf('ほかの言葉の要旨') < 0, 'OtherAbstract（ほかの言葉の要旨）はまぜない');
   var n0 = (A.S.papers || []).length;
   press(A, 'rs-find-save', '[data-i="0"]');
   eq(A.S.papers.length, n0 + 1, '保存（S.papers）');
@@ -422,7 +430,8 @@ KT.test('勉強②：J-STAGE・CiNii・国会図書館を読む（XML・JSON）�
   press(A, 'rs-find-go');
   await KT.until(function(){ return !F.busy && F.list.length; }, 8000, 'J-STAGE');
   var r = F.list[0];
-  eq(r.title, '褥瘡ケアで理学療法士だからできること', 'J-STAGE：日本語の題名');
+  eq(r.title, '褥瘡ケアで理学療法士だからできること', 'J-STAGE：日本語の題名（<i> などのタグは取る）');
+  eq(r.issue, '', 'J-STAGE：号の「0」は号なし');
   eq(r.authors.join(','), '吉川 義之', 'J-STAGE：著者');
   eq(r.journal, '理学療法学Supplement', 'J-STAGE：雑誌名');
   eq(r.pages, '47-51', 'J-STAGE：ページ');
@@ -725,6 +734,102 @@ KT.test('勉強②：AIそうだんの道具・表示するだけでは中身が
   A.persist();
   eq(snap(), before, '表示しただけでは中身が変わらない');
   A.studyTool = ''; A.appId = 'today'; A.render();
+});
+
+KT.test('勉強②：「つぎの20件」は、いま出ている一覧と同じことば・同じところでさがす（入力欄を書きかえても混ぜない）', async function(){
+  var A = KT.frames().A, F = A.rsSt.find;
+  F.src = 'pubmed'; F.list = []; F.err = ''; F.kw = null; F.total = 0; F.q = '';
+  openTool(A, 'rs-find');
+  typeIn(A, 'rs_find_q', 'rstestmany ulcer');
+  press(A, 'rs-find-go');
+  await KT.until(function(){ return !F.busy && F.list.length === 2; }, 8000, 'はじめの結果');
+  eq(F.total, 45, '全部の件数');
+  /* ことばを書きかえただけ（さがすは押さない）で「つぎの20件」 */
+  typeIn(A, 'rs_find_q', 'rstest other words');
+  var u0 = urls.length;
+  press(A, 'rs-find-more');
+  await KT.until(function(){ return !F.busy && F.list.length === 4; }, 8000, 'つぎの結果');
+  var es = urls.slice(u0).filter(function(u){ return /esearch\.fcgi/.test(u); })[0] || '';
+  ok(/term=rstestmany%20ulcer/.test(es) && /retstart=2(&|$)/.test(es), '同じことばの続きをさがす：' + es);
+  eq(F.lastQ, 'rstestmany ulcer', '一覧のことばは変わらない');
+  F.list = []; F.total = 0; F.q = ''; F.lastQ = ''; F.resSrc = '';
+});
+
+KT.test('勉強②：本だな：ISBNを調べている間に「やめる」→新しい下書きには入れない', async function(){
+  var A = KT.frames().A, Bk = A.rsSt.books;
+  Bk.d = null; Bk.editId = ''; Bk.msg = ''; Bk.busy = false;
+  openTool(A, 'rs-books');
+  press(A, 'rs-bk-new');
+  typeIn(A, 'rs_books_d_isbn', '9784260031769');
+  press(A, 'rs-bk-isbn');
+  ok(Bk.busy, '調べている');
+  press(A, 'rs-bk-cancel');
+  press(A, 'rs-bk-new');
+  await KT.until(function(){ return !Bk.busy; }, 8000, '調べ終わる');
+  eq(Bk.d.title, '', '新しい下書きの題名は空のまま');
+  eq(Bk.msg, '', 'エラーも出ない');
+  press(A, 'rs-bk-cancel');
+});
+
+KT.test('勉強②：講義の録音：2回押してもマイクは1つ・マイクが切れたら止めて知らせる・止めたらマイクを閉じる', async function(){
+  var A = KT.frames().A, L = A.rsSt.lec;
+  var streams = [], recs = [];
+  function FakeTrack(){ this.readyState = 'live'; }
+  FakeTrack.prototype.stop = function(){ this.readyState = 'ended'; };
+  function FakeStream(){ this.t = [new FakeTrack()]; }
+  FakeStream.prototype.getTracks = function(){ return this.t; };
+  FakeStream.prototype.getAudioTracks = function(){ return this.t; };
+  function FakeMR(stream){ this.stream = stream; this.state = 'inactive'; this.mimeType = 'audio/mp4'; recs.push(this); }
+  FakeMR.isTypeSupported = function(t){ return t === 'audio/mp4'; };
+  FakeMR.prototype.start = function(){
+    if(!this.stream.t.some(function(t){ return t.readyState === 'live'; })) throw new Error('InvalidStateError');
+    this.state = 'recording';
+  };
+  FakeMR.prototype.stop = function(){
+    var me = this;
+    if(me.state === 'inactive') return;
+    me.state = 'inactive';
+    setTimeout(function(){ if(me.ondataavailable) me.ondataavailable({ data:new A.Blob(['RIFFfake' + recs.indexOf(me)], { type:'audio/mp4' }) }); if(me.onstop) me.onstop(); }, 10);
+  };
+  var gum = function(){ return new Promise(function(res){ setTimeout(function(){ var s = new FakeStream(); streams.push(s); res(s); }, 40); }); };
+  var md = A.navigator.mediaDevices, own = !!md && Object.prototype.hasOwnProperty.call(md, 'getUserMedia'), oldGum = md ? md.getUserMedia : null, oldMR = A.MediaRecorder, defined = false;
+  if(md) md.getUserMedia = gum;
+  else{ Object.defineProperty(A.navigator, 'mediaDevices', { value:{ getUserMedia:gum }, configurable:true }); defined = true; }
+  A.MediaRecorder = FakeMR;
+  try{
+    L.segs = []; L.sum = null; L.rec = false; L.err = ''; L.course = '-';
+    openTool(A, 'rs-lec');
+    press(A, 'rs-lec-start');
+    press(A, 'rs-lec-start');                               /* すばやく2回 */
+    await KT.until(function(){ return L.rec && A.rsLecRec; }, 5000, '録音がはじまる');
+    await new Promise(function(r){ setTimeout(r, 120); });
+    eq(streams.length, 1, 'マイクは1つだけ開く');
+    eq(recs.length, 1, '録音は1つ');
+    eq(recs[0].state, 'recording', '録音している');
+    ok(A.document.querySelector('[data-act="rs-lec-stop"]'), '止めるボタン');
+    /* iPhoneで画面を消した → マイクが切れて、録音が勝手に止まる */
+    streams[0].t[0].readyState = 'ended';
+    recs[0].stop();
+    await KT.until(function(){ return !L.rec; }, 5000, '録音が止まったと分かる');
+    ok(L.err.indexOf('録音が止まりました') >= 0, '知らせる：' + L.err);
+    ok(!A.rsLecRec, '録音の道具を片づける');
+    ok(A.document.getElementById('app').textContent.indexOf('録音が止まりました') >= 0, '画面にも出る');
+    ok(!A.document.querySelector('[data-act="rs-lec-stop"]'), '「録音しています」のままにならない');
+    await KT.until(function(){ return L.segs.length === 1 && L.segs[0].st === 'done'; }, 8000, 'ここまでの分は文字にする');
+    /* もう一度はじめて、止める → マイクを閉じる */
+    press(A, 'rs-lec-start');
+    await KT.until(function(){ return L.rec && A.rsLecRec; }, 5000, 'もう一度はじまる');
+    eq(streams.length, 2, '新しくマイクを開く');
+    press(A, 'rs-lec-stop');
+    await KT.until(function(){ return !A.rsLecRec && streams[1].t[0].readyState === 'ended'; }, 5000, 'マイクを閉じる');
+    await KT.until(function(){ return L.segs.length === 2 && L.segs.every(function(s){ return s.st === 'done'; }); }, 8000, '最後の区切りも文字にする');
+  }finally{
+    if(defined) delete A.navigator.mediaDevices;
+    else if(md){ if(own) md.getUserMedia = oldGum; else delete md.getUserMedia; }
+    A.MediaRecorder = oldMR;
+    if(A.rsLecRec){ try{ A.rsLecStop(); }catch(e){} }
+    L.segs = []; L.sum = null; L.rec = false; L.err = ''; L.course = ''; A.rsLs('lec', null);
+  }
 });
 
 })();

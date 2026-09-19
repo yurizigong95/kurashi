@@ -301,7 +301,7 @@ function ak2AnkiTop(){
 function ak2PlanView(){
   if(ak2State.plan){
     var ex0 = ak2Exam(ak2State.plan);
-    if(ex0) return ak2PlanDetail(ex0);
+    if(ex0 && isYmd(ex0.date)) return ak2PlanDetail(ex0);   /* 日付のないテストは、逆算できないので一覧にもどす */
   }
   var up = ak2Upcoming();
   return section('テストまでの計画', up.length ? up.length + '件' : null,
@@ -909,10 +909,14 @@ function ak2TrapClean(j, n){
     var type = (x.type === 'mc' || (x.type !== 'tf' && Array.isArray(x.choices) && x.choices.length > 2)) ? 'mc' : 'tf';
     var o = { type:type, q:q, trap:s(x.trap, 300), explain:s(x.explain, 600), pick:null, add:0, added:0 };
     if(type === 'mc'){
-      var ch = (Array.isArray(x.choices) ? x.choices : []).map(function(c){ return s(c, 200); }).filter(Boolean).slice(0, 5);
-      var a = (typeof x.answer === 'number') ? x.answer : (/^\d+$/.test(String(x.answer).trim()) ? toNum(x.answer) : ch.indexOf(s(x.answer, 200)));
-      if(ch.length < 2 || !(a >= 0 && a < ch.length)) return null;
-      o.choices = ch; o.answer = a;
+      var raw = (Array.isArray(x.choices) ? x.choices : []).map(function(c){ return s(c, 200); });
+      var a = (typeof x.answer === 'number') ? x.answer : (/^\d+$/.test(String(x.answer).trim()) ? toNum(x.answer) : raw.indexOf(s(x.answer, 200)));
+      if(!(a >= 0 && a < raw.length && a === Math.floor(a)) || !raw[a]) return null;
+      /* 空の選択肢を捨てても、正解の番号がずれないように */
+      var ch = [], at = -1;
+      raw.forEach(function(c, k){ if(c && ch.length < 5){ if(k === a) at = ch.length; ch.push(c); } });
+      if(ch.length < 2 || at < 0) return null;
+      o.choices = ch; o.answer = at;
     }else{
       var v = String(x.answer).trim();
       var t = x.answer === true || /^(true|○|〇|o|正しい|まる)$/i.test(v);

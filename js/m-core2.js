@@ -26,6 +26,12 @@ function c9Snip(text, words, max){
   if(text.length <= max) return text;
   var at = words && words.length ? c9Norm(text).indexOf(words[0]) : 0;
   if(at < 0) at = 0;
+  /* そろえた形（半角カナ→全角 などで長さが変わる）での位置を、もとの文の位置になおす */
+  if(at > 0 && c9Norm(text).length !== text.length){
+    var lo = 0, hi = text.length;
+    while(lo < hi){ var mid = (lo + hi) >> 1; if(c9Norm(text.slice(0, mid)).length < at) lo = mid + 1; else hi = mid; }
+    at = lo;
+  }
   var st = Math.max(0, at - 18);
   return (st > 0 ? '…' : '') + text.slice(st, st + max) + (st + max < text.length ? '…' : '');
 }
@@ -477,7 +483,8 @@ document.addEventListener('input', function(e){
   c9QTimer = setTimeout(c9ResRefresh, 180);
 });
 document.addEventListener('keydown', function(e){
-  if(!e.target || e.target.id !== 'c9_q' || e.key !== 'Enter' || e.isComposing) return;
+  /* 日本語の変換を決めるための Enter（keyCode 229）では、さがさない */
+  if(!e.target || e.target.id !== 'c9_q' || e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
   e.preventDefault();
   c9Q = e.target.value; clearTimeout(c9QTimer); c9ResRefresh();
   if(c9SaveRecent(c9Q)){ persist(); pushRemote(); }
@@ -574,13 +581,17 @@ function c9Ids(g){ return g.map(function(x){ return x.id; }).sort().join(','); }
 /* 調べる（S は変えない）→ [{ key, level:'ng'|'warn', kind, msg, fix, fixLabel, open }] */
 function c9Checks(){
   var out = [], td = today(), push = function(o){ out.push(o); };
-  /* 1. 同じ予定・課題・テスト */
-  c9Groups(S.events, function(e){ return e.title ? [e.date, c9Norm(e.title), e.time || ''].join('|') : ''; }).forEach(function(g){
+  /* 1. 同じ予定・課題・テスト
+     （名前が同じでも、科目・種類・終わりの日・時刻がちがえば別のもの。例：同じ日の「小テスト」が2科目） */
+  c9Groups(S.events, function(e){
+    return e.title ? [e.date, c9Norm(e.title), e.time || '', eventKind(e.kind), c9Norm(e.subject || ''), e.dateEnd || ''].join('|') : '';
+  }).forEach(function(g){
     push({ key:'dup-ev:' + c9Ids(g), level:'warn', kind:'同じ予定が2つ以上',
       msg:'「' + g[0].title + '」（' + c9DateLabel(g[0].date) + (g[0].time ? ' ' + g[0].time : '') + '）が' + g.length + 'つあります。',
       fixLabel:'1つにする', fix:function(){ return c9KeepOne('events', g); } });
   });
-  c9Groups(S.tasks, function(t){ return t.title ? [t.due || '', c9Norm(t.title), c9Norm(t.subject || '')].join('|') : ''; }).forEach(function(g){
+  /* 締切のない課題は、同じ名前でも別のもの（「洗濯」を何度も足すなど）なので、くらべない */
+  c9Groups(S.tasks, function(t){ return (t.title && isYmd(t.due)) ? [t.due, c9Norm(t.title), c9Norm(t.subject || '')].join('|') : ''; }).forEach(function(g){
     push({ key:'dup-tk:' + c9Ids(g), level:'warn', kind:'同じ課題が2つ以上',
       msg:'「' + g[0].title + '」（締切 ' + c9DateLabel(g[0].due) + '）が' + g.length + 'つあります。',
       fixLabel:'1つにする', fix:function(){ return c9KeepOne('tasks', g, function(a, b){ return (b.done ? 1 : 0) - (a.done ? 1 : 0) || c9Size(b) - c9Size(a) || String(a.id).localeCompare(String(b.id)); }); } });
@@ -653,7 +664,7 @@ function c9Checks(){
   if(c9BigPhotos && c9BigPhotos.length){
     push({ key:'big-photo:' + c9BigPhotos.map(function(x){ return x.id; }).join(','), level:'warn', kind:'大きすぎる写真',
       msg:'大きい写真が' + c9BigPhotos.length + '枚あります（いちばん大きいのは ' + sizeText(c9BigPhotos[0].bytes) + '）。同期や表示がおそくなります。',
-      fixLabel:'小さくする', fix:function(){ return c9ShrinkPhotos(); } });
+      fixLabel:'小さくする', one:1, fix:function(){ return c9ShrinkPhotos(); } });
   }
   /* 6. 同期の大きさ（1つの文書の上限に近い・分けて送っている） */
   try{
@@ -683,7 +694,7 @@ function c9Checks(){
   if(old.length){
     push({ key:'old-task:' + c9Ids(old), level:'warn', kind:'締切から2週間以上たった課題',
       msg:old.length + '件の課題が、締切から2週間以上たっても未完了です（' + old.slice(0, 3).map(function(t){ return '「' + t.title + '」'; }).join('') + (old.length > 3 ? 'ほか' : '') + '）。出しおわっていれば完了にしましょう。',
-      fixLabel:'ぜんぶ完了にする', fix:function(){ old.forEach(function(t){ t.done = 1; t.mt = Date.now(); }); return old.length; } });
+      fixLabel:'ぜんぶ完了にする', one:1, fix:function(){ old.forEach(function(t){ t.done = 1; t.mt = Date.now(); }); return old.length; } });
   }
   /* 8. 家計簿の同じ明細の二重 */
   c9Groups(S.spends, function(x){
@@ -692,7 +703,7 @@ function c9Checks(){
   }).forEach(function(g){
     push({ key:'dup-sp:' + c9Ids(g), level:'warn', kind:'家計簿の同じ明細',
       msg:c9DateLabel(g[0].date) + '「' + (g[0].title || '（内容なし）') + '」' + yen(Math.abs(Number(g[0].amount) || 0)) + ' が' + g.length + 'つあります（本当に2回使ったなら、そのままで大丈夫です）。',
-      fixLabel:'1つにする', fix:function(){ return c9KeepOne('spends', g); } });
+      fixLabel:'1つにする', one:1, fix:function(){ return c9KeepOne('spends', g); } });
   });
   /* 9. 暗記カードの二重 */
   c9Groups(S.cards, function(c){ return c.q ? [c.deck || '', c9Norm(c.q)].join('|') : ''; }).forEach(function(g){
@@ -730,8 +741,10 @@ function c9ScanPhotos(){
         var cur = q.result;
         if(!cur){ res(out); return; }
         var v = cur.value, b = 0;
-        if(typeof v === 'string'){ var i = v.indexOf(','); b = (i >= 0 && /;base64/i.test(v.slice(0, i))) ? Math.round((v.length - i - 1) * 3 / 4) : v.length; }
-        else if(v && v.size) b = v.size;
+        /* 小さくし直せる写真（jpeg・png・webp の data URL）だけを数える（キャラの絵・動くgif・ほかのファイルはのぞく） */
+        if(typeof v === 'string' && /^data:image\/(jpe?g|png|webp)[;,]/i.test(v)){
+          var i = v.indexOf(','); b = (i >= 0 && /;base64/i.test(v.slice(0, i))) ? Math.round((v.length - i - 1) * 3 / 4) : v.length;
+        }
         if(b > C9_BIG_PHOTO && String(cur.key).indexOf('chimg_') !== 0) out.push({ id:String(cur.key), bytes:b });
         cur['continue']();
       };
@@ -750,7 +763,10 @@ function c9Recompress(url){
         var w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, 1800 / Math.max(w, h, 1));
         var c = document.createElement('canvas');
         c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        var g = c.getContext('2d');
+        /* すきとおったところ（png）は、jpeg にすると黒くなるので、白でうめてから描く */
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
         res(c.toDataURL('image/jpeg', 0.78));
       }catch(e){ res(null); }
     };
@@ -775,7 +791,7 @@ async function c9ShrinkPhotos(){
 function c9CheckHtml(){
   if(!(S.ui.setOpen && S.ui.setOpen.c9check)) return '';
   var r = c9CheckRun();
-  var fixable = r.list.filter(function(x){ return x.fix; }).length;
+  var fixable = r.list.filter(function(x){ return x.fix && !x.one; }).length;
   var h = '<p class="note" style="margin-top:0">データのおかしいところを、アプリが調べます（同じものが2つ・ありえない日付・バイトの重なり・大きすぎる写真 など）。' +
     '「直す」ボタンのあるものは、押すと直します（消したものはゴミ箱に入ります。すぐなら「取り消す」でもどせます）。アプリを開いたときも、1日1回自動で調べます。</p>';
   h += !r.list.length ? '<div class="msg ok">おかしいところは見つかりませんでした。</div>'
@@ -795,9 +811,10 @@ function c9CheckHtml(){
   if(c9BigPhotos === null) h += '<p class="note">写真の大きさは、まだ数えていません（数えるのは少し時間がかかります）。</p>';
   return h;
 }
-/* 直す（key を渡す。'*' なら直せるものぜんぶ） */
+/* 直す（key を渡す。'*' なら直せるものぜんぶ。ただし one のもの＝本当に2回使ったかもしれない家計簿・
+   完了にする課題・写真を小さくする（もどせない）は、1つずつ押したときだけ） */
 function c9FixRun(key){
-  var list = c9Checks().filter(function(x){ return x.fix && (key === '*' || x.key === key); });
+  var list = c9Checks().filter(function(x){ return x.fix && (key === '*' ? !x.one : x.key === key); });
   if(!list.length){ toast('もう直っているようです'); render(); return; }
   var n = 0, waits = [];
   list.forEach(function(x){
@@ -844,17 +861,31 @@ function c9CheckBanner(ctx){
    S.dayReview[日付] に入れる（auto:1・内わけ・点数・よかったこと・ひとこと）。
    ・自分でつけた評価・もうある評価は、上書きしない。
    ・mt はその日の0時（自分でつけた評価は、その日の中で押すので、かならず自分のほうが新しい）。
-   ・2台で同時に開いても、同じデータからは同じものができる（mt も同じ）ので、同期が行ったり来たりしない。 */
+     何日かおくれてつけたときは、おくれた日数×1秒だけ前にする（すぐにつけた端末の評価のほうが、古いデータでつけた評価に勝つ）。
+   ・2台で同時に開いても、同じデータからは同じものができる（mt も同じ）ので、同期が行ったり来たりしない。
+   ・この端末にまだ何もないとき（入れたばかりで、同期がまだ）は、つけない（からっぽのデータの評価が、本物に勝たないように）。 */
 function c9AutoMt(ymd){ var a = ymd.split('-'); return new Date(+a[0], +a[1] - 1, +a[2]).getTime(); }
-function c9EvalDay(ymd){
+function c9EvalDay(ymd, late){
   var g = dayGrade(ymd);
   return { grade:g.grade, point:g.point, memo:'', ai:'', auto:1,
     items:g.items.map(function(x){ return { k:x.k, l:x.l, p:x.p, m:x.m, t:x.t }; }),
-    good:g.good.slice(0, 6), next:g.next, mt:c9AutoMt(ymd) };
+    good:g.good.slice(0, 6), next:g.next, mt:c9AutoMt(ymd) - Math.max(0, Math.min(400, toNum(late))) * 1000 };
+}
+/* この端末に、自分で入れたデータがあるか（入れたばかりの端末では、評価をつけない） */
+function c9HasData(){
+  return ['tasks', 'events', 'exams', 'notes', 'shifts', 'spends', 'cards'].some(function(k){ return Array.isArray(S[k]) && S[k].length > 0; }) ||
+    Object.keys(S.dayReview || {}).length > 0 || Object.keys(S.attendLog || {}).length > 0;
+}
+/* 自動の評価をつけてよいか（データがある・同期をしているなら、相手のデータを1回は受け取った） */
+function c9AutoReady(){
+  if(!c9HasData()) return false;
+  try{ if(typeof syncState !== 'undefined' && syncState.on && typeof SYNC_LOCAL !== 'undefined' && !SYNC_LOCAL.firstPullAt) return false; }catch(e){}
+  return true;
 }
 function c9AutoReview(opt){
   opt = opt || {};
   if(typeof dayGrade !== 'function') return [];
+  if(!c9AutoReady()) return [];
   var td = today(), yd = shiftDate(td, -1), lim = shiftDate(td, -7);
   var from = c9Local().evalFrom;
   if(!isYmd(from)){ from = yd; c9LocalSet('evalFrom', from); }      /* はじめて動いたときは、きのうから */
@@ -864,7 +895,8 @@ function c9AutoReview(opt){
   var made = [];
   for(var d = from; d <= yd; d = shiftDate(d, 1)){
     if(S.dayReview[d]) continue;
-    try{ S.dayReview[d] = c9EvalDay(d); made.push(d); }catch(e){ kmErr('自動の評価 ' + d, e); }
+    var late = Math.round((c9AutoMt(yd) - c9AutoMt(d)) / 86400000);   /* きのうなら0 */
+    try{ S.dayReview[d] = c9EvalDay(d, late); made.push(d); }catch(e){ kmErr('自動の評価 ' + d, e); }
   }
   if(made.length){
     touch('dayReview'); persist(); pushRemote();
@@ -911,7 +943,8 @@ function c9Tick(){
     if(!window.__kurashiOK || document.hidden) return;
     if(Date.now() - c9Boot.t0 < 1200 || !c9SyncCalm()) return;
     var td = today();
-    if(c9Boot.evalDay !== td){ c9Boot.evalDay = td; c9AutoReview(); }
+    /* まだつけられないとき（データがまだ届いていない）は、届いてからもう一度 */
+    if(c9Boot.evalDay !== td && c9AutoReady()){ c9Boot.evalDay = td; c9AutoReview(); }
     if(c9Boot.checkDay !== td){ c9Boot.checkDay = td; c9DailyCheck(); }
   }catch(e){ kmErr('自動の評価・点検', e); }
 }
@@ -965,7 +998,7 @@ kmAction(function(act, t){
   }
   if(act === 'c9-search-back'){
     var to = (c9From && c9From !== 'c9search') ? c9From : 'today';
-    appId = to; c9TempApp = ''; render(); window.scrollTo(0, 0); return true;
+    c9Go(to); return true;          /* タブに出していない画面から来たときも、その画面にもどる */
   }
   if(act === 'c9-search-go'){
     c9Q = val('c9_q'); c9More = {};

@@ -404,7 +404,8 @@ KT.test('全体＋：前の日を自動で評価する（最大7日・自分の�
   ok(r2.items.some(function(x){ return x.k === 'health' && /7時間/.test(x.t); }), '睡眠・歩数');
   ok(r2.items.some(function(x){ return x.k === 'late'; }), '期限切れ');
   ok(Array.isArray(r2.good) && r2.next, 'よかったこと・ひとこと');
-  eq(r2.mt, A.c9AutoMt(d2), '時刻はその日の0時（自分の評価に負ける）');
+  eq(A.S.dayReview[yd].mt, A.c9AutoMt(yd), 'きのうの時刻はその日の0時（自分の評価に負ける）');
+  eq(r2.mt, A.c9AutoMt(d2) - 1000, '1日おくれてつけた評価は、1秒だけ古い（すぐにつけた端末の評価が勝つ）');
   eq(A.canon(A.S.dayReview[d2]), B.canon(B.S.dayReview[d2]), '2台で同じ結果');
   await KT.settle([A, B]);
   eq(A.canon(A.S.dayReview), B.canon(B.S.dayReview), '同期のあとも2台で同じ');
@@ -441,6 +442,107 @@ KT.test('全体＋：前の日を自動で評価する（最大7日・自分の�
   ok(rv.c9_day_eval && rv.c9_day_eval.today && rv.c9_day_eval.today.items, 'AIが今日の見こみを読める');
   A.removeItem('tasks', 'tk_c9e1'); A.removeItem('tasks', 'tk_c9e2'); A.commit();
   await KT.settle([A, B]);
+});
+
+KT.test('全体＋：自動の評価は、入れたばかりの端末ではつけない・0時をすぎてから押した評価はきのうの記録になる', async function(){
+  var fr = KT.frames(), A = fr.A, B = fr.B;
+  var td = A.today(), yd = A.shiftDate(td, -1);
+  await KT.settle([A, B]);
+  /* 何もない端末（同期の前）では、評価をつけず、はじめた日も決めない */
+  var keepHas = A.c9HasData, keepFrom = A.c9Local().evalFrom, keepRev = A.S.dayReview[yd];
+  delete A.S.dayReview[yd];
+  A.c9LocalSet('evalFrom', '');
+  A.c9HasData = function(){ return false; };
+  try{
+    eq(A.c9AutoReview({ quiet:true }).length, 0, '何もない端末ではつけない');
+    ok(!A.S.dayReview[yd], 'きのうの記録はない');
+    ok(!A.c9Local().evalFrom, 'はじめた日も決めない（データが来てから）');
+  }finally{
+    A.c9HasData = keepHas;
+    A.c9LocalSet('evalFrom', keepFrom || '');
+    if(keepRev) A.S.dayReview[yd] = keepRev;
+  }
+  ok(A.c9HasData(), 'ふつうの端末はデータがある');
+  /* 夜に「今日のふりかえり」を開いて、0時をすぎてから押した（ボタンの日付＝きのう） */
+  var keep = A.S.dayReview[yd] ? JSON.parse(JSON.stringify(A.S.dayReview[yd])) : null;
+  var keepTd = A.S.dayReview[td] ? JSON.parse(JSON.stringify(A.S.dayReview[td])) : null;
+  var btn = A.document.createElement('button');
+  btn.dataset.act = 'rev-save'; btn.dataset.d = yd; btn.dataset.g = 'A'; btn.dataset.p = '80';
+  A.reviewAction('rev-save', btn);
+  var r = A.S.dayReview[yd];
+  ok(r && r.grade === 'A' && !r.auto && r.mt > A.c9AutoMt(yd), 'きのうの自分の評価として記録：' + JSON.stringify(r));
+  eq(JSON.stringify(A.S.dayReview[td] || null), JSON.stringify(keepTd), '今日の記録にはしない');
+  /* ずっと前の日付は受けつけない（今日にする） */
+  var btn2 = A.document.createElement('button');
+  btn2.dataset.act = 'rev-save'; btn2.dataset.d = A.shiftDate(td, -5); btn2.dataset.g = 'B'; btn2.dataset.p = '66';
+  A.reviewAction('rev-save', btn2);
+  eq((A.S.dayReview[td] || {}).grade, 'B', '古い日付は今日の記録');
+  if(keep) A.S.dayReview[yd] = keep; else delete A.S.dayReview[yd];
+  if(keepTd) A.S.dayReview[td] = keepTd; else delete A.S.dayReview[td];
+  A.touch('dayReview'); A.commit();
+  await KT.settle([A, B]);
+});
+
+KT.test('全体＋：データの点検は、別のものを同じと言わない・まとめて直すで家計簿や課題を勝手に変えない・写真以外は数えない', async function(){
+  var fr = KT.frames(), A = fr.A, B = fr.B;
+  KT.freshWrites([A, B]);
+  var td = A.today(), d4 = A.shiftDate(td, 4), now = Date.now(), J2 = function(o){ return J(A, o); };
+  A.S.events.push(J2({ id:'ev_c9q1', date:d4, title:'小テスト', subject:'解剖学', time:'', kind:'other', memo:'', photos:[], mt:now }));
+  A.S.events.push(J2({ id:'ev_c9q2', date:d4, title:'小テスト', subject:'生理学', time:'', kind:'other', memo:'', photos:[], mt:now }));
+  A.S.tasks.push(J2({ id:'tk_c9n1', title:'洗濯', subject:'', due:'', done:1, subs:[], photos:[], mt:now }));
+  A.S.tasks.push(J2({ id:'tk_c9n2', title:'洗濯', subject:'', due:'', done:0, subs:[], photos:[], mt:now }));
+  A.S.tasks.push(J2({ id:'tk_c9o2', title:'ずっと前の課題2', subject:'', due:A.shiftDate(td, -40), done:0, subs:[], photos:[], mt:now }));
+  A.S.spends.push(J2({ id:'sp_c9x', date:td, amount:150, io:'out', title:'自販機', cat:'food', src:'hand', ref:'c9x1', mt:now }));
+  A.S.spends.push(J2({ id:'sp_c9y', date:td, amount:150, io:'out', title:'自販機', cat:'food', src:'hand', ref:'c9x2', mt:now }));
+  A.S.events.push(J2({ id:'ev_c9z1', date:d4, title:'ダブり', time:'10:00', kind:'other', memo:'', photos:[], mt:now }));
+  A.S.events.push(J2({ id:'ev_c9z2', date:d4, title:'ダブり', time:'10:00', kind:'other', memo:'', photos:[], mt:now }));
+  A.commit();
+  try{
+    var list = A.c9Checks();
+    ok(!list.some(function(x){ return /ev_c9q1/.test(x.key); }), '科目のちがう「小テスト」は同じとしない');
+    ok(!list.some(function(x){ return /tk_c9n1/.test(x.key); }), '締切のない同じ名前の課題は同じとしない');
+    ok(list.some(function(x){ return /dup-ev:ev_c9z1,ev_c9z2/.test(x.key); }), '本当に同じ予定は見つける');
+    ok(list.some(function(x){ return /dup-sp:sp_c9x,sp_c9y/.test(x.key); }), '家計簿の同じ明細は知らせる');
+    /* まとめて直す（ほかのテストのデータは直さないように、このテストのものだけにしぼる） */
+    var origChecks = A.c9Checks;
+    A.c9Checks = function(){ return origChecks().filter(function(x){ return /c9z|c9x|c9o2|^old-task:/.test(x.key); }); };
+    try{ A.c9FixRun('*'); }finally{ A.c9Checks = origChecks; }
+    eq(A.S.events.filter(function(e){ return e.id === 'ev_c9z1' || e.id === 'ev_c9z2'; }).length, 1, 'まとめて直すで、同じ予定は1つに');
+    eq(A.S.spends.filter(function(x){ return x.ref === 'c9x1' || x.ref === 'c9x2'; }).length, 2, 'まとめて直すでは、家計簿は消さない（本当に2回買ったかも）');
+    ok(!A.S.tasks.filter(function(t){ return t.id === 'tk_c9o2'; })[0].done, 'まとめて直すでは、課題を勝手に完了にしない');
+    eq(A.trashLabel({ list:'spends', obj:{ title:'自販機', amount:150, date:td } }).indexOf('家計簿：自販機'), 0, 'ゴミ箱で家計簿とわかる');
+    /* 写真でないもの・キャラの絵は、大きくても「大きい写真」にしない */
+    var big0 = A.C9_BIG_PHOTO; A.C9_BIG_PHOTO = 10;
+    await A.photoPut('mi_c9pdf', 'data:application/pdf;base64,' + 'A'.repeat(400), { noCloud:true });
+    var bp = await A.c9ScanPhotos();
+    A.C9_BIG_PHOTO = big0;
+    ok(!bp.some(function(x){ return x.id === 'mi_c9pdf'; }), '写真でないものは数えない');
+    await A.photoDel('mi_c9pdf');
+    await A.c9ScanPhotos();
+    A.c9BigPhotos = null;
+  }finally{
+    ['ev_c9q1', 'ev_c9q2', 'ev_c9z1', 'ev_c9z2'].forEach(function(id){ if(A.S.events.some(function(e){ return e.id === id; })) A.removeItem('events', id); });
+    ['tk_c9n1', 'tk_c9n2', 'tk_c9o2'].forEach(function(id){ A.removeItem('tasks', id); });
+    A.S.spends.filter(function(x){ return x.ref === 'c9x1' || x.ref === 'c9x2'; }).forEach(function(x){ A.removeItem('spends', x.id); });
+    A.commit();
+  }
+  await KT.settle([A, B]);
+});
+
+KT.test('AI：さがす道具は、足した機能が置いたカギの近くを切り出しても、カギを見せない', async function(){
+  var A = KT.frames().A;
+  A.S.kmItems.push({ id:'km_c9sec', mt:Date.now(), mod:'c9test', type:'cfg', note:'ひみつのせってい', pushToken:'TOKEN_ABC_123', deep:{ clientSecret:'CLIENT_SECRET_XYZ' } });
+  A.S.kmData = A.S.kmData || {};
+  A.S.kmData['c9test:cfg'] = { name:'ひみつのせってい2', discordWebhook:'https://discord.example/WEBHOOK_999', mt:1 };
+  try{
+    var all = JSON.stringify(A.aiSearchAll('ひみつのせってい')) + JSON.stringify(A.aiSectionData('more', { query:'ひみつ', limit:200 }));
+    ok(/ひみつのせってい/.test(all), 'さがせる');
+    ok(all.indexOf('TOKEN_ABC') < 0 && all.indexOf('CLIENT_SECRET_XYZ') < 0 && all.indexOf('WEBHOOK_999') < 0, 'カギが見えない：' + all.slice(0, 300));
+    eq(A.aiSearchAll('TOKEN_ABC').count, 0, 'カギの中身ではさがせない');
+  }finally{
+    A.S.kmItems = A.S.kmItems.filter(function(x){ return x.id !== 'km_c9sec'; });
+    delete A.S.kmData['c9test:cfg'];
+  }
 });
 
 KT.test('全体＋：AIが足した機能の数字を正しい分野で読める（fn.section・KM.aiData・4つめ）・目次に名前・検索の履歴・キャラの口調', async function(){

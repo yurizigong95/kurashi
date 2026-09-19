@@ -129,11 +129,11 @@ function notifyJobs(){
       var nm = po.name || charaById(pid).name;
       var hr = PET_RATE.hun * (po.sleep ? 0.5 : 1);
       if(po.hun > 20){
-        var ah = petAlertAt(now + (po.hun - 20) / hr * 3600000, p);
+        var ah = petAlertAt(Math.round((now + (po.hun - 20) / hr * 3600000) / 60000) * 60000, p);   /* 分にそろえる（作るたびに時刻が少しずれて、送り直しが続かないように） */
         add('pet-h-' + pid + '-' + Math.round(ah / 600000), ah, '🍙 ' + nm + 'がおなかをすかせているよ', 'ごはんをあげてね（おせわタブ）');
       }
       if(po.cln > 20){
-        var ac = petAlertAt(now + (po.cln - 20) / PET_RATE.cln * 3600000, p);
+        var ac = petAlertAt(Math.round((now + (po.cln - 20) / PET_RATE.cln * 3600000) / 60000) * 60000, p);
         add('pet-c-' + pid + '-' + Math.round(ac / 600000), ac, '🫧 ' + nm + 'がおふろに入りたいみたい', 'おふろに入れてあげてね（おせわタブ）');
       }
     }

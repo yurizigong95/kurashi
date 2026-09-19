@@ -267,6 +267,7 @@ KT.test('キャラ＋：なかよし度でセリフが増える・つぎのレ�
   ok(pool.scene.some(function(s){ return /出会ってから/.test(s); }), '思い出の話（出会ってからの日数）');
   /* メーター */
   A.S.kmData['chara2:bond'] = J(A, { c:{ mochi:{ pats:2, talks:1, voice:0, first:A.today() } }, mt:Date.now() });
+  A.S.kmData['chara2:bond:' + A.DEV.id] = J(A, { c:{}, mt:Date.now() });
   A.touch('kmData'); A.commit();
   A.S.ui.setOpen = J(A, { chara:1 }); A.appId = 'set'; A.render();
   var m = doc.querySelector('.c2-set .c2-bar[role="meter"]');
@@ -286,6 +287,14 @@ KT.test('キャラ＋：なかよし度でセリフが増える・つぎのレ�
   await KT.settle([A, B]);
   await reach(function(){ return B.c2Bond('mochi').parts.pats === 2; }, 'なかよし度が相手に届く');
   await reach(function(){ return B.S.ui.chara.callName === 'ゆりさん'; }, '呼び名が相手に届く');
+  /* 2台で同時に話しかけても、どちらの回数も消えない */
+  var t0 = B.c2Bond('mochi').parts;
+  A.c2BondAdd('mochi', 'talks'); A.persist();
+  B.c2BondAdd('mochi', 'talks'); B.c2BondAdd('mochi', 'pats'); B.persist();
+  A.commit(); B.commit();
+  await KT.settle([A, B]);
+  await reach(function(){ var p = A.c2Bond('mochi').parts; return p.talks === t0.talks + 2 && p.pats === t0.pats + 1; }, '2台で話しかけた回数がどちらも残る（こちら）');
+  await reach(function(){ var p = B.c2Bond('mochi').parts; return p.talks === t0.talks + 2 && p.pats === t0.pats + 1; }, '2台で話しかけた回数がどちらも残る（相手）');
   setChara(A, { callName:'' }); A.commit();
   await KT.settle([A, B]);
 });
@@ -411,5 +420,31 @@ KT.test('キャラ＋：AIの道具で性格・なかよし度・今週のセリ
   setChara(A, { main:'mochi' }); A.S.ui.setOpen = J(A, { s1:1 }); A.touch('ui'); A.commit();
   A.appId = 'today'; A.todayTab = 'today'; A.render();
   await KT.settle([A, KT.frames().B]);
+});
+
+KT.test('キャラ＋：通知の口調は、「ランダム」で開くたびに子が変わっても同じ文', async function(){
+  var A = KT.frames().A;
+  var keep = J(A, A.S.ui.chara || {});
+  try{
+    setChara(A, { level:2, mode:'random', notifyTalk:1 });
+    var job = { id:'d1-tk_rand-2026-01-01', title:'明日が締切です', body:'レポート' };
+    var outs = {};
+    for(var i = 0; i < 8; i++){ A.__charaRandom = null; outs[JSON.stringify(A.c2JobText(job))] = 1; }
+    eq(Object.keys(outs).length, 1, '開きなおしても同じ文：' + Object.keys(outs).join(' ／ '));
+  }finally{ A.S.ui.chara = keep; A.__charaRandom = null; A.touch('ui'); A.commit(); }
+  await KT.settle([A, KT.frames().B]);
+});
+
+KT.test('キャラ＋：記念日の場面は、おせわの記念日と同じ読み方（「〇〇の誕生日」・まだ来ていない年は出さない）', async function(){
+  var A = KT.frames().A, td = A.today();
+  var keep = A.S.annivs;
+  try{
+    A.S.annivs = [J(A, { id:'an_c2a', mt:Date.now(), name:'おかあさん', date:td.slice(5), kind:'birthday', who:'family', memo:'' })];
+    var ctx = A.c2Ctx(td);
+    ok(ctx.on.indexOf('n-anniv') >= 0, '記念日の場面');
+    eq(ctx.v['n-anniv'].anniv, 'おかあさんの誕生日', '「〇〇の誕生日」と言う');
+    A.S.annivs = [J(A, { id:'an_c2b', mt:Date.now(), name:'みらいの日', date:(+td.slice(0, 4) + 1) + td.slice(4), kind:'anniv', who:'other', memo:'' })];
+    ok(A.c2Ctx(td).on.indexOf('n-anniv') < 0, 'まだ来ていない年の記念日は出さない');
+  }finally{ A.S.annivs = keep; }
 });
 })();

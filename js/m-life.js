@@ -172,8 +172,14 @@ function lfHealthStats(n, end){
   var avg = function(a){ return a.length ? Math.round(sumBy(a, function(x){ return x; }) / a.length) : 0; };
   return { days:days, sleepAvg:avg(sl), sleepN:sl.length, stepsAvg:avg(st), stepsN:st.length, short:lfShortStreak() };
 }
-/* お昼より後に「おやすみ」なら、次の日（起きる日）の記録にする */
-function lfBedKey(){ return new Date().getHours() >= 12 ? shiftDate(today(), 1) : today(); }
+/* お昼より後に「おやすみ」なら、次の日（起きる日）の記録にする。
+   お昼より前でも、今日もう起きた記録があれば（朝の二度寝・昼寝）、次の日にする（今日の睡眠を消さないように） */
+function lfBedKey(){
+  var td = today();
+  if(new Date().getHours() >= 12) return shiftDate(td, 1);
+  var r = lfLog(td), w = r ? minutesOf(r.wake) : null;
+  return (w != null && w <= lfNowMin()) ? shiftDate(td, 1) : td;
+}
 function lfGoodnight(){
   var k = lfBedKey(), now = hhmmOf(lfNowMin()), r = lfLog(k) || {};
   var patch = { bed:now, wake:'' };
@@ -184,6 +190,15 @@ function lfGoodnight(){
 }
 function lfGoodmorning(){
   var k = today(), now = hhmmOf(lfNowMin()), r = lfLog(k) || {};
+  /* 今日はもう起きていて、そのあと「おやすみ」した（昼寝）→ 今日の睡眠の記録は変えない */
+  var k2 = shiftDate(k, 1), r2 = lfLog(k2);
+  if(r.wake && lfSleepOf(r) && r2 && r2.bed && !r2.wake){
+    var nap = lfSleepCalc(r2.bed, now);
+    lfLogSet(k2, { bed:'' });
+    toast('おはようございます。' + (nap ? 'お昼寝 ' + lfHm(nap) + '。' : '') + '今日の睡眠の記録はそのままです');
+    commit();
+    return;
+  }
   var patch = { wake:now }, s = r.bed ? lfSleepCalc(r.bed, now) : 0;
   if(s && r.src !== 'health'){ patch.sleep = s; patch.src = 'hand'; }
   lfLogSet(k, patch);
@@ -282,12 +297,23 @@ function lfHealthHtml(){
 }
 
 /* 受け取り箱：iPhoneのヘルスケアから（ショートカット） */
+/* 睡眠の長さ（ショートカットの書き方いろいろ）→ 分。「7時間30分」「7:30」「7:30:00」「7 hr 30 min」「450」「7.5」「27000（秒）」 */
+function lfDurMin(v){
+  var s = String(v == null ? '' : v).trim();
+  try{ s = s.normalize('NFKC'); }catch(e){}
+  s = s.replace(/,/g, '');
+  var c = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(c) return (+c[1]) * 60 + (+c[2]) + (c[3] ? (+c[3]) / 60 : 0);
+  var h = s.match(/([\d.]+)\s*(?:時間|hours?|hrs?|h)(?![a-z])/i), m = s.match(/([\d.]+)\s*(?:分|minutes?|mins?|m)(?![a-z])/i);
+  if(h || m) return (h ? parseFloat(h[1]) * 60 : 0) + (m ? parseFloat(m[1]) : 0);
+  var n = lfNum(s);
+  if(n > 1440) return n / 60;              /* 秒で来たとき */
+  if(n > 0 && n < 24) return n * 60;       /* 時間で来たとき */
+  return n;
+}
 kmInbox('health', function(it, ymd){
-  var d = isYmd(it.date) ? it.date : ymd;
-  var sl = lfNum(it.sleep), st = Math.round(lfNum(it.steps));
-  if(sl > 1440) sl = sl / 60;              /* 秒で来たとき */
-  else if(sl > 0 && sl < 24) sl = sl * 60; /* 時間で来たとき */
-  sl = Math.round(sl);
+  var d = lfFixDate(it.date) || ymd;
+  var sl = Math.round(lfDurMin(it.sleep)), st = Math.round(lfNum(it.steps));
   var patch = {}, said = [];
   if(sl >= 10 && sl <= 1440){ patch.sleep = sl; patch.src = 'health'; said.push('睡眠 ' + lfHm(sl)); }
   if(st > 0 && st < 200000){ patch.steps = st; said.push(lfComma(st) + '歩'); }
@@ -310,12 +336,23 @@ function lfLocalSave(o){
   try{ localStorage.setItem(LF_LOCAL, JSON.stringify(o)); return true; }
   catch(e){ toast('この端末に保存できませんでした', true); return false; }
 }
-/* 同期するときは、中身をそのままは読めない形にする（手帳全体を読む道具・検索に出さないため） */
-function lfEnc(o){ try{ return 'b1:' + btoa(unescape(encodeURIComponent(JSON.stringify(o)))); }catch(e){ return ''; } }
+/* 同期するときは、中身をそのままは読めない形にする（手帳全体を読む道具・検索に出さないため）。
+   ただの base64（b1）は、AI が手帳全体を読む道具（get_app_data）で読んだときに AI 自身が戻せてしまうので、
+   アプリの中だけにある並びで混ぜてから base64 にする（b2）。b1 は読むだけ（前に保存したもの）。 */
+var LF_ENC_K = 'kurashi:life:cycle:v2';
+function lfMix(bin){
+  var out = '', k = LF_ENC_K, n = k.length;
+  for(var i = 0; i < bin.length; i++) out += String.fromCharCode(bin.charCodeAt(i) ^ ((k.charCodeAt(i % n) + i * 31 + (i >> 3) * 7) & 255));
+  return out;
+}
+function lfEnc(o){ try{ return 'b2:' + btoa(lfMix(unescape(encodeURIComponent(JSON.stringify(o))))); }catch(e){ return ''; } }
 function lfDec(s){
   s = String(s || '');
-  if(s.indexOf('b1:') !== 0) return null;
-  try{ return JSON.parse(decodeURIComponent(escape(atob(s.slice(3))))); }catch(e){ return null; }
+  try{
+    if(s.indexOf('b2:') === 0) return JSON.parse(decodeURIComponent(escape(lfMix(atob(s.slice(3))))));
+    if(s.indexOf('b1:') === 0) return JSON.parse(decodeURIComponent(escape(atob(s.slice(3)))));
+  }catch(e){}
+  return null;
 }
 function lfPClean(p){
   return { start:p.start, end:isYmd(p.end) ? p.end : '', flow:toNum(p.flow), pain:toNum(p.pain), memo:String(p.memo || '').slice(0, 200) };
@@ -369,6 +406,8 @@ function lfPeriodToSync(){
   if(!Array.isArray(S.kmItems)) S.kmItems = [];
   o.period.forEach(function(p){
     if(!p || !isYmd(p.start) || S.kmItems.some(function(x){ return x.id === p.id; })) return;
+    /* 前に「同期をやめる」で消した印（delAt）が残っている id は、もどした印をつけないと同期で消えてしまう */
+    if(S.delAt && S.delAt[p.id] && typeof markRevived === 'function') markRevived(p.id);
     S.kmItems.push({ id:p.id, mt:Date.now(), mod:'life', type:'period', enc:lfEnc(lfPClean(p)) });
     n++;
   });
@@ -389,6 +428,17 @@ function lfPeriodToLocal(){
   if(!lfLocalSave(o)) return 0;
   mine.forEach(function(x){ removeItem('kmItems', x.id); });
   return mine.length;
+}
+/* 前の形（b1）で同期しているものを、新しい形（b2）に置きかえる */
+function lfPeriodReenc(){
+  var n = 0;
+  (Array.isArray(S.kmItems) ? S.kmItems : []).forEach(function(x){
+    if(!x || x.mod !== 'life' || x.type !== 'period' || String(x.enc || '').indexOf('b1:') !== 0) return;
+    var d = lfDec(x.enc);
+    if(!d) return;
+    x.enc = lfEnc(lfPClean(d)); x.mt = Date.now(); n++;
+  });
+  return n;
 }
 function lfPeriodSyncSet(on){
   lfSet({ periodSync:on ? 1 : 0 });
@@ -681,9 +731,11 @@ async function lfVaxScanData(data){
     sc.list = items.map(function(x){
       x = x || {};
       var item = LF_VAX_OPT.some(function(o){ return o[0] === x.item && o[0]; }) ? x.item : '';
+      /* 判定は 1/0 のほか、true/false・"1"/"0" で来ることもある */
+      var okv = (x.ok === 1 || x.ok === true || x.ok === '1') ? 1 : (x.ok === 0 || x.ok === false || x.ok === '0') ? 0 : '';
       return { kind:['vaccine', 'antibody', 'checkup'].indexOf(x.kind) >= 0 ? x.kind : 'vaccine', item:item,
         name:String(x.name || lfVaxItemName(item) || '').slice(0, 60), date:lfFixDate(x.date), dose:toNum(x.dose) || '',
-        result:String(x.result || '').slice(0, 80), ok:(x.ok === 1 || x.ok === 0) ? x.ok : '', place:String(x.place || '').slice(0, 60), pick:1 };
+        result:String(x.result || '').slice(0, 80), ok:okv, place:String(x.place || '').slice(0, 60), pick:1 };
     }).filter(function(x){ return x.name; }).slice(0, 20);
   }catch(e){
     sc.err = '読み取れませんでした：' + e.message;
@@ -695,12 +747,13 @@ async function lfVaxScanData(data){
 }
 async function lfVaxScanAdd(){
   var sc = lfUi.xScan;
-  if(!sc || !sc.list) return 0;
+  if(!sc || !sc.list || sc.adding) return 0;
   var picks = sc.list.filter(function(x, i){
     var el = document.querySelector('.lf-xs-pick[data-i="' + i + '"]');
     return el ? el.checked : x.pick;
   });
   if(!picks.length){ toast('登録するものにチェックを入れてください', true); return 0; }
+  sc.adding = true;                        /* 写真を保存している間に、もう一度押されても二重に入れない */
   var pid = '';
   if(sc.img){ try{ pid = uid('mi'); await photoPut(pid, sc.img); }catch(e){ pid = ''; } }
   if(!Array.isArray(S.vaccines)) S.vaccines = [];
@@ -755,7 +808,7 @@ function lfVaxHtml(){
     var show = lfUi.xList ? list : list.slice(0, 6);
     h += '<div class="lf-list">' + show.map(function(x){
       var kn = (LF_VKIND.filter(function(k){ return k[0] === x.kind; })[0] || ['', ''])[1];
-      return '<div class="row"><div class="grow"><div class="t">' + esc(x.name || '記録') + (x.dose ? ' ' + x.dose + '回目' : '') + '</div>' +
+      return '<div class="row"><div class="grow"><div class="t">' + esc(x.name || '記録') + (x.dose ? ' ' + esc(x.dose) + '回目' : '') + '</div>' +
         '<div class="s">' + [kn, x.date ? ymdLabel(x.date) : '日付なし', x.result ? esc(x.result) : '', lfVaxOk(x) ? '足りている' : lfVaxNg(x) ? '足りない' : '',
           x.place ? esc(x.place) : '', isYmd(x.next) ? '次 ' + lfMd(x.next) : ''].filter(Boolean).join('・') + '</div>' +
         ((x.photos || []).length ? '<div class="lf-thumbs">' + x.photos.map(function(pid){
@@ -907,12 +960,14 @@ function lfOmIdx(ymd){ var om = lfWx.om; return (om && Array.isArray(om.time)) ?
 function lfTempDiff(ymd){
   var i = lfOmIdx(ymd), om = lfWx.om, p = lfPrefs();
   if(i < 0) return null;
-  var mx = Number(om.tmax[i]), mn = Number(om.tmin[i]);
-  if(!isFinite(mx) || !isFinite(mn) || om.tmax[i] == null) return null;
+  /* 値がないところは null で来る（Number(null) は 0 になるので、先に null を外す） */
+  var nv = function(a, k){ return (a && a[k] != null && a[k] !== '') ? Number(a[k]) : NaN; };
+  var mx = nv(om.tmax, i), mn = nv(om.tmin, i);
+  if(!isFinite(mx) || !isFinite(mn)) return null;
   var out = { max:mx, min:mn, range:Math.round((mx - mn) * 10) / 10, dPrev:null, what:'' };
-  if(i > 0 && om.tmax[i - 1] != null){
-    var dMax = Math.round((mx - Number(om.tmax[i - 1])) * 10) / 10, dMin = Math.round((mn - Number(om.tmin[i - 1])) * 10) / 10;
-    if(isFinite(dMin) && Math.abs(dMin) > Math.abs(dMax)){ out.dPrev = dMin; out.what = '朝の気温'; }
+  if(i > 0){
+    var dMax = Math.round((mx - nv(om.tmax, i - 1)) * 10) / 10, dMin = Math.round((mn - nv(om.tmin, i - 1)) * 10) / 10;
+    if(isFinite(dMin) && (!isFinite(dMax) || Math.abs(dMin) > Math.abs(dMax))){ out.dPrev = dMin; out.what = '朝の気温'; }
     else if(isFinite(dMax)){ out.dPrev = dMax; out.what = '最高気温'; }
   }
   out.warnPrev = out.dPrev != null && Math.abs(out.dPrev) >= Number(p.diffPrev || 7);
@@ -927,7 +982,8 @@ function lfPollen(ymd){
   var peak = act.some(function(x){ return md >= x.peak[0] && md <= x.peak[1]; });
   var score = peak ? 2 : 1, why = [], i = lfOmIdx(ymd), om = lfWx.om;
   if(i >= 0){
-    var code = Number(om.code[i]), wind = Number(om.wind[i]), mx = Number(om.tmax[i]), rain = Number(om.rain[i]);
+    var nv = function(a, k){ return (a && a[k] != null && a[k] !== '') ? Number(a[k]) : NaN; };   /* ない値（null）を 0（＝晴れ）にしない */
+    var code = nv(om.code, i), wind = nv(om.wind, i), mx = nv(om.tmax, i), rain = nv(om.rain, i);
     if(rain >= 1 || (code >= 51 && code <= 99)){ score -= 2; why.push('雨'); }
     else{
       if(code <= 2){ score++; why.push('晴れ'); }
@@ -1183,7 +1239,9 @@ function lfSnapPrompt(){
 }
 /* AIの答えを、登録の候補にそろえる */
 function lfCands(items){
-  return (Array.isArray(items) ? items : []).map(function(x){
+  /* 1つだけのときに、配列にしないで返すAIもある */
+  if(!Array.isArray(items)) items = (items && typeof items === 'object' && items.type) ? [items] : [];
+  return items.map(function(x){
     x = x || {};
     var type = LF_TYPE[x.type] ? x.type : 'event';
     var c = { type:type, title:String(x.title || '').slice(0, 80), date:lfFixDate(x.date), time:lfHhmm(x.time), end:lfHhmm(x.end),
@@ -1205,10 +1263,10 @@ function lfCandsRead(list, pre){
   (list || []).forEach(function(c, i){
     var pk = document.querySelector('.lf-pick[data-p="' + pre + '"][data-i="' + i + '"]');
     if(pk) c.pick = pk.checked ? 1 : 0;
-    ['title', 'date', 'time', 'amount'].forEach(function(f){
+    ['title', 'date', 'time', 'end', 'amount'].forEach(function(f){
       var el = document.querySelector('.lf-ce[data-p="' + pre + '"][data-i="' + i + '"][data-f="' + f + '"]');
       if(!el) return;
-      c[f] = f === 'amount' ? Math.abs(Math.round(lfNum(el.value))) : f === 'time' ? lfHhmm(el.value) : el.value;
+      c[f] = f === 'amount' ? Math.abs(Math.round(lfNum(el.value))) : (f === 'time' || f === 'end') ? lfHhmm(el.value) : el.value;
     });
   });
 }
@@ -1229,7 +1287,8 @@ function lfCandsHtml(list, pre){
         ? ce('amount', c.amount, '', '金額', 'w1') + ce('title', c.title, '', 'お店・内容') + ce('date', c.date, 'date', '日付')
         : c.type === 'memo' ? ce('title', c.title, '', '題名')
         : (c.type !== 'change' && c.type !== 'shift' ? ce('title', c.title, '', '名前') : '') + ce('date', c.date, 'date', '日付') +
-          (c.type !== 'change' ? ce('time', c.time, 'time', '時刻', 'w1') : '')) + '</div></div>';
+          (c.type !== 'change' ? ce('time', c.time, 'time', c.type === 'shift' ? '始まり' : '時刻', 'w1') : '') +
+          (c.type === 'shift' ? ce('end', c.end, 'time', '終わり', 'w1') : '')) + '</div></div>';
   }).join('') + '</div>';
 }
 function lfAddSpend(c){
@@ -1251,8 +1310,8 @@ function lfAddChange(c){
 /* 候補1つを登録する（予定・課題・テスト・バイト・メモは「AIの直接登録」と同じ関数で入れる） */
 function lfCandRun(c){
   switch(c.type){
-    case 'event': return aiRunFunc({ name:'add_event', args:{ title:c.title, date:c.date, time:c.time, end:c.end, important:c.important, memo:c.memo || '' } });
-    case 'task':  return aiRunFunc({ name:'add_task', args:{ title:c.title, due:c.date, time:c.time, subject:c.subject, memo:c.memo || '' } });
+    case 'event': return aiRunFunc({ name:'add_event', args:{ title:c.title || c.subject, date:c.date, time:c.time, end:c.end, important:c.important, memo:c.memo || '' } });
+    case 'task':  return aiRunFunc({ name:'add_task', args:{ title:c.title || c.subject, due:c.date, time:c.time, subject:c.subject, memo:c.memo || '' } });
     case 'exam':  return aiRunFunc({ name:'add_exam', args:{ subject:c.subject || c.title, date:c.date, time:c.time, kind:c.kind || 'exam', title:c.subject ? c.title : '', room:c.room } });
     case 'shift': return aiRunFunc({ name:'add_shift', args:{ date:c.date, start:c.time, end:c.end, memo:c.memo || '' } });
     case 'memo':  return aiRunFunc({ name:'add_memo', args:{ title:c.title, body:c.body || c.title } });
@@ -1285,24 +1344,28 @@ function lfOpsHtml(o, undoAct){
 /* ----- 声 ----- */
 function lfSR(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
 function lfVoiceStart(){
+  lfVoiceStop();                           /* 前の聞き取りが続いていたら止める（2つ同時に動かさない） */
   lfUi.snap = null;
   var v = lfUi.voice = { on:true, listening:false, text:'', err:'', cands:null, busy:false, res:null, manual:0 };
   var SR = lfSR();
   if(!SR || TEST_MODE){ v.manual = 1; lfRender(); setTimeout(function(){ var el = document.getElementById('lf_vtext'); if(el) el.focus(); }, 50); return; }
   try{
-    var rec = new SR(), fin = '';
+    var rec = new SR();
     rec.lang = 'ja-JP'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
     rec.onresult = function(e){
-      var mid = '';
-      for(var i = e.resultIndex; i < e.results.length; i++){
+      /* 毎回はじめから組み立てる（iPhoneのSafariは、同じ結果をもう一度送ってくることがあり、足していくと二重になる） */
+      var fin = '', mid = '';
+      for(var i = 0; i < e.results.length; i++){
         if(e.results[i].isFinal) fin += e.results[i][0].transcript; else mid += e.results[i][0].transcript;
       }
       v.text = fin + mid;
       var el = document.getElementById('lf_vtext'); if(el) el.value = v.text;
     };
     rec.onerror = function(e){
-      v.err = (e.error === 'not-allowed' || e.error === 'service-not-allowed') ? 'マイクが使えません。端末の設定でマイクを許可するか、キーボードのマイク（🎤）で話して入れてください。'
-        : e.error === 'no-speech' ? '声が聞こえませんでした。もう一度どうぞ。' : '聞き取れませんでした（' + e.error + '）';
+      var denied = e.error === 'not-allowed' || e.error === 'service-not-allowed';
+      v.err = denied ? 'マイクが使えません。端末の設定でマイクを許可するか、キーボードのマイク（🎤）で話して入れてください。'
+        : e.error === 'no-speech' ? '声が聞こえませんでした。もう一度どうぞ。' : e.error === 'aborted' ? '' : '聞き取れませんでした（' + e.error + '）';
+      if(denied) v.denied = 1;             /* ホーム画面のアプリ（iPhone）では、ここで使えないことがある → もう一度話すは出さない */
       v.manual = 1;
     };
     rec.onend = function(){
@@ -1355,7 +1418,7 @@ function lfVoiceHtml(){
   if(v.manual && (!SR || TEST_MODE)) h += '<p class="note" style="margin-top:0">この端末では、ここで声を聞き取れません。<b>キーボードのマイク（🎤）</b>を押して話して入れてください。</p>';
   h += '<textarea id="lf_vtext" rows="2" placeholder="例：あした10時に歯医者、金曜までに看護過程のレポート、コンビニで580円">' + esc(v.text || '') + '</textarea>' +
     '<div class="lf-vbtns"><button class="btn lf-mb" data-act="lf-v-parse"' + (v.busy ? ' disabled' : '') + '>' + (v.busy ? 'AIが分けています…' : 'AIで分ける') + '</button>' +
-    (SR && !TEST_MODE && !v.listening ? '<button class="mini" data-act="lf-v-again">🎤 もう一度話す</button>' : '') + '</div>';
+    (SR && !TEST_MODE && !v.listening && !v.denied ? '<button class="mini" data-act="lf-v-again">🎤 もう一度話す</button>' : '') + '</div>';
   if(v.err) h += '<p class="note" style="color:var(--rakuten)">' + esc(v.err) + '</p>';
   if(v.cands && v.cands.length){
     h += '<label class="f">登録する前に確かめてください（直せます）</label>' + lfCandsHtml(v.cands, 'v') +
@@ -1393,10 +1456,11 @@ async function lfSnapRead(data, file){
       lfUi.snap = null;
       appId = 'money'; payTab = 'work';
       toast('シフト表でした。シフトの読み取りにまわします');
+      lfRender();                          /* シフトの読み取りが先で止まったとき（名前が未設定など）も、バイトの画面を出す */
       await shiftOcrRun(file || await lfDataToFile(data));
       return;
     }
-    sn.cands = lfCands(r.items);
+    sn.cands = lfCands(Array.isArray(r) ? r : r.items);
     if(sn.kind === 'receipt' && !sn.cands.length) sn.err = '金額を読み取れませんでした。';
   }catch(e){
     sn.err = '読み取れませんでした：' + e.message;
@@ -1412,10 +1476,14 @@ async function lfSnapAdd(){
   if(!sn.cands.some(function(c){ return c.pick; })){ toast('登録するものにチェックを入れてください', true); return null; }
   var keep = document.getElementById('lf_skeep');
   if(keep) sn.keep = keep.checked ? 1 : 0;
+  var cands = sn.cands;
+  sn.cands = null;                         /* 写真を保存している間に、もう一度押されても二重に入れない */
   var pid = '';
-  if(sn.keep && sn.img){ try{ pid = uid('mi'); await photoPut(pid, sn.img); }catch(e){ pid = ''; } }
-  var res = lfCandsApply(sn.cands, pid);
-  sn.res = res; sn.cands = null;
+  /* 写真をつけられる候補（予定・課題・テスト・バイト・メモ）があるときだけ保存する（レシートだけのときは、つけ先がない） */
+  var canPhoto = cands.some(function(c){ return c.pick && ['event', 'task', 'exam', 'shift', 'memo'].indexOf(c.type) >= 0; });
+  if(sn.keep && sn.img && canPhoto){ try{ pid = uid('mi'); await photoPut(pid, sn.img); }catch(e){ pid = ''; } }
+  var res = lfCandsApply(cands, pid);
+  sn.res = res;
   toast(res.ops.length ? res.ops.length + '件 登録しました' : '登録できませんでした', !res.ops.length);
   commit();
   return res;
@@ -1628,9 +1696,10 @@ kmAction(function(act, t){
     case 'lf-hc-help': lfUi.hcHelp = !lfUi.hcHelp; render(); return true;
     /* 生理周期 */
     case 'lf-p-start':
-      if(lfPrefs().periodSync) lfPeriodToSync();
+      /* この端末だけの記録を同期へ移したら（この端末の置き場は空になる）、ここで必ず保存する */
+      var mv = lfPrefs().periodSync ? lfPeriodToSync() : 0;
       var pl = lfPeriods(), last = pl[pl.length - 1], dn = last ? daysBetween(last.start, today()) : null;
-      if(last && !isYmd(last.end) && dn >= 0 && dn <= 10){ toast('もう記録しています（' + lfMd(last.start) + 'から）'); return true; }
+      if(last && !isYmd(last.end) && dn >= 0 && dn <= 10){ if(mv) commit(); toast('もう記録しています（' + lfMd(last.start) + 'から）'); return true; }
       lfPeriodPut({ start:today(), flow:2 }); toast('記録しました'); commit(); return true;
     case 'lf-p-end':
       var pl2 = lfPeriods().filter(function(x){ return !isYmd(x.end) && x.start <= today() && daysBetween(x.start, today()) <= 14; });
@@ -1753,6 +1822,11 @@ document.addEventListener('change', function(e){
   if(!t) return;
   if(t.id === 'lf_ld'){ lfUi.logDate = t.value; render(); return; }
   if(t.id === 'lf_xitem' && lfUi.xf){ lfXfRead(); return; }
+  if(t.classList && t.classList.contains('lf-xs-pick') && lfUi.xScan && lfUi.xScan.list){
+    var xs = lfUi.xScan.list[toNum(t.dataset.i)];
+    if(xs) xs.pick = t.checked ? 1 : 0;       /* 描き直してもチェックが消えないように */
+    return;
+  }
   if(t.classList && t.classList.contains('lf-pick')){
     var list = t.dataset.p === 'v' ? (lfUi.voice && lfUi.voice.cands) : (lfUi.snap && lfUi.snap.cands);
     var c = list && list[toNum(t.dataset.i)];
@@ -1975,5 +2049,9 @@ kmCheck(function(){
 /* 起動したら：同期する設定なら、この端末だけの記録を同期へ移す（ほかの端末で「同期する」にしたとき） */
 setTimeout(function(){
   if(TEST_MODE) return;
-  try{ if(lfPrefs().periodSync && lfPeriodToSync()) commit(); }catch(e){ kmErr('周期の記録', e); }
+  try{
+    var n = lfPeriodReenc();
+    if(lfPrefs().periodSync) n += lfPeriodToSync();
+    if(n) commit();
+  }catch(e){ kmErr('周期の記録', e); }
 }, 8000);

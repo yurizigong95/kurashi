@@ -170,7 +170,7 @@ KT.test('生活＋：周期の記録（この端末だけ・予想・言い方�
   eq(moved, 3, '同期へ移した数');
   var mine = A.S.kmItems.filter(function(x){ return x.mod === 'life' && x.type === 'period'; });
   eq(mine.length, 3, '汎用の置き場に入る');
-  ok(JSON.stringify(mine).indexOf(A.shiftDate(td, -24)) < 0 && mine.every(function(x){ return /^b1:/.test(x.enc); }), '中身は読めない形');
+  ok(JSON.stringify(mine).indexOf(A.shiftDate(td, -24)) < 0 && mine.every(function(x){ return /^b2:/.test(x.enc); }), '中身は読めない形');
   eq((JSON.parse(A.localStorage.getItem(A.KEY + ':life')).period || []).length, 0, 'この端末だけの記録は空に');
   ok(A.aiSearchAll('頭痛').count === 0, '手帳ぜんぶの検索にも出ない');
   await KT.settle([A, B]);
@@ -190,6 +190,77 @@ KT.test('生活＋：周期の記録（この端末だけ・予想・言い方�
   /* あとかたづけ */
   lifeClear(A);
   A.lfSet({ periodNotify:0, periodWord:'plain', periodCustom:'' });
+  A.commit();
+  await KT.settle([A, B]);
+});
+
+KT.test('生活＋：周期の同期（AIが戻せない形・前の形も読める・同期をやめて、また同期しても消えない）', async function(){
+  var A = KT.frames().A, B = KT.frames().B, td = A.today();
+  lifeClear(A); A.commit(); await KT.settle([A, B]);
+  A.lfSet({ periodSync:0, periodAi:0 });
+  [-60, -30].forEach(function(n){ A.lfPeriodPut(J(A, { start:A.shiftDate(td, n), end:A.shiftDate(td, n + 4), memo:'lfひみつのメモ' })); });
+  eq(A.lfPeriodSyncSet(1), 2, '同期へ移す');
+  var mine = A.S.kmItems.filter(function(x){ return x.mod === 'life' && x.type === 'period'; });
+  ok(mine.length === 2 && mine.every(function(x){ return /^b2:/.test(x.enc); }), '新しい形（b2）で置く');
+  ok(mine.every(function(x){ var raw = ''; try{ raw = A.atob(x.enc.slice(3)); }catch(e){} return raw.indexOf('start') < 0 && raw.indexOf(A.shiftDate(td, -30)) < 0; }),
+    'base64 を戻しただけでは読めない');
+  var more = JSON.stringify(A.aiSectionData('more'));
+  ok(more.indexOf(A.shiftDate(td, -30)) < 0 && more.indexOf('lfひみつ') < 0, '「AIに見せない」のとき、手帳全体を読む道具でも中身が出ない');
+  ok(A.aiSectionData('health').lfPeriod.hidden, 'AIの数字も出さない');
+  /* 前の形（b1）も読めて、新しい形に置きかえる */
+  A.S.kmItems.push(J(A, { id:'lfp_old1', mt:Date.now(), mod:'life', type:'period', enc:'b1:' + A.btoa('{"start":"' + A.shiftDate(td, -90) + '"}') }));
+  eq(A.lfPeriods().length, 3, '前の形も読める');
+  eq(A.lfPeriodReenc(), 1, '前の形を置きかえる');
+  ok(/^b2:/.test(A.S.kmItems.filter(function(x){ return x.id === 'lfp_old1'; })[0].enc), '置きかえた形');
+  eq(A.lfPeriods()[0].start, A.shiftDate(td, -90), '置きかえても同じ中身');
+  A.commit();
+  await KT.settle([A, B]);
+  eq(B.lfPeriods().length, 3, '相手に届く');
+  /* 同期をやめる → また同期する（前に消した印が残っていても、消えない） */
+  A.lfPeriodSyncSet(0);
+  await KT.settle([A, B]);
+  eq(B.lfPeriods().length, 0, '同期をやめると相手からは消える');
+  eq(A.lfPeriodSyncSet(1), 3, 'もう一度同期へ');
+  await KT.settle([A, B]);
+  eq(A.lfPeriods().length, 3, 'もう一度同期しても、この端末で消えない');
+  eq(B.lfPeriods().length, 3, '相手にもまた届く');
+  ok(A.lfPeriods().every(function(p){ return p.where === 'sync'; }), '同期の置き場に入っている');
+  /* あとかたづけ */
+  lifeClear(A);
+  A.lfSet({ periodSync:0, periodAi:1 });
+  A.commit();
+  await KT.settle([A, B]);
+});
+
+KT.test('生活＋：おやすみ・おはようの日付（起きたあとの昼寝で今日の睡眠を消さない）・ヘルスケアのいろいろな書き方', async function(){
+  var A = KT.frames().A, B = KT.frames().B, td = A.today(), tm = A.shiftDate(td, 1);
+  A.lfLogDel(td); A.lfLogDel(tm);
+  /* 今日もう起きた記録があれば、おやすみは次の日（起きる日）の記録にする */
+  A.lfLogSet(td, { bed:'23:00', wake:'00:00', sleep:420, src:'hand' });
+  eq(A.lfBedKey(), tm, '今日もう起きていたら、おやすみは明日の記録');
+  A.lfGoodnight();
+  eq(A.S.healthLog[td].sleep, 420, 'おやすみを押しても今日の睡眠は消えない');
+  ok(A.lfLog(tm) && /^\d{2}:\d{2}$/.test(A.lfLog(tm).bed), '明日の記録に寝た時刻');
+  /* そのあと起きた（昼寝）→ 今日の睡眠はそのまま、明日の寝た時刻は消す */
+  A.lfLogSet(tm, { bed:A.hhmmOf(A.lfNowMin() - 60), wake:'' });
+  A.lfGoodmorning();
+  eq(A.S.healthLog[td].wake, '00:00', '起きた時刻は変えない');
+  eq(A.S.healthLog[td].sleep, 420, '睡眠時間も変えない');
+  ok(!A.lfLog(tm).bed, '昼寝の寝た時刻は消す');
+  /* ふつうの朝：寝た時刻があって起きた時刻がない */
+  A.lfLogDel(tm);
+  A.lfLogSet(td, { bed:A.hhmmOf(A.lfNowMin() - 400), wake:'', sleep:'' });
+  A.lfGoodmorning();
+  ok(Math.abs(A.S.healthLog[td].sleep - 400) <= 1, 'ふつうの朝は、寝た時刻から計算：' + A.S.healthLog[td].sleep);
+  /* ヘルスケア（ショートカット）の書き方 */
+  var y = A.shiftDate(td, -6);
+  [['7時間30分', 450], ['7:30', 450], ['7:30:00', 450], ['7 hr 30 min', 450], ['450', 450], ['7.5', 450], ['27000', 450], ['6h15m', 375]].forEach(function(c){
+    A.inboxApply(J(A, { kind:'health', date:y, sleep:c[0], at:Date.now() }));
+    eq(A.S.healthLog[y].sleep, c[1], 'ヘルスケアの睡眠「' + c[0] + '」');
+  });
+  A.inboxApply(J(A, { kind:'health', date:y.replace(/-/g, '/'), steps:'5,200歩', at:Date.now() }));
+  eq(A.S.healthLog[y].steps, 5200, '日付が / でも・歩数に「歩」がついていても');
+  [td, tm, y].forEach(function(d){ A.lfLogDel(d); });
   A.commit();
   await KT.settle([A, B]);
 });
@@ -219,7 +290,10 @@ KT.test('生活＋：予防接種・健診（チェック表・手入力・証�
   eq(A.lfUi.xScan.list.length, 2, '読み取った記録');
   A.render();
   doc.querySelector('[data-act="lf-x-scan-add"]').click();
+  doc.querySelector('[data-act="lf-x-scan-add"]').click();      /* 写真の保存を待つ間に、もう一度押す */
   await KT.until(function(){ return A.S.vaccines.length === 3; }, 5000, '写真から入る');
+  await new Promise(function(r){ setTimeout(r, 300); });
+  eq(A.S.vaccines.length, 3, '2回押しても二重に入らない');
   ok(A.S.vaccines.slice(1).every(function(x){ return x.photos.length === 1; }), '証明書の写真がつく');
   var stt = {}; A.lfVaxStatus().forEach(function(x){ stt[x.id] = x.st; });
   ok(stt.measles === 'ok' && stt.rubella === 'ok', 'MRワクチン2回で麻しん・風しんがそろう');
@@ -264,6 +338,13 @@ KT.test('生活＋：寒暖差・花粉・暑さ指数・熱中症警戒アラ�
   ok(pl && pl.names.indexOf('スギ') >= 0 && pl.level === 3 && pl.why.indexOf('風が強い') >= 0, 'スギ：晴れ・風・雨の次の日で多そう');
   ok(A.lfWxRows('2027-03-15', true).some(function(r){ return /花粉/.test(r[2]) && /目安です/.test(r[2]); }), '「目安です」と書く');
   eq(A.lfPollen('2027-12-01'), null, '季節でないときは出さない');
+  /* Open-Meteo は、ない値を null で返す（0℃・晴れ として読まない） */
+  A.lfWx.om = J(A, { time:['2027-03-14', '2027-03-15'], tmax:[18, 20], tmin:[null, 6], code:[1, null], wind:[5, 5], rain:[0, 0] });
+  var t2 = A.lfTempDiff('2027-03-15');
+  ok(t2 && t2.dPrev === 2 && t2.what === '最高気温', 'きのうの最低気温がないときは、最高気温でくらべる：' + JSON.stringify(t2));
+  ok(A.lfPollen('2027-03-15').why.indexOf('晴れ') < 0, '天気がない日を「晴れ」にしない');
+  A.lfWx.om = J(A, { time:['2027-03-15'], tmax:[20], tmin:[null], code:[0], wind:[5], rain:[0] });
+  eq(A.lfTempDiff('2027-03-15'), null, 'その日の最低気温がないときは、寒暖差を出さない');
   A.lfWx.om = om0;
   /* 朝の通知 */
   A.notifySet({ push:1, quiet:0, amTime:'06:45' });
@@ -331,6 +412,19 @@ KT.test('生活＋：声で登録（聞き取れない端末は入力欄・AIで
   eq(A.S.spends.length, nSp, '家計簿も消える');
   doc.querySelector('[data-act="lf-v-close"]').click();
   ok(!A.lfUi.voice, 'とじる');
+  /* バイト：終わりの時刻を言わなかったときも、ここで入れて登録できる */
+  var nSh = A.S.shifts.length;
+  A.lfUi.voice = { on:true, text:'', err:'', busy:false, res:null, manual:1, cands:A.lfCands(J(A, { type:'shift', date:sd(2), time:'17:00' })) };
+  eq(A.lfUi.voice.cands.length, 1, '1つだけ（配列でない）答えも候補にする');
+  A.render();
+  var en = doc.querySelector('.lf-ce[data-p="v"][data-i="0"][data-f="end"]');
+  ok(en, 'バイトの終わりの時刻の欄');
+  en.value = '21:00';
+  doc.querySelector('[data-act="lf-v-add"]').click();
+  ok(A.S.shifts.length === nSh + 1 && A.S.shifts.some(function(w){ return w.date === sd(2) && w.start === '17:00' && w.end === '21:00'; }), 'バイトに入る');
+  doc.querySelector('[data-act="lf-v-undo"]').click();
+  eq(A.S.shifts.length, nSh, '取り消せる');
+  A.lfUi.voice = null; A.render();
 });
 
 KT.test('生活＋：撮るだけで登録（レシート・プリント・名刺→候補・シフト表は前からの読み取りへ）', async function(){
@@ -359,8 +453,11 @@ KT.test('生活＋：撮るだけで登録（レシート・プリント・名�
   eq(A.lfUi.snap.cands.length, 3, '3つの候補');
   A.render();
   doc.querySelector('[data-act="lf-s-add"]').click();
+  doc.querySelector('[data-act="lf-s-add"]').click();            /* 写真の保存を待つ間に、もう一度押す */
   await KT.until(function(){ return A.lfUi.snap && A.lfUi.snap.res; }, 5000, '登録');
-  var tk = A.S.tasks.filter(function(t){ return t.title === 'lf看護過程レポート'; })[0];
+  await new Promise(function(r){ setTimeout(r, 300); });
+  var tks = A.S.tasks.filter(function(t){ return t.title === 'lf看護過程レポート'; }), tk = tks[0];
+  eq(tks.length, 1, '2回押しても二重に入らない');
   ok(tk && tk.photos.length === 1, '課題に写真がつく');
   eq(A.S.holidays.length, nHo + 1, '休講が時間割の変更に入る');
   eq(A.S.notes.length, nNt + 1, '名刺はメモに');

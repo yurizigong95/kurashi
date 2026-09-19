@@ -356,6 +356,22 @@ KT.test('暗記＋：ひっかけ問題（にせAI）を解いて、なぜひっ
   A.studyTool = ''; A.appId = 'today'; A.render();
 });
 
+KT.test('暗記＋：ひっかけ問題のAIの答えが少しおかしくても、正解の番号がずれない', async function(){
+  var A = KT.frames().A;
+  var r = A.ak2TrapClean({ questions:[
+    { type:'mc', q:'空の選択肢がある', choices:['あ', '', 'う', 'え'], answer:2 },
+    { type:'mc', q:'答えが文字', choices:['あ', 'い', 'う', 'え'], answer:'う' },
+    { type:'mc', q:'答えが小数', choices:['あ', 'い', 'う', 'え'], answer:1.5 },
+    { type:'mc', q:'答えが空の選択肢', choices:['あ', '', 'う', 'え'], answer:1 },
+    { type:'tf', q:'○×', answer:'×' }
+  ] }, 10);
+  eq(r.length, 3, 'おかしい問題は入れない');
+  eq(r[0].choices.join('/'), 'あ/う/え', '空の選択肢は使わない');
+  eq(A.ak2TrapAnswerText(r[0]), 'う', '空の選択肢を捨てても正解がずれない');
+  eq(A.ak2TrapAnswerText(r[1]), 'う', '答えを文字で返しても使える');
+  eq(r[2].type + ':' + r[2].answer, 'tf:false', '○×');
+});
+
 KT.test('暗記＋：Ankiに書き出し（タブ区切り・ヘッダつき）・Ankiから取りこみ（見てから追加）', async function(){
   var A = KT.frames().A, B = KT.frames().B, doc = A.document;
   KT.freshWrites([A, B]);

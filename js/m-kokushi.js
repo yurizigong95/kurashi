@@ -14,7 +14,7 @@
    ・S.abbrs    … { id, mt, abbr, full, yomi, ja, desc, src, url }
    ・S.anatomy  … { id, mt, title, img:写真のid, holes:[{ x, y, w, h（0〜1の割合）, ans }], src }
    ・S.kmItems  … mod:'kokushi' ／ type:'exp'（AIの解説）・'skill'（手順の練習の記録）・'myskill'（自分の手順）
-   ・S.kmData   … 'kokushi:anat' → { 図のid:{ n, ok, at } }（穴うめクイズの最後の結果）
+   ・S.kmData   … 'kokushi:anat' → { 図のid:{ n, ok, at }, mt }（穴うめクイズの最後の結果）
    ・S.ui.kokushi … { today:0/1（今日タブの今日の1問）, todayField:'分野id' } */
 
 var KQ_FIELDS = [
@@ -302,12 +302,15 @@ function kqWords(text){
   m.forEach(function(w){ if(!KQ_STOP.test(w) && !seen[w]){ seen[w] = 1; out.push(w); } });
   return out.slice(0, 40);
 }
+/* 患者さんのことが書いてありそうなメモは、AIに送らない */
+var KQ_SECRET = /患者|実習記録|カルテ|受け持ち|受持ち/;
 function kqRelated(text, max){
   var words = kqWords(text), out = [];
   if(!words.length) return out;
   var score = function(s){ var n = 0; words.forEach(function(w){ if(s.indexOf(w) >= 0) n += w.length >= 3 ? 2 : 1; }); return n; };
   (S.notes || []).forEach(function(n){
     if(!n) return;
+    if(KQ_SECRET.test(String(n.title || '') + '\n' + String(n.body || ''))) return;
     var sc = score(String(n.title || '') + '\n' + String(n.body || ''));
     if(sc >= 2) out.push({ kind:'メモ', title:'メモ「' + (n.title || '（題名なし）') + '」', text:String(n.body || '').slice(0, 500), sc:sc });
   });
@@ -319,7 +322,7 @@ function kqRelated(text, max){
   });
   var memos = S.memos || {};
   Object.keys(memos).forEach(function(k){
-    var m = memos[k]; if(!m || !m.text) return;
+    var m = memos[k]; if(!m || !m.text || KQ_SECRET.test(String(m.text))) return;
     var sc = score(String(m.text));
     if(sc >= 2) out.push({ kind:'授業のメモ', title:'授業のメモ「' + k + '」', text:String(m.text).slice(0, 500), sc:sc });
   });
@@ -364,13 +367,26 @@ async function kqAiExplain(qid){
 }
 
 /* ===== 写真から・AIに作らせる（見て選んでから追加） ===== */
+/* 選択肢の頭の番号（「1. 」「1）」「①」「(1)」）だけをとる。「120回/分」「1.5L」のような数字の選択肢はそのまま */
+var KQ_CH_NUM = /^\s*(?:[①-⑳]|[(（][0-9０-９]{1,2}[)）]|[0-9０-９]{1,2}(?:[)）、]|[\.．](?![0-9０-９])))\s*/;
 function kqCleanQs(list, def){
   var seen = {};
   return (Array.isArray(list) ? list : []).map(function(x){
     x = x || {};
-    var c = (Array.isArray(x.choices) ? x.choices : []).map(function(s){ return String(s == null ? '' : s).replace(/^\s*[0-9０-９①-⑨]+[\.．、)）]?\s*/, '').trim().slice(0, 200); }).filter(Boolean).slice(0, 8);
-    var a = (Array.isArray(x.ans) ? x.ans : [x.ans]).map(function(v){ return Number(String(v).replace(/[^0-9]/g, '')) - 1; })
-      .filter(function(i, k, arr){ return i >= 0 && i < c.length && arr.indexOf(i) === k; });
+    /* 空の選択肢を捨てても、正解の番号がずれないように、もとの番号 → 新しい番号 を覚えておく */
+    var c = [], at = {};
+    (Array.isArray(x.choices) ? x.choices : []).forEach(function(s, k){
+      s = String(s == null ? '' : s).replace(KQ_CH_NUM, '').trim().slice(0, 200);
+      if(s && c.length < 8){ at[k] = c.length; c.push(s); }
+    });
+    var nums = [];
+    (Array.isArray(x.ans) ? x.ans : [x.ans]).forEach(function(v){
+      var t = String(v == null ? '' : v);
+      try{ t = t.normalize('NFKC'); }catch(e){}
+      (t.match(/\d+/g) || []).forEach(function(d){ nums.push(Number(d) - 1); });
+    });
+    var a = nums.map(function(i){ return at[i]; })
+      .filter(function(i, k, arr){ return i != null && i >= 0 && i < c.length && arr.indexOf(i) === k; });
     return { f:kqFieldOf(x.field, def), q:String(x.q || x.question || '').trim().slice(0, 600), c:c, a:a,
              e:String(x.exp || x.explanation || '').trim().slice(0, 800), aiAns:x.ansFrom === 'ai' ? 1 : 0, on:1 };
   }).filter(function(x){
@@ -526,7 +542,7 @@ function kqAnswerHtml(q, ok, small){
   h += kqAiExpHtml(q);
   h += '<div class="pillrow kq-acts"><button data-act="kq-card" data-id="' + esc(q.id) + '">🃏 暗記カードにする</button>' +
     '<button data-act="kq-aiexp" data-id="' + esc(q.id) + '"' + (kqState.busy ? ' disabled' : '') + '>' + (busy ? 'AIが考えています…' : '🤖 AIにくわしく解説してもらう') + '</button></div>' +
-    '<p class="note">AIの解説には、手帳のメモ・授業のメモ・暗記カードで関係するものもいっしょに送り、使ったものを出典として出します。</p>';
+    '<p class="note">AIの解説には、手帳のメモ・授業のメモ・暗記カードで関係するものもいっしょに送り、使ったものを出典として出します（「患者」「実習記録」「カルテ」などの言葉があるメモは送りません）。</p>';
   return h;
 }
 function kqAiExpHtml(q){
@@ -1032,8 +1048,9 @@ function kqAnatSaveScore(id, n, ok){
   S.kmData = (S.kmData && typeof S.kmData === 'object') ? S.kmData : {};
   var v = Object.assign({}, kqAnatScore());
   v[id] = { n:n, ok:ok, at:today() };
-  var keys = Object.keys(v);
+  var keys = Object.keys(v).filter(function(k){ return k !== 'mt' && v[k] && typeof v[k] === 'object'; });
   if(keys.length > 60) keys.sort(function(a, b){ return String(v[a].at).localeCompare(String(v[b].at)); }).slice(0, keys.length - 60).forEach(function(k){ delete v[k]; });
+  v.mt = Date.now();                                  /* 同期で、新しい方が残るように（kmData はほかの機能と共用） */
   S.kmData['kokushi:anat'] = v;
   touch('kmData');
 }

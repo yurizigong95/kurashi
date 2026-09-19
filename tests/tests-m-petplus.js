@@ -400,4 +400,81 @@ KT.test('おせわ＋：どのパネル・今日タブも、表示するだけ�
   }
   A.appId = 'today'; A.petPanel = ''; A.render();
 });
+
+KT.test('おせわ＋：2台で同じおさんぽ・卒業を終えても、コインは1回ぶん', async function(){
+  var A = KT.frames().A, B = KT.frames().B;
+  var id = setup(A);
+  A.petUpdate(id, function(o){ o.exp = 150; o.eng = 100; o.sleep = 0; }); A.commit();
+  /* おさんぽ（2台とも、同期する前に「かえる」を押す） */
+  A.S.kmData['petplus:walk'] = J(A, { id:'ppwtwo' + Date.now().toString(36), chara:id, ymd:A.today(), start:Date.now() - 30 * 60000, steps0:-1, bonus:0,
+    route:['park', 'river', 'shops', 'bakery', 'shrine', 'library', 'hospital', 'station'], mt:Date.now() });
+  A.touch('kmData'); A.commit();
+  await KT.settle([A, B]);
+  await KT.until(function(){ return B.ppWalkNow() && B.ppWalkNow().id === A.ppWalkNow().id; }, 20000, 'おさんぽが相手に届く');
+  var c0 = A.petCoins(), n0 = A.ppItems('walk').length;
+  A.ppWalkEnd(); B.ppWalkEnd();
+  var got = A.petCoins() - c0;
+  ok(got > 0, 'コインがふえる');
+  await KT.settle([A, B]);
+  await KT.until(function(){ return A.ppItems('walk').length === B.ppItems('walk').length && B.petCoins() === A.petCoins(); }, 20000, '記録がそろう');
+  eq(A.ppItems('walk').length, n0 + 1, 'おさんぽの記録は1つ');
+  eq(A.petCoins(), c0 + got, 'おさんぽのコインは1回ぶん');
+  /* 卒業（2台とも、同期する前に卒業させる） */
+  A.petUpdate(id, function(o){ o.exp = 700; }); A.commit();
+  await KT.settle([A, B]);
+  await KT.until(function(){ return B.petNow(id) && B.petNow(id).stage === 4; }, 20000, 'マスターが相手に届く');
+  var c1 = A.petCoins(), g0 = A.ppItems('grad').length;
+  var rA = A.confirm, rB = B.confirm;
+  A.confirm = function(){ return true; }; B.confirm = function(){ return true; };
+  try{ A.ppGrad(); B.ppGrad(); }finally{ A.confirm = rA; B.confirm = rB; }
+  await KT.settle([A, B]);
+  await KT.until(function(){ return A.ppItems('grad').length === B.ppItems('grad').length && B.petCoins() === A.petCoins(); }, 20000, '卒業の記録がそろう');
+  eq(A.ppItems('grad').length, g0 + 1, '卒業の記録は1つ');
+  eq(A.petCoins(), c1 + 100, '卒業のお祝いは1回ぶん');
+  A.petUpdate(id, function(o){ o.exp = 20; }); A.commit();
+  await KT.settle([A, B]);
+});
+
+KT.test('おせわ＋：おせわのタブを出していない人には、今日タブでさそわない', async function(){
+  var A = KT.frames().A, B = KT.frames().B;
+  var none = A.charaAllIds().filter(function(c){ return !A.petAll()[c]; })[0];
+  if(!none) return;
+  var keepActive = A.petMeta().active, keepTabs = J(A, A.S.ui.tabs);
+  try{
+    A.petMetaUpdate(function(m){ m.active = none; });
+    var ctx = { ymd:A.today(), isToday:true };
+    ok(/たまごをもらって/.test(A.ppTodayCard(ctx)), 'タブがあれば、さそう');
+    A.S.ui.tabs = keepTabs.map(function(t){ return t[0] === 'pet' ? [t[0], 0] : t; });
+    eq(A.ppTodayCard(ctx), '', 'タブを出していなければ、さそわない');
+  }finally{
+    A.S.ui.tabs = keepTabs;
+    A.petMetaUpdate(function(m){ m.active = keepActive; }); A.commit();
+  }
+  await KT.settle([A, B]);
+});
+
+KT.test('おせわ＋：服とキャラの帽子が二重にならない（めがね・マフラー）', async function(){
+  var A = KT.frames().A;
+  var id = setup(A);
+  var keepHat = (A.S.ui.chara || {}).hat, keepLv = (A.S.ui.chara || {}).level;
+  var megane = /stroke="#5A4A58" stroke-width="2"><circle/, scarf = /stroke="#E0607E" stroke-width="7.5"/;
+  var svgWith = function(wear){ A.petUpdate(id, function(o){ o.exp = 20; o.sleep = 0; o.wear = wear; }); return A.petSvg(id, A.petNow(id), 100); };
+  try{
+    A.charaSet({ hat:'megane', level:4 });
+    eq(A.charaHatNow(), 'megane', 'キャラの帽子（まるめがね）');
+    ok(megane.test(svgWith({})), 'ふだんは、あかちゃんもキャラのめがね');
+    var html = svgWith({ face:'glasses' });
+    ok(/pp-w-glasses/.test(html) && !megane.test(html), 'めがねの服を着ているときは、キャラのめがねをかけない');
+    A.charaSet({ hat:'scarf' });
+    if(A.charaHatNow() === 'scarf'){
+      ok(scarf.test(svgWith({})), 'ふだんは、キャラのマフラー');
+      html = svgWith({ neck:'bowtie' });
+      ok(/pp-w-bowtie/.test(html) && !scarf.test(html), 'くびの服を着ているときは、キャラのマフラーをしない');
+    }
+  }finally{
+    A.charaSet({ hat:keepHat, level:keepLv });
+    A.petUpdate(id, function(o){ o.wear = {}; });
+    A.commit();
+  }
+});
 })();

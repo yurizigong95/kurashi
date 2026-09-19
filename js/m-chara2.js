@@ -3,7 +3,7 @@
    ・セリフのしくみ（場面×性格×口ぐせ）は js/chara-talk.js、性格の型は js/chara-data.js、季節の行事とかざりは js/decor.js
    ・ここでは、設定の画面・今日タブの「キャラのおしゃべり」・声で話しかける・通知の口調・AIの道具への登録 をする
    データ：S.ui.chara（callName 呼び名／chatChara AIそうだんでキャラと話す／weekAi AIが毎週セリフを足す／notifyTalk 通知の口調／voiceOn 読み上げ／voiceAi AIで返事）
-           S.kmData 'chara2:persona:<id>'（性格・口調を直したもの）・'chara2:bond'（話しかけ・なでた・声の回数と出会った日）
+           S.kmData 'chara2:persona:<id>'（性格・口調を直したもの）・'chara2:bond:<端末>'（話しかけ・なでた・声の回数と出会った日。端末ごと。前からの 'chara2:bond' も読む）
            S.charaTalk 'w:<月曜>:<id>'（AIが今週足したセリフ）・'c:<日付>'（AIが作った今日の会話） */
 var c2Ui = { dlg:0 };
 var c2Talk = { q:'', a:'', ai:0, busy:false, listening:false };
@@ -86,7 +86,10 @@ function c2CasualTitle(title){
 }
 function c2JobText(job, force){
   if(!job || (!force && !c2NotifyOn())) return job;
-  var k = charaNow(), o = Object.assign({}, job), id = String(job.id || '');
+  var o = Object.assign({}, job), id = String(job.id || '');
+  /* 「ランダム」のときは、開くたびに子が変わるので、通知ごとに決まった子にする（開くたびに通知の予定を送り直さない） */
+  var cfg = charaCfg();
+  var k = (cfg.mode === 'random' && cfg.friends.length) ? charaById(cfg.friends[ctSeed(id) % cfg.friends.length]) : charaNow();
   var kind = /^d[013]-/.test(id) ? 'd' : /^e1-/.test(id) ? 'e1' : /^e0-/.test(id) ? 'e0' : /^c-/.test(id) ? 'c' : /^am-/.test(id) ? 'am' : '';
   var cas = kind ? c2CasualTitle(job.title) : null;
   o.title = ctTic(k, cas || String(job.title || '')).slice(0, 80);

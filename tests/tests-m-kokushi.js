@@ -294,6 +294,38 @@ KT.test('国試：写真→AI→選んで追加・AIに作らせる・手で入�
   resetState(A);
 });
 
+KT.test('国試：AIの問題の選択肢（数字の選択肢はけずらない・空の選択肢で正解がずれない）', async function(){
+  var A = KT.frames().A;
+  var r = A.kqCleanQs([
+    { q:'数字の選択肢', choices:['20.0', '22.5', '25.0', '27.5'], ans:[3] },
+    { q:'回数の選択肢', choices:['12〜20回/分', '120回/分', '1.5L', '60歳以上'], ans:'2' },
+    { q:'番号つき', choices:['①あ', '(2) い', '3）う', '4. え', '5．お'], ans:['⑤'] },
+    { q:'空の選択肢がある', choices:['あ', '', 'う', 'え'], ans:[3] },
+    { q:'全角の番号', choices:['あ', 'い', 'う', 'え'], ans:['１と３'] }
+  ], 'kiso');
+  eq(r.length, 5, '5問とも使える');
+  eq(r[0].c.join('/'), '20.0/22.5/25.0/27.5', '数字だけの選択肢をけずらない');
+  eq(r[0].a.join(','), '2', '数字の選択肢の正解');
+  eq(r[1].c.join('/'), '12〜20回/分/120回/分/1.5L/60歳以上', '数字ではじまる選択肢をけずらない');
+  eq(r[2].c.join('/'), 'あ/い/う/え/お', '選択肢の頭の番号だけとる');
+  eq(r[2].a.join(','), '4', '①〜⑤の正解');
+  eq(r[3].c.join('/'), 'あ/う/え', '空の選択肢は使わない');
+  eq(r[3].c[r[3].a[0]], 'う', '空の選択肢を捨てても正解がずれない');
+  eq(r[4].a.join(','), '0,2', '全角の数字・「1と3」');
+});
+
+KT.test('国試：AIの解説に、患者さんのことが書いてあるメモは送らない', async function(){
+  var A = KT.frames().A;
+  var now = Date.now();
+  A.S.notes.push(J(A, { id:'nt_kqsec1', title:'バイタルのまとめ', body:'成人の脈拍数の基準は60〜100回/分。頻脈と徐脈。', pinned:0, checks:[], photos:[], link:null, ct:now, mt:now }));
+  A.S.notes.push(J(A, { id:'nt_kqsec2', title:'実習記録', body:'受け持ちの患者さんの脈拍数は110回/分で頻脈。成人の脈拍数の基準は60〜100回/分。', pinned:0, checks:[], photos:[], link:null, ct:now, mt:now }));
+  var rel = A.kqRelated('成人の安静時の脈拍数の基準範囲 頻脈 徐脈');
+  ok(rel.some(function(r){ return r.title === 'メモ「バイタルのまとめ」'; }), 'ふつうのメモは使う');
+  ok(!rel.some(function(r){ return r.title === 'メモ「実習記録」'; }), '患者さんのメモは使わない');
+  A.S.notes = A.S.notes.filter(function(n){ return n.id !== 'nt_kqsec1' && n.id !== 'nt_kqsec2'; });
+  A.persist();
+});
+
 KT.test('国試：AIの解説は、手帳のメモを出典として示す', async function(){
   var A = KT.frames().A, B = KT.frames().B;
   KT.freshWrites([A, B]);
@@ -384,6 +416,7 @@ KT.test('国試：解剖の穴うめを作って解く（タップ・ドラッ�
   }
   ok(A.kqState.anat.end && /4こ中 4こ 正解/.test(text(A)), '結果');
   eq(A.S.kmData['kokushi:anat'][it.id].ok, 4, '結果を覚える');
+  ok(A.S.kmData['kokushi:anat'].mt > 0, '結果に時刻（同期で新しい方が残る）');
   await KT.settle([A, B]);
   ok(B.S.anatomy.some(function(x){ return x.id === it.id && x.holes.length === 4; }), '図が相手に届く');
   ok(B.S.kmData['kokushi:anat'] && B.S.kmData['kokushi:anat'][it.id], '結果が相手に届く');

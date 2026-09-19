@@ -178,7 +178,12 @@ KT.test('総点検：通知の予定・ウィジェットのまとめ・デー�
     if(!(j.at > Date.now() - 60000)) bad.push('時刻 ' + j.id);
   });
   eq(bad.join(','), '', '通知の予定の形');
-  eq(A.canon(jobs), A.canon(jobs2), '2回作っても同じ（送り直しを続けない）');
+  /* ちがうときは、どの通知がちがうかを出す */
+  var byId2 = {}; jobs2.forEach(function(j){ byId2[j.id] = j; });
+  var diff = jobs.filter(function(j){ return A.canon(j) !== A.canon(byId2[j.id]); })
+    .map(function(j){ return j.id + '：' + A.canon(j).slice(0, 160) + ' ≠ ' + A.canon(byId2[j.id] || null).slice(0, 160); });
+  if(jobs.length !== jobs2.length) diff.push('数 ' + jobs.length + '≠' + jobs2.length);
+  eq(diff.join('\n'), '', '2回作っても同じ（送り直しを続けない）');
   var s = JSON.stringify(A.buildSummary());
   ok(s.length < 60000, 'まとめが大きすぎる：' + s.length);
   var cl = A.c9Checks();
@@ -201,5 +206,23 @@ KT.test('総点検：橋わたし（gas/Code.gs）が読めて、アプリが使
   eq(noAct.map(function(a){ return a + '（' + actions[a] + '）'; }).join(','), '', '橋わたしに無い窓口');
   var noGet = Object.keys(gets).filter(function(a){ return src.indexOf("'" + a + "'") < 0; });
   eq(noGet.map(function(a){ return a + '（' + gets[a] + '）'; }).join(','), '', '橋わたしに無いURLの窓口');
+});
+})();
+
+(function(){
+'use strict';
+var ok = KT.ok;
+KT.test('総点検：看護過程の記録は、AIの道具で読むときも患者さんの名前を伏せる', async function(){
+  var A = KT.frames().A;
+  var probe = { id:'km_final_np', mt:Date.now(), mod:'research', type:'nproc', title:'山田花子様の看護過程',
+    data:{ s:'山田花子様（78歳）は「痛い」と話す。電話番号 090-1234-5678' } };
+  A.S.kmItems.push(probe);
+  try{
+    var sec = JSON.stringify(A.aiSectionData('more', { limit:200 }));
+    ok(sec.indexOf('km_final_np') >= 0, '記録そのものは読める');
+    ok(sec.indexOf('山田花子') < 0 && sec.indexOf('090-1234-5678') < 0, '名前・電話番号が見える：' + sec.slice(sec.indexOf('km_final_np') - 20, sec.indexOf('km_final_np') + 200));
+    var hit = JSON.stringify(A.aiSearchAll('看護過程'));
+    ok(hit.indexOf('山田花子') < 0, 'ことばでさがしたときも伏せる');
+  }finally{ A.S.kmItems = A.S.kmItems.filter(function(x){ return x.id !== 'km_final_np'; }); }
 });
 })();

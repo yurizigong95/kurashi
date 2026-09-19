@@ -319,9 +319,22 @@ function c2Persona(id){
   };
 }
 /* なかよし度（おせわ・そうだん・話しかけ・なでた回数・手帳の記録から。保存はしない） */
+/* 回数は端末ごとの記録（'chara2:bond:<端末>'。2台で同時に話しかけても、同期で消えない）を合わせる。前からの 'chara2:bond' もたす */
 function c2BondData(){
-  var v = (S.kmData || {})['chara2:bond'];
-  return (v && typeof v === 'object' && v.c && typeof v.c === 'object') ? v.c : {};
+  var d = S.kmData || {}, out = {};
+  Object.keys(d).forEach(function(key){
+    if(key !== 'chara2:bond' && key.indexOf('chara2:bond:') !== 0) return;
+    var v = d[key];
+    if(!v || typeof v !== 'object' || !v.c || typeof v.c !== 'object') return;
+    Object.keys(v.c).forEach(function(id){
+      var s = v.c[id];
+      if(!s || typeof s !== 'object') return;
+      var o = out[id] || (out[id] = { pats:0, talks:0, voice:0, first:'' });
+      o.pats += toNum(s.pats); o.talks += toNum(s.talks); o.voice += toNum(s.voice);
+      if(isYmd(s.first) && (!o.first || s.first < o.first)) o.first = s.first;
+    });
+  });
+  return out;
 }
 function c2Bond(id){
   id = id || charaNow().id;
@@ -342,13 +355,15 @@ function c2Bond(id){
 function c2BondAdd(id, field){
   id = id || charaNow().id;
   S.kmData = (S.kmData && typeof S.kmData === 'object') ? S.kmData : {};
-  var all = S.kmData['chara2:bond'];
+  var key = 'chara2:bond:' + DEV.id;
+  var first = (c2BondData()[id] || {}).first || '';
+  var all = S.kmData[key];
   var c = Object.assign({}, (all && all.c) || {});
   var o = Object.assign({}, c[id] || {});
   o[field] = toNum(o[field]) + 1;
-  if(!o.first) o.first = today();
+  if(!o.first) o.first = first || today();
   c[id] = o;
-  S.kmData['chara2:bond'] = { c:c, mt:Date.now() };
+  S.kmData[key] = { c:c, mt:Date.now() };
   touch('kmData');
   ctCache = {};
 }
@@ -429,8 +444,9 @@ function c2Ctx(ymd){
         else if(po.hun < 30) add('e-hungry', pv);
         else if(po.cln < 30) add('e-dirty', pv);
         else if(po.joy >= 80) add('e-happy', pv);
-        if(po.born){
-          var bd = toYmd(new Date(Number(po.born))), pn = daysBetween(bd, ymd);
+        /* たんじょうびは、おせわと同じく「たまごから生まれた日」（なければ、もらった日） */
+        if(po.hatch || po.born){
+          var bd = toYmd(new Date(Number(po.hatch || po.born))), pn = daysBetween(bd, ymd);
           if(pn > 0 && (pn % 100 === 0 || bd.slice(5) === ymd.slice(5))) add('n-petbirth', { pet:pv.pet, n:pn });
         }
       }
@@ -459,6 +475,14 @@ function c2Ctx(ymd){
   /* 誕生日・記念日 */
   (Array.isArray(S.annivs) ? S.annivs : []).forEach(function(x){
     if(!x || typeof x !== 'object') return;
+    /* おせわの記念日（js/m-petplus.js）と同じ読み方（2/29・まだ来ていない年・「〇〇の誕生日」） */
+    if(typeof ppAnParse === 'function' && typeof ppAnValid === 'function' && typeof ppAnOn === 'function' && typeof ppAnTitle === 'function'){
+      if(!x.id) return;
+      var ap = ppAnParse(x.date), yy = +ymd.slice(0, 4);
+      if(!ppAnValid(ap) || ppAnOn(ap, yy) !== ymd || (ap.y && yy < ap.y)) return;
+      add('n-anniv', { anniv:String((x.kind === 'birthday' && x.who === 'self') ? 'あなたの誕生日' : ppAnTitle(x)).slice(0, 16) });
+      return;
+    }
     var md = '';
     var dt = String(x.date || x.md || '');
     if(/^\d{4}-\d{2}-\d{2}/.test(dt)) md = dt.slice(5, 10);

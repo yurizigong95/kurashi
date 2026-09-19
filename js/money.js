@@ -95,21 +95,32 @@ function flowCard(){
 /* ===== シフト表の写真から、シフトをまとめて登録 =====
    month … '' なら写真にあるシフトをぜんぶ。'YYYY-MM' なら、1か月の表（何人ぶんも並んだ表）から自分の行だけを読む */
 var shiftOcr = { busy:false, list:null, err:'', month:'' };
-/* 読み取ったシフトと、登録ずみのシフトをくらべる（new … 新しい／same … 同じ／diff … 時間がちがう） */
-function shiftOcrCmp(x){
+/* 登録ずみのシフト w と、読み取ったシフト y が同じか */
+function shiftOcrSame(w, y){ return w.start === y.start && (!w.end || w.end === y.end); }
+/* 読み取ったシフトと、登録ずみのシフトをくらべる（new … 新しい／same … 同じ／diff … 時間がちがう）
+   L … 読み取ったシフトぜんぶ。1日に2回あるとき、写真のほかのシフトと同じ登録を上書きしないように使う */
+function shiftOcrCmp(x, L){
   var on = S.shifts.filter(function(w){ return w.date === x.date; });
-  if(on.some(function(w){ return w.start === x.start && (!w.end || w.end === x.end); })) return { st:'same' };
-  if(on.length) return { st:'diff', old:on.filter(function(w){ return w.start === x.start; })[0] || on[0] };
-  return { st:'new' };
+  if(on.some(function(w){ return shiftOcrSame(w, x); })) return { st:'same' };
+  var pics = (L || []).filter(function(y){ return y.date === x.date; });
+  if(pics.indexOf(x) < 0) pics.push(x);
+  var free = on.filter(function(w){ return !pics.some(function(y){ return shiftOcrSame(w, y); }); });
+  var old = free.filter(function(w){ return w.start === x.start; })[0];
+  /* 始まりがちがうときは、その日の写真のシフトも登録も1つずつのときだけ「時間がちがう」にする */
+  if(!old && free.length === 1 && pics.filter(function(y){ return !on.some(function(w){ return shiftOcrSame(w, y); }); }).length === 1) old = free[0];
+  return old ? { st:'diff', old:old } : { st:'new' };
 }
 function shiftOcrCard(){
   var thisM = thisYm(), nextM = addMonths(thisM, 1), mo = shiftOcr.month || '';
+  /* 月がかわっても、前にえらんだ月が分かるように出しておく */
+  var months = [thisM, nextM];
+  if(mo && months.indexOf(mo) < 0) months.unshift(mo);
   var h = '<div class="field"><label class="f">表の中のあなたの名前（何人分も書いてある表のとき）</label>'+
     '<input id="so_name" value="'+esc(S.settings.shiftName||'')+'" placeholder="例：山田"></div>'+
     '<label class="f">どんな表？</label>'+
     '<div class="pillrow">'+
       '<button data-act="cp-shift-month" data-v="" class="'+(!mo?'on':'')+'">数日ぶんの表</button>'+
-      [thisM, nextM].map(function(ym){
+      months.map(function(ym){
         return '<button data-act="cp-shift-month" data-v="'+ym+'" class="'+(mo===ym?'on':'')+'">'+(+ym.slice(5,7))+'月の1か月の表</button>';
       }).join('')+
     '</div>'+
@@ -117,20 +128,21 @@ function shiftOcrCard(){
     (shiftOcr.err ? '<p class="note" style="color:var(--rakuten)">'+esc(shiftOcr.err)+'</p>' : '');
   if(shiftOcr.list){
     var L = shiftOcr.list;
-    var cnt = { 'new':0, same:0, diff:0 };
-    L.forEach(function(x){ cnt[shiftOcrCmp(x).st]++; });
+    var cnt = { 'new':0, same:0, diff:0 }, used = [];
+    L.forEach(function(x){ var c = shiftOcrCmp(x, L); cnt[c.st]++; if(c.old) used.push(c.old); });
     /* 1か月の表のときは、写真にない登録ずみのシフトも見せる */
     var gone = [];
     if(shiftOcr.listMonth){
-      var inPic = {}; L.forEach(function(x){ inPic[x.date] = 1; });
-      gone = S.shifts.filter(function(w){ return String(w.date).slice(0, 7) === shiftOcr.listMonth && !inPic[w.date]; })
-        .sort(function(a, b){ return String(a.date).localeCompare(String(b.date)); });
+      gone = S.shifts.filter(function(w){
+        return String(w.date).slice(0, 7) === shiftOcr.listMonth && used.indexOf(w) < 0 &&
+          !L.some(function(y){ return y.date === w.date && shiftOcrSame(w, y); });
+      }).sort(function(a, b){ return String(a.date).localeCompare(String(b.date)); });
     }
     h += '<div style="margin-top:12px">'+(L.length
       ? '<label class="f">読み取ったシフト（登録するものにチェック）</label>'+
         '<div class="s2" style="margin-bottom:6px">新しい '+cnt['new']+'件・時間がちがう '+cnt.diff+'件・もう登録ずみ '+cnt.same+'件</div>'+
         L.map(function(x, i){
-          var c = shiftOcrCmp(x);
+          var c = shiftOcrCmp(x, L);
           return '<label class="row cp-so-'+c.st+'" style="gap:8px"><input type="checkbox" class="so-pick" data-i="'+i+'"'+(c.st==='same'?'':' checked')+' style="width:auto">'+
             '<div class="grow"><div class="t">'+ymdLabel(x.date)+'　'+esc(x.start)+'〜'+esc(x.end)+
               (c.st==='new' ? '<span class="b cat" style="margin-left:6px">新しい</span>' : c.st==='diff' ? '<span class="b r2" style="margin-left:6px">ちがう</span>' : '')+'</div>'+
@@ -188,6 +200,8 @@ async function shiftOcrRun(file){
         '・読み取れない日は入れない。', [data], 'shift');
     }
     var list = (r && Array.isArray(r.shifts)) ? r.shifts : (Array.isArray(r) ? r : []);
+    /* 11月31日のような、ない日は入れない */
+    var realDay = function(s){ if(!isYmd(s)) return false; var a = s.split('-'); return toYmd(new Date(+a[0], +a[1] - 1, +a[2])) === s; };
     shiftOcr.list = list.map(function(x){
       x = x || {};
       var d = String(x.date || '');
@@ -196,7 +210,7 @@ async function shiftOcrRun(file){
       if(!isYmd(d) && month && /^\d{1,2}日?$/.test(d.trim())) d = month + '-' + pad(toNum(d));
       var st = looseMinutes(x.start), en = looseMinutes(x.end);
       return { date:d, start: st == null ? '' : hhmmOf(st), end: en == null ? '' : hhmmOf(en), note:String(x.note || '').slice(0, 60) };
-    }).filter(function(x){ return isYmd(x.date) && x.start && x.end && (!month || x.date.slice(0, 7) === month); })
+    }).filter(function(x){ return realDay(x.date) && x.start && x.end && (!month || x.date.slice(0, 7) === month); })
       .filter(function(x, i, a){ return !a.slice(0, i).some(function(y){ return y.date === x.date && y.start === x.start; }); })
       .sort(function(a, b){ return a.date.localeCompare(b.date) || a.start.localeCompare(b.start); });
     shiftOcr.listMonth = month;
@@ -212,11 +226,14 @@ function shiftOcrAdd(){
   var picks = Array.prototype.filter.call(document.querySelectorAll('.so-pick'), function(el){ return el.checked; })
     .map(function(el){ return L[toNum(el.dataset.i)]; }).filter(Boolean);
   if(!picks.length){ toast('登録するシフトにチェックを入れてください', true); return; }
-  var now = Date.now(), n = 0, fixed = 0;
-  picks.forEach(function(x){
-    var c = shiftOcrCmp(x);
+  var now = Date.now(), n = 0, fixed = 0, used = [];
+  /* 直す前に、画面で見せたとおりにくらべておく（同じ登録を2回直さない） */
+  var cs = picks.map(function(x){ return shiftOcrCmp(x, L); });
+  picks.forEach(function(x, i){
+    var c = cs[i];
     if(c.st === 'same') return;
-    if(c.st === 'diff'){
+    if(c.st === 'diff' && used.indexOf(c.old) < 0){
+      used.push(c.old);
       /* 同じ日の登録を、写真の時間に直す（実際に終わった時間・残業は消す） */
       c.old.start = x.start; c.old.end = x.end; c.old.realEnd = ''; c.old.ot = 0;
       if(x.note && !c.old.memo) c.old.memo = x.note;
