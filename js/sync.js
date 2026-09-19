@@ -253,7 +253,7 @@ var SYNC_PARTS = {
   logs:  { keys:['transitLog','trash'], meta:['transitLog','trash'] },
   study: { keys:['cards','studyLog','suggests'], meta:['studyLog'] },     /* おせわの毎日の記録（petDays）は、おせわと同じ maps に入れる（1回の操作で書くかたまりをふやさない） */
   kokushi: { keys:['kqs','kqLog'], meta:['kqLog'] },                      /* 国試の問題は大きいので、ほかと分ける */
-  extra: { keys:['books','vaccines','abbrs','annivs','anatomy','papers','healthLog','examPlan'], meta:['healthLog','examPlan'] }
+  extra: { keys:['books','vaccines','abbrs','annivs','anatomy','papers','healthLog','examPlan','kmItems','kmData'], meta:['healthLog','examPlan','kmData'] }
 };
 function syncSettingsOf(){
   /* どの端末でも同じキーがそろうように、ないものは null にする（合わせたときに古い値が残らない） */

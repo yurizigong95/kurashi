@@ -941,9 +941,10 @@ function pageHidden(page, id){
 /* 足した機能のデータ（どれも同期する）
    一覧（id と mt を持つ）… kqs 国試の問題／books 教科書／vaccines 予防接種・健診／abbrs 自分で足した略語／
                             annivs 誕生日・記念日／anatomy 解剖図の穴うめ／papers 保存した論文
-   表（名前→中身）       … kqLog 国試の答えた記録／healthLog 睡眠・歩数／examPlan テスト範囲の計画 */
-var EXTRA_LISTS = ['kqs','books','vaccines','abbrs','annivs','anatomy','papers'];
-var EXTRA_MAPS = ['kqLog','healthLog','examPlan'];
+   表（名前→中身）       … kqLog 国試の答えた記録／healthLog 睡眠・歩数／examPlan テスト範囲の計画
+   足した機能の汎用の置き場 … kmItems 一覧（{ id, mt, mod:'機能名', type:'種類', … }）／kmData 表（キー＝'機能名:名前'） */
+var EXTRA_LISTS = ['kqs','books','vaccines','abbrs','annivs','anatomy','papers','kmItems'];
+var EXTRA_MAPS = ['kqLog','healthLog','examPlan','kmData'];
 var UI_DEFAULT = { theme:'pink', fs:'m', weather:1,
   tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['anki',1],['study',1],['money',1],['chat',1],['notes',1],['pet',1],['news',0],['risyu',0],['set',1]],
   todayOrder: TODAY_SECTIONS.map(function(x){ return x[0]; }),
@@ -962,8 +963,8 @@ var S = {
   attendLog: {}, grades: {}, holidays: [], biweek: {}, notes: [], notices: [],
   cards: [], studyLog: {}, petDays: {},   /* 暗記カード・勉強した枚数・おせわの毎日の記録 */
   suggests: [],                           /* AIが見つけた課題の候補（見てから追加する） */
-  kqs: [], books: [], vaccines: [], abbrs: [], annivs: [], anatomy: [], papers: [],   /* EXTRA_LISTS */
-  kqLog: {}, healthLog: {}, examPlan: {},                                                /* EXTRA_MAPS */
+  kqs: [], books: [], vaccines: [], abbrs: [], annivs: [], anatomy: [], papers: [], kmItems: [],   /* EXTRA_LISTS */
+  kqLog: {}, healthLog: {}, examPlan: {}, kmData: {},                                         /* EXTRA_MAPS */
   termsList: null, termId: '2026-2', termsDone: {},
   transit: { sannomiyaTransfer:10, workBuffer:10, fav:[], custom:{ busGo:[], trainGo:[], trainBack:[], busBack:[], busWork:[] } },
   attend: {}, terms: { first:{} },

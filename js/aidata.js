@@ -23,6 +23,7 @@ var AI_SECTIONS = [
   { id:'transit',   name:'通学・交通',       keys:['transit','transitLog'] },
   { id:'reviews',   name:'ふりかえり',       keys:['dayReview','weekReview'] },
   { id:'anniv',     name:'誕生日・記念日',   keys:['annivs'] },
+  { id:'more',      name:'足した機能の記録（生理周期・シフト希望・おせわの図鑑 など）', keys:['kmItems','kmData'] },
   { id:'ai',        name:'AIとの相談の記録', keys:['chat','chatRooms','chatMeta','chatQuick','aiMemo','aiFeedback','aiLog','aiUse'] },
   { id:'settings',  name:'設定（カギはのぞく）', keys:['settings','ui','cloud'] },
   { id:'trash',     name:'ゴミ箱（30日）',   keys:['trash'] }
