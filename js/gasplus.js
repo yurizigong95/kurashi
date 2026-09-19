@@ -41,7 +41,7 @@ async function gasPairClaim(code){
   var r = await gasCallOpen(url, { action:'pairClaim', code:code });
   GAS.url = url; GAS.token = r.token; GAS.user = ''; saveGas();
   var p = await gasCall('ping');
-  GAS.user = p.user || 'OK'; GAS.ver = p.ver || 0; GAS.trigger = p.trigger ? 1 : 0; GAS.ai = p.ai ? 1 : 0; saveGas();
+  GAS.user = p.user || 'OK'; GAS.ver = p.ver || 0; GAS.api = p.api || 0; GAS.trigger = p.trigger ? 1 : 0; GAS.ai = p.ai ? 1 : 0; saveGas();
   return p;
 }
 
@@ -55,6 +55,7 @@ async function gfeatPush(){
   var f = gfeat(), np = (typeof notifyPrefs === 'function') ? notifyPrefs() : {};
   await gasCall('featSet', { feat:{ mailCard:f.mailCard, mailUnkou:f.mailUnkou, lec:f.lec, gnFolder:f.gnFolder, gnOnly:f.gnOnly, uniDomain:f.uniDomain,
     discord:np.discord ? 1 : 0, push:np.push === 0 ? 0 : 1, quiet:np.quiet === 0 ? 0 : 1,
+    dcWeek:(typeof l2Prefs === 'function' && l2Prefs().dcWeek) ? 1 : 0,          /* 日曜の夜に来週のまとめを Discord へ（js/m-links2.js） */
     courses:termCourses().map(function(c){ return c.name; }) } });
 }
 
@@ -142,6 +143,11 @@ function gasPlusSettings(){
       '上の「プログラムをコピー」と「設定ファイルをコピー」で貼り直して、「デプロイ」→「デプロイを管理」→ ✏️ →「新バージョン」→「デプロイ」。' +
       'Gmailを読む許可とスプレッドシートの許可が新しく聞かれます。</span></div>';
     return h;
+  }
+  if(toNum(GAS.api) < 4){
+    h += '<div class="bn amber" style="margin-top:12px"><span class="ic">!</span><span>橋わたしの新しい版があります（窓口の版 4。いまは ' + (toNum(GAS.api) || 3) + '）。' +
+      '貼り直すと、手書きノートの検索・Discordのボット・Siri／Apple Watch・リマインダー・ウィジェットの色が使えます。' +
+      '上の「プログラムをコピー」で貼り直して、「デプロイを管理」→ ✏️ →「新バージョン」→「デプロイ」。</span></div>';
   }
   var f = gfeat();
   h += '<label class="f" style="margin-top:14px">Gmail（読むだけ）</label><div class="pillrow">' +

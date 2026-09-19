@@ -11,6 +11,9 @@
  *  ・カードの利用メール → 家計簿、運行情報メール → 通知（Gmailは読むだけ）
  *  ・Goodnotesのノート・講義資料・ショートカットで送った写真を、AI（Gemini）で読んで、暗記カード・メモ・課題の候補にする
  *  ・家計簿・バイト・成績をスプレッドシートに書き出す
+ *  ・Siri・Apple Watch・リマインダーのショートカットに答える（明日の1限・次の予定・まだの課題）
+ *  ・Discordのボット（チャンネルに書いたことに答える・日曜の夜に来週のまとめ）
+ *  ・Goodnotesの手書きノートを、ドライブの全文検索でさがす
  * 下の TOKEN（合言葉）を知っている人だけが使えます。
  */
 var TOKEN = 'ここに合言葉';
@@ -23,6 +26,7 @@ var KEEP_BACKUPS = 12;          // バックアップは新しい12個だけ残�
 var BATCH = 40;                 // 1回に直す予定の数（時間切れを防ぐ）
 var TZ = 'Asia/Tokyo';
 var VER = 3;
+var API = 4;                    // 窓口の版。4 … 手書きノートの検索・Discordボット・Siri/Apple Watch/リマインダーの窓口・ウィジェットの色
 var INBOX_FOLDER_NAME = '受け取り';            // ショートカットで送った写真（バックアップのフォルダの中）
 var LECTURE_FOLDER_NAME = 'くらしの手帳 講義資料'; // ここに入れたPDF・写真から暗記カードを作る
 var SHEET_NAME = 'くらしの手帳 記録';
@@ -74,6 +78,12 @@ function doPost(e){
       case 'aiKeySet':      return out_(aiKeySet_(req.key, req.model));
       case 'sheetSync':     return out_(sheetSync_(req.sheets || {}));
       case 'scanNow':       return out_(scanNow_(req.what));
+      case 'gnSearch':      return out_(gnSearch_(req.q));
+      case 'dcBotSet':      return out_(dcBotSet_(req.bot));
+      case 'dcBotChannels': return out_(dcBotChannels_());
+      case 'dcBotUse':      return out_(dcBotUse_(req.channel));
+      case 'askTest':       return out_({ ok:true, text:ask_(req.q, { locked:true }) });
+      case 'remindersReset':return out_(remindersReset_());
       case 'proxyGet':      return out_(proxyGet_(req.url, req.enc));
       case 'deeplKeySet':   return out_(deeplKeySet_(req.key));
       case 'translate':     return out_(translate_(req.text, req.target));
@@ -97,6 +107,10 @@ function doGet(e){
   if(p.a === 'widget') return out_(widget_());
   if(p.a === 'alarm') return out_(alarm_());
   if(p.a === 'ics') return icsGet_();
+  /* Siri・Apple Watch・リマインダー（ショートカットが読む。ふつうは文字で返す。&fmt=json なら JSON） */
+  if(p.a === 'next') return text_(next_(), p.fmt);
+  if(p.a === 'ask') return text_(ask_(p.q, { from:'siri' }), p.fmt);
+  if(p.a === 'reminders') return reminders_(p);
   if(p.a === 'in'){
     var lock = LockService.getScriptLock();
     try{ lock.waitLock(20000); return out_(inboxAdd_(p)); }
@@ -113,9 +127,15 @@ function ping_(){
   var p = props_();
   var err = null; try{ err = JSON.parse(p.getProperty('EXTRA_ERR') || 'null'); }catch(e){}
   return { ok:true, user: Session.getEffectiveUser().getEmail(), calendar: cal.getName(), tz: TZ,
-           ver: VER, trigger: hasTrigger_(), shortKey: !!p.getProperty('SHORT_KEY'),
+           ver: VER, api: API, trigger: hasTrigger_(), shortKey: !!p.getProperty('SHORT_KEY'),
            discord: !!p.getProperty('DISCORD_URL'), devices: pushDevices_().length,
-           ai: !!p.getProperty('GEMINI_KEY'), sheet: p.getProperty('SHEET_ID') ? 1 : 0, feat: feat_(), err: err };
+           ai: !!p.getProperty('GEMINI_KEY'), sheet: p.getProperty('SHEET_ID') ? 1 : 0, feat: feat_(), err: err,
+           dcBot: dcBotInfo_() };
+}
+/* 文字で返す（ショートカット・Siri 用）。fmt=json なら { ok, text } */
+function text_(s, fmt){
+  if(fmt === 'json') return out_({ ok:true, text:String(s || '') });
+  return ContentService.createTextOutput(String(s || '')).setMimeType(ContentService.MimeType.TEXT);
 }
 
 /* ===================== ほかの端末をつなぐ（6けたのコード・10分・5回まで） ===================== */
@@ -152,7 +172,7 @@ function featSet_(f){
   var o = { mailCard:f.mailCard ? 1 : 0, mailUnkou:f.mailUnkou ? 1 : 0, discord:f.discord ? 1 : 0, push:f.push === 0 ? 0 : 1,
             lec:f.lec ? 1 : 0, gnFolder:clip_(f.gnFolder, 60).trim(), gnOnly:clean(f.gnOnly, 10, 30),
             uniDomain:/^[a-z0-9.\-]{3,60}$/i.test(String(f.uniDomain || '')) ? String(f.uniDomain).toLowerCase() : '',
-            courses:clean(f.courses, 60, 60), quiet:f.quiet === 0 ? 0 : 1 };
+            courses:clean(f.courses, 60, 60), quiet:f.quiet === 0 ? 0 : 1, dcWeek:f.dcWeek ? 1 : 0 };
   props_().setProperty('FEAT', JSON.stringify(o));
   if(!hasTrigger_()) setup_();
   return { ok:true, feat:o };
@@ -474,6 +494,9 @@ function extras_(){
   if(running && now - running < 6 * 60000) return;            // 前の回がまだ動いている
   p.setProperty('EXTRA_RUN', String(now));
   try{
+    /* Discordのボット（聞かれたことに答える）・日曜の夜の「来週のまとめ」 */
+    try{ dcBotPoll_(); }catch(e){ extraErr_('Discordボット', e); }
+    try{ weekSend_(f); }catch(e){ extraErr_('週のまとめ', e); }
     if((f.mailCard || f.mailUnkou || f.uniDomain) && now - (Number(p.getProperty('MAIL_AT')) || 0) >= 10 * 60000){
       p.setProperty('MAIL_AT', String(now));
       try{ mailScan_(f, false); }catch(e){ extraErr_('Gmail', e); }
@@ -916,13 +939,331 @@ function widget_(){
   var s = bigGet_('summary', null);
   if(!s) return { ok:false, error:'まだアプリからまとめが届いていません' };
   return { ok:true, at:s.at, title:s.title || '', lines:s.lines || [], next:s.next || null, money:s.money || '', chara:s.chara || '',
-           tomorrow:s.tomorrow || null, study:s.study || null };
+           tomorrow:s.tomorrow || null, study:s.study || null, l2:s.l2 || null, pet:s.pet || null };
 }
 function alarm_(){
   var s = bigGet_('summary', null);
   var a = s && s.alarm;
   if(!a) return { ok:true, time:'', label:'', date:'' };
   return { ok:true, time:a.time || '', label:a.label || '', date:a.date || '', hour:a.hour, minute:a.minute };
+}
+
+/* ===================== Siri・Apple Watch・Discordボット・リマインダー（アプリが送ったまとめ s.l2 から答える） =====================
+   s.l2 = { day, todo:[{ id, t:題, s:科目, d:締切, tm, n:あと何日, c:色 }], cls:{ 'YYYY-MM-DD':[{ p:時限, n:科目, r:教室, st, en, off }] },
+            items:[{ d, tm, t, k }], work:[{ d, st, en }], exams:[{ d, tm, t, r }], money:{ ym, free, out }, anki:{ due, today, streak },
+            pet:{ name, stage, hun, joy, cln, say } } */
+var WD_ = ['日', '月', '火', '水', '木', '金', '土'];
+function jst_(t){
+  var d = new Date((t == null ? Date.now() : t) + 9 * 3600000);
+  return { ymd:d.getUTCFullYear() + '-' + pad2_(d.getUTCMonth() + 1) + '-' + pad2_(d.getUTCDate()),
+           hm:pad2_(d.getUTCHours()) + ':' + pad2_(d.getUTCMinutes()), h:d.getUTCHours(), dow:d.getUTCDay() };
+}
+function ymdAdd_(ymd, n){
+  var a = String(ymd).split('-'), d = new Date(Date.UTC(+a[0], +a[1] - 1, +a[2] + n));
+  return d.getUTCFullYear() + '-' + pad2_(d.getUTCMonth() + 1) + '-' + pad2_(d.getUTCDate());
+}
+function md_(ymd){
+  var a = String(ymd).split('-'), d = new Date(Date.UTC(+a[0], +a[1] - 1, +a[2]));
+  return Number(a[1]) + '/' + Number(a[2]) + '（' + WD_[d.getUTCDay()] + '）';
+}
+function l2_(){ var s = bigGet_('summary', null); return (s && s.l2) || null; }
+function clsLine_(c){ return c.p + '限 ' + c.n + (c.r ? '（' + c.r + '）' : ''); }
+function yen_(n){ return '¥' + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+/* その日の授業と予定（時刻の順） */
+function dayList_(l2, ymd){
+  var out = [];
+  ((l2.cls || {})[ymd] || []).forEach(function(c){ if(!c.off) out.push({ tm:c.st || '', t:clsLine_(c) }); });
+  (l2.items || []).forEach(function(x){ if(x.d === ymd) out.push({ tm:x.tm || '', t:x.t }); });
+  return out.sort(function(a, b){ return (a.tm || '99:99') < (b.tm || '99:99') ? -1 : (a.tm || '99:99') > (b.tm || '99:99') ? 1 : 0; });
+}
+function next_(){
+  var l2 = l2_();
+  if(!l2) return 'まだアプリからまとめが届いていません。アプリを開いてください。';
+  var now = jst_(), list = [];
+  [0, 1, 2].forEach(function(k){
+    var d = ymdAdd_(now.ymd, k);
+    dayList_(l2, d).forEach(function(x){ if(x.tm && (k > 0 || x.tm >= now.hm)) list.push({ d:d, tm:x.tm, t:x.t }); });
+  });
+  if(!list.length) return 'この先2日、時刻の決まった予定はありません。';
+  var lab = function(x){ return (x.d === now.ymd ? '' : x.d === ymdAdd_(now.ymd, 1) ? '明日 ' : md_(x.d) + ' ') + x.tm + ' ' + x.t; };
+  return '次は ' + lab(list[0]) + (list[1] ? '\nそのあと ' + lab(list[1]) : '');
+}
+function askHelp_(){
+  return ['できること（ことばを送ってください）：', '・明日／今日 … 予定と授業', '・明日の1限 … その時間の授業', '・次 … 次の予定',
+    '・課題／今日の課題 … 締切', '・テスト … 今週のテスト', '・バイト … 次のシフト', '・お金 … 今月のお金', '・暗記 … 復習の枚数',
+    '・おせわ … 育てている子のようす', '・来週 … 来週のまとめ', '・課題：レポート 10/3 … 課題を足す', '・メモ：〇〇 … メモを足す'].join('\n');
+}
+function askAddTask_(s, opt){
+  s = String(s || '').trim();
+  var due = '', now = jst_(), m;
+  var okd = function(y, mo, d){ mo = Number(mo); d = Number(d); return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? y + '-' + pad2_(mo) + '-' + pad2_(d) : ''; };
+  if((m = /(\d{4})[\-\/年](\d{1,2})[\-\/月](\d{1,2})日?/.exec(s))){ due = okd(m[1], m[2], m[3]); s = s.replace(m[0], ' '); }
+  else if((m = /(\d{1,2})\s*[\/月]\s*(\d{1,2})\s*日?/.exec(s))){
+    var y = Number(now.ymd.slice(0, 4));
+    due = okd(y, m[1], m[2]);
+    if(due && due < ymdAdd_(now.ymd, -60)) due = okd(y + 1, m[1], m[2]);
+    s = s.replace(m[0], ' ');
+  }
+  else if(/明日|あした/.test(s)){ due = ymdAdd_(now.ymd, 1); s = s.replace(/明日|あした/, ' '); }
+  else if(/今日|きょう/.test(s)){ due = now.ymd; s = s.replace(/今日|きょう/, ' '); }
+  s = s.replace(/(までに|まで|締切|しめきり)\s*$/, '').replace(/^[\s、,。]+|[\s、,。]+$/g, '').replace(/\s{2,}/g, ' ');
+  if(!s) return '課題の名前が分かりませんでした。「課題：レポート 10/3」のように送ってください。';
+  inboxPush_({ kind:'task', text:clip_(s, 200), due:due }, !!(opt && opt.locked));
+  return '課題「' + s + '」' + (due ? '（締切 ' + md_(due) + '）' : '') + 'を預かりました。アプリを開くと入ります。';
+}
+function askPeriod_(l2, day, p, td){
+  var lab = day === td ? '今日' : day === ymdAdd_(td, 1) ? '明日' : md_(day);
+  var cls = (l2.cls || {})[day];
+  if(!cls) return lab + 'の授業は、まだ分かりません（アプリを開くと新しくなります）。';
+  var on = cls.filter(function(c){ return !c.off; });
+  var c = cls.filter(function(x){ return Number(x.p) === p; })[0];
+  if(!on.length && !c) return lab + 'は授業がありません。';
+  if(!c) return lab + 'の' + p + '限は、授業がありません（' + lab + 'は ' + on.map(function(x){ return x.p + '限'; }).join('・') + ' があります）。';
+  if(c.off) return lab + 'の' + p + '限の' + c.n + 'は、' + (c.off === 'cancel' ? '休講' : c.off === 'holiday' ? '祝日でお休み' : '今週はお休み') + 'です。';
+  return lab + 'の' + p + '限は' + c.n + (c.r ? '（' + c.r + '）' : '') + 'です。' + (c.st ? c.st + 'から。' : '');
+}
+function askDay_(l2, ymd, lab){
+  var list = dayList_(l2, ymd).map(function(x){ return '・' + (x.tm ? x.tm + ' ' : '') + x.t; });
+  (l2.todo || []).forEach(function(x){ if(x.d === ymd) list.push('・締切 ' + x.t + (x.tm ? '（' + x.tm + 'まで）' : '')); });
+  if(!list.length) return lab + '（' + md_(ymd) + '）は、予定も授業もありません。';
+  return lab + '（' + md_(ymd) + '）：\n' + list.slice(0, 15).join('\n');
+}
+function askTasksToday_(l2, td){
+  var list = (l2.todo || []).filter(function(x){ return x.d && x.d <= td; });
+  if(!list.length) return '今日までの課題はありません。';
+  return '今日までの課題は' + list.length + 'つ：\n' + list.slice(0, 10).map(function(x){
+    return '・' + x.t + (x.d < td ? '（期限切れ ' + md_(x.d) + '）' : x.tm ? '（今日 ' + x.tm + 'まで）' : '（今日まで）');
+  }).join('\n');
+}
+function askDue_(l2){
+  var list = (l2.todo || []).filter(function(x){ return x.d; });
+  var none = (l2.todo || []).length - list.length;
+  if(!list.length) return '締切のある課題はありません。' + (none ? '（締切なし ' + none + '件）' : '');
+  return '締切の近い課題：\n' + list.slice(0, 8).map(function(x){
+    var n = Number(x.n);
+    return '・' + md_(x.d) + ' ' + x.t + (n < 0 ? '（期限切れ）' : n === 0 ? '（今日）' : n === 1 ? '（明日）' : '（あと' + n + '日）');
+  }).join('\n') + (list.length > 8 ? '\nほか' + (list.length - 8) + '件' : '') + (none ? '\n（締切なし ' + none + '件）' : '');
+}
+function askExams_(l2){
+  var td = jst_().ymd, end = ymdAdd_(td, 7);
+  var list = (l2.exams || []).filter(function(x){ return x.d >= td && x.d <= end; });
+  if(!list.length){
+    var later = (l2.exams || []).filter(function(x){ return x.d > end; })[0];
+    return 'この1週間のテストはありません。' + (later ? '次は ' + md_(later.d) + ' ' + later.t + ' です。' : '');
+  }
+  return 'この1週間のテスト：\n' + list.map(function(x){ return '・' + md_(x.d) + (x.tm ? ' ' + x.tm : '') + ' ' + x.t + (x.r ? '（' + x.r + '）' : ''); }).join('\n');
+}
+function askWork_(l2){
+  var list = l2.work || [];
+  if(!list.length) return '登録されている次のバイトはありません。';
+  return '次のバイトは ' + md_(list[0].d) + ' ' + (list[0].st || '') + (list[0].en ? '〜' + list[0].en : '') + ' です。' +
+    (list.length > 1 ? '\nそのあと：' + list.slice(1, 4).map(function(x){ return md_(x.d) + ' ' + (x.st || ''); }).join('、') : '');
+}
+function askMoney_(l2){
+  var m = l2.money;
+  if(!m) return 'お金のまとめが、まだ届いていません。';
+  return (m.ym ? Number(String(m.ym).slice(5, 7)) + '月' : '今月') + 'に使ったお金は ' + yen_(m.out) + '。' +
+    (m.free != null ? '自由に使えるお金は ' + yen_(m.free) + ' です。' : '');
+}
+function askAnki_(l2){
+  var a = l2.anki;
+  if(!a) return '暗記のまとめが、まだ届いていません。';
+  return '暗記の復習は ' + (Number(a.due) || 0) + '枚 あります。' + (a.today ? '今日は ' + a.today + '枚 やりました。' : '') + (a.streak ? '（' + a.streak + '日連続）' : '');
+}
+function askPet_(l2){
+  var p = l2.pet;
+  if(!p || !p.name) return 'おせわしている子は、まだいません。';
+  return p.name + (p.stage ? '（' + p.stage + '）' : '') + '：おなか ' + p.hun + '・きげん ' + p.joy + '・きれい ' + p.cln + (p.say ? '\n「' + p.say + '」' : '');
+}
+/* 1週間のまとめ（off=1 … 来週の月〜日、0 … 今日から日曜まで） */
+function weekText_(l2, off){
+  l2 = l2 || l2_();
+  if(!l2) return '';
+  var now = jst_(), start = off ? ymdAdd_(now.ymd, ((8 - now.dow) % 7) || 7) : now.ymd;
+  var end = off ? ymdAdd_(start, 6) : ymdAdd_(now.ymd, (7 - now.dow) % 7);
+  var lines = ['📅 ' + md_(start) + '〜' + md_(end)];
+  for(var d = start; d <= end; d = ymdAdd_(d, 1)){
+    var parts = [];
+    var cls = ((l2.cls || {})[d] || []).filter(function(c){ return !c.off; });
+    if(cls.length) parts.push(cls.map(function(c){ return c.p + '限 ' + c.n; }).join('・'));
+    (l2.items || []).forEach(function(x){ if(x.d === d && x.k !== 'task') parts.push((x.tm ? x.tm + ' ' : '') + x.t); });
+    (l2.todo || []).forEach(function(x){ if(x.d === d) parts.push('締切 ' + x.t); });
+    if(parts.length) lines.push(md_(d) + '：' + parts.join('／'));
+  }
+  if(lines.length === 1) lines.push('予定・授業・締切はありません（アプリにない日は出ません）。');
+  var late = (l2.todo || []).filter(function(x){ return x.d && x.d < now.ymd; }).length;
+  if(late) lines.push('⚠ 期限切れの課題 ' + late + '件');
+  if(l2.anki && l2.anki.due) lines.push('📚 暗記の復習 ' + l2.anki.due + '枚');
+  if(l2.money && l2.money.free != null) lines.push('💰 自由に使えるお金 ' + yen_(l2.money.free));
+  return lines.join('\n').slice(0, 1500);
+}
+/* 日曜の20時すぎに、来週のまとめを Discord へ（1週に1回） */
+function weekSend_(f){
+  if(!f || !f.dcWeek) return false;
+  var now = jst_();
+  if(now.dow !== 0 || now.h < 20) return false;
+  var p = props_();
+  if(p.getProperty('WEEK_SENT') === now.ymd) return false;
+  p.setProperty('WEEK_SENT', now.ymd);
+  var text = weekText_(null, 1);
+  if(!text) return false;
+  var title = '📅 来週の予定（くらしの手帳）';
+  if(p.getProperty('DISCORD_URL')) discordSend_(title, text);
+  else{ var bot = dcBot_(); if(bot && bot.channel) dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:('**' + title + '**\n' + text).slice(0, 1900) }); }
+  return true;
+}
+/* 聞かれたことに答える（Siri・Discordボット）。q は「明日の1限は？」のような文、または tomorrow1・due などの合図 */
+function ask_(q, opt){
+  opt = opt || {};
+  var raw = String(q == null ? '' : q).trim();
+  var t = raw;
+  try{ t = t.normalize('NFKC'); }catch(e){}
+  t = t.toLowerCase().replace(/[?？!！。]+$/, '').trim();
+  var m = /^(?:課題|かだい|宿題)\s*[:：]\s*([\s\S]+)$/.exec(raw) || /^(?:課題|宿題)を?(?:追加|たして|足して)\s*[:：]?\s*([\s\S]+)$/.exec(raw);
+  if(m) return askAddTask_(m[1], opt);
+  var mm = /^(?:メモ|めも)\s*[:：]\s*([\s\S]+)$/.exec(raw);
+  if(mm){ inboxPush_({ kind:'memo', text:clip_(mm[1].trim(), 500) }, !!opt.locked); return 'メモを預かりました。アプリを開くと入ります。'; }
+  if(!t || /^(help|へるぷ|ヘルプ|使い方|つかいかた|できること|なにができる|何ができる|\?)$/.test(t)) return askHelp_();
+  var l2 = l2_();
+  if(!l2) return 'まだアプリからまとめが届いていません。アプリを開いてから、もう一度聞いてください。';
+  var td = jst_().ymd, tm = ymdAdd_(td, 1);
+  var code = /^(tomorrow|today)([1-7])$/.exec(t), per = /([1-7])\s*限/.exec(t);
+  if(code || per){
+    var day = code ? (code[1] === 'today' ? td : tm) : (/今日|きょう|本日/.test(t) ? td : /あさって|明後日/.test(t) ? ymdAdd_(td, 2) : tm);
+    return askPeriod_(l2, day, Number(code ? code[2] : per[1]), td);
+  }
+  if(t === 'work' || /バイト|ばいと|シフト|しふと/.test(t)) return askWork_(l2);
+  if(t === 'exams' || /テスト|てすと|試験|しけん/.test(t)) return askExams_(l2);
+  if(t === 'money' || /お金|おかね|予算|いくら|家計/.test(t)) return askMoney_(l2);
+  if(t === 'anki' || /暗記|あんき|復習|ふくしゅう|カード/.test(t)) return askAnki_(l2);
+  if(t === 'pet' || /おせわ|お世話|ペット|ようす|様子|元気/.test(t) || (l2.pet && l2.pet.name && t.indexOf(String(l2.pet.name).toLowerCase()) >= 0)) return askPet_(l2);
+  if(t === 'next' || /次|つぎ|このあと|この後/.test(t)) return next_();
+  if(t === 'week' || /来週|らいしゅう|今週|こんしゅう|1週間|一週間/.test(t)) return weekText_(l2, /今週|こんしゅう/.test(t) ? 0 : 1);
+  if(t === 'tasks' || (/今日|きょう/.test(t) && /課題|かだい|宿題|やること/.test(t))) return askTasksToday_(l2, td);
+  if(t === 'due' || /課題|かだい|宿題|締切|しめきり|〆切|レポート/.test(t)) return askDue_(l2);
+  if(t === 'tomorrow' || /明日|あした|あす/.test(t)) return askDay_(l2, tm, '明日');
+  if(t === 'today' || /今日|きょう|本日|予定/.test(t)) return askDay_(l2, td, '今日');
+  return 'ごめんなさい、分かりませんでした。\n' + askHelp_();
+}
+/* iPhoneのリマインダーへ：まだ終わっていない課題（new=1 … まだ渡していないものだけ。渡したものは覚える） */
+function reminders_(p){
+  p = p || {};
+  var l2 = l2_(), list = ((l2 && l2.todo) || []).slice(), pr = props_();
+  var sent = {};
+  try{ sent = JSON.parse(pr.getProperty('REM_SENT') || '{}') || {}; }catch(e){}
+  if(p['new'] === '1'){
+    list = list.filter(function(x){ return !sent[x.id]; });
+    var now = Date.now();
+    list.forEach(function(x){ sent[x.id] = now; });
+    var keep = {};
+    Object.keys(sent).sort(function(a, b){ return sent[b] - sent[a]; }).slice(0, 300).forEach(function(k){ keep[k] = sent[k]; });
+    pr.setProperty('REM_SENT', JSON.stringify(keep));
+  }
+  var label = function(x){ return x.t + (x.d ? '（' + md_(x.d) + (x.tm ? ' ' + x.tm : '') + 'まで）' : ''); };
+  if(p.fmt === 'text') return text_(list.map(label).join('\n'));
+  return out_({ ok:!!l2, error:l2 ? undefined : 'まだアプリからまとめが届いていません',
+    items:list.map(label), list:list.map(function(x){ return { title:x.t, due:x.d || '', time:x.tm || '', subject:x.s || '' }; }) });
+}
+function remindersReset_(){ props_().deleteProperty('REM_SENT'); return { ok:true }; }
+
+/* ===================== Discordのボット（チャンネルに書いたことに、5分ごとに答える） =====================
+   ウェブフック（通知を送るだけ）とはべつ。ボットのトークンは、この橋わたしにだけ置く。 */
+var DC_API = 'https://discord.com/api/v10';
+function dcBot_(){ try{ return JSON.parse(props_().getProperty('DC_BOT') || 'null'); }catch(e){ return null; } }
+function dcBotInfo_(){ var b = dcBot_(); return b ? { name:b.name || '', channel:b.cname || '', on:b.channel ? 1 : 0 } : null; }
+function dcFetch_(bot, method, path, body){
+  var opt = { method:method, muteHttpExceptions:true, headers:{ Authorization:'Bot ' + bot.token } };
+  if(body){ opt.contentType = 'application/json'; opt.payload = JSON.stringify(body); }
+  var res = UrlFetchApp.fetch(DC_API + path, opt), j = null;
+  try{ j = JSON.parse(res.getContentText() || 'null'); }catch(e){}
+  return { code:res.getResponseCode(), j:j };
+}
+function dcCmp_(a, b){ a = String(a || ''); b = String(b || ''); return a.length !== b.length ? a.length - b.length : (a < b ? -1 : a > b ? 1 : 0); }
+function dcBotSet_(token){
+  token = String(token || '').trim().replace(/^Bot\s+/i, '');
+  if(!token){ props_().deleteProperty('DC_BOT'); return { ok:true, bot:false }; }
+  if(!/^[A-Za-z0-9_\-]{18,40}\.[A-Za-z0-9_\-]{4,10}\.[A-Za-z0-9_\-]{20,80}$/.test(token)) return { ok:false, error:'ボットのトークンの形がちがいます' };
+  var r = dcFetch_({ token:token }, 'get', '/users/@me');
+  if(r.code !== 200 || !r.j || !r.j.id) return { ok:false, error:'Discordにつながりませんでした（トークンを確かめてください・' + r.code + '）' };
+  props_().setProperty('DC_BOT', JSON.stringify({ token:token, id:String(r.j.id), name:clip_(r.j.username, 40), channel:'', cname:'', after:'' }));
+  return { ok:true, bot:true, name:clip_(r.j.username, 40), invite:'https://discord.com/oauth2/authorize?client_id=' + r.j.id + '&scope=bot&permissions=68608' };
+}
+function dcBotChannels_(){
+  var bot = dcBot_();
+  if(!bot) return { ok:false, error:'先にボットのトークンを預けてください' };
+  var g = dcFetch_(bot, 'get', '/users/@me/guilds');
+  if(g.code !== 200 || !Array.isArray(g.j)) return { ok:false, error:'サーバーの一覧を読めませんでした（' + g.code + '）' };
+  var out = [];
+  g.j.slice(0, 5).forEach(function(gd){
+    var c = dcFetch_(bot, 'get', '/guilds/' + gd.id + '/channels');
+    (Array.isArray(c.j) ? c.j : []).forEach(function(ch){ if(ch.type === 0 && out.length < 60) out.push({ id:String(ch.id), name:clip_(ch.name, 60), guild:clip_(gd.name, 60) }); });
+  });
+  return { ok:true, items:out, invite:'https://discord.com/oauth2/authorize?client_id=' + bot.id + '&scope=bot&permissions=68608' };
+}
+function dcBotUse_(channel){
+  var bot = dcBot_();
+  if(!bot) return { ok:false, error:'先にボットのトークンを預けてください' };
+  channel = String(channel || '');
+  if(!channel){ bot.channel = ''; bot.cname = ''; props_().setProperty('DC_BOT', JSON.stringify(bot)); return { ok:true, channel:'' }; }
+  if(!/^\d{15,22}$/.test(channel)) return { ok:false, error:'チャンネルの番号がちがいます' };
+  var ch = dcFetch_(bot, 'get', '/channels/' + channel);
+  if(ch.code !== 200 || !ch.j) return { ok:false, error:'チャンネルを読めませんでした（ボットをサーバーに招待したか確かめてください・' + ch.code + '）' };
+  var last = dcFetch_(bot, 'get', '/channels/' + channel + '/messages?limit=1');
+  bot.channel = channel; bot.cname = clip_(ch.j.name, 60);
+  bot.after = (Array.isArray(last.j) && last.j[0] && last.j[0].id) ? String(last.j[0].id) : '';
+  var hi = dcFetch_(bot, 'post', '/channels/' + channel + '/messages', { content:'くらしの手帳のボットです📒 このチャンネルに「明日」「課題」「ヘルプ」などと書くと、5分以内に答えます。' });
+  if(hi.j && hi.j.id) bot.after = String(hi.j.id);
+  props_().setProperty('DC_BOT', JSON.stringify(bot));
+  return { ok:true, channel:bot.cname };
+}
+function dcBotPoll_(){
+  var bot = dcBot_();
+  if(!bot || !bot.channel) return 0;
+  var r = dcFetch_(bot, 'get', '/channels/' + bot.channel + '/messages?limit=20' + (bot.after ? '&after=' + bot.after : ''));
+  if(r.code !== 200 || !Array.isArray(r.j)){
+    if(r.code === 401 || r.code === 403 || r.code === 404) throw new Error('チャンネルを読めませんでした（' + r.code + '）');
+    return 0;
+  }
+  var list = r.j.slice().sort(function(a, b){ return dcCmp_(a.id, b.id); }), n = 0, after0 = bot.after;
+  list.forEach(function(msg){
+    if(dcCmp_(msg.id, bot.after) > 0) bot.after = String(msg.id);
+    if(!msg.author || msg.author.bot || String(msg.author.id) === String(bot.id) || n >= 5) return;
+    var text = String(msg.content || '').replace(/<@!?\d+>/g, '').trim();
+    if(!text) return;
+    dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:clip_(ask_(text, { from:'discord' }), 1900),
+      message_reference:{ message_id:String(msg.id) }, allowed_mentions:{ parse:[] } });
+    n++;
+  });
+  if(bot.after !== after0) props_().setProperty('DC_BOT', JSON.stringify(bot));
+  return n;
+}
+
+/* ===================== 手書きノート（Goodnotesの自動バックアップ）を、ことばでさがす =====================
+   Googleドライブは、PDF・画像の中の文字も読んで検索できる（手書きは読みとれないこともある）。 */
+function gnSearch_(q){
+  var words = String(q || '').replace(/[\\'"]/g, ' ').split(/[\s　]+/).filter(Boolean).slice(0, 4).map(function(w){ return clip_(w, 30); });
+  if(!words.length) return { ok:false, error:'さがすことばを入れてください' };
+  var name = feat_().gnFolder || 'GoodNotes';
+  var fo = DriveApp.getFoldersByName(name);
+  if(!fo.hasNext()) return { ok:true, items:[], folder:'', none:'「' + name + '」フォルダが見つかりません' };
+  var root = fo.next(), ids = [];
+  var walk = function(folder, depth){
+    if(ids.length >= 40) return;
+    ids.push(folder.getId());
+    if(depth >= 3) return;
+    var sub = folder.getFolders();
+    while(sub.hasNext() && ids.length < 40) walk(sub.next(), depth + 1);
+  };
+  walk(root, 0);
+  var query = words.map(function(w){ return "fullText contains '" + w + "'"; }).join(' and ') + ' and trashed = false and (' +
+    ids.map(function(id){ return "'" + id + "' in parents"; }).join(' or ') + ')';
+  var it = DriveApp.searchFiles(query), out = [];
+  while(it.hasNext() && out.length < 30){
+    var f = it.next();
+    out.push({ id:f.getId(), name:clip_(f.getName(), 120), url:f.getUrl(), updated:f.getLastUpdated().getTime(), mime:String(f.getMimeType() || '') });
+  }
+  out.sort(function(a, b){ return b.updated - a.updated; });
+  return { ok:true, items:out, folder:root.getUrl(), words:words };
 }
 
 /* ===================== Google ToDoリスト ===================== */

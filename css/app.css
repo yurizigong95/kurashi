@@ -1283,13 +1283,18 @@ body[data-theme="dark"] .mini.on{color:#111}
 .wxwarn{margin:0 0 10px}
 .wxwarn a{color:inherit; text-decoration:underline}
 .radarbox{margin-top:10px}
-.radar{position:relative; width:100%; aspect-ratio:6 / 5; overflow:hidden; border-radius:14px; background:#e8ecef; border:1px solid var(--edge)}
-.radar img{position:absolute; display:block; max-width:none; pointer-events:none; -webkit-user-select:none; user-select:none}
+/* 枠は幅いっぱい・縦横 6:5（aspect-ratio を使わず padding で作る。古いiPhoneでも同じ形）。
+   中のタイル・印は、この枠（ふちの線をふくまない）に対する％で置く。ふちの線は ::after でかぶせる */
+.radar{position:relative; width:100%; height:0; padding:0 0 83.3333%; overflow:hidden; border-radius:14px; background:#e8ecef; border:0}
+.radar::after{content:''; position:absolute; left:0; top:0; right:0; bottom:0; border:1px solid var(--edge); border-radius:inherit; pointer-events:none; z-index:4}
+.radar img{position:absolute; display:block; max-width:none; max-height:none; margin:0; padding:0; border:0; pointer-events:none; -webkit-user-select:none; user-select:none}
 .radar img.rn{opacity:.8}
-.rmark{position:absolute; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; pointer-events:none; z-index:2}
-.rmark i{width:12px; height:12px; border-radius:50%; background:#fff; border:3px solid #d03b3b; box-shadow:0 1px 3px rgba(0,0,0,.4)}
-.rmark em{font-style:normal; font-size:10px; font-weight:700; color:#222; background:rgba(255,255,255,.85); border-radius:6px; padding:0 4px; margin-top:2px; white-space:nowrap}
-.rtime{position:absolute; left:8px; top:8px; z-index:3; font-size:12px; font-weight:700; color:#fff; background:rgba(20,20,30,.7); border-radius:8px; padding:2px 8px}
+/* 地点の印：大きさ0の目印の上に、点の中心を合わせる（名前は点の下） */
+.rmark{position:absolute; width:0; height:0; pointer-events:none; z-index:2}
+.rmark i{position:absolute; left:-6px; top:-6px; width:12px; height:12px; box-sizing:border-box; border-radius:50%; background:#fff; border:3px solid #d03b3b; box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.rmark em{position:absolute; left:0; top:8px; -webkit-transform:translateX(-50%); transform:translateX(-50%); font-style:normal; font-size:10px; line-height:1.4; font-weight:700; color:#222; background:rgba(255,255,255,.85); border-radius:6px; padding:0 4px; white-space:nowrap}
+/* 時刻（.rtime は通学の時刻にも使うので、レーダーの中だけにする） */
+.radar .rtime{position:absolute; left:8px; top:8px; z-index:3; font-size:12px; font-weight:700; color:#fff; background:rgba(20,20,30,.7); border-radius:8px; padding:2px 8px}
 #radar_t{width:100%; margin-top:8px; padding:0; border:0; background:none; box-shadow:none}
 .rticks{display:flex; justify-content:space-between; font-size:.68em; color:var(--sub)}
 .rlegend{display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:6px; font-size:.7em}

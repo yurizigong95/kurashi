@@ -156,24 +156,90 @@ async function summaryPush(force){
     LINKS.sumSig = sig; LINKS.sumAt = Date.now();
   }catch(e){ logErr('ウィジェット', e.message); }
 }
-/* Scriptable（無料アプリ）に貼るウィジェットのプログラム */
+/* Scriptable（無料アプリ）に貼るウィジェットのプログラム
+   ・ホーム画面（小・中・大）：予定と、締切の近い課題（今日＝赤・明日＝だいだい・3日以内＝黄・それ以外＝緑）。角におせわの子
+   ・ロック画面（丸・四角・1行）：3日以内の締切の数・次の予定
+   締切の色・ロック画面は、橋わたし v4 が返す l2（アプリのまとめ）を使う。古い橋わたしでは、前と同じ表示になる。 */
 function scriptableCode(){
   return [
     '// くらしの手帳ウィジェット（Scriptable用）',
+    '// ホーム画面（小・中・大）にも、ロック画面（丸・四角・1行）にも置けます',
     'const URL = ' + JSON.stringify(shortUrl('widget')) + ';',
+    'const COL = { red: "#E53935", orange: "#FB8C00", yellow: "#FBC02D", green: "#43A047" };',
+    'const fam = config.widgetFamily || "medium";',
+    'const ink = new Color("#4A2B38"), sub = new Color("#9B7B87");',
     'const w = new ListWidget();',
-    'w.backgroundGradient = (() => { const g = new LinearGradient(); g.colors = [new Color("#FCE4EC"), new Color("#EDE7F6")]; g.locations = [0, 1]; return g; })();',
-    'w.setPadding(12, 14, 12, 14);',
-    'try {',
-    '  const d = await new Request(URL).loadJSON();',
-    '  const t = w.addText("くらしの手帳 " + (d.title || "")); t.font = Font.boldSystemFont(13); t.textColor = new Color("#4A2B38");',
-    '  w.addSpacer(4);',
-    '  const max = config.widgetFamily === "large" ? 8 : config.widgetFamily === "medium" ? 4 : 3;',
-    '  (d.lines || ["予定はありません"]).slice(0, max).forEach(s => { const x = w.addText(s); x.font = Font.systemFont(12); x.textColor = new Color("#4A2B38"); x.lineLimit = 1; });',
-    '  if (d.money && config.widgetFamily !== "small") { w.addSpacer(4); const m = w.addText(d.money); m.font = Font.systemFont(11); m.textColor = new Color("#9B7B87"); }',
-    '  if (d.chara && config.widgetFamily === "large") { w.addSpacer(6); const c = w.addText(d.chara); c.font = Font.italicSystemFont(11); c.textColor = new Color("#9B7B87"); }',
-    '} catch (e) {',
-    '  const x = w.addText("読みこめませんでした"); x.font = Font.systemFont(12);',
+    'let d = null;',
+    'try { d = await new Request(URL).loadJSON(); } catch (e) {}',
+    'const l2 = (d && d.l2) || null;',
+    'const pad = n => String(n).padStart(2, "0");',
+    'const now = new Date(), ymd = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate()), hm = pad(now.getHours()) + ":" + pad(now.getMinutes());',
+    'const todo = l2 ? (l2.todo || []) : [];',
+    'const dated = todo.filter(x => x.d);',
+    '// その日の残りの日数（まとめを作った日からずれていても合うように、今日の日付で数え直す）',
+    'const left = x => Math.round((new Date(x.d + "T00:00:00") - new Date(ymd + "T00:00:00")) / 86400000);',
+    'const colOf = x => { const n = left(x); return n <= 0 ? "red" : n === 1 ? "orange" : n <= 3 ? "yellow" : "green"; };',
+    'const soon = dated.filter(x => left(x) <= 3);',
+    'const nextItem = () => {',
+    '  if (!l2) return (d && d.lines && d.lines[0]) || "";',
+    '  const list = [];',
+    '  [0, 1].forEach(k => {',
+    '    const dd = new Date(now.getTime() + k * 86400000), day = dd.getFullYear() + "-" + pad(dd.getMonth() + 1) + "-" + pad(dd.getDate());',
+    '    ((l2.cls || {})[day] || []).forEach(c => { if (!c.off && c.st && (k > 0 || c.st >= hm)) list.push({ k: k, tm: c.st, t: c.p + "限 " + c.n + (c.r ? "（" + c.r + "）" : "") }); });',
+    '    (l2.items || []).forEach(x => { if (x.d === day && x.tm && (k > 0 || x.tm >= hm)) list.push({ k: k, tm: x.tm, t: x.t }); });',
+    '  });',
+    '  list.sort((a, b) => a.k - b.k || (a.tm < b.tm ? -1 : 1));',
+    '  return list.length ? (list[0].k ? "明日 " : "") + list[0].tm + " " + list[0].t : "";',
+    '};',
+    'if (fam.indexOf("accessory") === 0) {',
+    '  // ロック画面',
+    '  if (fam === "accessoryCircular") {',
+    '    w.addAccessoryWidgetBackground = true;',
+    '    const a = w.addText(String(soon.length)); a.font = Font.boldSystemFont(22); a.centerAlignText();',
+    '    const b = w.addText("締切"); b.font = Font.systemFont(9); b.centerAlignText();',
+    '  } else if (fam === "accessoryInline") {',
+    '    w.addText((nextItem() || "予定なし") + (soon.length ? " ・締切" + soon.length : ""));',
+    '  } else {',
+    '    // 四角（accessoryRectangular）',
+    '    w.addAccessoryWidgetBackground = true;',
+    '    const a = w.addText(nextItem() || "この先の予定なし"); a.font = Font.boldSystemFont(13); a.lineLimit = 2;',
+    '    const b = w.addText(soon.length ? "締切3日以内 " + soon.length + "件：" + soon[0].t : "3日以内の締切なし"); b.font = Font.systemFont(11); b.lineLimit = 1;',
+    '  }',
+    '} else {',
+    '  // ホーム画面：いちばん近い締切の色で、背景を少し染める',
+    '  const top = dated[0], tint = top ? COL[colOf(top)] : null;',
+    '  const g = new LinearGradient(); g.colors = tint ? [new Color(tint, 0.22), new Color("#FFFFFF")] : [new Color("#FCE4EC"), new Color("#EDE7F6")]; g.locations = [0, 1];',
+    '  w.backgroundGradient = g; w.setPadding(12, 14, 12, 14);',
+    '  if (!d || d.ok === false) {',
+    '    const x = w.addText("読みこめませんでした"); x.font = Font.systemFont(12); x.textColor = ink;',
+    '  } else {',
+    '    const head = w.addStack(); head.centerAlignContent();',
+    '    const t = head.addText("くらしの手帳 " + (d.title || "")); t.font = Font.boldSystemFont(13); t.textColor = ink; t.lineLimit = 1;',
+    '    const pet = d.pet || (l2 && l2.pet);',
+    '    if (pet && fam !== "small") {',
+    '      head.addSpacer();',
+    '      const pl = typeof pet === "string" ? pet : ((pet.emoji || pet.icon || "🐣") + " " + (pet.name || ""));',
+    '      const p = head.addText(pl); p.font = Font.systemFont(10); p.textColor = sub; p.lineLimit = 1;',
+    '    }',
+    '    w.addSpacer(4);',
+    '    const nDue = fam === "large" ? 5 : fam === "medium" ? 2 : 3;',
+    '    const nLine = l2 ? (fam === "large" ? 6 : fam === "medium" ? 3 : 0) : (fam === "large" ? 8 : fam === "medium" ? 4 : 3);',
+    '    (d.lines || []).slice(0, nLine).forEach(s => { const x = w.addText(s); x.font = Font.systemFont(12); x.textColor = ink; x.lineLimit = 1; });',
+    '    if (!(d.lines || []).length && nLine) { const x = w.addText("今日の予定はありません"); x.font = Font.systemFont(12); x.textColor = sub; }',
+    '    if (l2) {',
+    '      if (nLine) w.addSpacer(4);',
+    '      dated.slice(0, nDue).forEach(x => {',
+    '        const s = w.addStack(); s.centerAlignContent();',
+    '        const dot = s.addText("●"); dot.font = Font.systemFont(10); dot.textColor = new Color(COL[colOf(x)]);',
+    '        s.addSpacer(4);',
+    '        const n = left(x);',
+    '        const tx = s.addText((n < 0 ? "期限切れ " : n === 0 ? "今日 " : n === 1 ? "明日 " : x.d.slice(5).replace("-", "/") + " ") + x.t); tx.font = Font.systemFont(11); tx.textColor = ink; tx.lineLimit = 1;',
+    '      });',
+    '      if (!dated.length) { const x = w.addText("締切のある課題はありません"); x.font = Font.systemFont(11); x.textColor = sub; }',
+    '    }',
+    '    if (d.money && fam === "large") { w.addSpacer(4); const m = w.addText(d.money); m.font = Font.systemFont(11); m.textColor = sub; }',
+    '    if (d.chara && fam === "large") { w.addSpacer(6); const c = w.addText(d.chara); c.font = Font.italicSystemFont(11); c.textColor = sub; }',
+    '  }',
     '}',
     'w.refreshAfterDate = new Date(Date.now() + 30 * 60 * 1000);',
     'if (config.runsInWidget) Script.setWidget(w); else w.presentMedium();',
@@ -359,8 +425,10 @@ function linksSettings(){
   h += '<h3 class="lk">📱 ホーム画面ウィジェット（Scriptable）</h3>'+
     '<ol class="steps"><li>App Storeで無料アプリ「Scriptable」を入れる</li>'+
     '<li>Scriptableで「＋」→ 下のプログラムを貼り付けて保存 '+copyBtn('プログラムをコピー', scriptableCode())+'</li>'+
-    '<li>ホーム画面を長押し →「＋」→ Scriptable → 大きさを選ぶ → ウィジェットを長押しして「Script」に今のプログラムを選ぶ</li></ol>'+
-    '<p class="note">中身はアプリを開いたとき・予定を直したときに新しくなります（ウィジェットは30分ごとに読みこみ直します）。</p>';
+    '<li>ホーム画面を長押し →「＋」→ Scriptable → 大きさを選ぶ → ウィジェットを長押しして「Script」に今のプログラムを選ぶ</li>'+
+    '<li>ロック画面にも置けます：ロック画面を長押し →「カスタマイズ」→ ロック画面 → 時計の下の枠 → Scriptable（丸・四角・1行）→ 置いたものをタップして「Script」を選ぶ</li></ol>'+
+    '<p class="note">中身はアプリを開いたとき・予定を直したときに新しくなります（ウィジェットは30分ごとに読みこみ直します）。'+
+    '締切の近い課題は色が変わります（今日＝赤・明日＝だいだい・3日以内＝黄・それ以外＝緑）。色・ロック画面・おせわの子は、Google連携を新しい版（v4）にすると出ます。前にコピーした人は、プログラムを貼り直してください。</p>';
 
   /* メモ */
   h += '<h3 class="lk">📝 Siri・ショートカットからメモ</h3>'+
@@ -454,7 +522,7 @@ function linksTick(){
   if(Date.now() - (Number(GAS.pingAt) || 0) > 12 * 3600000){
     GAS.pingAt = Date.now(); saveGas();
     gasCall('ping').then(function(r){
-      GAS.ver = r.ver || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; saveGas();
+      GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; saveGas();
       if(typeof gasUrlShare === 'function'){ gasUrlShare(); persist(); }
       if(r.ver && !r.trigger) return gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); });
     })['catch'](function(e){ logErr('Google連携', e.message); });
