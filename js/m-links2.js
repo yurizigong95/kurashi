@@ -735,6 +735,7 @@ kmAction(function(act, t){
   if(act === 'l2-ping'){
     gasCall('ping').then(function(r){
       GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.pingAt = Date.now(); saveGas();
+      if(typeof gasVerShare === 'function' && gasVerShare()){ persist(); pushRemote(); }
       toast(l2V4() ? '新しい版になっています' : 'まだ前の版のようです（「新バージョン」でデプロイしたか確かめてください）', !l2V4());
       render();
     }, function(e){ toast('つながりませんでした：' + e.message, true); });

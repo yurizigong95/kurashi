@@ -6,9 +6,56 @@ var GASP = { pair:null, busy:false, msg:'' };
 function gasSharedUrl(){ return String((S.cloud && S.cloud.gasUrl) || ''); }
 function gasUrlShare(){
   if(!GAS.url || gasSharedUrl() === GAS.url) return;
+  /* ほかの端末が、もっと新しい橋わたし（貼り直して新しくデプロイしたもの）を配っているときは、上書きしない */
+  var sh = gasVerShared();
+  if(sh && sh.gasUrl && sh.gasUrl !== GAS.url && gasVerOf(sh) > gasVerOf(GAS)) return;
   S.cloud = S.cloud || {};
   S.cloud.gasUrl = GAS.url;
   touch('cloud');
+}
+/* ===== 橋わたしの版も同期で配る =====
+   どこかの端末で貼り直して確かめたら、S.cloud.gasVer に { gasUrl, ver, api } を入れる（新しくなるときだけ書くので、2台で書き合わない）。
+   ほかの端末は、同期でそれを受け取ったら、すぐ自分でも確かめる（前は12時間に1回しか確かめなかった）。
+   「新しいデプロイ」でURLが変わっていたら、同じ合言葉で新しいURLを試して、つながれば移る。 */
+function gasVerOf(o){ return (toNum(o && o.api) || 0) * 1000 + (toNum(o && o.ver) || 0); }
+function gasVerShared(){ var v = S.cloud && S.cloud.gasVer; return (v && typeof v === 'object' && !Array.isArray(v)) ? v : null; }
+function gasVerShare(){
+  if(!GAS.url || !(toNum(GAS.ver) > 0)) return false;
+  var sh = gasVerShared();
+  if(sh && gasVerOf(sh) >= gasVerOf(GAS)) return false;
+  S.cloud = S.cloud || {};
+  S.cloud.gasVer = { gasUrl:GAS.url, ver:toNum(GAS.ver), api:toNum(GAS.api) || 0, mt:Date.now() };   /* mt … 同期で合わせるとき、新しい方を残す */
+  S.cloud.gasUrl = GAS.url;
+  touch('cloud');
+  return true;
+}
+/* ほかの端末が新しい橋わたしを見つけていたら、この端末も追いつく（10分に1回まで） */
+var gasCatchBusy = false;
+function gasBehind(){
+  var sh = gasVerShared();
+  return !!(sh && gasReady() && gasVerOf(sh) > gasVerOf(GAS));
+}
+async function gasCatchUp(){
+  var sh = gasVerShared();
+  if(gasCatchBusy || !gasBehind() || Date.now() - (Number(GAS.catchAt) || 0) < 10 * 60000) return false;
+  gasCatchBusy = true;
+  GAS.catchAt = Date.now(); saveGas();
+  var oldUrl = GAS.url, before = gasVerOf(GAS);
+  var tryUrl = (sh.gasUrl && sh.gasUrl !== GAS.url && /^https:\/\/script\.google\.com\//.test(sh.gasUrl)) ? sh.gasUrl : GAS.url;
+  try{
+    GAS.url = tryUrl;
+    var r = await gasCall('ping');
+    if(tryUrl !== oldUrl && gasVerOf(r) <= before){ GAS.url = oldUrl; saveGas(); return false; }   /* 新しくなければ、もとのURLのまま */
+    GAS.user = r.user || GAS.user || 'OK';
+    GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; GAS.pingAt = Date.now();
+    saveGas();
+    if(!isTyping()) render();
+    return true;
+  }catch(e){
+    GAS.url = oldUrl; saveGas();
+    logErr('Google連携', '新しい橋わたしを確かめられませんでした：' + e.message);
+    return false;
+  }finally{ gasCatchBusy = false; }
 }
 /* 合言葉なしで呼ぶ（コードで受け取るときだけ） */
 async function gasCallOpen(url, body){
@@ -41,7 +88,8 @@ async function gasPairClaim(code){
   var r = await gasCallOpen(url, { action:'pairClaim', code:code });
   GAS.url = url; GAS.token = r.token; GAS.user = ''; saveGas();
   var p = await gasCall('ping');
-  GAS.user = p.user || 'OK'; GAS.ver = p.ver || 0; GAS.api = p.api || 0; GAS.trigger = p.trigger ? 1 : 0; GAS.ai = p.ai ? 1 : 0; saveGas();
+  GAS.user = p.user || 'OK'; GAS.ver = p.ver || 0; GAS.api = p.api || 0; GAS.trigger = p.trigger ? 1 : 0; GAS.ai = p.ai ? 1 : 0; GAS.pingAt = Date.now(); saveGas();
+  if(gasVerShare()) persist();
   return p;
 }
 
@@ -237,4 +285,9 @@ function gasPlusAction(act, t){
     commit(); toast(act === 'sg-add' ? '課題に追加しました' : '候補を消しました'); return true;
   }
   return false;
+}
+
+/* 同期で「ほかの端末が新しい橋わたしを見つけた」が届いたら、すぐ追いつく（見るのは端末の中だけ。確かめに行くのは10分に1回まで） */
+if(!TEST_MODE){
+  setInterval(function(){ if(!document.hidden && gasBehind()) gasCatchUp(); }, 30000);
 }

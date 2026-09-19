@@ -316,8 +316,11 @@ function gasAction(act, t){
     if(!u || !tk){ toast('URLと合言葉の両方を入れてください', true); render(); return true; }
     toast('つながるか試しています…');
     gasCall('ping').then(function(r){
-      GAS.user = r.user || 'OK'; GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; saveGas();
-      if(typeof gasUrlShare === 'function'){ gasUrlShare(); persist(); pushRemote(); }
+      GAS.user = r.user || 'OK'; GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; GAS.pingAt = Date.now(); saveGas();
+      /* 貼り直した版を、ほかの端末にも同期で知らせる（スマホもすぐ新しい版に気づく） */
+      if(typeof gasVerShare === 'function') gasVerShare();
+      if(typeof gasUrlShare === 'function') gasUrlShare();
+      persist(); pushRemote();
       if(typeof gfeatPush === 'function') gfeatPush()['catch'](function(e){ logErr('Google連携', e.message); });
       if(r.ver && !r.trigger) gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); render(); })['catch'](function(e){ logErr('Google連携', '5分ごとの確認を動かせませんでした：' + e.message); });
       toast('つながりました：' + (r.calendar || 'くらしの手帳'));

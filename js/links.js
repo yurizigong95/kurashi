@@ -518,12 +518,19 @@ function linksAction(act, t){
 /* 起動したとき・画面にもどったとき・ときどき */
 function linksTick(){
   if(!gasReady() || document.hidden) return;
-  /* 半日に1回、橋わたしの様子（新しいプログラムか・5分ごとの確認が動いているか）を確かめる */
-  if(Date.now() - (Number(GAS.pingAt) || 0) > 12 * 3600000){
+  /* ほかの端末で橋わたしを貼り直したこと（同期で届く）に気づいたら、すぐ確かめる */
+  if(typeof gasBehind === 'function' && gasBehind()) gasCatchUp();
+  /* 1時間に1回、橋わたしの様子（新しいプログラムか・5分ごとの確認が動いているか）を確かめる */
+  else if(Date.now() - (Number(GAS.pingAt) || 0) > 3600000){
     GAS.pingAt = Date.now(); saveGas();
     gasCall('ping').then(function(r){
+      var was = (typeof gasVerOf === 'function') ? gasVerOf(GAS) : 0;
       GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; saveGas();
-      if(typeof gasUrlShare === 'function'){ gasUrlShare(); persist(); }
+      var changed = false;
+      if(typeof gasVerShare === 'function' && gasVerShare()) changed = true;
+      if(typeof gasUrlShare === 'function'){ gasUrlShare(); changed = true; }
+      if(changed) persist();
+      if(typeof gasVerOf === 'function' && gasVerOf(GAS) !== was && !isTyping()) render();
       if(r.ver && !r.trigger) return gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); });
     })['catch'](function(e){ logErr('Google連携', e.message); });
   }

@@ -289,3 +289,57 @@ KT.test('総点検：AIそうだんの続きがもらえなくても、届いた
   A.appId = 'today'; A.render();
 });
 })();
+
+(function(){
+'use strict';
+var ok = KT.ok, eq = KT.eq;
+KT.test('総点検：パソコンでGoogle連携を貼り直したら、スマホも同期で気づいて新しい版を使う（URLが変わっても）', async function(){
+  var fr = KT.frames(), A = fr.A, B = fr.B;
+  var OLD = 'https://script.google.com/macros/s/old-deploy/exec', NEW = 'https://script.google.com/macros/s/new-deploy/exec';
+  var keep = { a:JSON.stringify(A.GAS), b:JSON.stringify(B.GAS), ver:KT.gasState.ver };
+  var on = true, badNew = false;
+  /* にせの橋わたし：新しいURLは新しい版（api 4）、古いURLは古い版のまま（ここで呼ぶのはスマホ＝B だけ） */
+  var fake = function(req){
+    if(!on || req.action !== 'ping') return null;
+    if(B.GAS.url === NEW && badNew) return { ok:false, error:'合言葉がちがいます' };
+    return { ok:true, user:'test@example.com', ver:3, api:B.GAS.url === NEW ? 4 : 0, trigger:true };
+  };
+  KT.gas.push(fake);
+  try{
+    /* 前のテストで配られた版は、いったん空にする */
+    A.S.cloud.gasVer = { gasUrl:'', ver:0, api:0, mt:Date.now() }; A.touch('cloud'); A.commit();
+    await KT.settle([A, B]);
+    /* パソコン（A）：新しくデプロイし直して、つながるか試した */
+    A.GAS.url = NEW; A.GAS.token = 'tok'; A.GAS.ver = 3; A.GAS.api = 4; A.saveGas();
+    ok(A.gasVerShare(), '新しい版を同期で配る');
+    A.commit();
+    ok(!A.gasVerShare(), '同じ版なら、もう書かない（2台で書き合わない）');
+    /* スマホ（B）：古いURL・古い版のまま */
+    B.GAS.url = OLD; B.GAS.token = 'tok'; B.GAS.ver = 3; B.GAS.api = 0; B.GAS.catchAt = 0; B.saveGas();
+    await KT.until(function(){ return B.gasBehind(); }, 15000, 'スマホに「新しい版がある」が同期で届く');
+    B.gasUrlShare();
+    eq(B.S.cloud.gasUrl, NEW, 'スマホが古いURLで上書きしない');
+    /* 新しいURLが合言葉で使えないときは、もとのURLのまま */
+    badNew = true;
+    eq(await B.gasCatchUp(), false, '新しいURLにつながらないとき');
+    eq(B.GAS.url, OLD, 'もとのURLのまま');
+    /* つながるときは、新しいURLに移って、新しい版として使う */
+    badNew = false; B.GAS.catchAt = 0; B.saveGas();
+    eq(await B.gasCatchUp(), true, '追いつく');
+    eq(B.GAS.url, NEW, '新しいURLに移る');
+    eq(B.GAS.api, 4, '新しい版になる');
+    ok(!B.gasBehind() && B.l2V4(), '新しい機能が使える');
+    ok(!B.gasVerShare(), 'スマホは書かない（同じ版）');
+  }finally{
+    on = false;
+    KT.gas.splice(KT.gas.indexOf(fake), 1);
+    A.S.cloud.gasVer = { gasUrl:'', ver:0, api:0, mt:Date.now() }; A.touch('cloud'); A.commit();
+    ['url', 'token', 'ver', 'api', 'catchAt', 'pingAt', 'user'].forEach(function(k){
+      var a = JSON.parse(keep.a), b = JSON.parse(keep.b);
+      A.GAS[k] = a[k]; B.GAS[k] = b[k];
+    });
+    A.saveGas(); B.saveGas(); KT.gasState.ver = keep.ver;
+  }
+  await KT.settle([A, B]);
+});
+})();
