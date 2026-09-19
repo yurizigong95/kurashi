@@ -1,1 +1,97 @@
 /* くらしの手帳：勉強②（看護過程・レポート・論文・本・翻訳・法令・講義の録音） の見た目 */
+/* ===== 共通 ===== */
+.rs-pre{white-space:pre-wrap; word-break:break-word; font-size:.86em; line-height:1.65}
+.rs-ref{background:var(--soft); border:1px solid var(--rule); border-radius:14px; padding:9px 11px; margin:0 0 10px; font-size:.86em; line-height:1.55}
+.rs-ref .s2{margin-bottom:2px}
+.rs-pair{flex-wrap:wrap; margin-top:10px}
+.rs-pair>button.btn{flex:1 1 auto}
+.rs-tabs{margin-bottom:10px}
+.rs-ttl{font-weight:700; margin-bottom:6px}
+.rs-hl{outline:2px solid var(--accent); outline-offset:3px; border-radius:10px}
+.rs-list{margin:4px 0 8px; padding-left:1.3em; font-size:.87em; line-height:1.6}
+.rs-list li{margin:2px 0}
+.rs-listh{font-size:.76em; color:var(--sub); font-weight:700; margin-top:8px}
+.rs-listh.rs-okc{color:var(--ok)}
+.rs-tags{display:flex; flex-wrap:wrap; gap:4px; margin-top:5px}
+.rs-tag{display:inline-block; font-size:.72em; line-height:1.4; padding:2px 8px; border-radius:999px; background:var(--soft); color:var(--sub); border:1px solid var(--rule)}
+.rs-tag.ok{background:var(--okbg); color:var(--ok)}
+.rs-tag.ng{background:var(--rakutenbg); color:var(--rakuten)}
+.rs-btns{display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; align-items:center}
+.rs-sent{margin:8px 0}
+.rs-sent summary{cursor:pointer; font-size:.78em; color:var(--sub)}
+.rs-sent .rs-pre{margin-top:6px; padding:8px 10px; border-radius:12px; background:var(--soft)}
+.rs-ok{color:var(--ok)}
+.rs-ng{color:var(--rakuten)}
+.rs-mid{color:var(--warn)}
+
+/* ===== 看護過程 ===== */
+.rs-steps button,.rs-pats button{font-size:.74em}
+.rs-coach{margin-top:14px; padding:12px 13px; border-radius:18px; background:var(--okbg); border:1px solid var(--edge)}
+.rs-coachhd{display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; margin-bottom:4px}
+.rs-coach .btn{margin-top:8px}
+.rs-prob{border:1px solid var(--rule); border-radius:14px; padding:9px 10px 2px; margin-bottom:10px; background:var(--soft)}
+.rs-probh{display:flex; gap:6px; align-items:center; margin-bottom:6px}
+.rs-probh b{flex:1}
+body[data-theme="dark"] .rs-coach{background:rgba(79,190,126,.10)}
+
+/* ===== レポート ===== */
+.rs-stats .stat .v{font-size:1.2em}
+.rs-goal{margin:8px 0 4px}
+.rs-bar{height:10px; border-radius:999px; background:var(--soft); border:1px solid var(--rule); overflow:hidden; margin:4px 0}
+.rs-bar i{display:block; height:100%; background:linear-gradient(90deg, var(--accent2), var(--accent)); border-radius:inherit}
+.rs-bar.over i{background:var(--rakuten)}
+.rs-checks{margin-top:6px}
+.rs-chk{display:flex; gap:8px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--rule); font-size:.87em; line-height:1.55}
+.rs-chk:last-child{border-bottom:0}
+.rs-chk .rs-mk{flex:none; width:1.4em; text-align:center; font-weight:700}
+.rs-chk .grow{min-width:0; word-break:break-word}
+.rs-pick{margin:8px 0; padding:6px 10px; border-radius:14px; border:1px solid var(--rule); background:var(--soft)}
+.rs-pick .row{align-items:flex-start}
+.rs-fix{padding:9px 0; border-bottom:1px solid var(--rule); font-size:.88em; line-height:1.55}
+.rs-fix:last-child{border-bottom:0}
+.rs-fix.done{opacity:.55}
+.rs-fix .rs-tag{margin-bottom:4px}
+
+/* ===== 論文・本さがし ===== */
+.rs-res{padding:10px 0; border-bottom:1px solid var(--rule)}
+.rs-res:last-of-type{border-bottom:0}
+.rs-res .t{font-weight:700; font-size:.92em; line-height:1.45; word-break:break-word}
+.rs-res a{color:inherit; text-decoration:underline; text-decoration-color:var(--accent2); text-underline-offset:2px}
+.rs-abs{margin-top:6px; padding:8px 10px; border-radius:12px; background:var(--soft); max-height:18em; overflow:auto}
+
+/* ===== 本だな ===== */
+.rs-book{align-items:flex-start}
+.rs-cover{width:44px; height:62px; object-fit:cover; border-radius:6px; flex:none; background:var(--soft); border:1px solid var(--rule)}
+.rs-nocover{display:flex; align-items:center; justify-content:center; font-size:1.3em}
+.rs-coverbig{width:70px; height:98px; margin:0 0 10px}
+
+/* ===== 法令 ===== */
+.rs-lawbtns{display:flex; flex-wrap:wrap; gap:6px}
+.rs-art{padding:10px 0; border-bottom:1px solid var(--rule)}
+.rs-art:last-of-type{border-bottom:0}
+.rs-arth{font-weight:700; font-size:.9em; margin-bottom:3px}
+
+/* ===== 講義の録音 ===== */
+.rs-rec{text-align:center; padding:8px 0 4px}
+.rs-time{font-size:2.3em; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:.04em; line-height:1.2}
+.rs-dot{display:inline-block; width:.55em; height:.55em; border-radius:50%; background:#E0444E; margin-right:.35em; vertical-align:middle; animation:rs-blink 1.2s infinite}
+@keyframes rs-blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){ .rs-dot{animation:none} }
+.rs-rec .btn{margin-top:8px}
+.rs-seg{display:flex; gap:10px; align-items:center; padding:7px 0; font-size:.86em; border-bottom:1px solid var(--rule)}
+.rs-seg .grow{min-width:0}
+
+/* ===== 印刷（看護計画・看護過程） ===== */
+#rs-printarea{display:none}
+@media print{
+  body.rs-printing{background:#fff !important}
+  body.rs-printing > *:not(#rs-printarea){display:none !important}
+  body.rs-printing #rs-printarea{display:block !important; color:#000; background:#fff; font-size:10.5pt; line-height:1.5; padding:0}
+  #rs-printarea h1{font-size:15pt; margin:0 0 8px}
+  #rs-printarea h2{font-size:12pt; margin:14px 0 6px}
+  #rs-printarea h3{font-size:11pt; margin:12px 0 4px}
+  #rs-printarea .rs-ptable{width:100%; border-collapse:collapse; table-layout:fixed}
+  #rs-printarea .rs-ptable th,#rs-printarea .rs-ptable td{border:1px solid #000; padding:5px 6px; vertical-align:top; white-space:pre-wrap; word-break:break-word; text-align:left}
+  #rs-printarea .rs-ptable th{background:#eee}
+  #rs-printarea .rs-pfoot{margin-top:14px; font-size:8.5pt; color:#555}
+}
