@@ -1,6 +1,6 @@
 {
-    "build":  "2026-09-20a",
-    "made":  "2026-09-20 01:28",
+    "build":  "2026-09-20b",
+    "made":  "2026-09-20 02:22",
     "files":  [
                   {
                       "path":  "css/app.css",
@@ -121,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "d881d7d28e60a952"
+                      "sha256":  "d5f8380abb5a40b5"
                   },
                   {
                       "path":  "js/data.js",
@@ -133,11 +133,11 @@
                   },
                   {
                       "path":  "js/gasplus.js",
-                      "sha256":  "f73273f17b67a0ba"
+                      "sha256":  "b5a7e33bfc8ffc71"
                   },
                   {
                       "path":  "js/google.js",
-                      "sha256":  "283568867999fe85"
+                      "sha256":  "e13ad7414eab0073"
                   },
                   {
                       "path":  "js/hooks.js",
@@ -149,7 +149,7 @@
                   },
                   {
                       "path":  "js/links.js",
-                      "sha256":  "cdbb587136a72189"
+                      "sha256":  "47d52bc9ccc7d99c"
                   },
                   {
                       "path":  "js/main.js",
@@ -181,7 +181,7 @@
                   },
                   {
                       "path":  "js/m-links2.js",
-                      "sha256":  "5e6c4a882ae796d4"
+                      "sha256":  "58e9501f95b17e4b"
                   },
                   {
                       "path":  "js/money.js",
@@ -237,7 +237,7 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "8a88e699175dc516"
+                      "sha256":  "d8572a305e229b40"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -249,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "12a505578da64763"
+                      "sha256":  "de71ee858d9107d1"
                   }
               ]
 }
