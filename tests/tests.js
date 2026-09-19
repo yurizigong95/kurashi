@@ -1139,7 +1139,9 @@ test('見た目：画面のスタイルとキャラクターを選べて、相�
   ok(doc.querySelector('#apptitle .chmini'), '見出しに小さな子');
   eq(doc.querySelectorAll('.hero .chpals .chara').length, 2, '仲間があいさつに来る');
   A.appId = 'tt'; A.render();
-  ok(doc.querySelector('th.today .ttch') || A.ttWeek, '時間割の今日');
+  /* 土日は、時間割に「今日」の列がないことがある */
+  var ttDow = new Date().getDay();
+  ok(doc.querySelector('th.today .ttch') || A.ttWeek || (!doc.querySelector('th.today') && (ttDow === 0 || ttDow === 6)), '時間割の今日');
   A.charaReact('ev-save');
   ok(doc.getElementById('chpop').classList.contains('short'), '操作に反応する');
   A.charaWalk();
