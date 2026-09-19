@@ -1,1 +1,142 @@
-/* くらしの手帳：生活・健康・AIの便利機能 の見た目 */
+/* くらしの手帳：生活・健康・AIの便利機能 の見た目（担当 life・クラスは lf- ではじめる） */
+/* 自分の枠（中の section が下のすきまを持つので、外側はすきまを足さない） */
+#app>[id^="lf-sec-"]{margin-bottom:0}
+#app>#lf-sec-quick, #app>#lf-sec-wx, #app>#lf-sec-bodytoday{margin-bottom:14px}
+.lf-row{margin-top:10px}
+.lf-empty{padding:10px 2px}
+.lf-top{margin-top:0}
+.lf-s{display:inline-block; margin-left:6px; font-size:.86em; opacity:.8}
+.lf-bn{margin-bottom:8px}
+.lf-bn:last-child{margin-bottom:0}
+
+/* 入力の枠 */
+.lf-form{margin:10px 0; padding:12px; border-radius:16px; background:var(--soft); border:1px solid var(--rule)}
+.lf-form .grid2, .lf-form .grid3{margin-bottom:10px}
+.lf-form .pillrow{margin-bottom:8px}
+.lf-help{margin-top:8px; padding:10px 12px; border-radius:14px; background:var(--soft)}
+.lf-list{margin-top:8px}
+.lf-list .row{gap:8px}
+.lf-list .row .mini{flex:none}
+
+/* 棒グラフ */
+.lf-ch{margin-top:12px}
+.lf-cht{font-size:.78em; font-weight:700; margin-bottom:4px; display:flex; gap:8px; align-items:baseline}
+.lf-chart{position:relative; display:flex; gap:3px; height:96px; align-items:stretch}
+.lf-bc{flex:1 1 0; min-width:0; display:flex; flex-direction:column}
+.lf-bw{flex:1; position:relative}
+.lf-b{position:absolute; left:12%; right:12%; bottom:0; border-radius:6px 6px 2px 2px; background:var(--e6); opacity:.85}
+.lf-chart.steps .lf-b{background:var(--e4)}
+.lf-chart.cards .lf-b{background:var(--e8)}
+.lf-b.low{background:var(--warn)}
+.lf-b.now{opacity:1; box-shadow:0 0 0 2px var(--accent)}
+.lf-bl{height:16px; line-height:16px; font-size:.64em; color:var(--sub); text-align:center; white-space:nowrap; overflow:hidden}
+.lf-gl{position:absolute; left:0; right:0; top:0; bottom:16px; pointer-events:none; z-index:1}
+.lf-gl i{position:absolute; left:0; right:0; border-top:2px dashed var(--accent); opacity:.75}
+.lf-wkch{margin-top:4px}
+.lf-wkch .lf-chart{height:80px}
+.lf-hbars{display:flex; flex-direction:column; gap:5px; margin:4px 0 10px}
+.lf-hb{display:flex; align-items:center; gap:8px; font-size:.78em}
+.lf-hbl{flex:0 0 7.5em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.lf-hbw{flex:1; height:10px; border-radius:6px; background:var(--soft); overflow:hidden}
+.lf-hbw i{display:block; height:100%; border-radius:6px; background:linear-gradient(90deg, var(--accent2), var(--accent))}
+.lf-hbv{flex:0 0 auto; min-width:4.5em; text-align:right}
+.lf-stats .stat .k:last-child, .lf-wkst .stat .k:last-child, .lf-pst .stat .k:last-child{margin-top:2px}
+.lf-wkst{margin-top:4px}
+.lf-d{font-weight:700; margin-left:2px}
+.lf-d.up{color:var(--ok)}
+.lf-d.dn{color:var(--warn)}
+
+/* AIの答え */
+.lf-ai{margin:10px 0 8px; padding:10px 12px; border-radius:14px; background:var(--risyubg); font-size:.84em; line-height:1.7}
+.lf-ai .s2{margin-bottom:2px}
+
+/* 今日のページ：声・写真で登録 */
+.lf-quick{display:flex; gap:10px}
+.lf-qb{flex:1 1 0; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 10px; border-radius:18px;
+  border:1px solid var(--edge); background:linear-gradient(150deg, rgba(255,255,255,.66), var(--glasstint2), rgba(255,255,255,.32));
+  color:var(--ink); font:inherit; font-size:.9em; font-weight:700; cursor:pointer; box-shadow:var(--spec), var(--lift)}
+.lf-qb span{font-size:1.25em}
+.lf-qb:active{transform:scale(.98)}
+.lf-panel{margin-top:10px; padding:12px 14px; border-radius:18px; background:var(--card); border:1px solid var(--edge); box-shadow:var(--lift)}
+.lf-ph{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+.lf-panel textarea{min-height:64px}
+.lf-vbtns{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px}
+.lf-mb{flex:0 0 auto; width:auto; padding:10px 18px}
+.lf-listen{display:flex; align-items:center; gap:8px; font-size:.84em; margin-bottom:8px; color:var(--rakuten)}
+.lf-dot{width:10px; height:10px; border-radius:50%; background:var(--rakuten); animation:lfpulse 1s ease-in-out infinite}
+@keyframes lfpulse{0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.35; transform:scale(.7)}}
+@media (prefers-reduced-motion: reduce){ .lf-dot{animation:none} }
+.lf-simg{display:block; max-width:100%; max-height:220px; border-radius:12px; margin:0 auto 8px; object-fit:contain}
+.lf-kind{margin-bottom:6px}
+.lf-cands{display:flex; flex-direction:column; gap:8px; margin-top:4px}
+.lf-cand{padding:8px 10px; border-radius:14px; background:var(--soft); border:1px solid var(--rule)}
+.lf-cl{display:flex; align-items:center; gap:8px; font-size:.84em; flex-wrap:wrap; cursor:pointer}
+.lf-cl input[type="checkbox"]{width:auto; margin:0; flex:none}
+.lf-ct{font-weight:700}
+.lf-cf{display:flex; gap:6px; margin-top:6px; flex-wrap:wrap}
+.lf-cf input{flex:1 1 8em; min-width:0; padding:8px 10px; border-radius:12px}
+.lf-cf input.w1{flex:0 1 6.5em}
+.lf-ops{margin-top:10px}
+
+/* 今日のページ：からだ・天気の注意 */
+.lf-body{padding:10px 12px; border-radius:16px; background:var(--card); border:1px solid var(--edge)}
+.lf-bl1{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.lf-bl1 .grow{min-width:10em}
+.lf-body .lf-bn{margin:8px 0 0}
+.lf-body>.s2, .lf-pl1{margin-top:6px}
+.lf-wxerr{margin-top:0}
+
+/* 今日の作戦 */
+.lf-pl{display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--rule)}
+.lf-pl:last-of-type{border-bottom:0}
+.lf-plt{flex:0 0 auto; font-size:.78em; font-weight:700; color:var(--accent); padding-top:2px; min-width:7.2em}
+.lf-pl .grow{display:flex; flex-direction:column; min-width:0}
+.lf-pl .t{font-size:.9em}
+.lf-pl .s{font-size:.74em; color:var(--sub)}
+.lf-pl.mv .lf-plt{color:var(--e6)}
+.lf-notes{margin-top:6px; display:flex; flex-direction:column; gap:2px}
+
+/* 周期 */
+.lf-pmsg{margin-bottom:10px; background:var(--risyubg); color:var(--ink)}
+.lf-calbox{margin-top:14px}
+.lf-cal{display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:3px; text-align:center}
+.lf-cw{font-size:.66em; color:var(--sub); padding:2px 0}
+.lf-cd{font-size:.74em; padding:5px 0; border-radius:8px; font-variant-numeric:tabular-nums}
+.lf-cd.blank{visibility:hidden}
+.lf-cd.rec{background:var(--rakutenbg); color:var(--rakuten); font-weight:700}
+.lf-cd.pred{background:transparent; box-shadow:inset 0 0 0 1.5px var(--rakuten); color:var(--rakuten)}
+.lf-cd.ovu{box-shadow:inset 0 0 0 1.5px var(--e6); color:var(--e6)}
+.lf-cd.now{outline:2px solid var(--accent); outline-offset:-2px}
+.lf-legend{display:flex; gap:12px; flex-wrap:wrap; margin-top:6px; font-size:.7em; color:var(--sub)}
+.lf-legend span{display:inline-flex; align-items:center; gap:4px}
+.lf-legend i{display:inline-block; width:12px; height:12px; border-radius:4px}
+.lf-legend i.rec{background:var(--rakutenbg); box-shadow:inset 0 0 0 1px var(--rakuten)}
+.lf-legend i.pred{box-shadow:inset 0 0 0 1.5px var(--rakuten)}
+.lf-legend i.ovu{box-shadow:inset 0 0 0 1.5px var(--e6)}
+
+/* 予防接種・健診 */
+.lf-vx{display:flex; flex-direction:column}
+.lf-vr{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--rule)}
+.lf-vr:last-child{border-bottom:0}
+.lf-vr .grow{display:flex; flex-direction:column; min-width:0}
+.lf-vr .t{font-size:.88em}
+.lf-vr .s{font-size:.74em; color:var(--sub)}
+.lf-vr .mini{flex:none}
+.lf-st{flex:none; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.82em}
+.lf-st.ok{background:var(--okbg); color:var(--ok)}
+.lf-st.part{background:var(--warnbg); color:var(--warn)}
+.lf-st.none{background:var(--soft); color:var(--sub)}
+.lf-thumbs{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0}
+.lf-thumb{width:56px; height:56px; object-fit:cover; border-radius:10px; border:1px solid var(--edge); cursor:zoom-in; background:var(--soft)}
+
+/* ダークテーマ */
+body[data-theme="dark"] .lf-qb{background:linear-gradient(150deg, rgba(255,255,255,.14), var(--glasstint2), rgba(255,255,255,.06))}
+body[data-theme="dark"] .lf-form, body[data-theme="dark"] .lf-cand, body[data-theme="dark"] .lf-help{background:rgba(255,255,255,.06)}
+body[data-theme="dark"] .lf-ai, body[data-theme="dark"] .lf-pmsg{background:rgba(216,154,192,.14)}
+body[data-theme="dark"] .lf-b{opacity:.95}
+
+@media (max-width:400px){
+  .lf-plt{min-width:6.4em}
+  .lf-hbl{flex-basis:6em}
+  .lf-qb{font-size:.84em; padding:11px 6px}
+}
