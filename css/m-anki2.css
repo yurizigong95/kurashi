@@ -1,1 +1,97 @@
 /* くらしの手帳：暗記の追加（耳で暗記・ひっかけ・解説・Anki書き出し・テスト範囲） の見た目 */
+
+/* ===== 暗記タブの道具ボタン ===== */
+.ak2-tools{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px}
+@media (min-width:640px){ .ak2-tools{grid-template-columns:repeat(4, minmax(0, 1fr))} }
+.ak2-tools button{display:flex; align-items:center; gap:8px; min-height:52px; padding:10px 12px; border-radius:16px; border:1px solid var(--edge);
+  background:linear-gradient(150deg, rgba(255,255,255,.66), var(--glasstint2), rgba(255,255,255,.32)); color:var(--ink);
+  font:inherit; font-size:.82em; font-weight:700; text-align:left; line-height:1.3; cursor:pointer}
+.ak2-tools button .ic{font-size:1.45em; line-height:1; flex:none}
+.ak2-tools button i{font-style:normal; font-weight:400; font-size:.82em; color:var(--sub); margin-left:auto; white-space:nowrap}
+body[data-theme="dark"] .ak2-tools button{background:rgba(255,255,255,.06)}
+
+/* ===== テスト範囲の計画 ===== */
+.ak2-ex{padding:8px 0 10px; border-bottom:1px solid var(--rule)}
+.ak2-ex:last-child{border-bottom:0; padding-bottom:0}
+.ak2-exhd{display:flex; align-items:center; gap:8px; cursor:pointer; padding:2px 0 4px}
+.ak2-exhd .grow{min-width:0}
+.ak2-exhd .t{font-weight:700}
+.ak2-do{padding:8px 0; gap:10px}
+.ak2-do .t, .ak2-item .t{word-break:break-word}
+.ak2-sthd{display:flex; align-items:center; gap:8px; font-size:.82em; color:var(--sub); margin-bottom:4px}
+.ak2-set{display:flex; gap:6px; align-items:center; margin-top:6px}
+.ak2-set input{width:6.5em; flex:none; padding:6px 10px}
+.ak2-bar{height:6px; border-radius:999px; background:var(--soft); overflow:hidden; margin-top:5px}
+.ak2-bar i{display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, var(--accent2), var(--accent))}
+.ak2-late, .ak2-good, .ak2-info{margin-top:8px; padding:9px 12px; border-radius:14px; font-size:.8em; line-height:1.55}
+.ak2-late{background:var(--warnbg); color:var(--warn)}
+.ak2-good{background:var(--okbg); color:var(--ok)}
+.ak2-info{background:var(--soft); color:var(--ink)}
+.ak2-days{display:flex; flex-wrap:wrap; gap:6px}
+.ak2-days button{padding:6px 10px; border-radius:12px; border:1px solid var(--edge); background:transparent; color:var(--ink);
+  font:inherit; font-size:.74em; cursor:pointer}
+.ak2-days button.on{background:var(--warnbg); color:var(--warn); border-color:var(--warn); font-weight:700}
+.ak2-sched .row{padding:7px 0; align-items:flex-start}
+.ak2-sd{flex:0 0 6.4em; font-size:.84em; font-weight:700}
+.ak2-sched .ak2-off .ak2-sd, .ak2-sched .ak2-off .s{color:var(--sub)}
+
+/* ===== まちがえたカード・解説 ===== */
+.ak2-exp{margin:0 0 14px; padding:12px; border-radius:14px; background:var(--soft); border:1px solid var(--rule);
+  text-align:left; font-size:.88em; line-height:1.65; color:var(--ink)}
+.ak2-exphd{font-weight:700; margin-bottom:4px}
+.ak2-expbody{white-space:pre-wrap; word-break:break-word}
+.ak2-src{margin-top:8px; line-height:1.5}
+.ak2-whybtn{margin:0 0 10px}
+.ak2-aino{margin:-4px 0 12px; text-align:center}
+.ak2-wrow{padding:4px 0 6px; border-bottom:1px solid var(--rule)}
+.ak2-wrow:last-of-type{border-bottom:0}
+.ak2-wrow .ak2-exp, .ak2-wrow .ak2-whybtn{margin:4px 0 6px}
+.ak2-wtop{border:0; padding-bottom:4px; align-items:flex-start}
+.ak2-wtop .t, .ak2-wtop .s{white-space:pre-wrap; word-break:break-word}
+.ak2-focus{outline:2px solid var(--accent); outline-offset:3px; border-radius:12px}
+.ak2-cnt{flex:none; min-width:2.6em; text-align:center; padding:3px 8px; border-radius:999px; font-size:.74em; font-weight:700;
+  background:var(--rakutenbg); color:var(--rakuten)}
+.ak2-done{text-align:left; margin:14px 0}
+.ak2-done > .t{font-weight:700; margin-bottom:6px}
+.ak2-dc{padding:8px 0; border-top:1px dashed var(--edge)}
+.ak2-dc .t, .ak2-dc .s{white-space:pre-wrap; word-break:break-word}
+.ak2-dc .ak2-exp, .ak2-dc .ak2-whybtn{margin:8px 0 0}
+
+/* ===== 耳で暗記（画面を見なくても押しやすい大きなボタン） ===== */
+.ak2-ear{text-align:center}
+.ak2-earpos{margin-bottom:4px}
+.ak2-earq{font-size:1.3em; font-weight:700; line-height:1.6; margin:8px 0 10px; white-space:pre-wrap; word-break:break-word}
+.ak2-eara{font-size:1.15em; line-height:1.6; padding:10px 6px; border-top:1px dashed var(--edge); white-space:pre-wrap; word-break:break-word; min-height:2.4em}
+.ak2-earph{font-size:.86em; color:var(--sub); margin:6px 0 2px; min-height:1.4em}
+.ak2-bigbtns{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin-top:12px}
+.ak2-bigbtns button{min-height:96px; border-radius:24px; border:1px solid var(--edge); color:var(--ink); cursor:pointer;
+  background:linear-gradient(150deg, rgba(255,255,255,.72), var(--glasstint2), rgba(255,255,255,.36));
+  font:inherit; font-size:.95em; font-weight:700; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  touch-action:manipulation}
+.ak2-bigbtns button .ic{font-size:2.1em; line-height:1}
+.ak2-bigbtns button.main{background:linear-gradient(180deg, var(--accent2), var(--accent)); color:#fff; border-color:rgba(255,255,255,.6)}
+body[data-theme="dark"] .ak2-bigbtns button{background:rgba(255,255,255,.07)}
+body[data-theme="dark"] .ak2-bigbtns button.main{background:linear-gradient(180deg, var(--accent2), var(--accent)); color:#111}
+button.btn.ak2-stop{margin-top:12px; min-height:58px; font-size:1em}
+button.btn.ak2-startbtn{margin-top:12px; min-height:68px; font-size:1.08em}
+
+/* ===== ひっかけ問題 ===== */
+.ak2-q{font-size:1.08em; font-weight:700; line-height:1.7; white-space:pre-wrap; word-break:break-word; margin:6px 0 12px}
+.ak2-choices{display:grid; gap:8px}
+.ak2-choices.tf{grid-template-columns:1fr 1fr}
+.ak2-choices button{padding:13px 14px; border-radius:16px; border:1px solid var(--edge); color:var(--ink); cursor:pointer;
+  background:linear-gradient(150deg, rgba(255,255,255,.7), var(--glasstint2), rgba(255,255,255,.34));
+  font:inherit; font-size:.92em; text-align:left; line-height:1.55; word-break:break-word}
+.ak2-choices.tf button{text-align:center; font-size:1.9em; font-weight:700; min-height:76px; line-height:1}
+.ak2-choices button:disabled{cursor:default; opacity:1}
+.ak2-choices button.right{border-color:var(--ok); background:var(--okbg); color:var(--ok)}
+.ak2-choices button.wrong{border-color:var(--rakuten); background:var(--rakutenbg); color:var(--rakuten)}
+body[data-theme="dark"] .ak2-choices button{background:rgba(255,255,255,.06)}
+body[data-theme="dark"] .ak2-choices button.right{background:var(--okbg)}
+body[data-theme="dark"] .ak2-choices button.wrong{background:var(--rakutenbg)}
+.ak2-why{margin-top:12px; padding:12px 14px; border-radius:16px; background:var(--soft); border:1px solid var(--rule); font-size:.88em; line-height:1.65}
+.ak2-why > div{margin-top:6px; white-space:pre-wrap; word-break:break-word}
+.ak2-why b{display:block; font-size:.9em}
+.ak2-res{font-size:1.1em; font-weight:700; margin-top:0 !important}
+.ak2-res.ok{color:var(--ok)}
+.ak2-res.ng{color:var(--rakuten)}

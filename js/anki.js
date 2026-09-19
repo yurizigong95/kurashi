@@ -8,7 +8,7 @@
 var ANKI_NEW_PER_DAY = 20;          /* 1日に出す新しいカードの数 */
 var ANKI_MAX_MAKE = 30;             /* AIが1回に作るカードの数 */
 var ANKI_GRADES = [[0, 'もう一回', 'again'], [1, 'あやしい', 'hard'], [2, 'おぼえた', 'good'], [3, 'かんたん', 'easy']];
-var ankiState = { mode:'', deck:'', queue:[], cur:'', show:false, done:0, ok:0, preview:null, busy:false, listDeck:'' };
+var ankiState = { mode:'', deck:'', queue:[], cur:'', show:false, done:0, ok:0, preview:null, busy:false, listDeck:'', missed:[], title:'' };
 
 function ankiCards(){ return Array.isArray(S.cards) ? S.cards : []; }
 function ankiIsNew(c){ return !c.last; }
@@ -182,6 +182,7 @@ function ankiStart(deck){
   ankiState.queue = list.map(function(c){ return c.id; });
   ankiState.cur = ankiState.queue.shift();
   ankiState.show = false; ankiState.done = 0; ankiState.ok = 0;
+  ankiState.missed = []; ankiState.title = '';
   render(); window.scrollTo(0, 0);
 }
 function ankiGrade(g){
@@ -191,7 +192,12 @@ function ankiGrade(g){
   ankiLog(g >= 2);
   ankiState.done++;
   if(g >= 2) ankiState.ok++;
-  if(g === 0) ankiState.queue.push(c.id);            /* できなかったカードは、最後にもう一回 */
+  if(g === 0){
+    ankiState.queue.push(c.id);                       /* できなかったカードは、最後にもう一回 */
+    c.miss = toNum(c.miss) + 1; c.missAt = today();   /* まちがえた記録（まちがえたカードの一覧・解説で使う） */
+    ankiState.missed = ankiState.missed || [];
+    if(ankiState.missed.indexOf(c.id) < 0) ankiState.missed.push(c.id);
+  }
   ankiState.cur = ankiState.queue.shift() || '';
   ankiState.show = false;
   if(!ankiState.cur){
@@ -211,6 +217,7 @@ function viewAnki(){
     h += section('おつかれさま！', null,
       '<div class="ankidone"><div class="big">🎉</div><p><b>' + ankiState.done + '枚</b>見ました（おぼえた ' + ankiState.ok + '枚）。</p>' +
       '<p class="note">連続 <b>' + ankiStreak() + '日</b>。おせわの子にごほうびのコインが入りました。</p>' +
+      (typeof ak2DoneExtra === 'function' ? ak2DoneExtra() : '') +
       '<button class="btn ghost" data-act="anki-home">もどる</button></div>');
   }
   var all = ankiCards(), due = ankiDueList(''), td = ankiCountOn(today());
@@ -225,6 +232,7 @@ function viewAnki(){
       ? (due.length ? '<button class="btn" data-act="anki-start">はじめる（' + due.length + '枚）</button>'
                     : '<p class="note">今日の分はおわり！ 🎉 また明日。</p>')
       : '<p class="note">まだカードがありません。下の「カードを作る」から、講義資料の写真やPDFを読みこむと、AIが一問一答を作ります。</p>'));
+  if(typeof ak2AnkiTop === 'function') h += ak2AnkiTop();      /* テストまでの計画・暗記の道具（js/m-anki2.js） */
   var decks = ankiDecks();
   if(decks.length){
     h += section('科目ごと', decks.length + '科目・' + all.length + '枚', decks.map(function(d){
@@ -243,13 +251,14 @@ function ankiStudyView(){
   var c = ankiCards().filter(function(x){ return x.id === ankiState.cur; })[0];
   if(!c){ ankiState.mode = ''; return viewAnki(); }
   var left = ankiState.queue.length + 1;
-  var h = '<section><div class="head"><h2>' + esc(ankiState.deck ? (typeof shortName === 'function' ? shortName(ankiState.deck) : ankiState.deck) : '今日の暗記') + '</h2>' +
+  var h = '<section><div class="head"><h2>' + esc(ankiState.title || (ankiState.deck ? (typeof shortName === 'function' ? shortName(ankiState.deck) : ankiState.deck) : '今日の暗記')) + '</h2>' +
     '<span>のこり ' + left + '枚</span></div>' +
     '<div class="box ankicard' + (ankiState.show ? ' open' : '') + '">' +
       '<div class="ankideck s2">' + esc(c.deck || '') + (ankiIsNew(c) ? '・<b>新しい</b>' : '') + '</div>' +
       '<div class="ankiq">' + esc(c.q) + '</div>' +
       (ankiState.show
         ? '<div class="ankia">' + esc(c.a) + '</div>' +
+          (typeof ak2StudyExtra === 'function' ? ak2StudyExtra(c) : '') +
           '<div class="ankigrades">' + ANKI_GRADES.map(function(g){
             var nx = ankiNext(c, g[0]);
             return '<button data-act="anki-grade" data-v="' + g[0] + '" class="g-' + g[2] + '"><b>' + g[1] + '</b>' +
@@ -265,7 +274,8 @@ function ankiListView(deck){
   return section('「' + (typeof shortName === 'function' ? shortName(deck) : deck) + '」のカード', list.length + '枚',
     (list.length ? list.map(function(c){
       return '<div class="row ankirow"><div class="grow"><div class="t">' + esc(c.q) + '</div><div class="s">' + esc(c.a) + '</div>' +
-        '<div class="s2">' + (ankiIsNew(c) ? 'まだ見ていない' : '次は ' + esc(ymdLabel(c.due))) + '</div></div>' +
+        '<div class="s2">' + (ankiIsNew(c) ? 'まだ見ていない' : '次は ' + esc(ymdLabel(c.due))) +
+          (toNum(c.miss) ? '・まちがえた ' + toNum(c.miss) + '回' : '') + (c.explain ? '・💡解説あり' : '') + '</div></div>' +
         '<button class="mini" data-act="anki-del" data-id="' + esc(c.id) + '">消す</button></div>';
     }).join('') : '<div class="empty">カードがありません。</div>') +
     '<div class="pillrow" style="margin-top:8px"><button data-act="anki-home">閉じる</button></div>');
