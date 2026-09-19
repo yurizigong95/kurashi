@@ -215,6 +215,7 @@ function viewTodayLife(){
   parts.next10 = function(){ return next10Card(); };
   if(typeof kmParts === 'function') kmParts('life', parts, {});
   pageOrder('life').forEach(function(id){ if(parts[id] && !pageHidden('life', id)) html += parts[id](); });
+  if(typeof c9HomeLink === 'function') html += c9HomeLink('life');
   return html;
 }
 
@@ -326,6 +327,8 @@ function viewDay(ymd, pageKey){
   };
   if(typeof kmParts === 'function') kmParts(pageKey, parts, { ymd:ymd, isToday:isToday });
   pageOrder(pageKey).forEach(function(id){ if(parts[id] && !pageHidden(pageKey, id)) html += parts[id](); });
+  /* いちばん下に「ホーム画面をととのえる」（出すもの・並びを変える画面へ） */
+  if(typeof c9HomeLink === 'function') html += c9HomeLink(pageKey);
   return html;
 }
 function viewTodayTab(){ return viewDay(today(), 'today'); }
@@ -353,6 +356,7 @@ function viewWeekTab(){
     return weekNotes(dates);
   };
   pageOrder('week').forEach(function(id){ if(parts[id] && !pageHidden('week', id)) html += parts[id](); });
+  if(typeof c9HomeLink === 'function') html += c9HomeLink('week');
   return html;
 }
 

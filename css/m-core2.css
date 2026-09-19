@@ -1,1 +1,125 @@
 /* くらしの手帳：検索・文字の大きさ・ホーム画面・データの点検・今日の自動評価 の見た目 */
+
+/* ===== 文字の大きさ（#189） ===== */
+/* 入力欄は16px以上（iPhoneの自動拡大を防ぐ）。大きい文字のときは、入力欄も大きく */
+input, textarea, select{font-size:max(16px, var(--fs)) !important}
+/* 上のタイトル・タブの切りかえは、文字を大きくしても画面からはみ出さないように少しだけおさえる */
+header h1{font-size:min(1em, 17.5px)}
+@media (max-width:759px){
+  #apps{font-size:min(1em, 15px)}
+  /* タブが12こ以上のとき（スマホの幅に入るように） */
+  #apps[data-n="12"] button{font-size:.58em}
+  #apps[data-n="13"] button{font-size:.54em}
+  #apps[data-n="14"] button{font-size:.5em}
+}
+/* 固定の大きさで書かれていた大事な文字も、文字の大きさに合わせる */
+pre.rules{font-size:.8em}
+.mf-in{font-size:.72em}
+.mf-seg:hover::after,.mf-seg:focus::after{font-size:.8em}
+/* 大きい文字のとき、ならんだボタンが画面からはみ出さないように */
+body[data-fs="l"] .pair>button.btn, body[data-fs="xl"] .pair>button.btn, body[data-fs="sys"] .pair>button.btn{white-space:normal}
+body[data-fs="xl"] .pillrow button{padding:6px 11px}
+body[data-fs="xl"] .mini{padding:5px 10px}
+
+.c9fsgrid{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-bottom:10px}
+.c9fsgrid button{display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:3px; min-height:72px; padding:8px 4px 7px;
+  border-radius:14px; border:1px solid var(--edge); color:var(--ink); font:inherit; cursor:pointer;
+  background:linear-gradient(180deg, rgba(255,255,255,.72), var(--glasstint2), rgba(255,255,255,.36)); box-shadow:var(--spec)}
+.c9fsgrid button.on{box-shadow:0 0 0 2.5px var(--accent)}
+.c9fsa{font-weight:700; line-height:1.1}
+.c9fsn{font-size:.72em; font-weight:700; line-height:1.25; text-align:center}
+.c9fss{font-size:.62em; color:var(--sub); line-height:1.2}
+.c9fsdemo{padding:10px 12px; border-radius:14px; border:1px dashed var(--edge); margin-bottom:10px; background:rgba(255,255,255,.35)}
+body[data-theme="dark"] .c9fsgrid button{background:rgba(255,255,255,.08)}
+body[data-theme="dark"] .c9fsdemo{background:rgba(255,255,255,.05)}
+
+/* ===== ホーム画面とタブ（#191） ===== */
+.c9homegrid{display:grid; grid-template-columns:minmax(0, 1fr) 170px; gap:12px; align-items:start; margin-bottom:12px}
+@media (max-width:620px){ .c9homegrid{grid-template-columns:minmax(0, 1fr)} }
+.c9hlist{margin-bottom:12px}
+.c9hrow{display:flex; align-items:center; gap:6px; padding:6px 0; border-bottom:1px solid var(--rule)}
+.c9hrow:last-child{border-bottom:0}
+.c9hname{font-size:.86em; line-height:1.35}
+.c9hrow.off .c9hname{color:var(--sub); text-decoration:line-through}
+.c9hrow .mini{flex:none; padding:5px 9px}
+.c9hrow .mini[disabled]{opacity:.35}
+.c9hrow .c9fixed{flex:none}
+.c9tg.on{background:linear-gradient(180deg, var(--accent2), var(--accent)); color:#fff; border-color:rgba(255,255,255,.6)}
+body[data-theme="dark"] .c9tg.on{color:#111}
+.c9grip{flex:none; width:30px; height:30px; padding:0; border-radius:9px; border:1px dashed var(--edge); background:transparent; color:var(--sub);
+  font:inherit; font-size:1.05em; line-height:1; cursor:grab; touch-action:none; -webkit-user-select:none; user-select:none}
+.c9hrow.c9drag{background:rgba(255,255,255,.7); border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,.16); position:relative; z-index:2}
+.c9hrow.c9drag .c9grip{cursor:grabbing}
+body[data-theme="dark"] .c9hrow.c9drag{background:rgba(255,255,255,.12)}
+.c9phone{width:100%; max-width:190px; margin:0 auto; padding:8px 7px 10px; border-radius:22px; border:2px solid var(--sub);
+  background:var(--paper); font-size:.62em; line-height:1.3; box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.c9ph-cap{text-align:center; color:var(--sub); font-weight:700; margin-bottom:4px}
+.c9ph-tabs,.c9ph-sub{display:flex; flex-wrap:wrap; gap:2px; margin-bottom:4px}
+.c9ph-tabs span,.c9ph-sub span{padding:1px 5px; border-radius:999px; background:rgba(255,255,255,.55); color:var(--sub)}
+.c9ph-tabs span.on,.c9ph-sub span.on{background:var(--accent); color:#fff}
+.c9ph-hero{padding:5px 6px; border-radius:8px; background:rgba(255,255,255,.65); margin-bottom:4px; font-weight:700}
+.c9ph-blk{display:flex; align-items:center; gap:4px; padding:5px 6px; margin-bottom:3px; border-radius:8px; border:1px solid var(--edge);
+  background:rgba(255,255,255,.55); overflow:hidden; white-space:nowrap; text-overflow:ellipsis}
+.c9ph-blk i{font-style:normal}
+.c9ph-empty{color:var(--sub); text-align:center; padding:12px 0}
+body[data-theme="dark"] .c9ph-tabs span, body[data-theme="dark"] .c9ph-sub span,
+body[data-theme="dark"] .c9ph-hero, body[data-theme="dark"] .c9ph-blk{background:rgba(255,255,255,.08)}
+.c9homelink{text-align:center; margin:2px 0 16px}
+
+/* ===== アプリ全体の検索（#195） ===== */
+#apptitle #c9sbtn{margin-left:auto; flex:none; display:inline-flex; align-items:center; gap:3px; height:28px; padding:0 9px; border-radius:10px; cursor:pointer;
+  border:1px solid var(--edge); color:var(--ink); font:inherit; font-size:.7em; font-weight:800; line-height:1;
+  background:linear-gradient(160deg, rgba(255,255,255,.8), rgba(255,255,255,.45)); box-shadow:inset 0 1px 1px rgba(255,255,255,.7), 0 2px 7px rgba(0,0,0,.1)}
+#apptitle #c9sbtn em{font-style:normal}
+#apptitle #c9sbtn:active{transform:scale(.93)}
+#apptitle #c9sbtn + #addbtn{margin-left:6px}
+body[data-theme="dark"] #apptitle #c9sbtn{background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.22)}
+@media (max-width:430px){ #apptitle #c9sbtn em{display:none} #apptitle #c9sbtn{padding:0 8px} }
+.c9sback{margin-bottom:8px}
+.c9sbox .pair input{min-width:0}
+.c9recent{margin-top:10px}
+.c9recent .chips{margin:5px 0 0}
+.c9recent .c9clr{border-style:dashed}
+.c9count{margin:0 2px 10px; line-height:1.5}
+.c9hit{cursor:pointer}
+.c9hit:active{opacity:.7}
+.c9hit .chev{color:var(--sub); flex:none}
+.c9hit .t{overflow-wrap:anywhere}
+.c9more{margin-top:8px}
+
+/* ===== データの点検（#197） ===== */
+.c9chk{align-items:flex-start}
+.c9chk .b{flex:none; margin-top:2px}
+.c9chk .mini{flex:none}
+.c9wrap{white-space:normal !important; overflow:visible !important; line-height:1.5}
+.c9chkbn .c9bnbtns{display:flex; gap:6px; margin-top:6px; flex-wrap:wrap}
+
+/* ===== 今日の評価（自動）・ふりかえり ===== */
+.c9items{display:flex; flex-direction:column; gap:7px; margin:10px 0 12px}
+.c9item{display:grid; grid-template-columns:5.4em minmax(0, 1fr) 3.4em; grid-template-areas:"l b p" "t t t"; align-items:center; column-gap:8px; row-gap:1px}
+.c9il{grid-area:l; font-size:.8em; font-weight:700}
+.c9item .bar{grid-area:b; flex:none; height:8px}
+.c9ip{grid-area:p; font-size:.74em; color:var(--sub); text-align:right}
+.c9it{grid-area:t; font-size:.72em; color:var(--sub); line-height:1.4}
+.c9good{font-size:.84em; margin:4px 0 10px}
+.c9good ul{margin:4px 0 0; padding-left:1.3em}
+.c9good li{margin:2px 0}
+.c9next{margin-bottom:10px}
+.c9gbig .gradeb{width:44px; height:44px; font-size:1.25em; border-radius:14px; flex:none}
+.c9gbig .t{font-size:1em}
+.revcal .rc.c9auto{position:relative}
+.revcal .rc.c9auto::after{content:''; position:absolute; top:3px; right:3px; width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,.95)}
+.c9revlist{margin-bottom:6px}
+.c9revlist .row{padding:8px 0; align-items:flex-start}
+.c9revlist .gradeb{flex:none}
+.c9revlist .s{white-space:normal}
+
+/* ===== 「勉強」タブ（スマホで見やすく） ===== */
+@media (max-width:420px){
+  .studygrid{gap:8px}
+  .studycard{padding:11px 10px; min-height:96px}
+  .studycard .sd{display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+}
+.studycard .st{overflow-wrap:anywhere}
+.studyback{flex-wrap:wrap; row-gap:6px}
+.studyback .studyttl{font-size:.95em; line-height:1.35}

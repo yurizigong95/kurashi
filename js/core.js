@@ -179,7 +179,10 @@ function clearCustomTheme(){
   ['--paper','--tint1','--tint2','--tint3','--accent','--accent2','--ink','--sub','--holi','--glasstint','--glasstint2']
     .forEach(function(k){ st.removeProperty(k); });
 }
-var FONTS = [{id:'s',name:'小'},{id:'m',name:'標準'},{id:'l',name:'大'},{id:'xl',name:'特大'}];
+/* 文字の大きさ（css/app.css の body[data-fs] と同じ。sys は端末の「文字の大きさ」の設定に合わせる） */
+var FONTS = [{id:'xs',name:'とても小さい',px:13},{id:'s',name:'小さい',px:14},{id:'m',name:'ふつう',px:15},
+             {id:'l',name:'大きい',px:17},{id:'xl',name:'とても大きい',px:19.5},{id:'sys',name:'システムに合わせる',px:0}];
+function c9FsNow(){ var id = S.ui.fs || 'm'; return FONTS.filter(function(f){ return f.id === id; })[0] || FONTS[2]; }
 var WDAY = ['日','月','火','水','木','金','土'];
 var DEEPGREEN = '#14532D';
 
@@ -1296,7 +1299,9 @@ function applyUi(){
   var mode = S.ui.bgMode || ((S.ui.season || S.ui.seasonTheme) ? 'season' : 'fixed');
   var th = (mode === 'season' || mode === 'mix') ? (SEASON_THEME[seasonNow()] || 'pink') : (S.ui.theme || 'pink');
   document.body.setAttribute('data-theme', th);
-  document.body.setAttribute('data-fs', S.ui.fs || 'm');
+  var fsId = c9FsNow().id;
+  document.body.setAttribute('data-fs', fsId);
+  document.documentElement.setAttribute('data-fs', fsId);     /* 「システムに合わせる」は html の大きさも使う */
   var stl = uiStyleNow().id;
   if(stl !== 'glass') document.body.setAttribute('data-style', stl); else document.body.removeAttribute('data-style');
   var fnt = uiFontNow();

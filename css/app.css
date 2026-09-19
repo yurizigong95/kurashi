@@ -45,7 +45,19 @@ body[data-theme="dark"]{
   --risyu:#D89AC0; --risyubg:rgba(70,40,60,.7); --warn:#E6A567; --warnbg:rgba(51,41,31,.7);
   --ok:#6FCB96; --okbg:rgba(30,49,40,.7); --todaybg:rgba(90,50,70,.6); --todaycol:rgba(255,255,255,.10);
 }
+/* 文字の大きさ（設定 › 見た目 › 文字の大きさ。js/core.js の FONTS と同じ） */
+body[data-fs="xs"]{--fs:13px}
+body[data-fs="s"]{--fs:14px}
 body[data-fs="m"]{--fs:15px}
+body[data-fs="l"]{--fs:17px}
+body[data-fs="xl"]{--fs:19.5px}
+/* システムに合わせる：ブラウザ（端末）で決めた文字の大きさ（ふつうは16px）を「ふつう」の15pxにあたるようにする */
+body[data-fs="sys"]{--fs:calc(1rem * .9375)}
+/* iPhone・iPad：設定 › 画面表示と明るさ › テキストサイズ（ふつうは17px）に合わせる */
+@supports (font: -apple-system-body){
+  html[data-fs="sys"]{font:-apple-system-body}
+  body[data-fs="sys"]{--fs:calc(1rem * .8824)}
+}
 
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation}
 body{

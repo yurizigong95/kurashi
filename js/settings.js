@@ -3,8 +3,8 @@
 function viewSettings(){
   var c = S.commute;
   var look = foldSection('s1', '見た目', uiStyleNow().name + '・' + ((THEMES.filter(function(t){ return t.id===S.ui.theme; })[0] || THEMES[0]).name) +
-      (uiFontNow().css ? '・' + uiFontNow().name : ''),
-    styleSettings() + fontSettings() +
+      (uiFontNow().css ? '・' + uiFontNow().name : '') + (c9FsNow().id !== 'm' ? '・文字' + c9FsNow().name : ''),
+    styleSettings() + fontSettings() + (typeof c9FsSettings === 'function' ? c9FsSettings() : '') +
     '<label class="f">カラー（背景ごと変わります）</label><div class="themes">'+
       THEMES.map(function(t){
         var sw = t.custom ? 'linear-gradient(150deg,'+(S.ui.customColor||'#E8C8E8')+','+(S.ui.customColor||'#E8C8E8')+')'
@@ -95,7 +95,9 @@ function viewSettings(){
 ;
   var chSec = (typeof charaSettings === 'function')
     ? foldSection('chara', 'キャラクター', (charaLevel() ? charaNow().name + '・' : '') + CHARA_LEVELS[charaLevel()][1], charaSettings()) : '';
-  return look + chSec + (photoOpen ? photoPicker() : '') + storageBox() + trashBox() + kindSettings() + weekFilterSettings() + tabSettings() + pageSettings() + diaSettings()
+  /* ホーム画面（今日タブ）とタブの並びは、1つの画面にまとめた（js/m-core2.js） */
+  var homeSec = (typeof c9HomeSettings === 'function') ? c9HomeSettings() : tabSettings();
+  return look + chSec + (photoOpen ? photoPicker() : '') + storageBox() + trashBox() + homeSec + kindSettings() + weekFilterSettings() + pageSettings() + diaSettings()
   + foldSection('s2', '通学の時間', '合計 '+commuteTotal()+'分',
     '<div class="grid3" style="margin-bottom:11px">'+
       '<div><label class="f">家→バス停</label><input id="cm_walk" inputmode="numeric" value="'+toNum(c.walk)+'"></div>'+
@@ -489,7 +491,11 @@ function settingsAction(act, t){
     if(!/^#[0-9a-fA-F]{6}$/.test(v)){ toast('色を選んでください', true); return true; }
     S.ui.customColor = v; S.ui.theme = 'custom'; touch('ui'); applyUi(); toast('色を変えました'); commit(); return true;
   }
-  if(act==='set-fs'){ S.ui.fs = t.dataset.v; touch('ui'); applyUi(); toast('文字の大きさを変えました'); commit(); return true; }
+  if(act==='set-fs'){
+    var fsNew = FONTS.filter(function(f){ return f.id === t.dataset.v; })[0];
+    if(!fsNew) return true;
+    S.ui.fs = fsNew.id; touch('ui'); applyUi(); toast('文字の大きさを「' + fsNew.name + '」にしました'); commit(); return true;
+  }
   if(act==='save-commute'){
     S.commute.walk=toNum(val('cm_walk')); S.commute.bus=toNum(val('cm_bus'));
     S.commute.change=toNum(val('cm_change')); S.commute.train=toNum(val('cm_train'));
@@ -565,9 +571,12 @@ function pageSettings(){
     course:'授業', money:'お金 › ホーム', in:'お金 › 収支', work:'お金 › バイト', todo:'ToDo' };
   var accentBtn = 'background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;border-color:rgba(255,255,255,.6)';
   var h = '';
+  /* 今日タブ（ホーム画面）のものは「ホーム画面とタブ」にまとめてある */
+  var homeHere = (typeof c9HomeSettings === 'function');
+  if(homeHere){ delete pageNames.today; delete pageNames.week; delete pageNames.life; }
   /* サブタブ */
-  h += foldSection('subTabSet', 'タブの中のタブ（順番・表示）', null,
-    Object.keys(SUBTAB_DEFS).map(function(app){
+  h += foldSection('subTabSet', 'タブの中のタブ（順番・表示）', homeHere ? '今日タブのぶんは「ホーム画面とタブ」で' : null,
+    Object.keys(SUBTAB_DEFS).filter(function(app){ return !(homeHere && app === 'today'); }).map(function(app){
       var list = subTabs(app);
       return '<div style="margin-bottom:14px"><div class="s2" style="font-weight:700;color:var(--ink);margin-bottom:6px">'+esc(appNames[app]||app)+'</div>'+
         list.map(function(t, i){
@@ -580,7 +589,7 @@ function pageSettings(){
         }).join('')+'</div>';
     }).join('')+'<p class="note">最後の1つは非表示にできません。</p>');
   /* ページの項目 */
-  h += foldSection('pageItemSet', '各ページの項目（順番・表示）', null,
+  h += foldSection('pageItemSet', homeHere ? 'ほかのページの項目（順番・表示）' : '各ページの項目（順番・表示）', null,
     Object.keys(pageNames).map(function(pg){
       var labels = {}; (PAGE_SECTIONS[pg]||[]).forEach(function(x){ labels[x[0]]=x[1]; });
       return '<div style="margin-bottom:14px"><div class="s2" style="font-weight:700;color:var(--ink);margin-bottom:6px">'+esc(pageNames[pg])+'</div>'+

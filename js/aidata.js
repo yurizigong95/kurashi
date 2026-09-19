@@ -33,6 +33,37 @@ var AI_EXCLUDE = {
   meta:'同期のための時刻', deleted:'消したものの印', delAt:'消した時刻の印', revAt:'もどした時刻の印',
   ver:'データの版', backupAt:'バックアップした時刻'
 };
+/* 足した機能が出す数字（kmAiData）の分野：
+   kmAiData(name, desc, fn, section) の4つめ・fn.section・KM.aiData[name].section のどれでもよい。
+   分野がないとき・知らない分野のときは「暗記・勉強」に出す（前からの決まり）。 */
+var C9_AI_DEFAULT_SEC = 'study';
+if(typeof kmAiData === 'function' && typeof KM !== 'undefined'){
+  kmAiData = (function(orig){
+    return function(name, desc, fn, section){
+      orig(name, desc, fn);
+      if(section && KM.aiData[name]) KM.aiData[name].section = String(section);
+    };
+  })(kmAiData);
+}
+function c9AiSectionOf(ad){
+  var s = String((ad && (ad.section || (ad.fn && ad.fn.section))) || '');
+  return AI_SECTIONS.some(function(x){ return x.id === s; }) ? s : C9_AI_DEFAULT_SEC;
+}
+/* 足した機能が出している数字の名前の一覧（目次に出す） */
+function c9AiExtras(){
+  if(typeof KM === 'undefined') return [];
+  return Object.keys(KM.aiData).sort().map(function(nm){
+    var ad = KM.aiData[nm] || {};
+    return { name:nm, desc:String(ad.desc || ''), section:c9AiSectionOf(ad) };
+  });
+}
+/* ことばをくらべる形（ひらがな・カタカナ、全角・半角のちがいをなくす。検索の担当の c9Norm があればそれを使う） */
+function c9AiNorm(s){
+  if(typeof c9Norm === 'function') return c9Norm(s);
+  s = String(s == null ? '' : s);
+  try{ s = s.normalize('NFKC'); }catch(e){}
+  return s.toLowerCase();
+}
 /* どの深さでも出さないキー（カギ・合言葉・同期の部屋） */
 var AI_SECRET = /^(apiKey|geminiKey|deeplKey|token|shortKey|fbConfig|password|secret|vapid|webhook|discordUrl|gasUrl)$/i;
 /* 設定の中だけで外すもの（room は同期の部屋の名前。授業の room＝教室 は外さない） */
@@ -68,7 +99,7 @@ function aiSectionData(id, opt){
   var sec = AI_SECTIONS.filter(function(s){ return s.id === id; })[0];
   if(!sec) return { error:'知らない分野です：' + id, sections:AI_SECTIONS.map(function(s){ return s.id; }) };
   var limit = Math.max(1, Math.min(200, toNum(opt.limit) || 60));
-  var q = String(opt.query || '').trim().toLowerCase();
+  var q = c9AiNorm(String(opt.query || '').trim());
   var from = isYmd(opt.from) ? opt.from : '', to = isYmd(opt.to) ? opt.to : '';
   var out = { section:id, name:sec.name, data:{} };
   sec.keys.forEach(function(k){
@@ -77,7 +108,7 @@ function aiSectionData(id, opt){
       var list = v.filter(function(x){
         var d = aiItemDate(x);
         if((from || to) && isYmd(d)){ if(from && d < from) return false; if(to && d > to) return false; }
-        if(q && aiItemText(x).toLowerCase().indexOf(q) < 0) return false;
+        if(q && c9AiNorm(aiItemText(x)).indexOf(q) < 0) return false;
         return true;
       });
       /* 日付があるものは近い順（これから→すぎた）に、ないものは新しい順に */
@@ -96,7 +127,7 @@ function aiSectionData(id, opt){
       var keys = Object.keys(v).filter(function(kk){
         if(AI_SECRET.test(kk)) return false;
         if((from || to) && /^\d{4}-\d{2}-\d{2}/.test(kk)){ var d2 = kk.slice(0, 10); if(from && d2 < from) return false; if(to && d2 > to) return false; }
-        if(q && (kk + aiItemText(v[kk])).toLowerCase().indexOf(q) < 0) return false;
+        if(q && c9AiNorm(kk + aiItemText(v[kk])).indexOf(q) < 0) return false;
         return true;
       }).sort().reverse();
       var obj = {};
@@ -129,8 +160,7 @@ function aiSectionData(id, opt){
   if(typeof KM !== 'undefined'){
     Object.keys(KM.aiData).forEach(function(nm){
       var ad = KM.aiData[nm];
-      if(ad.section && ad.section !== id) return;
-      if(!ad.section && id !== 'study') return;
+      if(c9AiSectionOf(ad) !== id) return;
       try{ out[nm] = aiSan(ad.fn(opt)); }catch(e){ out[nm] = { error:String(e && e.message || e) }; }
     });
   }
@@ -148,11 +178,14 @@ function aiOverview(){
     o.todayClasses = classesForDate(today()).map(function(c){ return c.period + '限 ' + c.name + (c.off ? '（' + c.off + '）' : ''); });
     o.tomorrowClasses = classesForDate(shiftDate(today(), 1)).map(function(c){ return c.period + '限 ' + c.name + (c.off ? '（' + c.off + '）' : ''); });
   }catch(e){}
+  /* 足した機能が出している数字（get_app_data で、その分野を読むと出てくる） */
+  o.extras = c9AiExtras();
+  if(o.extras.length) o.extrasNote = 'extras の数字は、get_app_data で section を指定して読むと、名前のところに出てきます。';
   return o;
 }
 /* ことばで、ぜんぶをさがす */
 function aiSearchAll(query, limit){
-  var q = String(query || '').trim().toLowerCase();
+  var q = c9AiNorm(String(query || '').trim());
   if(!q) return { error:'さがすことばがありません' };
   limit = Math.max(1, Math.min(80, toNum(limit) || 40));
   var hits = [];
@@ -163,7 +196,7 @@ function aiSearchAll(query, limit){
       var push = function(item, key){
         if(hits.length >= limit) return;
         var txt = aiItemText(item);
-        var at = txt.toLowerCase().indexOf(q);
+        var at = c9AiNorm(txt).indexOf(q);
         if(at < 0) return;
         hits.push({ section:s.id, key:k, id:(item && item.id) || key || '', date:aiItemDate(item),
           title:String((item && (item.title || item.name || item.q || item.text || item.subject)) || key || '').slice(0, 80),
@@ -177,7 +210,7 @@ function aiSearchAll(query, limit){
 }
 /* 道具（Geminiの関数）。読むだけなので、「直接登録」がオフでも使う */
 var AI_DATA_FUNCS = [
-  { name:'app_overview', description:'手帳の目次を見る（分野ごとの件数、今日と明日の授業）。何があるか分からないとき、最初に使う。',
+  { name:'app_overview', description:'手帳の目次を見る（分野ごとの件数、今日と明日の授業、足した機能が出している数字の名前と分野）。何があるか分からないとき、最初に使う。',
     parameters:{ type:'OBJECT', properties:{ detail:{ type:'BOOLEAN', description:'くわしく見るなら true（なくてもよい）' } } } },
   { name:'get_app_data', description:'手帳の中身を分野ごとに読む。予定・課題・お金・家計簿の明細・暗記カード・国試・メモの全文・おせわ・健康・設定など、アプリにあるものはぜんぶ読める。日付やことばでしぼれる。',
     parameters:{ type:'OBJECT', properties:{

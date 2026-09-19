@@ -1,10 +1,14 @@
 /* くらしの手帳：朝のまとめ・夜のふりかえり */
 /* ============================== 朝のまとめ・夜の振り返り ============================== */
-/* 予定から自分で作る（AIを使わないので、キーがなくても動く） */
+/* 予定から自分で作る（AIを使わないので、キーがなくても動く）
+   手帳にあるものだけで、その日を数える（画面を描くときにも使うので、S は変えない） */
+function c9YmdOfTime(t){ t = Number(t) || 0; return t ? toYmd(new Date(t)) : ''; }
 function dayScore(ymd){
   var tasks = S.tasks.filter(function(t){ return isYmd(t.due) && t.due === ymd; });
   var done = tasks.filter(function(t){ return t.done; }).length;
   var late = S.tasks.filter(function(t){ return !t.done && isYmd(t.due) && t.due < ymd; }).length;
+  /* その日に終わらせた課題（完了にした時刻がその日のもの。締切の日はとわない） */
+  var doneOn = S.tasks.filter(function(t){ return t.done && c9YmdOfTime(t.mt) === ymd; }).length;
   var cls = schoolClassesForDate(ymd);
   var att = 0, ab = 0;
   Object.keys(S.attendLog||{}).forEach(function(nm){
@@ -13,31 +17,138 @@ function dayScore(ymd){
   var work = S.shifts.filter(function(w){ return w.date === ymd; }).length;
   var studied = 0;
   Object.keys(S.taskLog||{}).forEach(function(id){ studied += toNum((S.taskLog[id]||{}).min); });
-  return { tasks:tasks.length, done:done, late:late, cls:cls.length, att:att, ab:ab, work:work, studied:studied };
+  /* 暗記（その日にやった枚数と、その日までの連続の日数） */
+  var anki = 0, streak = 0;
+  if(typeof ankiCountOn === 'function'){
+    anki = ankiCountOn(ymd);
+    for(var d = ymd; streak < 400 && ankiCountOn(d) > 0; d = shiftDate(d, -1)) streak++;
+  }
+  var hasCards = (S.cards || []).length > 0;
+  /* 家計簿（その日の支出。30日以内に記録があれば「つけている」とみなす） */
+  var spends = Array.isArray(S.spends) ? S.spends : [];
+  var from30 = shiftDate(ymd, -30);
+  var kbUse = spends.some(function(x){ return x && x.date >= from30 && x.date <= ymd; });
+  var outs = spends.filter(function(x){ return x && x.date === ymd && x.io !== 'in'; });
+  var spent = outs.reduce(function(a, x){ return a + Math.abs(Number(x.amount) || 0); }, 0);
+  /* 睡眠・歩数（S.healthLog があるとき。睡眠は分。小さい数なら時間とみなす） */
+  var hl = (S.healthLog && S.healthLog[ymd]) || {};
+  var sleep = Number(hl.sleep) || 0; if(sleep > 0 && sleep < 24) sleep = Math.round(sleep * 60);
+  sleep = Math.round(sleep);
+  var steps = toNum(hl.steps);
+  /* おせわ（その日のミッションとコイン） */
+  var petUse = false, petMis = 0, petCoin = 0;
+  var pd = (S.petDays && typeof S.petDays === 'object') ? S.petDays : {};
+  if(Object.keys(pd).length){
+    petUse = true;
+    var ms = pd['m:' + ymd];
+    petMis = (ms && ms.got) ? Object.keys(ms.got).filter(function(k){ return ms.got[k]; }).length : 0;
+    Object.keys(pd).forEach(function(k){ if(k.slice(0, 10) === ymd && k.indexOf('m:') !== 0) petCoin += toNum(pd[k] && pd[k].coins); });
+  }
+  return { tasks:tasks.length, done:done, doneOn:doneOn, late:late, cls:cls.length, att:att, ab:ab, work:work, studied:studied,
+           anki:anki, streak:streak, hasCards:hasCards, kbUse:kbUse, spendN:outs.length, spent:spent,
+           sleep:sleep, steps:steps, petUse:petUse, petMis:petMis, petCoin:petCoin };
+}
+/* 1日に使ってよいお金の目安（自由に使えるお金を、その月の日数でわる。わからないときは、前の4週間の平均の1.2倍） */
+function c9DayAllowance(ymd){
+  try{
+    var b = budget();
+    if(b.level !== 'none' && b.free > 0){
+      var a = ymd.split('-'), dim = new Date(+a[0], +a[1], 0).getDate();
+      return Math.round(b.free / dim);
+    }
+  }catch(e){}
+  var sum = 0, from = shiftDate(ymd, -28);
+  (Array.isArray(S.spends) ? S.spends : []).forEach(function(x){
+    if(x && x.io !== 'in' && x.date >= from && x.date < ymd) sum += Math.abs(Number(x.amount) || 0);
+  });
+  return sum > 0 ? Math.round(sum / 28 * 1.2) : null;
+}
+/* 内わけ（その日に関係があるものだけ数える）。{ k:種類, l:名前, p:点, m:満点, t:説明 } */
+function c9DayBreakdown(ymd, sc){
+  sc = sc || dayScore(ymd);
+  var it = [];
+  if(sc.tasks) it.push({ k:'task', l:'課題', m:30, p:Math.round(30 * sc.done / sc.tasks),
+    t:'締切 ' + sc.done + '/' + sc.tasks + '件' + (sc.doneOn ? '・終わらせた ' + sc.doneOn + '件' : '') });
+  else it.push({ k:'task', l:'課題', m:30, p:Math.min(30, 18 + sc.doneOn * 4),
+    t:sc.doneOn ? '終わらせた ' + sc.doneOn + '件' : '締切の課題なし' });
+  it.push({ k:'late', l:'期限切れ', m:10, p:Math.max(0, 10 - sc.late * 3), t:sc.late ? sc.late + '件たまっている' : 'ためていない' });
+  if(sc.cls) it.push({ k:'att', l:'出席', m:25, p:sc.ab ? Math.max(0, 25 - sc.ab * 15) : sc.att ? 25 : 18,
+    t:sc.cls + 'コマ' + (sc.ab ? '・欠席 ' + sc.ab : sc.att ? '・出席を記録' : '・出欠の記録なし') });
+  if(sc.hasCards || sc.anki) it.push({ k:'anki', l:'暗記', m:15, p:sc.anki >= 30 ? 15 : sc.anki >= 10 ? 11 : sc.anki >= 1 ? 7 : 0,
+    t:sc.anki ? sc.anki + '枚' + (sc.streak > 1 ? '・' + sc.streak + '日連続' : '') : 'やっていない' });
+  if(sc.kbUse){
+    var al = c9DayAllowance(ymd);
+    var pk = (sc.spendN ? 4 : 2) + (al == null ? (sc.spendN ? 4 : 3) : sc.spent <= al ? 6 : sc.spent <= al * 1.5 ? 3 : 0);
+    it.push({ k:'kb', l:'家計簿', m:10, p:pk,
+      t:(sc.spendN ? yen(sc.spent) + ' 使った' : '支出の記録なし') + (al != null ? '（目安 ' + yen(al) + '）' : '') });
+  }
+  if(sc.sleep || sc.steps){
+    var ph = 0, mh = 0, th = [];
+    if(sc.sleep){ mh += 5; ph += sc.sleep >= 420 ? 5 : sc.sleep >= 360 ? 3 : 1; th.push('睡眠 ' + Math.floor(sc.sleep / 60) + '時間' + (sc.sleep % 60 ? (sc.sleep % 60) + '分' : '')); }
+    if(sc.steps){ mh += 5; ph += sc.steps >= 8000 ? 5 : sc.steps >= 5000 ? 3 : 1; th.push(sc.steps + '歩'); }
+    it.push({ k:'health', l:'睡眠・歩数', m:mh, p:ph, t:th.join('・') });
+  }
+  if(sc.petUse) it.push({ k:'pet', l:'おせわ', m:5, p:sc.petMis ? 5 : sc.petCoin > 0 ? 3 : 0,
+    t:sc.petMis ? 'ミッション ' + sc.petMis + 'こ' : sc.petCoin > 0 ? 'コイン ' + sc.petCoin + 'まい' : 'この日は会えなかった' });
+  if(sc.work) it.push({ k:'work', l:'バイト', m:5, p:5, t:sc.work + '回・おつかれさま' });
+  return it;
+}
+/* よかったこと（満点の8わり以上のもの） */
+function c9DayGoods(items, sc){
+  var out = [];
+  items.forEach(function(x){
+    if(!x.m || x.p < x.m * 0.8) return;
+    var w = ({ task: sc.tasks ? '締切の課題をぜんぶ出せた' : sc.doneOn ? '課題を' + sc.doneOn + '件終わらせた' : '',
+               late: (sc.tasks || sc.doneOn) ? '期限切れをためていない' : '',
+               att: '授業に出た（' + sc.cls + 'コマ）',
+               anki: '暗記を' + sc.anki + '枚' + (sc.streak > 1 ? '（' + sc.streak + '日連続）' : ''),
+               kb: sc.spendN ? '家計簿をつけて、使いすぎなかった' : '使いすぎなかった',
+               health: 'よく眠れた・よく歩けた',
+               pet: 'おせわのミッションをこなした',
+               work: 'バイトをがんばった' })[x.k];
+    if(w) out.push(w);
+  });
+  return out;
+}
+/* 次の日へのひとこと（いちばん点がとれなかったところから） */
+function c9DayNext(items, sc){
+  var hard = (S.ui.aiTone === 'coach' || S.ui.aiTone === 'spartan');
+  var weak = items.filter(function(x){ return x.k !== 'work' && x.m && x.p < x.m * 0.8; })
+    .sort(function(a, b){ return (a.p / a.m) - (b.p / b.m) || String(a.k).localeCompare(String(b.k)); })[0];
+  if(!weak) return hard ? 'この調子を明日も続けること。' : 'この調子で、明日もいきましょう。';
+  var w = ({
+    task: sc.tasks > sc.done ? 'のこった課題を、まず10分だけ進めよう。' : '明日の課題を1つ、先に手をつけておこう。',
+    late: '期限が過ぎた課題を、いちばん古いものから1つ片づけよう。',
+    att: sc.ab ? '明日の授業の持ち物を、夜のうちにそろえておこう。' : '授業のあとに、出欠をつけておこう。',
+    anki: '暗記カードを10枚だけでもやってみよう。',
+    kb: sc.spendN ? '明日は使うお金をすこしおさえてみよう。' : '使ったお金を、家計簿にメモしておこう。',
+    health: (sc.sleep && sc.sleep < 360) ? '今夜は早めに寝よう。' : 'すこし歩く時間をつくろう。',
+    pet: 'おせわの子に会いに行こう。'
+  })[weak.k] || '明日はひとつだけ、できることをやろう。';
+  return hard ? w.replace(/よう。$/, 'ること。') : w;
 }
 /* SABCDE で評価する */
 var GRADE_COLOR = { S:'#C9A227', A:'#E0876A', B:'#6FA8DC', C:'#84C7AC', D:'#B0A0C0', E:'#9AA0A6' };
+function c9GradeOf(p){ return p >= 90 ? 'S' : p >= 78 ? 'A' : p >= 64 ? 'B' : p >= 50 ? 'C' : p >= 35 ? 'D' : 'E'; }
 function dayGrade(ymd){
   var sc = dayScore(ymd);
-  var p = 0;
-  /* 課題をどれだけ片付けたか（最大40点） */
-  if(sc.tasks) p += Math.round(sc.done / sc.tasks * 40);
-  else p += 24;                                   /* 締切がない日は標準点 */
-  /* 出席（最大30点） */
-  if(sc.cls){
-    if(sc.ab) p += Math.max(0, 30 - sc.ab * 20);
-    else if(sc.att) p += 30;
-    else p += 20;                                 /* 記録していないだけかも */
-  }else p += 20;
-  /* 期限切れをためていないか（最大15点） */
-  p += Math.max(0, 15 - sc.late * 5);
-  /* 勉強した時間（最大10点） */
-  p += Math.min(10, Math.round(sc.studied / 30) * 2);
-  /* バイト（最大5点） */
-  if(sc.work) p += 5;
+  var items = c9DayBreakdown(ymd, sc);
+  var M = 0, P = 0;
+  items.forEach(function(x){ M += x.m; P += x.p; });
+  var p = M ? Math.round(P / M * 100) : 0;
   p = Math.max(0, Math.min(100, p));
-  var g = p >= 90 ? 'S' : p >= 78 ? 'A' : p >= 64 ? 'B' : p >= 50 ? 'C' : p >= 35 ? 'D' : 'E';
-  return { grade:g, point:p, sc:sc };
+  return { grade:c9GradeOf(p), point:p, sc:sc, items:items, good:c9DayGoods(items, sc), next:c9DayNext(items, sc) };
+}
+/* 内わけを棒で見せる（きのうの評価・今日のふりかえり） */
+function c9ItemsHtml(items){
+  if(!Array.isArray(items) || !items.length) return '';
+  return '<div class="c9items">' + items.map(function(x){
+    var pct = x.m ? Math.round(x.p / x.m * 100) : 0;
+    return '<div class="c9item"><span class="c9il">' + esc(x.l) + '</span>' +
+      '<span class="bar"><i class="' + (pct >= 80 ? 'done' : pct >= 50 ? '' : 'over') + '" style="width:' + Math.max(4, pct) + '%"></i></span>' +
+      '<span class="c9ip num">' + toNum(x.p) + '/' + toNum(x.m) + '</span>' +
+      '<span class="c9it">' + esc(x.t || '') + '</span></div>';
+  }).join('') + '</div>';
 }
 function gradeNote(g){
   return ({ S:'文句なし', A:'よくできた', B:'ふつうにできた', C:'もう少し', D:'手をつけられていない', E:'今日はお休みみたいな日' })[g] || '';
@@ -93,13 +204,8 @@ function nightReviewCard(){
       '<span class="grow"><span class="t">'+esc(gradeNote(jd.grade))+'</span>'+
       '<span class="s">'+jd.point+'点</span></span></div>'+
     '<div class="bar" style="margin:10px 0"><i class="'+(jd.point>=64?'done':jd.point>=50?'':'over')+'" style="width:'+jd.point+'%"></i></div>'+
-    '<div class="s2" style="margin-bottom:10px">'+
-      (sc.tasks ? '課題 '+sc.done+'/'+sc.tasks+'件　' : '')+
-      (sc.cls ? '授業 '+sc.cls+'コマ'+(sc.ab?'（欠席'+sc.ab+'）':'')+'　' : '') +
-      (sc.work ? 'バイトあり　' : '')+
-      (sc.studied ? '勉強 '+sc.studied+'分　' : '')+
-      (sc.late ? '<b style="color:var(--rakuten)">期限切れ '+sc.late+'件</b>' : '')+
-    '</div>'+
+    c9ItemsHtml(jd.items)+
+    (sc.late ? '<div class="s2" style="margin-bottom:10px"><b style="color:var(--rakuten)">期限切れ '+sc.late+'件</b></div>' : '')+
     '<div class="field"><label class="f">ひとこと（任意）</label><input id="rev_memo" value="'+esc(rec.memo||'')+'" placeholder="例：レポート終わった"></div>'+
     (rec.ai ? '<div class="msg '+(jd.point>=64?'ok':'ng')+'" style="margin-bottom:10px">'+esc(rec.ai).replace(/\n/g,'<br>')+'</div>' : '')+
     '<div class="pillrow" style="margin-bottom:10px">'+
@@ -133,10 +239,22 @@ function reviewHistory(){
   for(var d = 1; d <= days; d++){
     var k2 = ym + '-' + pad(d);
     var r = (S.dayReview||{})[k2];
-    cells += '<div class="rc'+(r&&r.grade?' has':'')+'"'+(r&&r.grade?' style="--gc:'+(GRADE_COLOR[r.grade]||'#999')+'"':'')+'>'+
+    cells += '<div class="rc'+(r&&r.grade?' has':'')+(r&&r.grade&&r.auto?' c9auto':'')+'"'+(r&&r.grade?' style="--gc:'+(GRADE_COLOR[r.grade]||'#999')+'"':'')+
+      (r&&r.grade&&r.auto?' title="自動でつけた評価"':'')+'>'+
       (r&&r.grade ? '<span class="rg">'+esc(r.grade)+'</span>' : '')+
       '<span class="rd">'+d+'</span></div>';
   }
+  /* この月の記録（自動でつけたものも、自分でつけたものも） */
+  var rows = keys.slice().sort().reverse().map(function(k){
+    var r2 = S.dayReview[k] || {};
+    var sub = r2.memo || r2.next || '';
+    return '<div class="row c9revrow"><span class="gradeb" style="--gc:'+(GRADE_COLOR[r2.grade]||'#999')+'">'+esc(r2.grade)+'</span>'+
+      '<div class="grow"><div class="t">'+esc(ymdLabel(k))+'　'+toNum(r2.point)+'点'+
+        (r2.auto ? '<span class="b cr" style="margin-left:6px">自動</span>' : '<span class="b cat" style="margin-left:6px">自分で</span>')+'</div>'+
+        (sub ? '<div class="s">'+esc(sub)+'</div>' : '')+
+        (Array.isArray(r2.good) && r2.good.length ? '<div class="s">よかった：'+esc(r2.good.join('・'))+'</div>' : '')+
+      '</div></div>';
+  }).join('');
   return section('これまでのふりかえり', keys.length ? keys.length+'日　平均 '+avgG : null,
     '<div class="rhnav">'+
       '<button class="mini" data-act="rh-off" data-v="-1">‹</button>'+
@@ -148,7 +266,9 @@ function reviewHistory(){
     (keys.length
       ? '<div class="pillrow" style="gap:6px">'+order.map(function(g){
           return '<span class="b" style="background:'+GRADE_COLOR[g]+'22;color:'+GRADE_COLOR[g]+';border:1px solid '+GRADE_COLOR[g]+'55">'+g+' '+cnt[g]+'</span>';
-        }).join('')+'</div>'
+        }).join('')+'</div>'+
+        '<p class="note" style="margin:0 0 6px">点のついた日は、アプリが次の日に自動で評価します（自分でつけた評価は、そのまま残ります）。</p>'+
+        '<div class="c9revlist">'+rows+'</div>'
       : '<div class="empty">この月の記録はありません。</div>')+
     '<button class="btn ghost" style="margin-top:12px" data-act="rev-hist-close">とじる</button>');
 }
@@ -211,8 +331,9 @@ function reviewAction(act, t){
     var td2 = today();
     var prev = (S.dayReview||{})[td2] || {};
     S.dayReview = S.dayReview || {};
+    var jd3 = dayGrade(td2);
     S.dayReview[td2] = { grade: t.dataset.g, point: toNum(t.dataset.p),
-      memo: val('rev_memo'), ai: prev.ai || '', mt: Date.now() };
+      memo: val('rev_memo'), ai: prev.ai || '', items: jd3.items, good: jd3.good, next: jd3.next, mt: Date.now() };
     touch('dayReview'); reviewOpen = false; toast(t.dataset.g + ' で記録しました'); commit(); return true;
   }
   if(act === 'rev-ai'){
@@ -220,8 +341,8 @@ function reviewAction(act, t){
     var jd2 = dayGrade(today());
     var sc2 = jd2.sc;
     var ask = '今日の評価は '+jd2.grade+'（'+jd2.point+'点）でした。' +
-      '課題 '+sc2.done+'/'+sc2.tasks+'件、授業 '+sc2.cls+'コマ' + (sc2.ab?'（欠席'+sc2.ab+'）':'') +
-      '、期限切れ '+sc2.late+'件、勉強 '+sc2.studied+'分、バイト' + (sc2.work?'あり':'なし') + '。' +
+      '内わけ：' + jd2.items.map(function(x){ return x.l + ' ' + x.p + '/' + x.m + '点（' + x.t + '）'; }).join('、') + '。' +
+      '期限切れ '+sc2.late+'件、バイト' + (sc2.work?'あり':'なし') + '。' +
       (len === 'short' ? 'ひとことで（1行）。'
        : len === 'long' ? 'くわしく（できたこと・できなかったこと・明日の一歩を、それぞれ2〜3行で）。'
        : '3〜4行で、よかった点と明日の一歩を。') +

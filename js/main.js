@@ -8,7 +8,9 @@ var MONEY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ
 var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
 var TODAY_TABS = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
 var CAL_TABS = [['cal','カレンダー'],['add','追加'],['imp','重要'],['health','健康']];
-var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', anki:'暗記', study:'勉強', notes:'メモ', news:'お知らせ', set:'設定' };
+var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', anki:'暗記', study:'勉強', notes:'メモ', news:'お知らせ', set:'設定', c9search:'検索' };
+/* タブに出していない画面を、検索などから一時的に開いているとき（その画面の id） */
+var c9TempApp = '';
 var FOOTS = {
   today:'天気は Open-Meteo の予報です。バスや電車の運行状況は各社の公式情報も確認してください。',
   money:'金額に分割手数料（金利）は含まれていません。引き落とし日の前日までに入金しておくと安心です。',
@@ -23,7 +25,8 @@ var FOOTS = {
   study:'AIの答えや基準値は、教科書・先生の資料で確かめてから使ってください。',
   notes:'ピン留めしたメモは今日ページにも出ます。',
   news:'今日ページに出たお知らせの履歴です。',
-  set:'合言葉は他人に教えないでください。Firestoreのセキュリティルールを必ず設定してください。'
+  set:'合言葉は他人に教えないでください。Firestoreのセキュリティルールを必ず設定してください。',
+  c9search:'ひらがな・カタカナ、全角・半角のちがいは同じものとしてさがします。'
 };
 
 function render(){
@@ -36,10 +39,13 @@ function renderInner(){
   /* 授業タブを一時的に開いているときは、そのまま表示する */
   if(appId === 'course' && courseTemp && !APPS.some(function(a){ return a[0]==='course'; })){
     /* 何もしない（タブには出ないが、画面は授業のまま） */
+  }else if(c9TempApp && appId === c9TempApp){
+    /* 検索などから、タブに出していない画面を一時的に開いている */
   }else if(!APPS.some(function(a){ return a[0]===appId; })){
     appId = APPS[0] ? APPS[0][0] : 'today';
     courseTemp = false;
   }
+  if(c9TempApp && appId !== c9TempApp) c9TempApp = '';
   document.getElementById('apps').setAttribute('data-n', String(APPS.length));
   document.getElementById('apps').innerHTML = '<span class="pill"></span>' + APPS.map(function(a){
     return '<button data-app="'+a[0]+'" class="'+(appId===a[0]?'on':'')+(a[0]==='set'?' ico':'')+'">'+a[1]+'</button>';
@@ -105,7 +111,8 @@ function renderInner(){
     }
   }
   var titleEl = document.getElementById('apptitle');
-  titleEl.innerHTML = esc(TITLES[appId]) + (typeof charaMini === 'function' ? charaMini() : '') + '<span id="synctag"></span>' +
+  titleEl.innerHTML = esc(TITLES[appId] || '') + (typeof charaMini === 'function' ? charaMini() : '') + '<span id="synctag"></span>' +
+    (typeof c9SearchBtn === 'function' ? c9SearchBtn() : '') +
     '<button id="addbtn" type="button" data-act="go-add" title="予定を追加する" aria-label="予定を追加する"><span>＋</span><em>追加</em></button>' +
     '<button id="revbtn" data-act="go-review" title="今日の評価をみる">'+
       (function(){
@@ -114,7 +121,7 @@ function renderInner(){
           ? '<span class="rgb" style="--gc:'+(GRADE_COLOR[r.grade]||'#999')+'">'+esc(r.grade)+'</span>'
           : '<span class="rgb none">評価</span>';
       })()+'</button>';
-  document.getElementById('foot').textContent = FOOTS[appId];
+  document.getElementById('foot').textContent = FOOTS[appId] || '';
   var fab = document.getElementById('fab');
   if(fab) fab.className = 'fab hide';   /* 月カレンダーには右下の＋があるので、こちらは使わない */
   updateSyncTag();          /* 上の「同期済み・送れていない」などの表示 */
@@ -351,6 +358,7 @@ document.querySelector('header').addEventListener('click', function(e){
     setTimeout(function(){ var el = document.querySelector('[data-id="s4"]'); if(el) el.scrollIntoView({ block:'start', behavior:'smooth' }); }, 50);
     return;
   }
+  if(typeof kmRunAction === 'function' && kmRunAction(act, t, e)) return;     /* 検索のボタンなど（足した機能） */
   if(typeof chatAction==='function' && chatAction(act, t)) return;
   if(typeof reviewAction==='function' && reviewAction(act, t)) return;
 });

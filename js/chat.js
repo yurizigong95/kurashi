@@ -335,7 +335,9 @@ function chatSystem(){
     '【予定の提案】新しく予定を入れるとよさそうなときは、いちばん最後に次の形式だけの行を足す（複数可・説明は書かない）：\n' +
     '[[ADD|種類|タイトル|YYYY-MM-DD|HH:MM|終了HH:MM]]\n' +
     '  種類は task/quiz/exam/kousa/work/imp/other のどれか。時刻がいらないときは空でよい。\n' +
-    ((typeof charaTalkRule === 'function') ? charaTalkRule() : '');
+    ((typeof charaTalkRule === 'function') ? charaTalkRule() : '') +
+    /* キャラの口調（キャラのセリフの担当が charaChatPersona を作る。無ければ何もしない） */
+    (function(){ try{ return typeof charaChatPersona === 'function' ? String(charaChatPersona() || '') : ''; }catch(e){ return ''; } })();
 }
 
 function chatSuggest(){
