@@ -1,1 +1,136 @@
-/* くらしの手帳：おせわ・キャラの追加 の見た目 */
+/* くらしの手帳：おせわ・キャラの追加 の見た目（着せかえ・進化の道・図鑑・もようがえ・今日タブの子・記念日・天気・おさんぽ） */
+
+/* ===== おせわの子の絵（重ねた服・道のしるし） ===== */
+.petstage.pp-rel{position:relative}
+.petstage.pp-path.s3 svg{filter:drop-shadow(0 0 6px var(--ppc, rgba(255,255,255,.9)))}
+.petstage.pp-p-hakase{--ppc:#5B7FD6}
+.petstage.pp-p-genki{--ppc:#F08A2C}
+.petstage.pp-p-idol{--ppc:#EE5FA0}
+.petstage.pp-p-nonbiri{--ppc:#3FAF83}
+.petstage.pp-p-nurse{--ppc:#E35D7A}
+.pp-badge{position:absolute; left:-6px; top:-4px; width:24px; height:24px; display:flex; align-items:center; justify-content:center;
+  font-size:14px; line-height:1; border-radius:50%; background:#fff; box-shadow:0 0 0 2px var(--ppc, #E35D7A), 0 2px 6px rgba(0,0,0,.15); pointer-events:none}
+.pp-snowman{position:absolute; right:-34px; bottom:0; font-size:30px; line-height:1; pointer-events:none; filter:drop-shadow(0 2px 2px rgba(0,0,0,.15))}
+.pp-acts{margin-top:6px}
+.pp-acts button:not(.btn){font-size:.76em}
+
+/* ===== へや（かべがみ・ゆか・天気・お祝い・もようがえ） ===== */
+.pp-wall, .pp-floor{position:absolute; left:0; right:0; pointer-events:none}
+.pp-wall{top:0; height:62%}
+.pp-floor{bottom:0; height:38%}
+.petroom.night .pp-wall, .petroom.night .pp-floor{filter:brightness(.45) saturate(.7)}
+body[data-theme="dark"] .petroom:not(.night) .pp-wall, body[data-theme="dark"] .petroom:not(.night) .pp-floor{filter:brightness(.8)}
+.pp-sw{display:inline-block; width:44px; height:28px; border-radius:8px; border:1px solid var(--edge); vertical-align:middle}
+.pp-sw-none{background:linear-gradient(180deg, #FFF5F8 0%, #FDEBF1 62%, #F2D9C4 62%, #EBCDB3 100%)}
+/* かべがみ */
+.pp-wall-pinkdot{background:#FCE4EC radial-gradient(circle, #F8BBD0 22%, transparent 24%) 0 0 / 22px 22px}
+.pp-wall-mint{background:repeating-linear-gradient(90deg, #E3F6EE 0 14px, #CBEBDD 14px 28px)}
+.pp-wall-lemon{background-color:#FFF9DC; background-image:linear-gradient(90deg, rgba(247,211,91,.33) 50%, transparent 50%), linear-gradient(rgba(247,211,91,.33) 50%, transparent 50%); background-size:24px 24px}
+.pp-wall-sky{background:radial-gradient(ellipse 34px 14px at 22% 30%, #fff 60%, transparent 62%), radial-gradient(ellipse 44px 16px at 70% 20%, #fff 60%, transparent 62%), linear-gradient(180deg, #A9D8F6, #E4F4FF)}
+.pp-wall-lavender{background:repeating-linear-gradient(135deg, #EFE6F8 0 12px, #E3D5F2 12px 24px)}
+.pp-wall-log{background:repeating-linear-gradient(180deg, #E9C9A0 0 16px, #D6AD7F 16px 18px)}
+.pp-wall-night{background:radial-gradient(circle, #FFF6C2 1.2px, transparent 2px) 0 0 / 26px 26px, radial-gradient(circle, #FFFFFF 1px, transparent 1.6px) 13px 9px / 31px 31px, linear-gradient(180deg, #2C2E5C, #4A4C8C)}
+.pp-wall-sakura{background:radial-gradient(circle, #F8B9CB 3px, transparent 3.6px) 0 0 / 30px 30px, radial-gradient(circle, #FBD3DF 2px, transparent 2.6px) 15px 12px / 30px 30px, #FFF3F6}
+/* ゆか */
+.pp-floor-wood{background:repeating-linear-gradient(90deg, #D9A86C 0 30px, #C9955A 30px 32px)}
+.pp-floor-tatami{background:repeating-linear-gradient(90deg, #D8D39A 0 2px, #CFCB8C 2px 4px), #D8D39A; box-shadow:inset 0 3px 0 #7C8F55}
+.pp-floor-tile{background-color:#F6F5F1; background-image:linear-gradient(90deg, #DCD8D0 1px, transparent 1px), linear-gradient(#DCD8D0 1px, transparent 1px); background-size:22px 22px}
+.pp-floor-check{background:conic-gradient(#FFFFFF 25%, #E7D3DD 0 50%, #FFFFFF 0 75%, #E7D3DD 0) 0 0 / 24px 24px}
+.pp-floor-carpet{background:radial-gradient(circle, rgba(255,255,255,.45) 1.5px, transparent 2px) 0 0 / 12px 12px, #F3B6C8}
+.pp-floor-grass{background:repeating-linear-gradient(90deg, #A6DB86 0 6px, #95CE74 6px 12px)}
+.petroom .pdeco{z-index:1}
+.petroom .petme{z-index:2}
+.petroom .pcoin, .petroom .ppause{z-index:3}
+.pp-wxtag, .pp-walking{position:absolute; left:10px; bottom:10px; z-index:3; font-size:.72em; font-weight:700; background:rgba(255,255,255,.88); color:#4A3A44;
+  border-radius:999px; padding:3px 10px; box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.pp-walking{left:auto; right:10px}
+.pp-fx, .pp-confetti{position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:1}
+.pp-fx i, .pp-confetti i{position:absolute; top:-14px; display:block}
+.pp-fx-rain i{width:2px; height:14px; border-radius:2px; background:rgba(110,160,225,.7); animation:ppRain 1.1s linear infinite}
+.pp-fx-snow i{width:7px; height:7px; border-radius:50%; background:#fff; box-shadow:0 0 2px rgba(0,0,0,.15); animation:ppSnow 4.5s linear infinite}
+.pp-confetti i{width:6px; height:10px; border-radius:2px; animation:ppConf 3.2s linear infinite}
+@keyframes ppRain{to{transform:translateY(270px)}}
+@keyframes ppSnow{0%{transform:translate(0, 0)} 50%{transform:translate(8px, 130px)} 100%{transform:translate(-6px, 270px)}}
+@keyframes ppConf{0%{transform:translateY(0) rotate(0)} 100%{transform:translateY(270px) rotate(540deg)}}
+.pp-cel .petme .chbubble{background:#FFF4D6; color:#6A4A20}
+/* もようがえ：マス目・ドラッグ */
+.petroom.pp-edit .pdeco{pointer-events:auto; cursor:grab; touch-action:none; outline:2px dashed rgba(217,115,143,.6); outline-offset:2px; border-radius:6px}
+.pp-grid{position:absolute; inset:0; z-index:4}
+.pp-cell{position:absolute; width:calc(100% / 6); height:25%; margin:0; padding:0; border:1px dashed rgba(217,115,143,.7); background:rgba(255,255,255,.18); cursor:pointer}
+.pp-cell:hover, .pp-cell:focus{background:rgba(255,255,255,.5)}
+
+/* ===== きせかえ ===== */
+.pp-dresshead{display:flex; gap:12px; align-items:center; margin-bottom:8px}
+.pp-dpet{flex:none; width:118px; display:flex; justify-content:center; padding:6px 0; border-radius:18px; background:linear-gradient(180deg, #FFF5F8, #FDEBF1)}
+body[data-theme="dark"] .pp-dpet{background:rgba(255,255,255,.06)}
+.pp-slots{margin:4px 0}
+.pp-wlist .pi{line-height:0; min-height:30px; display:flex; align-items:center}
+.pp-wprev{display:block; overflow:visible}
+.pp-wlist button.pp-lock{opacity:.6}
+
+.pp-txt{font-size:.8em; line-height:1.55; color:var(--sub); margin:4px 0; white-space:normal; word-break:break-word}
+.pp-celeb .pp-txt{color:inherit; opacity:.85}
+/* ===== 進化の道 ===== */
+.pp-phead{font-size:.86em; line-height:1.65; margin:0 0 8px; white-space:normal}
+.pp-meter{display:grid; grid-template-columns:5.8em minmax(0, 1fr) 2.8em; align-items:center; gap:4px 8px; font-size:.82em; padding:4px 0}
+.pp-mn{font-weight:700}
+.pp-mbar{height:10px; border-radius:5px; background:rgba(0,0,0,.07); overflow:hidden}
+body[data-theme="dark"] .pp-mbar{background:rgba(255,255,255,.1)}
+.pp-mbar i{display:block; height:100%; border-radius:0 5px 5px 0; background:var(--ppc, #E35D7A)}
+.pp-mv{text-align:right; font-weight:600}
+.pp-mhow{grid-column:1 / -1; font-size:.86em; color:var(--sub); margin-top:-2px}
+
+/* ===== 図鑑 ===== */
+.pp-dex{display:grid; grid-template-columns:repeat(auto-fill, minmax(78px, 1fr)); gap:6px}
+.pp-dcell{display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 2px 6px; border-radius:14px; border:1px solid var(--edge);
+  background:rgba(255,255,255,.5); text-align:center; min-height:96px}
+body[data-theme="dark"] .pp-dcell{background:rgba(255,255,255,.05)}
+.pp-dn{font-size:.7em; font-weight:700; line-height:1.3}
+.pp-dt{font-size:.64em; color:var(--sub); line-height:1.3}
+.pp-sil .chara svg, .pp-sil .chara img, .pp-sil .petegg svg, .pp-sil .pp-badge{filter:brightness(0) opacity(.2) !important; animation:none !important}
+.pp-sil .pp-badge, .pp-sil .pp-snowman{display:none}
+.pp-dexc{display:flex; flex-wrap:wrap; gap:4px}
+.pp-dc{display:inline-flex; padding:2px; border-radius:10px; background:rgba(255,255,255,.45)}
+body[data-theme="dark"] .pp-dc{background:rgba(255,255,255,.05)}
+.pp-kid{align-items:center; gap:8px}
+.pp-kidimg{flex:none}
+
+/* ===== おさんぽ ===== */
+.pp-route{display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:6px; margin:4px 0 10px}
+.pp-sq{position:relative; display:flex; flex-direction:column; align-items:center; gap:1px; padding:12px 2px 6px; border-radius:12px;
+  border:1px solid var(--edge); background:rgba(255,255,255,.4); opacity:.55; text-align:center}
+body[data-theme="dark"] .pp-sq{background:rgba(255,255,255,.04)}
+.pp-sq.done{opacity:1; background:rgba(163,217,143,.28)}
+.pp-sq.here{opacity:1; box-shadow:0 0 0 2px var(--accent)}
+.pp-sqi{font-size:1.3em; line-height:1.2}
+.pp-sqn{font-size:.62em; line-height:1.25}
+.pp-sqpet{position:absolute; top:-18px; left:50%; transform:translateX(-50%); pointer-events:none}
+.pp-found .row, .pp-anrow, .pp-wlog{align-items:flex-start; gap:8px}
+.pp-fi{flex:none; width:1.6em; text-align:center; font-size:1.2em; line-height:1.4}
+.pp-photos{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px}
+.pp-photo{display:inline-block; max-width:150px; padding:6px 8px 8px; border-radius:6px; background:#fff; color:#4A3A44; font-size:.72em; line-height:1.4;
+  box-shadow:0 2px 6px rgba(0,0,0,.12); transform:rotate(-1.5deg)}
+.pp-photo:nth-child(2n){transform:rotate(1.8deg)}
+.pp-photo b{display:block; font-size:1.8em; line-height:1.2; text-align:center; padding:4px 0; background:#F4EEF1; border-radius:4px; margin-bottom:4px}
+
+/* ===== 今日タブ ===== */
+.pp-today{display:flex; gap:12px; align-items:center}
+.pp-tpet{flex:none; width:80px; min-height:80px; display:flex; align-items:flex-end; justify-content:center; cursor:pointer; -webkit-user-select:none; user-select:none}
+.pp-tpet:active .chara svg{transform:scale(.95)}
+.pp-tline{margin:4px 0 2px; padding:6px 10px; border-radius:12px; background:rgba(255,255,255,.65); color:#4A3A44; font-size:.85em; line-height:1.5; display:inline-block}
+body[data-theme="dark"] .pp-tline{background:rgba(255,255,255,.1); color:var(--ink)}
+.pp-tbtns{margin-top:6px}
+.pp-tmini{flex:none}
+.pp-today .petstage .pp-snowman{right:-26px; font-size:22px}
+.pp-celeb{position:relative; overflow:hidden; display:flex; gap:10px; align-items:center; padding:10px 12px; margin:4px 0; border-radius:18px;
+  background:linear-gradient(135deg, #FFF1F6, #FFF8E1); color:#4A2B38}
+body[data-theme="dark"] .pp-celeb{background:linear-gradient(135deg, #4A3440, #4A4230); color:var(--ink)}
+.pp-celeb .t{font-weight:700}
+.pp-celeb .mini{margin-top:6px}
+.pp-cpet{flex:none; width:72px; display:flex; justify-content:center; position:relative; z-index:2}
+.pp-celeb .grow{position:relative; z-index:2}
+.pp-cake{font-size:40px; line-height:1}
+
+@media (prefers-reduced-motion:reduce){
+  .pp-fx i, .pp-confetti i{animation:none; display:none}
+}
