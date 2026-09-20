@@ -1279,7 +1279,7 @@ kmJobs(function(add, prefs){
     var d = shiftDate(nx.due, -i);
     if(d < today()) continue;
     add('cp-wish-' + nx.ym + '-' + i, notifyAt(d, prefs.dlMorning || '07:30'), '🗓 シフト希望の提出',
-      (+nx.ym.slice(5, 7)) + '月ぶんのシフト希望は ' + ymdLabel(nx.due) + ' まで' + (i ? '（あと' + i + '日）' : '（今日まで）') + '。下書きはバイトのページにあります。');
+(+nx.ym.slice(5, 7)) + '月ぶんのシフト希望は ' + ymdLabel(nx.due) + ' まで' + (i ? '（あと' + i + '日）' : '（今日まで）') + '。下書きはバイトのページにあります。', { cat:'work' });
   }
 });
 /* ウィジェット・Discord用のまとめ */

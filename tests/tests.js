@@ -714,9 +714,10 @@ test('Google：橋わたしの通知・ショートカット・ToDo（プログ�
   var post = function(req){ req.token = 'tok'; return JSON.parse(G.doPost({ postData:{ contents:JSON.stringify(req) } }).s); };
   var get = function(p){ return JSON.parse(G.doGet({ parameter:p }).s); };
   ok(post({ action:'ping' }).ver >= 2, '新しいプログラム');
-  ok(post({ action:'setup' }).ok && triggers.length === 1, '5分ごとの確認を作る');
+  var mkT = post({ action:'setup' });
+  ok(mkT.ok && triggers.length === 2 && mkT.fast, '5分ごとの確認と、1分ごとのDiscordの見回りを作る');
   post({ action:'setup' });
-  eq(triggers.length, 1, '2回押しても1つだけ');
+  eq(triggers.length, 2, '2回押してもふえない');
   /* ショートカット */
   eq(get({ k:'x', a:'widget' }).ok, false, '短い合言葉がないと断る');
   ok(post({ action:'shortKey', key:'abcdefghijklmnop1234' }).ok, '短い合言葉');
@@ -922,7 +923,7 @@ test('Google：橋わたしv3（コードでつなぐ・写真・メール・朝
   G.tick();
   var fcm = fetched.filter(function(f){ return /fcm/.test(f.url); });
   eq(fcm.length, fc0 + 1, '持ち物の通知を送る');
-  eq(JSON.parse(fcm[fcm.length - 1].opt.payload).message.data.body, '🎒 白衣\n☔ 傘（降水70%）\n🧥 上着（6〜18℃）\n📚 暗記の復習 3枚', 'その日の天気に入れ直す');
+  eq(JSON.parse(fcm[fcm.length - 1].opt.payload).message.data.body, '🎒 白衣\n🌤 6〜18℃・降水70%\n☔ 傘（降水70%）\n🧥 上着（6〜18℃）\n📚 暗記の復習 3枚', 'その日の天気（予報の行つき）に入れ直す');
   /* AIの読み取り（ショートカットの写真） */
   var r1 = post({ action:'scanNow', what:'ai' });
   eq(r1.done, 1, '写真を読む');

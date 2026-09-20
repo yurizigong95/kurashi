@@ -17,7 +17,7 @@ var L2_COLOR_NAME = { red:'今日まで', orange:'明日まで', yellow:'3日以
 
 /* ============================== 設定・道具 ============================== */
 function l2Prefs(){
-  return Object.assign({ gcal:1, gcalHide:[], badge:'due', ics:0, dcWeek:0, radarSrc:'jma', bgmMine:[], remName:'リマインダーに追加', remBtn:1 }, S.ui.links2 || {});
+  return Object.assign({ gcal:1, gcalHide:[], badge:'due', ics:0, dcWeek:0, radarSrc:'jma', bgmMine:[], remName:'リマインダーに追加', remBtn:1, aiData:1 }, S.ui.links2 || {});
 }
 function l2PrefSet(patch){ S.ui.links2 = Object.assign({}, l2Prefs(), patch); touch('ui'); }
 /* 端末だけに置くもの（読みこんだGoogleの予定・予定表を置いた時刻など） */
@@ -29,6 +29,7 @@ function l2Local(name, v){
 }
 function l2Ver(){ return gasReady() ? toNum(GAS.ver) : 0; }
 function l2V4(){ return gasReady() && toNum(GAS.api) >= L2_VER; }     /* 窓口の版（ping の api）。ver は 3 のまま */
+function l2V5(){ return gasReady() && toNum(GAS.api) >= 5; }   /* 5 … 手帳の中身をAIが読んで答える（aiDataPut） */
 function l2NeedNew(what){
   /* 版は12時間ごとにしか確かめないので、貼り直したあとすぐ使えるように「確かめる」ボタンをつける */
   return '<div class="bn amber"><span class="ic">!</span><span>' + esc(what) + 'は、Google連携を新しい版にすると使えます（設定 › Google連携 の「プログラムをコピー」で貼り直して、「デプロイを管理」→ ✏️ →「新バージョン」）。</span></div>' +
@@ -599,12 +600,85 @@ async function l2OcrRun(max){
 }
 kmStudy({ id:'l2-notes', icon:'✍️', title:'手書きノートをさがす', desc:'Goodnotesのノートやメモの写真の中の字を、ことばでさがします', view:l2NotesView, order:60 });
 
+/* ============================== 手帳の中身を橋わたしに預ける（Discord・SiriのAIが読む） ==============================
+   アプリを閉じていてもAIが答えられるように、そうだんのAIが読むのと同じ中身（カギ・合言葉は入らない）を、
+   自分のGoogleドライブ（Apps Scriptのフォルダ）に置く。中身が変わったとき・版が上がったとき・1日たったときに送り直す。 */
+var L2_AI_MIN = 10 * 60000;          /* 送りすぎない（10分に1回まで） */
+var L2_AI_MAX_AGE = 6 * 3600000;     /* 変わっていなくても、6時間たったら送り直す */
+var l2AiBusy = false;
+function l2AiSt(){ return l2Local('aiData') || {}; }
+function l2AiOn(){ return l2Prefs().aiData !== 0; }
+async function l2AiPush(force){
+  if(l2AiBusy || !gasReady() || !l2V5() || typeof aiSnapshot !== 'function') return false;
+  if(!force && !l2AiOn()) return false;
+  var st = l2AiSt();
+  if(!force && st.at && Date.now() - st.at < L2_AI_MIN) return false;
+  var snap = aiSnapshot(250000);            /* AIは、この中から必要な分野だけを道具で読む */
+  if(!snap) return false;
+  var sig = hash53(canon(Object.assign({}, snap, { at:0, now:'', size:0 })));
+  if(!force && sig === st.sig && st.build === APP_BUILD && Date.now() - (st.at || 0) < L2_AI_MAX_AGE) return false;
+  l2AiBusy = true;
+  try{
+    var r = await gasCall('aiDataPut', { data:snap });
+    l2Local('aiData', { at:Date.now(), sig:sig, build:APP_BUILD, size:toNum(r && r.size) || snap.size || 0, err:'' });
+    return true;
+  }catch(e){
+    l2Local('aiData', Object.assign({}, st, { tryAt:Date.now(), err:String(e && e.message || e) }));
+    logErr('AIに預ける', e.message);
+    return false;
+  }finally{ l2AiBusy = false; }
+}
+function l2AiSettings(){
+  var st = l2AiSt(), on = l2AiOn();
+  if(!l2V5()) return '<label class="f" style="margin-top:10px">Discord・Siriの質問に、AIが手帳を読んで答える</label>' +
+    l2NeedNew('AIが手帳を読んで答えること');
+  return '<label class="f" style="margin-top:10px">Discord・Siriの質問に、AIが手帳を読んで答える</label>' +
+    '<div class="pillrow"><button data-act="l2-ai-data" data-v="1" class="' + (on ? 'on' : '') + '">預ける</button>' +
+    '<button data-act="l2-ai-data" data-v="0" class="' + (!on ? 'on' : '') + '">預けない</button>' +
+    (on ? '<button class="mini" data-act="l2-ai-now">いま送る</button>' : '') + '</div>' +
+    '<p class="note">' + (on
+      ? '予定・課題・テスト・お金・暗記・メモ・健康・おせわなど、手帳の中身を<b>自分のGoogleドライブ</b>（橋わたしのフォルダ）に置きます。カギ・合言葉・同期の部屋の名前は入りません。' +
+        'Google側にAIのカギを預けてあると（設定 › ほかの端末・Gmail・AIの読み取り）、Discordでどんな聞き方をしても、AIがこの中身を読んで答えます。'
+      : '預けないと、Discord・Siriは「明日」「課題」「お金」などの決まった聞き方にだけ答えます。') + '</p>' +
+    (on ? '<p class="note">' + (st.at ? '最後に送ったのは ' + ymdLabel(toYmd(new Date(st.at))) + ' ' + pad(new Date(st.at).getHours()) + ':' + pad(new Date(st.at).getMinutes()) +
+        '（' + Math.round((toNum(st.size) || 0) / 1024) + ' KB・版 ' + esc(st.build || '') + '）' : 'まだ送っていません') +
+      (st.err ? '<br>うまくいきませんでした：' + esc(st.err) : '') + '</p>' : '');
+}
+
 /* ============================== Discordのボット（#183） ============================== */
 function l2DcInfo(){ return l2Local('dc') || null; }
+/* 通知の種類ごとに、送るチャンネルを分ける（決めていない種類は「しつもん」のチャンネル、またはウェブフックへ） */
+var L2_CATS = [
+  { k:'today', name:'きょう', desc:'朝のまとめ・明日の準備・授業の前' },
+  { k:'due',   name:'しめきり', desc:'課題・レポート・フォームの締切' },
+  { k:'exam',  name:'テスト', desc:'テストの3日前・前日・当日' },
+  { k:'work',  name:'バイト', desc:'次のシフト・シフト希望の提出日' },
+  { k:'money', name:'おかね', desc:'給料日・使いすぎ・引き落とし' },
+  { k:'pet',   name:'おせわ', desc:'おなか・おふろ・キャラのひとこと' },
+  { k:'info',  name:'おしらせ', desc:'大学のメール・警報・来週のまとめ' }
+];
+function l2ChanSettings(){
+  var info = l2DcInfo(), d = L2.dc;
+  if(!info || !info.channel) return '';            /* 先に「しつもん」のチャンネルを決めてから */
+  var chans = info.chans || {}, names = info.cnames || {};
+  var list = (d.channels || []).filter(function(c){ return c.id !== (d.askId || info.askId || ''); });
+  return '<label class="f" style="margin-top:14px">通知の種類ごとのチャンネル</label>' +
+    '<p class="note" style="margin-top:0">決めた種類は、そのチャンネルに届きます。決めていない種類は、今までどおり（ウェブフック、または「' + esc(info.channel || 'しつもん') + '」）に届きます。</p>' +
+    (d.channels ? '' : '<div class="pillrow"><button class="mini" data-act="l2-dc-ch">チャンネルをさがす</button></div>') +
+    L2_CATS.map(function(c){
+      var now = chans[c.k] ? ('#' + (names[c.k] || 'チャンネル')) : '決めていない';
+      return '<div class="row"><div class="grow"><div class="t">' + esc(c.name) + '<span class="s2" style="margin-left:6px">' + esc(now) + '</span></div>' +
+        '<div class="s">' + esc(c.desc) + '</div>' +
+        (d.channels ? '<div class="chips" style="margin-top:6px">' + list.map(function(x){
+          return '<button data-act="l2-dc-cat" data-k="' + esc(c.k) + '" data-id="' + esc(x.id) + '"' + (chans[c.k] === x.id ? ' class="on"' : '') + '>#' + esc(x.name) + '</button>';
+        }).join('') + (chans[c.k] ? '<button data-act="l2-dc-cat" data-k="' + esc(c.k) + '" data-id="">やめる</button>' : '') + '</div>' : '') +
+        '</div></div>';
+    }).join('');
+}
 function l2DiscordSettings(){
   if(!gasReady()) return l2NeedGas();
   var p = l2Prefs(), info = l2DcInfo(), d = L2.dc, h = '';
-  h += '<p class="note" style="margin-top:0">いまは「通知」（設定 › 通知）でDiscordに<b>送るだけ</b>です。ボットを入れると、Discordのチャンネルに「明日」「課題」「テスト」「お金」「暗記」「おせわ」「来週」などと書くだけで、手帳の中身で答えます（5分以内）。「課題：レポート 10/3」で課題も足せます。</p>';
+  h += '<p class="note" style="margin-top:0">いまは「通知」（設定 › 通知）でDiscordに<b>送るだけ</b>です。ボットを入れると、Discordの「しつもん」のチャンネルに、ふつうのことばで聞くだけで、AIが手帳の中身を読んで答えます（' + (GAS.fast ? '1分ほど' : '5分以内') + '）。「課題：レポート 10/3」で課題も足せます。通知は、種類ごとのチャンネルに分けられます。</p>';
   if(!l2V4()) return h + l2NeedNew('Discordのボット');
   h += '<div class="row"><div class="grow"><div class="t">' + (info && info.channel ? '「#' + esc(info.channel) + '」で答えています' : info && info.name ? 'ボット「' + esc(info.name) + '」を預けました（チャンネルはまだ）' : 'まだ使っていません') + '</div></div></div>';
   h += l2Step(['<a href="https://discord.com/developers/applications" target="_blank" rel="noopener">Discordの開発者ページ</a> →「New Application」→ 名前「くらしの手帳」→ 作る',
@@ -620,10 +694,12 @@ function l2DiscordSettings(){
       return '<div class="row"><div class="grow"><div class="t">#' + esc(c.name) + '</div><div class="s">' + esc(c.guild) + '</div></div><button class="mini" data-act="l2-dc-use" data-id="' + esc(c.id) + '">ここにする</button></div>';
     }).join('') : '<div class="msg ng">チャンネルが見つかりません。先に「サーバーに招待」をしてください。</div>') : '') +
     (d.msg ? '<p class="note">' + esc(d.msg) + '</p>' : '');
+  h += l2ChanSettings();
   h += '<label class="f" style="margin-top:10px">来週のまとめ</label><div class="pillrow">' +
     '<button data-act="l2-dc-week" data-v="1" class="' + (p.dcWeek ? 'on' : '') + '">日曜の夜8時に送る</button>' +
     '<button data-act="l2-dc-week" data-v="0" class="' + (!p.dcWeek ? 'on' : '') + '">送らない</button></div>' +
     '<p class="note">通知のDiscord（ウェブフック）があればそこへ、なければボットのチャンネルへ送ります。</p>';
+  h += l2AiSettings();
   return h;
 }
 
@@ -734,7 +810,7 @@ kmAction(function(act, t){
   }
   if(act === 'l2-ping'){
     gasCall('ping').then(function(r){
-      GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.pingAt = Date.now(); saveGas();
+      GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.fast = r.fast ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.pingAt = Date.now(); saveGas();
       if(typeof gasVerShare === 'function' && gasVerShare()){ persist(); pushRemote(); }
       toast(l2V4() ? '新しい版になっています' : 'まだ前の版のようです（「新バージョン」でデプロイしたか確かめてください）', !l2V4());
       render();
@@ -804,10 +880,33 @@ kmAction(function(act, t){
   if(act === 'l2-dc-use'){
     gasCall('dcBotUse', { channel:t.dataset.id }).then(function(r){
       var info = l2DcInfo() || {};
-      info.channel = r.channel || ''; l2Local('dc', info);
-      L2.dc.channels = null; L2.dc.msg = '「#' + info.channel + '」に、あいさつを送りました。「明日」と書いてみてください';
+      info.channel = r.channel || ''; info.askId = t.dataset.id; l2Local('dc', info);
+      L2.dc.askId = t.dataset.id;
+      L2.dc.msg = '「#' + info.channel + '」に、あいさつを送りました。「明日」と書いてみてください。下で、通知の種類ごとのチャンネルも決められます';
       toast('チャンネルを決めました'); render();
     }, function(e){ toast('できませんでした：' + e.message, true); });
+    return true;
+  }
+  if(act === 'l2-dc-cat'){
+    var kind = t.dataset.k, cid = t.dataset.id || '';
+    gasCall('dcBotChan', { kind:kind, channel:cid }).then(function(r){
+      var info2 = l2DcInfo() || {};
+      info2.chans = r.chans || {}; info2.cnames = r.names || {};
+      l2Local('dc', info2);
+      toast(cid ? 'このチャンネルに送ります' : '決めていない状態にもどしました');
+      render();
+    }, function(e){ toast('できませんでした：' + e.message, true); });
+    return true;
+  }
+  if(act === 'l2-ai-data'){
+    l2PrefSet({ aiData:toNum(v) }); commit();
+    if(toNum(v)) l2AiPush(true).then(function(okd){ toast(okd ? '手帳の中身を預けました（AIが答えられます）' : '預けられませんでした', !okd); render(); });
+    else toast('預けないようにしました（決まった聞き方にだけ答えます）');
+    return true;
+  }
+  if(act === 'l2-ai-now'){
+    toast('送っています…');
+    l2AiPush(true).then(function(okd){ toast(okd ? '手帳の中身を送りました' : '送れませんでした：' + (l2AiSt().err || ''), !okd); render(); });
     return true;
   }
   if(act === 'l2-dc-week'){
@@ -903,3 +1002,10 @@ kmChatTool({ name:'import_google_event', description:'読みこんであるGoogl
     return { result:'取りこみました', op:{ t:'add', list:'events', id:ev.id, label:'予定「' + ev.title + '」（' + ymdLabel(ev.date) + '）' } };
   });
 KM.chatTools[KM.chatTools.length - 1].write = true;
+
+/* 手帳の中身を橋わたしへ（起動のあと・10分ごと・画面にもどったとき。中身が変わっていなければ送らない） */
+if(!TEST_MODE){
+  setTimeout(function(){ l2AiPush(false); }, 20000);
+  setInterval(function(){ if(!document.hidden) l2AiPush(false); }, 10 * 60000);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) setTimeout(function(){ l2AiPush(false); }, 3000); });
+}

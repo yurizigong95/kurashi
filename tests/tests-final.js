@@ -343,3 +343,98 @@ KT.test('総点検：パソコンでGoogle連携を貼り直したら、スマ�
   await KT.settle([A, B]);
 });
 })();
+
+(function(){
+'use strict';
+var ok = KT.ok, eq = KT.eq, J = KT.J;
+KT.test('総点検：手帳の中身を橋わたしに預ける（カギは入らない・変わったときだけ送る）', async function(){
+  var A = KT.frames().A, sent = [];
+  var keep = JSON.stringify(A.GAS), keepKey = A.S.settings.geminiKey;
+  var fake = function(req){ if(req.action !== 'aiDataPut') return null; sent.push(req.data); return { ok:true, size:JSON.stringify(req.data).length }; };
+  KT.gas.push(fake);
+  try{
+    /* 中身：分野がぜんぶ入って、大きすぎない */
+    A.S.settings.geminiKey = 'SECRET_GEMINI_SNAPSHOT_1234'; A.commit();
+    var snap = A.aiSnapshot(250000);
+    ok(snap && snap.sections && snap.overview, 'まとめを作れる');
+    eq(Object.keys(snap.sections).length, A.AI_SECTIONS.length, '分野がぜんぶ入る');
+    var str = JSON.stringify(snap);
+    ok(str.length <= 250000, '決めた大きさにおさまる：' + str.length);
+    ok(str.indexOf('SECRET_GEMINI_SNAPSHOT') < 0, 'カギが入ってしまう');
+    ok(str.indexOf(String(A.S.settings.room || 'x-no-room-x')) < 0 || !A.S.settings.room, '同期の部屋の名前が入ってしまう');
+    eq(snap.build, A.APP_BUILD, 'アプリの版も入る');
+    /* 橋わたし（新しい版）につながっているときだけ送る */
+    A.GAS.url = 'https://script.google.com/macros/s/test/exec'; A.GAS.token = 'tok'; A.GAS.ver = 3; A.GAS.api = 4; A.saveGas();
+    A.l2Local('aiData', null);
+    eq(await A.l2AiPush(true), false, '古い橋わたしには送らない');
+    A.GAS.api = 5; A.saveGas();
+    eq(await A.l2AiPush(true), true, '新しい橋わたしには送る');
+    eq(sent.length, 1, '1回だけ送る');
+    ok(sent[0].sections && sent[0].sections.money && sent[0].today === A.today(), '中身が入っている');
+    /* 変わっていなければ送らない・変わったら送る */
+    var st = A.l2Local('aiData');
+    A.l2Local('aiData', Object.assign({}, st, { at:Date.now() - 20 * 60000 }));
+    eq(await A.l2AiPush(false), false, '変わっていなければ送らない');
+    A.S.events.push(J(A, { id:'ev_snap_test', date:A.today(), title:'まとめのテストの予定', kind:'other', mt:Date.now() }));
+    A.commit();
+    A.l2Local('aiData', Object.assign({}, A.l2AiSt(), { at:Date.now() - 20 * 60000 }));
+    eq(await A.l2AiPush(false), true, '変わったら送る');
+    ok(JSON.stringify(sent[1]).indexOf('まとめのテストの予定') >= 0, '新しい予定も入る');
+    /* 設定でオフにできる */
+    A.l2PrefSet({ aiData:0 }); A.commit();
+    A.l2Local('aiData', Object.assign({}, A.l2AiSt(), { at:Date.now() - 20 * 60000 }));
+    eq(await A.l2AiPush(false), false, '「預けない」にすると送らない');
+  }finally{
+    KT.gas.splice(KT.gas.indexOf(fake), 1);
+    A.l2PrefSet({ aiData:1 });
+    A.removeItem('events', 'ev_snap_test');
+    A.S.settings.geminiKey = keepKey;
+    var g = JSON.parse(keep);
+    ['url', 'token', 'ver', 'api'].forEach(function(k){ A.GAS[k] = g[k]; });
+    A.saveGas(); A.l2Local('aiData', null); A.commit();
+  }
+  await KT.settle([A, KT.frames().B]);
+});
+})();
+
+(function(){
+'use strict';
+var ok = KT.ok, eq = KT.eq, J = KT.J;
+KT.test('総点検：通知の中身（今日のまとめ・明日の準備・テスト・バイト）と、種類の印', async function(){
+  var A = KT.frames().A;
+  var keep = A.S.ui.notify, td = A.today(), d2 = A.shiftDate(td, 2), d3 = A.shiftDate(td, 3);
+  A.S.ui.notify = Object.assign({}, keep || {}, { push:1, discord:1, am:1, night:1, exam:1, exam3:1, work1:1, quiet:0 });
+  A.S.tasks.push(J(A, { id:'tk_nt1', title:'通知のテストの課題', subject:'', due:d2, time:'', done:0, subs:[], photos:[], memo:'', mt:Date.now() }));
+  A.S.exams.push(J(A, { id:'ex_nt1', subject:'解剖生理学', title:'小テスト', date:d3, time:'09:00', kind:'quiz', room:'A101', memo:'', photos:[], mt:Date.now() }));
+  A.S.shifts.push(J(A, { id:'wk_nt1', title:'バイト', date:d2, start:'17:00', end:'21:00', realEnd:'', ot:0, rate:0, memo:'', photos:[], mt:Date.now() }));
+  A.commit();
+  var jobs;
+  try{ jobs = A.notifyJobs(); }finally{ A.S.ui.notify = keep; }
+  var by = function(pre){ return jobs.filter(function(j){ return j.id.indexOf(pre) === 0; }); };
+  eq(jobs.filter(function(j){ return !j.cat; }).length, 0, 'どの通知にも種類の印がある');
+  /* 朝の「今日のまとめ」 */
+  var am = by('am-')[0];
+  ok(am && am.cat === 'today' && am.wx === 1 && /今日のまとめ/.test(am.title), '朝のまとめ');
+  ok(/📚/.test(am.body), '1限のこと');
+  /* 夜の「明日の準備」 */
+  var nt = by('nt-')[0];
+  ok(nt && nt.cat === 'today' && nt.wx === 2, '夜の明日の準備（明日の天気を入れ直す印）');
+  eq(new Date(nt.at).getHours(), 22, '22時に知らせる');
+  /* テスト（3日前・前日・当日） */
+  ok(by('e3-').length === 1 && by('e3-')[0].cat === 'exam', 'テストの3日前');
+  ok(/解剖/.test(by('e3-')[0].body), 'テストの中身');
+  ok(by('e1-').length >= 1 && by('e0-').length >= 1, 'テストの前日と当日');
+  /* バイトの前日の夜 */
+  var w1 = by('w1-')[0];
+  ok(w1 && w1.cat === 'work' && /17:00/.test(w1.body), 'バイトの前日の夜：' + (w1 && w1.body));
+  eq(new Date(w1.at).getHours(), 20, '夜20時');
+  /* 締切は「しめきり」の種類 */
+  ok(by('d0-').concat(by('d1-')).every(function(j){ return j.cat === 'due'; }), '締切の種類');
+  /* 今日のまとめに、その日の課題・テスト・バイトが入る */
+  var am2 = by('am-').filter(function(j){ return j.id === 'am-' + d2; })[0];
+  ok(am2 && /通知のテストの課題/.test(am2.body) && /バイト/.test(am2.body), 'その日の課題とバイト：' + (am2 && am2.body));
+  A.removeItem('tasks', 'tk_nt1'); A.removeItem('exams', 'ex_nt1'); A.removeItem('shifts', 'wk_nt1');
+  A.commit();
+  await KT.settle([A, KT.frames().B]);
+});
+})();

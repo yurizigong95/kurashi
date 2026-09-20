@@ -1,5 +1,5 @@
 /* くらしの手帳：オフライン用・通知の受け取り・前の版にもどす */
-var CACHE = 'kurashi-v13';
+var CACHE = 'kurashi-v14';
 var PREV = 'kurashi-prev';      /* ひとつ前の版のファイル（「前の版にもどす」で使う） */
 var FLAGS = 'kurashi-flags';    /* 前の版を使っているかの印 */
 var FILES = [
