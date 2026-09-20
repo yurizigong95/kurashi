@@ -1,10 +1,10 @@
 {
-    "build":  "2026-09-20b",
-    "made":  "2026-09-20 02:22",
+    "build":  "2026-09-20c",
+    "made":  "2026-09-21 02:42",
     "files":  [
                   {
                       "path":  "css/app.css",
-                      "sha256":  "1800bf78fbc379be"
+                      "sha256":  "6eac034b8827cb23"
                   },
                   {
                       "path":  "css/m-anki2.css",
@@ -52,7 +52,7 @@
                   },
                   {
                       "path":  "gas/Code.gs",
-                      "sha256":  "ea9afad5ae17d806"
+                      "sha256":  "bdeb7ee2973842f3"
                   },
                   {
                       "path":  "icon-180.png"
@@ -73,7 +73,7 @@
                   },
                   {
                       "path":  "js/aidata.js",
-                      "sha256":  "24655613ae9ae571"
+                      "sha256":  "df9fc78b9e2ac5ab"
                   },
                   {
                       "path":  "js/ai-plus.js",
@@ -121,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "d5f8380abb5a40b5"
+                      "sha256":  "998599ff13e97838"
                   },
                   {
                       "path":  "js/data.js",
@@ -133,11 +133,11 @@
                   },
                   {
                       "path":  "js/gasplus.js",
-                      "sha256":  "b5a7e33bfc8ffc71"
+                      "sha256":  "fb996a4b212bfcba"
                   },
                   {
                       "path":  "js/google.js",
-                      "sha256":  "e13ad7414eab0073"
+                      "sha256":  "20856839b255c6a9"
                   },
                   {
                       "path":  "js/hooks.js",
@@ -149,7 +149,7 @@
                   },
                   {
                       "path":  "js/links.js",
-                      "sha256":  "47d52bc9ccc7d99c"
+                      "sha256":  "12711a4b8e4daf6b"
                   },
                   {
                       "path":  "js/main.js",
@@ -157,11 +157,11 @@
                   },
                   {
                       "path":  "js/m-anki2.js",
-                      "sha256":  "680f705ee7d42b60"
+                      "sha256":  "dd072b2a3c7e3120"
                   },
                   {
                       "path":  "js/m-campus.js",
-                      "sha256":  "e2e477ca25589157"
+                      "sha256":  "c1caa6c404e722ee"
                   },
                   {
                       "path":  "js/m-chara2.js",
@@ -181,7 +181,7 @@
                   },
                   {
                       "path":  "js/m-links2.js",
-                      "sha256":  "58e9501f95b17e4b"
+                      "sha256":  "96a38cf3e1408ec3"
                   },
                   {
                       "path":  "js/money.js",
@@ -197,7 +197,7 @@
                   },
                   {
                       "path":  "js/notify.js",
-                      "sha256":  "39208b50f7cb96ad"
+                      "sha256":  "70c456fcff42cb7d"
                   },
                   {
                       "path":  "js/ops.js",
@@ -237,7 +237,7 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "d8572a305e229b40"
+                      "sha256":  "b066aea9a760422b"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -249,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "de71ee858d9107d1"
+                      "sha256":  "56c61e9946a49a96"
                   }
               ]
 }
