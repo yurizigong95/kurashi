@@ -13,7 +13,8 @@ var PUSH = (function(){
 function savePush(){ try{ localStorage.setItem(PUSH_KEY, JSON.stringify(PUSH)); }catch(e){} }
 function notifyPrefs(){
   return Object.assign({ push:1, discord:0, dl3:1, dl1:1, dl0:1, dlTime:'20:00', dlMorning:'07:30',
-    exam:1, cls:1, clsLead:10, quiet:1, vapid:'', am:1, amTime:'06:45', pet:1 }, S.ui.notify || {});
+    exam:1, exam3:1, cls:1, clsLead:10, quiet:1, vapid:'', am:1, amTime:'07:30', pet:1,
+    night:1, nightTime:'22:00', work1:1 }, S.ui.notify || {});
 }
 
 /* ===== 朝の持ち物 =====
@@ -85,6 +86,30 @@ function morningLines(ymd){
   }
   return lines;
 }
+/* その日のまとめ（朝の「今日のまとめ」・夜の「明日の準備」で使う）
+   1限の時刻と教室 → 持ち物・天気 → その日が締切の課題・テスト・バイト */
+function dayBrief(ymd, isToday){
+  var lines = [];
+  var cls = classesForDate(ymd).filter(function(c){ return !c.off; });
+  if(cls.length){
+    var c0 = cls[0], st = S.commute.periods[c0.period - 1];
+    lines.push('📚 ' + c0.period + '限 ' + (st ? st + ' ' : '') + shortName(c0.name) + (c0.room ? '（' + c0.room + '）' : '') +
+      (c0.web || c0.online ? '・家で受講' : '') + (cls.length > 1 ? '　ほか' + (cls.length - 1) + 'コマ' : ''));
+  }else lines.push('📚 授業はありません');
+  lines = lines.concat(morningLines(ymd).filter(function(l){ return !/^📚/.test(l) || isToday; }));
+  var due = (S.tasks || []).filter(function(t){ return !t.done && t.due === ymd; });
+  if(due.length) lines.push('📝 ' + (isToday ? '今日' : 'この日') + 'までの課題：' + due.slice(0, 3).map(function(t){
+    return t.title + (t.time ? '（' + t.time + 'まで）' : '');
+  }).join('・') + (due.length > 3 ? ' ほか' + (due.length - 3) + '件' : ''));
+  (S.exams || []).filter(function(x){ return x.date === ymd; }).slice(0, 2).forEach(function(x){
+    lines.push('✏️ ' + (x.subject ? shortName(x.subject) + ' ' : '') + (kindOf(x.kind === 'quiz' || x.kind === 'kousa' ? x.kind : 'exam').name) +
+      (x.time ? '（' + x.time + '〜）' : '') + (x.room ? '・' + x.room : ''));
+  });
+  (S.shifts || []).filter(function(w){ return w.date === ymd; }).slice(0, 2).forEach(function(w){
+    lines.push('💼 バイト ' + (w.start || '') + (w.end ? '〜' + w.end : ''));
+  });
+  return lines;
+}
 /* おせわの子が、おなかをすかせる・よごれる時刻（夜中なら、次の朝にずらす） */
 function petAlertAt(at, p){
   var d = new Date(at), m = d.getHours() * 60 + d.getMinutes();
@@ -112,14 +137,26 @@ function notifyJobs(){
   if(!p.push && !p.discord) return out;
   var add = function(id, at, title, body, extra){
     if(!at || at <= now || at > end) return;
-    out.push(Object.assign({ id:id, at:at, title:title, body:body || '', url:'./', push:p.push ? 1 : 0, discord:p.discord ? 1 : 0 }, extra || {}));
+    out.push(Object.assign({ id:id, at:at, title:title, body:body || '', url:'./', push:p.push ? 1 : 0, discord:p.discord ? 1 : 0, cat:'info' }, extra || {}));   /* cat … 通知の種類（Discordのチャンネル分け） */
   };
-  /* 朝の持ち物（wx … 送る直前に、橋わたしがその日の天気を入れ直す） */
+  /* 朝の「今日のまとめ」（1限・持ち物・天気・今日が締切のもの。wx … 送る直前に、橋わたしがその日の天気を入れ直す） */
   if(p.am){
     for(var di = 0; di < 7; di++){
       var dy = shiftDate(today(), di);
-      var lines = morningLines(dy);
-      if(lines.length) add('am-' + dy, notifyAt(dy, p.amTime), '🎒 今日の持ち物', lines.join('\n').slice(0, 190), { wx:1 });
+      var lines = dayBrief(dy, true);
+      if(lines.length) add('am-' + dy, notifyAt(dy, p.amTime), '☀️ 今日のまとめ', lines.join('\n').slice(0, 400), { wx:1, cat:'today' });
+    }
+  }
+  /* 夜の「明日の準備」（明日の1限・持ち物・起きる時刻・明日の天気） */
+  if(p.night){
+    for(var ni = 0; ni < 7; ni++){
+      var nd = shiftDate(today(), ni), tmw = shiftDate(nd, 1);
+      var nl = dayBrief(tmw, false);
+      if(typeof alarmPlan === 'function'){
+        var ap = alarmPlan();
+        if(ap && ap.date === tmw && ap.time) nl.push('⏰ 起きるのは ' + ap.time + 'ごろ（' + (ap.label || '') + '）');
+      }
+      if(nl.length) add('nt-' + tmw, notifyAt(nd, p.nightTime), '🌙 明日の準備（' + ymdLabel(tmw) + '）', nl.join('\n').slice(0, 400), { wx:2, cat:'today' });
     }
   }
   /* おせわの子（おなか・きれい） */
@@ -130,11 +167,11 @@ function notifyJobs(){
       var hr = PET_RATE.hun * (po.sleep ? 0.5 : 1);
       if(po.hun > 20){
         var ah = petAlertAt(Math.round((now + (po.hun - 20) / hr * 3600000) / 60000) * 60000, p);   /* 分にそろえる（作るたびに時刻が少しずれて、送り直しが続かないように） */
-        add('pet-h-' + pid + '-' + Math.round(ah / 600000), ah, '🍙 ' + nm + 'がおなかをすかせているよ', 'ごはんをあげてね（おせわタブ）');
+        add('pet-h-' + pid + '-' + Math.round(ah / 600000), ah, '🍙 ' + nm + 'がおなかをすかせているよ', 'ごはんをあげてね（おせわタブ）', { cat:'pet' });
       }
       if(po.cln > 20){
         var ac = petAlertAt(Math.round((now + (po.cln - 20) / PET_RATE.cln * 3600000) / 60000) * 60000, p);
-        add('pet-c-' + pid + '-' + Math.round(ac / 600000), ac, '🫧 ' + nm + 'がおふろに入りたいみたい', 'おふろに入れてあげてね（おせわタブ）');
+        add('pet-c-' + pid + '-' + Math.round(ac / 600000), ac, '🫧 ' + nm + 'がおふろに入りたいみたい', 'おふろに入れてあげてね（おせわタブ）', { cat:'pet' });
       }
     }
   }
@@ -143,17 +180,28 @@ function notifyJobs(){
     if(t.done || !isYmd(t.due)) return;
     var name = (t.title || '課題') + (t.subject ? '（' + shortName(t.subject) + '）' : '');
     var tm = t.time ? '（' + t.time + 'まで）' : '';
-    if(p.dl3) add('d3-' + t.id + '-' + t.due, notifyAt(shiftDate(t.due, -3), p.dlTime), '締切まであと3日', name + '：' + ymdLabel(t.due) + tm);
-    if(p.dl1) add('d1-' + t.id + '-' + t.due, notifyAt(shiftDate(t.due, -1), p.dlTime), '明日が締切です', name + tm);
-    if(p.dl0) add('d0-' + t.id + '-' + t.due, notifyAt(t.due, p.dlMorning), '今日が締切です', name + tm);
+    if(p.dl3) add('d3-' + t.id + '-' + t.due, notifyAt(shiftDate(t.due, -3), p.dlTime), '締切まであと3日', name + '：' + ymdLabel(t.due) + tm, { cat:'due' });
+    if(p.dl1) add('d1-' + t.id + '-' + t.due, notifyAt(shiftDate(t.due, -1), p.dlTime), '明日が締切です', name + tm, { cat:'due' });
+    if(p.dl0) add('d0-' + t.id + '-' + t.due, notifyAt(t.due, p.dlMorning), '今日が締切です', name + tm, { cat:'due' });
   });
-  /* テスト */
+  /* テスト（3日前・前日・当日の朝。テスト範囲の計画があれば「今日やる分」もつける） */
   if(p.exam) S.exams.forEach(function(x){
     if(!isYmd(x.date)) return;
     var kn = kindOf(x.kind === 'quiz' || x.kind === 'kousa' ? x.kind : 'exam').name;
     var nm = (x.subject ? shortName(x.subject) : '') + (x.title ? ' ' + x.title : '');
-    add('e1-' + x.id + '-' + x.date, notifyAt(shiftDate(x.date, -1), p.dlTime), '明日は' + kn, nm + (x.time ? '（' + x.time + '〜）' : ''));
-    add('e0-' + x.id + '-' + x.date, notifyAt(x.date, p.dlMorning), '今日は' + kn, nm + (x.time ? '（' + x.time + '〜）' : '') + (x.room ? '・' + x.room : ''));
+    var plan = (typeof ak2NoteLine === 'function') ? ak2NoteLine(x.id) : '';
+    var pl = plan ? '\n📘 ' + plan : '';
+    if(p.exam3) add('e3-' + x.id + '-' + x.date, notifyAt(shiftDate(x.date, -3), p.dlTime), '3日後に' + kn, nm + '：' + ymdLabel(x.date) + (x.time ? '（' + x.time + '〜）' : '') + pl, { cat:'exam' });
+    add('e1-' + x.id + '-' + x.date, notifyAt(shiftDate(x.date, -1), p.dlTime), '明日は' + kn, nm + (x.time ? '（' + x.time + '〜）' : '') + pl, { cat:'exam' });
+    add('e0-' + x.id + '-' + x.date, notifyAt(x.date, p.dlMorning), '今日は' + kn, nm + (x.time ? '（' + x.time + '〜）' : '') + (x.room ? '・' + x.room : ''), { cat:'exam' });
+  });
+  /* バイトの前の日の夜（開始時刻と持ち物） */
+  if(p.work1) (S.shifts || []).forEach(function(w){
+    if(!isYmd(w.date)) return;
+    var items = (typeof morningItems === 'function') ? morningItems(w.date) : [];
+    add('w1-' + w.id + '-' + w.date, notifyAt(shiftDate(w.date, -1), p.dlTime), '明日はバイト',
+      (w.start || '') + (w.end ? '〜' + w.end : '') + (w.title && w.title !== 'バイト' ? '（' + w.title + '）' : '') +
+      (items.length ? '\n🎒 ' + items.join('・') : ''), { cat:'work' });
   });
   /* 授業の前 */
   if(p.cls){
@@ -163,7 +211,7 @@ function notifyJobs(){
         var st = S.commute.periods[c.period - 1];
         var at = notifyAt(ymd, st) - (toNum(p.clsLead) || 10) * 60000;
         add('c-' + ymd + '-' + c.period + '-' + hash53(c.name).slice(0, 6), at, (toNum(p.clsLead) || 10) + '分後に' + c.period + '限',
-            c.name + (c.room ? '（' + c.room + '）' : '') + (c.web || c.online ? '・家で受講' : '') + '　' + st + '〜');
+            c.name + (c.room ? '（' + c.room + '）' : '') + (c.web || c.online ? '・家で受講' : '') + '　' + st + '〜', { cat:'today' });
       });
     }
   }
@@ -283,7 +331,9 @@ function notifySettings(){
     [['dl3','3日前'],['dl1','前日'],['dl0','当日の朝']].map(function(o){
       return '<button data-act="nt-set" data-k="'+o[0]+'" data-v="'+(p[o[0]] ? 0 : 1)+'" class="'+(p[o[0]]?'on':'')+'">'+o[1]+'</button>';
     }).join('')+
-    '<button data-act="nt-set" data-k="exam" data-v="'+(p.exam ? 0 : 1)+'" class="'+(p.exam?'on':'')+'">テストも</button></div>'+
+    '<button data-act="nt-set" data-k="exam" data-v="'+(p.exam ? 0 : 1)+'" class="'+(p.exam?'on':'')+'">テストも</button>'+
+    '<button data-act="nt-set" data-k="exam3" data-v="'+(p.exam3 ? 0 : 1)+'" class="'+(p.exam3?'on':'')+'">テストの3日前</button>'+
+    '<button data-act="nt-set" data-k="work1" data-v="'+(p.work1 ? 0 : 1)+'" class="'+(p.work1?'on':'')+'">バイトの前日</button></div>'+
     '<div class="pair" style="margin-bottom:10px"><div><label class="f" for="nt_dl">3日前・前日の時刻</label><input id="nt_dl" value="'+esc(p.dlTime)+'"></div>'+
     '<div><label class="f" for="nt_mo">当日の朝の時刻</label><input id="nt_mo" value="'+esc(p.dlMorning)+'"></div></div>';
   h += '<label class="f">授業の前</label><div class="pillrow">'+
@@ -292,10 +342,12 @@ function notifySettings(){
     '<div class="pillrow"><button data-act="nt-set" data-k="quiet" data-v="'+(p.quiet ? 0 : 1)+'" class="'+(p.quiet?'on':'')+'">夜中（23:30〜6:00）は送らない</button></div>'+
     '<button class="btn ghost" data-act="nt-save">時刻を保存</button>';
   /* 朝の持ち物・おせわ */
-  var tmr = shiftDate(today(), 1), prev = morningLines(tmr);
-  h += '<label class="f" style="margin-top:12px">朝の持ち物</label><div class="pillrow">'+
+  var tmr = shiftDate(today(), 1), prev = dayBrief(tmr, false);
+  h += '<label class="f" style="margin-top:12px">朝の「今日のまとめ」（1限・持ち物・天気・今日の締切）</label><div class="pillrow">'+
     '<button data-act="nt-set" data-k="am" data-v="'+(p.am ? 0 : 1)+'" class="'+(p.am?'on':'')+'">'+(p.am ? '知らせる' : '知らせない')+'</button></div>'+
-    '<div class="field"><label class="f" for="nt_am">知らせる時刻</label><input id="nt_am" value="'+esc(p.amTime)+'"></div>'+
+    '<div class="pair"><div><label class="f" for="nt_am">朝に知らせる時刻</label><input id="nt_am" value="'+esc(p.amTime)+'"></div>'+
+    '<div><label class="f" for="nt_night">夜の「明日の準備」の時刻</label><input id="nt_night" value="'+esc(p.nightTime)+'"></div></div>'+
+    '<div class="pillrow"><button data-act="nt-set" data-k="night" data-v="'+(p.night ? 0 : 1)+'" class="'+(p.night?'on':'')+'">'+(p.night ? '夜に「明日の準備」を知らせる' : '夜は知らせない')+'</button></div>'+
     '<div class="field"><label class="f" for="nt_rules">持ち物のきまり（1行に「言葉＝持ち物」。言葉は | で「または」）</label>'+
       '<textarea id="nt_rules" rows="4">'+esc(amRules().map(function(r){ return r.k + '＝' + r.v; }).join('\n'))+'</textarea></div>'+
     '<button class="btn ghost" data-act="nt-am-save">持ち物の設定を保存</button>'+
@@ -353,8 +405,8 @@ function notifyAction(act, t){
     notifySet({ dlTime:hhmmOf(minutesOf(a)), dlMorning:hhmmOf(minutesOf(b)) }); commit(); notifyPush(true); toast('保存しました'); return true;
   }
   if(act === 'nt-am-save'){
-    var am = val('nt_am').trim();
-    if(!/^\d{1,2}:\d{2}$/.test(am)){ toast('時刻は 6:45 の形で入れてください', true); return true; }
+    var am = val('nt_am').trim(), ni = val('nt_night').trim();
+    if(!/^\d{1,2}:\d{2}$/.test(am) || !/^\d{1,2}:\d{2}$/.test(ni)){ toast('時刻は 7:30 の形で入れてください', true); return true; }
     var rules = [];
     val('nt_rules').split(/\r?\n/).forEach(function(line){
       var m2 = line.match(/^\s*([^=＝]+?)\s*[=＝]\s*(.+?)\s*$/);
@@ -362,7 +414,7 @@ function notifyAction(act, t){
       try{ new RegExp(m2[1]); }catch(e){ return; }
       rules.push({ k:m2[1].slice(0, 60), v:m2[2].slice(0, 80) });
     });
-    notifySet({ amTime:hhmmOf(minutesOf(am)), amRules:rules.slice(0, 20) }); commit(); notifyPush(true); toast('保存しました'); return true;
+    notifySet({ amTime:hhmmOf(minutesOf(am)), nightTime:hhmmOf(minutesOf(ni)), amRules:rules.slice(0, 20) }); commit(); notifyPush(true); toast('保存しました'); return true;
   }
   if(act === 'nt-push'){ notifyPush(true).then(function(){ toast(NOTIFY.msg ? '送れませんでした' : '通知の予定を送りました', !!NOTIFY.msg); render(); }); return true; }
   if(act === 'nt-vapid'){

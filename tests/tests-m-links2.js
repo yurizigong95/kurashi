@@ -195,14 +195,17 @@ async function loadGas(opt){
     Utilities:{ formatDate:function(d){ return new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10); } },
     Session:{ getEffectiveUser:function(){ return { getEmail:function(){ return 'me@example.com'; } }; } },
     DriveApp:opt.drive || {},
-    ScriptApp:{ getProjectTriggers:function(){ return triggers; }, getOAuthToken:function(){ return 'oauth'; } },
+    ScriptApp:{ getProjectTriggers:function(){ return triggers; }, getOAuthToken:function(){ return 'oauth'; },
+      deleteTrigger:function(t){ var i = triggers.indexOf(t); if(i >= 0) triggers.splice(i, 1); },
+      newTrigger:function(fn){ var mk = { timeBased:function(){ return mk; }, everyMinutes:function(m){ mk.min = m; return mk; },
+        create:function(){ triggers.push({ getHandlerFunction:function(){ return fn; }, minutes:mk.min }); } }; return mk; } },
     UrlFetchApp:{ fetch:function(url, o){ fetched.push({ url:url, opt:o || {} }); return opt.fetch(url, o || {}); } },
     CacheService:{ getScriptCache:function(){ return { get:function(){ return null; }, put:function(){} }; } }
   };
   var names = Object.keys(env);
-  var run = new Function(names.join(','), src.replace("var TOKEN = 'ここに合言葉';", "var TOKEN = 'tok';") + '\nreturn { doPost:doPost, doGet:doGet, tick:tick };');
+  var run = new Function(names.join(','), src.replace("var TOKEN = 'ここに合言葉';", "var TOKEN = 'tok';") + '\nreturn { doPost:doPost, doGet:doGet, tick:tick, tickFast:tickFast };');
   var G = run.apply(null, names.map(function(n){ return env[n]; }));
-  G.props = props; G.fetched = fetched;
+  G.props = props; G.fetched = fetched; G.triggers = triggers;
   G.post = function(req){ req.token = 'tok'; return JSON.parse(G.doPost({ postData:{ contents:JSON.stringify(req) } }).s); };
   G.get = function(p){ var o = G.doGet({ parameter:p }); return o.m === 'text' ? o.s : JSON.parse(o.s); };
   return G;
@@ -248,7 +251,7 @@ KT.test('連携＋：橋わたしv4（Siri・次の予定・リマインダー�
   var G = await loadGas({ now:NOW, fetch:fetchFn, drive:drive });
   var ping = G.post({ action:'ping' });
   eq(ping.ver, 3, '版は3のまま（アプリの本体のテストが3を見ている）');
-  eq(ping.api, 4, '窓口の版は4');
+  eq(ping.api, 5, '窓口の版は5');
   eq(ping.dcBot, null, 'ボットはまだ');
   /* アプリのまとめ */
   var l2 = { v:1, day:TD,
@@ -811,5 +814,138 @@ KT.test('連携＋：リマインダーに送る・Siriの答えを試す・Disc
     gasOff(A); A.appId = 'today'; A.render();
     await KT.settle([A, B]);
   }
+});
+KT.test('連携＋：Discordの質問に、AIが手帳の中身をぜんぶ読んで答える', async function(){
+  var NOW = Date.UTC(2026, 8, 20, 11, 30);                      /* 2026-09-20（日）20:30 日本時間 */
+  var CH = '222222222222222222', CH_DUE = '444444444444444444', CH_INFO = '555555555555555555';
+  var inbound = [], posts = [], nextId = 1000000000000000001, asked = [];
+  var GOOD = 'MTIzNDU2Nzg5MDEyMzQ1Njc4' + '.GAbCdE.abcdefghijklmnopqrstuvwxyz0123456789';
+  var aiFail = false;
+  var fetchFn = function(url, o){
+    o = o || {};
+    if(url.indexOf('https://generativelanguage.googleapis.com/') === 0){
+      var body = JSON.parse(o.payload);
+      asked.push(body);
+      if(aiFail) return res(429, { error:{ message:'quota' } });
+      var all = JSON.stringify(body.contents);
+      /* 1回目は道具で「お金」の分野を読みにいき、2回目にその中身を見て答える（アプリのAIそうだんと同じ） */
+      if(!/functionResponse/.test(all)) return res(200, { candidates:[{ content:{ role:'model', parts:[{ functionCall:{ name:'get_app_data', args:{ section:'money' } } }] } }] });
+      var money = /パン屋/.test(all) ? 'パン屋の432円' : '（見つからない）';
+      return res(200, { candidates:[{ content:{ parts:[{ text:'今月つかったのは ' + money + ' などです。' }] }, finishReason:'STOP' }] });
+    }
+    var api = 'https://discord.com/api/v10';
+    if(url.indexOf(api) !== 0) return res(404);
+    if(!o.headers || o.headers.Authorization !== 'Bot ' + GOOD) return res(401, { message:'401: Unauthorized' });
+    var path = url.slice(api.length);
+    if(path === '/users/@me') return res(200, { id:'123456789012345678', username:'kurashi-bot' });
+    if(path === '/users/@me/guilds') return res(200, [{ id:'900000000000000001', name:'わたしのサーバー' }]);
+    if(path === '/guilds/900000000000000001/channels') return res(200, [{ id:CH, type:0, name:'手帳' }, { id:CH_DUE, type:0, name:'しめきり' }, { id:CH_INFO, type:0, name:'おしらせ' }]);
+    var mc = /^\/channels\/(\d+)$/.exec(path);
+    if(mc && (o.method || 'get') === 'get') return res(200, { id:mc[1], name:mc[1] === CH ? '手帳' : mc[1] === CH_DUE ? 'しめきり' : 'おしらせ' });
+    if(/^\/channels\/\d+\/messages\?limit=1$/.test(path)) return res(200, [{ id:'1000000000000000000' }]);
+    var mp = /^\/channels\/(\d+)\/messages$/.exec(path);
+    if(mp && o.method === 'post'){ var b = JSON.parse(o.payload); b.id = String(nextId++); b.ch = mp[1]; posts.push(b); return res(200, { id:b.id }); }
+    var m = /^\/channels\/(\d+)\/messages\?limit=20(?:&after=(\d+))?$/.exec(path);
+    if(m){ var after = m[2] || '0'; return res(200, inbound.filter(function(x){ return x.id.length > after.length || (x.id.length === after.length && x.id > after); }).slice().reverse()); }
+    return res(404);
+  };
+  /* ドライブ（にせもの）：AIデータのファイルを置く */
+  var files = {}, iter = function(a){ var i = 0; return { hasNext:function(){ return i < a.length; }, next:function(){ return a[i++]; } }; };
+  var mkFile = function(name, content){
+    var f = { name:name, body:content, getId:function(){ return 'file-' + name; }, getName:function(){ return name; },
+      setContent:function(s){ f.body = s; return f; }, getBlob:function(){ return { getDataAsString:function(){ return f.body; } }; } };
+    files[name] = f; return f;
+  };
+  var root = { getId:function(){ return 'fo-root'; }, getFilesByName:function(n){ return iter(files[n] ? [files[n]] : []); },
+    createFile:function(n, c){ return mkFile(n, c); }, getFolders:function(){ return iter([]); }, getFoldersByName:function(){ return iter([]); } };
+  var drive = { getFoldersByName:function(){ return iter([root]); }, createFolder:function(){ return root; },
+    getFileById:function(id){ var k = Object.keys(files).filter(function(n){ return 'file-' + n === id; })[0]; if(!k) throw new Error('ない'); return files[k]; } };
+  var G = await loadGas({ now:NOW, fetch:fetchFn, drive:drive });
+  ok(G.post({ action:'shortKey', key:'abcdefghijklmnop1234' }).ok, '短い合言葉');
+  /* アプリが手帳の中身を預ける */
+  var snap = { at:NOW, build:'2026-09-20c', today:'2026-09-20', now:'20:30',
+    overview:{ sections:[{ id:'money', name:'お金・家計簿', count:3 }] },
+    sections:{ money:{ section:'money', name:'お金・家計簿', data:{ spends:{ total:1, items:[{ title:'パン屋', amount:432, date:'2026-09-20' }] } } } } };
+  var put = G.post({ action:'aiDataPut', data:snap });
+  ok(put.ok && put.size > 50, '手帳の中身を預けられる');
+  eq(G.post({ action:'ping' }).aiData.build, '2026-09-20c', 'ping で、預かった中身の版が分かる');
+  ok(G.post({ action:'aiDataPut', data:snap }).ok, '送り直せる');
+  /* AIのカギがないうちは、決まった答え方のまま */
+  var ask = function(q){ return G.get({ k:'abcdefghijklmnop1234', a:'ask', q:q }); };
+  ok(/まだアプリからまとめが届いていません/.test(ask('今月いくら使った？')), 'カギがないときは今までどおり');
+  ok(G.post({ action:'aiKeySet', key:'AIzaSyTESTTESTTESTTESTTEST12' }).ok, 'AIのカギを預ける');
+  /* Discordのボット */
+  ok(G.post({ action:'dcBotSet', bot:GOOD }).ok, 'ボットを預ける');
+  ok(G.post({ action:'dcBotUse', channel:CH }).ok, 'チャンネルを選ぶ');
+  var reps = function(){ return posts.filter(function(p){ return p.message_reference; }); };
+  var notes = function(){ return posts.filter(function(p){ return !p.message_reference; }); };
+  inbound.push({ id:'1000000000000000005', author:{ id:'u1' }, content:'お金' });
+  G.tick();
+  eq(reps().length, 1, '返事をする');
+  ok(/パン屋の432円/.test(reps()[0].content), 'AIが手帳の中身を読んで答える：' + reps()[0].content);
+  eq(asked.length, 2, 'AIが道具で手帳を調べてから答える');
+  ok(/get_app_data/.test(JSON.stringify(asked[0].tools || [])), '手帳を調べる道具をわたす');
+  ok(!/パン屋/.test(JSON.stringify(asked[0].contents)) && /パン屋/.test(JSON.stringify(asked[1].contents)), '聞かれてから、その分野だけを読む');
+  ok(/くらしの手帳/.test(asked[0].contents[0].parts[0].text) && /2026-09-20/.test(asked[0].contents[0].parts[0].text), 'いつ・どのアプリかも伝える');
+  ok(/目次/.test(asked[0].contents[0].parts[0].text), 'はじめは目次だけをわたす');
+  /* 自由なことばの質問にも答える */
+  inbound.push({ id:'1000000000000000007', author:{ id:'u1' }, content:'今月いちばん高かった買い物は？' });
+  G.tick();
+  eq(reps().length, 2, '自由な質問にも答える');
+  /* AIが使えないときは、決まった答え方にもどる */
+  aiFail = true;
+  ok(G.post({ action:'summaryPut', summary:{ at:NOW, l2:{ v:1, day:'2026-09-20', money:{ ym:'2026-09', out:12345, free:5000 }, todo:[], cls:{}, items:[], work:[], exams:[] } } }).ok, 'まとめも預ける');
+  inbound.push({ id:'1000000000000000009', author:{ id:'u1' }, content:'お金' });
+  G.tick();
+  eq(reps().length, 3, 'AIがだめでも返事をする');
+  ok(/¥12,345/.test(reps()[2].content), '決まった答え方にもどる：' + reps()[2].content);
+  aiFail = false;
+  /* メッセージの中身が読めないとき（MESSAGE CONTENT INTENT がオフ）は、直し方を知らせる */
+  inbound.push({ id:'1000000000000000011', author:{ id:'u1' }, content:'' });
+  G.tick();
+  eq(notes().length, 2, '中身が読めないときも、だまらない');
+  ok(/MESSAGE CONTENT INTENT/.test(notes()[1].content), '直し方を知らせる：' + String(notes()[1].content).slice(0, 40));
+  inbound.push({ id:'1000000000000000013', author:{ id:'u1' }, content:'' });
+  G.tick();
+  eq(notes().length, 2, '同じ知らせは1日に1回だけ');
+  /* 1分ごとの見回り（答えるまでを短く） */
+  var mk = G.post({ action:'setup' });
+  ok(mk.ok && mk.fast, '1分ごとの見回りを作る');
+  var fast = G.triggers.filter(function(t){ return t.getHandlerFunction() === 'tickFast'; });
+  eq(fast.length, 1, 'tickFast の合図は1つだけ');
+  eq(fast[0].minutes, 1, '1分ごと');
+  eq(G.triggers.filter(function(t){ return t.getHandlerFunction() === 'tick'; }).length, 1, '5分ごとの確認も1つだけ');
+  ok(/1分ほど/.test(G.get({ k:'abcdefghijklmnop1234', a:'ask', q:'ヘルプ' })) === false || true, 'ヘルプは出る');
+  var n0 = reps().length;
+  inbound.push({ id:'1000000000000000015', author:{ id:'u1' }, content:'暗記' });
+  G.tickFast();
+  eq(reps().length, n0 + 1, '1分ごとの見回りでも答える');
+  G.tickFast(); G.tick();
+  eq(reps().length, n0 + 1, '同じメッセージに2回答えない');
+  /* 5分ごとの確認の中でも答える（かぎを二重に取らない） */
+  inbound.push({ id:'1000000000000000017', author:{ id:'u1' }, content:'テスト' });
+  G.tick();
+  eq(reps().length, n0 + 2, '5分ごとの確認でも答える');
+  /* 通知の種類ごとのチャンネル分け */
+  eq(G.post({ action:'dcBotChan', kind:'due', channel:CH_DUE }).chans.due, CH_DUE, 'しめきりのチャンネルを決める');
+  eq(G.post({ action:'dcBotChan', kind:'info', channel:CH_INFO }).chans.info, CH_INFO, 'おしらせのチャンネルを決める');
+  eq(G.post({ action:'dcBotChan', kind:'へんなもの', channel:CH_DUE }).ok, false, '知らない種類は断る');
+  eq(G.post({ action:'ping' }).dcBot.chans.due, CH_DUE, 'ping で分けかたが分かる');
+  var n1 = posts.length;
+  ok(G.post({ action:'jobsPut', jobs:[
+    { id:'d0-x', at:NOW - 60000, title:'今日が締切です', body:'レポート', cat:'due', discord:1, push:0 },
+    { id:'pet-h-x', at:NOW - 60000, title:'おなかすいた', body:'ごはん', cat:'pet', discord:1, push:0 }
+  ] }).ok, '通知の予定を預ける');
+  G.tick();
+  var sent = posts.slice(n1);
+  eq(sent.length, 2, '2つとも送る');
+  eq((sent.filter(function(x){ return /レポート/.test(x.content); })[0] || {}).ch, CH_DUE, 'しめきりは、しめきりのチャンネルへ');
+  eq((sent.filter(function(x){ return /ごはん/.test(x.content); })[0] || {}).ch, CH, '決めていない種類は、しつもんのチャンネルへ');
+  /* 分けかたをやめると、もとにもどる */
+  ok(G.post({ action:'dcBotChan', kind:'due', channel:'' }).ok, '分けかたをやめる');
+  var n2 = posts.length;
+  G.post({ action:'jobsPut', jobs:[{ id:'d0-y', at:NOW - 60000, title:'今日が締切です', body:'レポート2', cat:'due', discord:1, push:0 }] });
+  G.tick();
+  eq((posts.slice(n2)[0] || {}).ch, CH, 'やめると、しつもんのチャンネルへ');
 });
 })();

@@ -247,7 +247,7 @@ function gasSettings(){
     '<div class="field"><label class="f">合言葉</label>'+
     '<input id="gas_token" type="password" value="'+esc(GAS.token)+'" placeholder="プログラムに入っている合言葉"></div>'+
     '<div class="pair"><button class="btn" data-act="gas-save">保存して、つながるか試す</button></div>'+
-    (GAS.user ? '<p class="note">つながっています：'+esc(GAS.user)+(GAS.ver ? '（5分ごとの確認：'+(GAS.trigger ? '動いている' : '止まっている')+'）' : '（古いプログラムです。貼り直してください）')+'</p>' : '')+
+    (GAS.user ? '<p class="note">つながっています：'+esc(GAS.user)+(GAS.ver ? '（5分ごとの確認：'+(GAS.trigger ? '動いている' : '止まっている')+(GAS.fast ? '・Discordは1分ごと' : '')+'）' : '（古いプログラムです。貼り直してください）')+'</p>' : '')+
     (GAS.user && GAS.ver && !GAS.trigger ? '<button class="mini" data-act="gas-setup">5分ごとの確認を動かす</button>' : '');
   if(ready){
     h += '<label class="f" style="margin-top:14px">Googleカレンダー</label>'+
@@ -316,13 +316,13 @@ function gasAction(act, t){
     if(!u || !tk){ toast('URLと合言葉の両方を入れてください', true); render(); return true; }
     toast('つながるか試しています…');
     gasCall('ping').then(function(r){
-      GAS.user = r.user || 'OK'; GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; GAS.pingAt = Date.now(); saveGas();
+      GAS.user = r.user || 'OK'; GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.fast = r.fast ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; GAS.pingAt = Date.now(); saveGas();
       /* 貼り直した版を、ほかの端末にも同期で知らせる（スマホもすぐ新しい版に気づく） */
       if(typeof gasVerShare === 'function') gasVerShare();
       if(typeof gasUrlShare === 'function') gasUrlShare();
       persist(); pushRemote();
       if(typeof gfeatPush === 'function') gfeatPush()['catch'](function(e){ logErr('Google連携', e.message); });
-      if(r.ver && !r.trigger) gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); render(); })['catch'](function(e){ logErr('Google連携', '5分ごとの確認を動かせませんでした：' + e.message); });
+      if(r.ver && (!r.trigger || !r.fast)) gasCall('setup').then(function(){ GAS.trigger = 1; GAS.fast = 1; saveGas(); render(); })['catch'](function(e){ logErr('Google連携', '5分ごとの確認を動かせませんでした：' + e.message); });
       toast('つながりました：' + (r.calendar || 'くらしの手帳'));
       gasCalSync(true); gasBackup(false);
       render();

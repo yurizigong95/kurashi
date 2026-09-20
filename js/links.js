@@ -525,13 +525,13 @@ function linksTick(){
     GAS.pingAt = Date.now(); saveGas();
     gasCall('ping').then(function(r){
       var was = (typeof gasVerOf === 'function') ? gasVerOf(GAS) : 0;
-      GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; saveGas();
+      GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.fast = r.fast ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; saveGas();
       var changed = false;
       if(typeof gasVerShare === 'function' && gasVerShare()) changed = true;
       if(typeof gasUrlShare === 'function'){ gasUrlShare(); changed = true; }
       if(changed) persist();
       if(typeof gasVerOf === 'function' && gasVerOf(GAS) !== was && !isTyping()) render();
-      if(r.ver && !r.trigger) return gasCall('setup').then(function(){ GAS.trigger = 1; saveGas(); });
+      if(r.ver && (!r.trigger || !r.fast)) return gasCall('setup').then(function(){ GAS.trigger = 1; GAS.fast = 1; saveGas(); });
     })['catch'](function(e){ logErr('Google連携', e.message); });
   }
   inboxPull(false);

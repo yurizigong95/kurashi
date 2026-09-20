@@ -47,7 +47,7 @@ async function gasCatchUp(){
     var r = await gasCall('ping');
     if(tryUrl !== oldUrl && gasVerOf(r) <= before){ GAS.url = oldUrl; saveGas(); return false; }   /* 新しくなければ、もとのURLのまま */
     GAS.user = r.user || GAS.user || 'OK';
-    GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; GAS.pingAt = Date.now();
+    GAS.ver = r.ver || 0; GAS.api = r.api || 0; GAS.trigger = r.trigger ? 1 : 0; GAS.fast = r.fast ? 1 : 0; GAS.ai = r.ai ? 1 : 0; GAS.err = r.err || null; GAS.pingAt = Date.now();
     saveGas();
     if(!isTyping()) render();
     return true;

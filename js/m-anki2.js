@@ -1353,6 +1353,14 @@ kmAction(function(act, t){
   return true;
 });
 
+/* テストの通知に足す「今日やる分」（js/notify.js から使う） */
+function ak2NoteLine(examId){
+  try{
+    var x = ak2Upcoming().filter(function(y){ return y.ex && y.ex.id === examId && y.calc; })[0];
+    return x ? ak2TodayLine(x.calc) : '';
+  }catch(e){ return ''; }
+}
+
 /* ----- AIが読めるように（計算した「今日やる分」「遅れ」・まちがえたカードの順位） ----- */
 kmAiData('ak2ExamToday', 'テスト範囲の計画から計算した「今日やる分」「遅れ」「のこり」「これからの1日ずつの予定」（テストごと）', function(){
   return ak2Upcoming().filter(function(x){ return x.calc; }).map(function(x){

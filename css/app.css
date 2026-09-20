@@ -1441,3 +1441,9 @@ body[data-theme="dark"] .studycard{background:rgba(255,255,255,.06)}
 .studycard .sd{font-size:.72em; color:var(--sub); line-height:1.45}
 .studyback{align-items:center; margin-bottom:6px}
 .studyback .studyttl{margin-left:6px}
+
+/* せまい画面（スマホ）では、横ならびのボタンが重ならないように折り返す */
+@media (max-width:430px){
+  .pair{flex-wrap:wrap}
+  .pair>button.btn{white-space:normal; line-height:1.25}
+}

@@ -26,7 +26,8 @@ var KEEP_BACKUPS = 12;          // バックアップは新しい12個だけ残�
 var BATCH = 40;                 // 1回に直す予定の数（時間切れを防ぐ）
 var TZ = 'Asia/Tokyo';
 var VER = 3;
-var API = 4;                    // 窓口の版。4 … 手書きノートの検索・Discordボット・Siri/Apple Watch/リマインダーの窓口・ウィジェットの色
+var API = 5;                    // 窓口の版。4 … 手書きノートの検索・Discordボット・Siri/Apple Watch/リマインダーの窓口・ウィジェットの色
+// 5 … 手帳の中身をAIが読んで答える（aiDataPut）
 var INBOX_FOLDER_NAME = '受け取り';            // ショートカットで送った写真（バックアップのフォルダの中）
 var LECTURE_FOLDER_NAME = 'くらしの手帳 講義資料'; // ここに入れたPDF・写真から暗記カードを作る
 var SHEET_NAME = 'くらしの手帳 記録';
@@ -79,9 +80,11 @@ function doPost(e){
       case 'sheetSync':     return out_(sheetSync_(req.sheets || {}));
       case 'scanNow':       return out_(scanNow_(req.what));
       case 'gnSearch':      return out_(gnSearch_(req.q));
+      case 'aiDataPut':     return out_(aiDataPut_(req.data));
       case 'dcBotSet':      return out_(dcBotSet_(req.bot));
       case 'dcBotChannels': return out_(dcBotChannels_());
       case 'dcBotUse':      return out_(dcBotUse_(req.channel));
+      case 'dcBotChan':     return out_(dcBotChan_(req.kind, req.channel));
       case 'askTest':       return out_({ ok:true, text:ask_(req.q, { locked:true }) });
       case 'remindersReset':return out_(remindersReset_());
       case 'proxyGet':      return out_(proxyGet_(req.url, req.enc));
@@ -127,10 +130,10 @@ function ping_(){
   var p = props_();
   var err = null; try{ err = JSON.parse(p.getProperty('EXTRA_ERR') || 'null'); }catch(e){}
   return { ok:true, user: Session.getEffectiveUser().getEmail(), calendar: cal.getName(), tz: TZ,
-           ver: VER, api: API, trigger: hasTrigger_(), shortKey: !!p.getProperty('SHORT_KEY'),
+           ver: VER, api: API, trigger: hasTrigger_(), fast: hasFast_(), shortKey: !!p.getProperty('SHORT_KEY'),
            discord: !!p.getProperty('DISCORD_URL'), devices: pushDevices_().length,
            ai: !!p.getProperty('GEMINI_KEY'), sheet: p.getProperty('SHEET_ID') ? 1 : 0, feat: feat_(), err: err,
-           dcBot: dcBotInfo_() };
+           dcBot: dcBotInfo_(), aiData: (function(){ var m = aiDataMeta_(); return m ? { at:m.at, size:m.size, build:m.build || '', day:m.day || '' } : null; })() };
 }
 /* 文字で返す（ショートカット・Siri 用）。fmt=json なら { ok, text } */
 function text_(s, fmt){
@@ -193,10 +196,28 @@ function extraErr_(where, e){
 function hasTrigger_(){
   return ScriptApp.getProjectTriggers().some(function(t){ return t.getHandlerFunction() === 'tick'; });
 }
+function hasFast_(){
+  return ScriptApp.getProjectTriggers().some(function(t){ return t.getHandlerFunction() === 'tickFast'; });
+}
 function setup_(){
-  ScriptApp.getProjectTriggers().forEach(function(t){ if(t.getHandlerFunction() === 'tick') ScriptApp.deleteTrigger(t); });
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    var h = t.getHandlerFunction();
+    if(h === 'tick' || h === 'tickFast') ScriptApp.deleteTrigger(t);
+  });
   ScriptApp.newTrigger('tick').timeBased().everyMinutes(5).create();
-  return { ok:true, trigger:true };
+  ScriptApp.newTrigger('tickFast').timeBased().everyMinutes(1).create();   /* Discordの見回りだけ（軽いので1分ごと） */
+  return { ok:true, trigger:true, fast:true };
+}
+function dcSpeed_(){ return hasFast_() ? '1分ほど' : '5分以内'; }   /* 答えるまでの目安 */
+/* 1分ごと：Discordのボットだけ見る（ボットを使っていないときは、すぐ終わる）
+   夜中（0:00〜6:00）は見に行かない（Googleの1日の持ち時間を使いすぎないように。5分ごとの確認は動いています） */
+function tickFast(){
+  try{
+    var bot = dcBot_();
+    if(!bot || !bot.channel) return;
+    if(jst_().h < 6) return;
+    dcBotPoll_();
+  }catch(e){ extraErr_('Discordボット', e); }
 }
 function shortKeySet_(key){
   key = String(key || '');
@@ -430,6 +451,45 @@ function fcmSend_(dev, data){
   if(code === 404 || /UNREGISTERED|registration-token-not-registered/.test(text)) pushRemove_(dev.device);
   return { code:code, text:text.slice(0, 200) };
 }
+/* ===== 種類ごとのチャンネル分け =====
+   bot.channel … 「しつもん」（ボットが答える・ふりわけ先がないときの行き先）
+   bot.chans   … { today:'きょう', due:'しめきり', exam:'テスト', work:'バイト', money:'おかね', pet:'おせわ', info:'おしらせ' } のチャンネルid */
+var DC_CATS = ['today', 'due', 'exam', 'work', 'money', 'pet', 'info'];
+function dcChanOf_(cat){
+  var bot = dcBot_();
+  if(!bot || !bot.channel) return null;
+  var id = (bot.chans || {})[String(cat || '')] || '';
+  return id ? { bot:bot, id:id } : null;
+}
+/* 通知を送る：種類のチャンネル → （なければ）ウェブフック → （なければ）しつもんのチャンネル */
+function dcPost_(cat, title, body){
+  var text = ('**' + clip_(title, 150) + '**\n' + clip_(body, 1500)).slice(0, 1900);
+  var to = dcChanOf_(cat);
+  if(to) return dcFetch_(to.bot, 'post', '/channels/' + to.id + '/messages', { content:text, allowed_mentions:{ parse:[] } });
+  var r = discordSend_(title, body);
+  if(r) return r;
+  var bot = dcBot_();
+  if(bot && bot.channel) return dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:text, allowed_mentions:{ parse:[] } });
+  return null;
+}
+function dcBotChan_(kind, channel){
+  var bot = dcBot_();
+  if(!bot) return { ok:false, error:'先にボットのトークンを預けてください' };
+  if(DC_CATS.indexOf(String(kind)) < 0) return { ok:false, error:'知らない種類です' };
+  bot.chans = bot.chans || {};
+  channel = String(channel || '');
+  if(!channel) delete bot.chans[kind];
+  else{
+    if(!/^\d{15,22}$/.test(channel)) return { ok:false, error:'チャンネルの番号がちがいます' };
+    var ch = dcFetch_(bot, 'get', '/channels/' + channel);
+    if(ch.code !== 200 || !ch.j) return { ok:false, error:'チャンネルを読めませんでした（' + ch.code + '）' };
+    bot.chans[kind] = channel;
+    bot.cnames = bot.cnames || {};
+    bot.cnames[kind] = clip_(ch.j.name, 60);
+  }
+  props_().setProperty('DC_BOT', JSON.stringify(bot));
+  return { ok:true, chans:bot.chans, names:bot.cnames || {} };
+}
 function discordSend_(title, body){
   var url = props_().getProperty('DISCORD_URL');
   if(!url) return null;
@@ -447,7 +507,7 @@ function deliver_(job){
       catch(e){ res.push.push({ code:0, text:String(e.message || e) }); }
     });
   }
-  if(job.discord){ try{ res.discord = discordSend_(job.title, job.body); }catch(e){ res.discord = { code:0, text:String(e.message || e) }; } }
+  if(job.discord){ try{ res.discord = dcPost_(job.cat || '', job.title, job.body); }catch(e){ res.discord = { code:0, text:String(e.message || e) }; } }
   return res;
 }
 function notifyTest_(channel){
@@ -461,7 +521,7 @@ function jobsPut_(jobs){
     var at = Number(j.at) || 0;
     if(!j.id || at < now - 10 * 60000 || at > now + 8 * 86400000) return;
     list.push({ id:clip_(j.id, 60), at:at, title:clip_(j.title, 80), body:clip_(j.body, 200), url:clip_(j.url, 80),
-                push:j.push ? 1 : 0, discord:j.discord ? 1 : 0, wx:j.wx ? 1 : 0 });
+                push:j.push ? 1 : 0, discord:j.discord ? 1 : 0, wx:Number(j.wx) || 0, cat:clip_(j.cat, 12) });   /* cat … 通知の種類（Discordのチャンネル分けに使う） */
   });
   list.sort(function(a, b){ return a.at - b.at; });
   bigSet_('jobs', list.slice(0, 300));
@@ -495,7 +555,8 @@ function extras_(){
   p.setProperty('EXTRA_RUN', String(now));
   try{
     /* Discordのボット（聞かれたことに答える）・日曜の夜の「来週のまとめ」 */
-    try{ dcBotPoll_(); }catch(e){ extraErr_('Discordボット', e); }
+    /* ここは5分ごとの tick の中（すでにかぎを持っている）ので、かぎを取り直さずに見る */
+    try{ var b0 = dcBot_(); if(b0 && b0.channel) dcBotPollRun_(b0); }catch(e){ extraErr_('Discordボット', e); }
     try{ weekSend_(f); }catch(e){ extraErr_('週のまとめ', e); }
     if((f.mailCard || f.mailUnkou || f.uniDomain) && now - (Number(p.getProperty('MAIL_AT')) || 0) >= 10 * 60000){
       p.setProperty('MAIL_AT', String(now));
@@ -518,25 +579,52 @@ function scanNow_(what){
 }
 
 /* ===================== 朝の天気（Open-Meteo） ===================== */
-function wxToday_(){
-  var cache = CacheService.getScriptCache(), hit = cache.get('wx');
-  if(hit) return JSON.parse(hit);
-  var out = { pop:0, tmax:null, tmin:null };
-  WX_POINTS.forEach(function(pt){
-    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + pt.lat + '&longitude=' + pt.lon +
-      '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FTokyo&forecast_days=1';
-    var j = JSON.parse(UrlFetchApp.fetch(url, { muteHttpExceptions:true }).getContentText() || '{}');
-    var d = j.daily || {};
-    out.pop = Math.max(out.pop, Number((d.precipitation_probability_max || [0])[0]) || 0);
-    var mx = Number((d.temperature_2m_max || [])[0]), mn = Number((d.temperature_2m_min || [])[0]);
-    if(isFinite(mx)) out.tmax = out.tmax == null ? mx : Math.max(out.tmax, mx);
-    if(isFinite(mn)) out.tmin = out.tmin == null ? mn : Math.min(out.tmin, mn);
-  });
-  cache.put('wx', JSON.stringify(out), 1800);
-  return out;
+/* 天気（off=0 … 今日、off=1 … 明日）。送る直前に、その日の予報を入れ直す */
+function wxToday_(off){
+  off = Number(off) || 0;
+  var cache = CacheService.getScriptCache(), hit = cache.get('wx2');
+  var days = hit ? JSON.parse(hit) : null;
+  if(!days){
+    days = [{ pop:0, tmax:null, tmin:null, code:null }, { pop:0, tmax:null, tmin:null, code:null }];
+    WX_POINTS.forEach(function(pt){
+      var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + pt.lat + '&longitude=' + pt.lon +
+        '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&timezone=Asia%2FTokyo&forecast_days=2';
+      var j = JSON.parse(UrlFetchApp.fetch(url, { muteHttpExceptions:true }).getContentText() || '{}');
+      var d = j.daily || {};
+      [0, 1].forEach(function(i){
+        var o = days[i];
+        o.pop = Math.max(o.pop, Number((d.precipitation_probability_max || [])[i]) || 0);
+        var mx = Number((d.temperature_2m_max || [])[i]), mn = Number((d.temperature_2m_min || [])[i]);
+        if(isFinite(mx)) o.tmax = o.tmax == null ? mx : Math.max(o.tmax, mx);
+        if(isFinite(mn)) o.tmin = o.tmin == null ? mn : Math.min(o.tmin, mn);
+        var cd = Number((d.weather_code || [])[i]);
+        if(isFinite(cd) && (o.code == null || cd > o.code)) o.code = cd;
+      });
+    });
+    cache.put('wx2', JSON.stringify(days), 1800);
+  }
+  return days[Math.min(1, Math.max(0, off))];
+}
+/* 天気のことば（Open-Meteo の weather_code） */
+function wxWord_(code){
+  if(code == null) return '';
+  if(code === 0) return '快晴';
+  if(code <= 2) return '晴れ';
+  if(code === 3) return 'くもり';
+  if(code <= 48) return 'きり';
+  if(code <= 57) return '霧雨';
+  if(code <= 67) return '雨';
+  if(code <= 77) return '雪';
+  if(code <= 82) return 'にわか雨';
+  if(code <= 86) return 'にわか雪';
+  return '雷雨';
 }
 function wxLines_(w){
   var out = [];
+  var word = wxWord_(w.code);
+  if(word || w.tmax != null) out.push('🌤 ' + (word ? word + '　' : '') +
+    (w.tmin != null && w.tmax != null ? Math.round(w.tmin) + '〜' + Math.round(w.tmax) + '℃' : '') +
+    (w.pop ? '・降水' + w.pop + '%' : ''));
   if(w.pop >= 50) out.push('☔ 傘（降水' + w.pop + '%）');
   else if(w.pop >= 30) out.push('🌂 折りたたみ傘（降水' + w.pop + '%）');
   if(w.tmax != null && w.tmin != null && (w.tmax - w.tmin >= 10 || w.tmin <= 8)) out.push('🧥 上着（' + Math.round(w.tmin) + '〜' + Math.round(w.tmax) + '℃）');
@@ -544,9 +632,9 @@ function wxLines_(w){
 }
 function wxRefresh_(job){
   try{
-    var body = String(job.body || '').split('\n').filter(function(l){ return l && !/^(☔|🌂|🧥)/.test(l); });
-    var add = wxLines_(wxToday_());
-    var at = (body.length && /^🎒/.test(body[0])) ? 1 : 0;
+    var body = String(job.body || '').split('\n').filter(function(l){ return l && !/^(☔|🌂|🧥|🌤)/.test(l); });
+    var add = wxLines_(wxToday_(Number(job.wx) >= 2 ? 1 : 0));
+    var at = (body.length && /^(🎒|📚)/.test(body[0])) ? 1 : 0;
     body.splice.apply(body, [at, 0].concat(add));
     if(!body.length) return null;
     var o = {};
@@ -711,10 +799,33 @@ function aiPrompt_(c, f, today){
     '・今日は' + today + '。日付に年がなければ、今日に近い方の年にする。\n' +
     '{"course":"","pages":0,"summary":"","tasks":[],"cards":[]}';
 }
-function aiCall_(key, parts){
+/* 何回かやりとりして答える（道具を使う。答えの「候補」をそのまま返す） */
+function aiChat_(key, contents, tools, opt){
+  opt = opt || {};
   var model = props_().getProperty('GEMINI_MODEL');
   var models = (model ? [model] : []).concat(AI_MODELS);
-  var body = JSON.stringify({ contents:[{ role:'user', parts:parts }], generationConfig:{ temperature:0.2, maxOutputTokens:8192, responseMimeType:'application/json' } });
+  var body = { contents:contents, generationConfig:{ temperature:opt.temperature == null ? 0.3 : opt.temperature, maxOutputTokens:opt.maxTokens || 1500 } };
+  if(tools && tools.length) body.tools = tools;
+  var last = '';
+  for(var i = 0; i < models.length; i++){
+    var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
+      method:'post', contentType:'application/json', payload:JSON.stringify(body), muteHttpExceptions:true, headers:{ 'x-goog-api-key':key } });
+    var j = null; try{ j = JSON.parse(res.getContentText()); }catch(e){}
+    if(res.getResponseCode() === 200 && j) return (j.candidates || [])[0] || null;
+    last = (j && j.error && j.error.message) || ('エラー ' + res.getResponseCode());
+    /* 道具が使えないモデルのときは、道具なしでもう一度 */
+    if(body.tools && /tool|function|not supported|unsupported/i.test(last)){ delete body.tools; i--; continue; }
+    if(!/not found|not available|unsupported|deprecated/i.test(last)) break;
+  }
+  throw new Error(last);
+}
+function aiCall_(key, parts, opt){
+  opt = opt || {};
+  var model = props_().getProperty('GEMINI_MODEL');
+  var models = (model ? [model] : []).concat(AI_MODELS);
+  var cfg = { temperature:opt.temperature == null ? 0.2 : opt.temperature, maxOutputTokens:opt.maxTokens || 8192 };
+  if(!opt.text) cfg.responseMimeType = 'application/json';       /* ふつうはJSONでもらう。opt.text のときは文章でもらう */
+  var body = JSON.stringify({ contents:[{ role:'user', parts:parts }], generationConfig:cfg });
   var last = '';
   for(var i = 0; i < models.length; i++){
     var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
@@ -989,9 +1100,13 @@ function next_(){
   return '次は ' + lab(list[0]) + (list[1] ? '\nそのあと ' + lab(list[1]) : '');
 }
 function askHelp_(){
-  return ['できること（ことばを送ってください）：', '・明日／今日 … 予定と授業', '・明日の1限 … その時間の授業', '・次 … 次の予定',
+  var ai = props_().getProperty('GEMINI_KEY') && aiDataMeta_()
+    ? ['ふつうのことばで、手帳のことを何でも聞けます（AIが手帳を読んで答えます）。',
+       '例：「今月いくら使った？」「明日の持ち物は？」「今週やることをまとめて」', '', '決まった聞き方（すぐ答えます）：']
+    : ['できること（ことばを送ってください）：'];
+  return ai.concat(['・明日／今日 … 予定と授業', '・明日の1限 … その時間の授業', '・次 … 次の予定',
     '・課題／今日の課題 … 締切', '・テスト … 今週のテスト', '・バイト … 次のシフト', '・お金 … 今月のお金', '・暗記 … 復習の枚数',
-    '・おせわ … 育てている子のようす', '・来週 … 来週のまとめ', '・課題：レポート 10/3 … 課題を足す', '・メモ：〇〇 … メモを足す'].join('\n');
+    '・おせわ … 育てている子のようす', '・来週 … 来週のまとめ', '・課題：レポート 10/3 … 課題を足す', '・メモ：〇〇 … メモを足す']).join('\n');
 }
 function askAddTask_(s, opt){
   s = String(s || '').trim();
@@ -1108,9 +1223,152 @@ function weekSend_(f){
   var text = weekText_(null, 1);
   if(!text) return false;
   var title = '📅 来週の予定（くらしの手帳）';
-  if(p.getProperty('DISCORD_URL')) discordSend_(title, text);
-  else{ var bot = dcBot_(); if(bot && bot.channel) dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:('**' + title + '**\n' + text).slice(0, 1900), allowed_mentions:{ parse:[] } }); }
+  dcPost_('info', title, text);       /* 「おしらせ」のチャンネル（なければ、ウェブフックか「しつもん」） */
   return true;
+}
+/* ===================== 手帳の中身（アプリが預けたもの）と、それを読んで答えるAI =====================
+   アプリが aiDataPut で送った「手帳のまとめ」を、自分のドライブのファイルに置く（大きいのでスクリプトのメモには入れない）。
+   GEMINI_KEY があるときは、Discord・Siri の質問に、この中身を読んで答える。 */
+var AIDATA_FILE = 'くらしの手帳AIデータ.json';
+function aiDataMeta_(){ try{ return JSON.parse(props_().getProperty('AIDATA') || 'null'); }catch(e){ return null; } }
+function aiDataFile_(make){
+  var meta = aiDataMeta_();
+  if(meta && meta.id){ try{ return DriveApp.getFileById(meta.id); }catch(e){} }
+  var root = folder_(), it = root.getFilesByName(AIDATA_FILE);
+  if(it.hasNext()) return it.next();
+  return make ? root.createFile(AIDATA_FILE, '{}', 'application/json') : null;
+}
+function aiDataPut_(data){
+  var str = '';
+  try{ str = JSON.stringify(data); }catch(e){ return { ok:false, error:'中身を読みとれません' }; }
+  if(!data || typeof data !== 'object') return { ok:false, error:'中身がありません' };
+  if(str.length > 400000) return { ok:false, error:'大きすぎます（' + Math.round(str.length / 1024) + 'KB）' };
+  var f = aiDataFile_(true);
+  f.setContent(str);
+  props_().setProperty('AIDATA', JSON.stringify({ id:f.getId(), at:Date.now(), size:str.length, build:clip_(data.build, 20), day:clip_(data.today, 10) }));
+  return { ok:true, size:str.length };
+}
+function aiData_(){
+  var meta = aiDataMeta_();
+  if(!meta) return null;
+  var f = aiDataFile_(false);
+  if(!f) return null;
+  try{ return { at:meta.at, data:JSON.parse(f.getBlob().getDataAsString('UTF-8')) }; }catch(e){ return null; }
+}
+/* ===== AIが自分で手帳を調べる道具（アプリのAIそうだんと同じ考え方） ===== */
+function aiTools_(ids){
+  return [{ functionDeclarations:[
+    { name:'get_app_data', description:'手帳の中身を分野ごとに読む。予定・課題・テスト・時間割・授業と出欠・メモ・お金と家計簿の明細・バイト・健康・暗記や勉強・国試・おせわ・キャラ・通学・ふりかえり・記念日・足した機能の記録・設定まで、アプリにあるものはぜんぶ読める。',
+      parameters:{ type:'OBJECT', properties:{
+        section:{ type:'STRING', description:'分野id：' + ids.join('、') },
+        query:{ type:'STRING', description:'ふくまれることばでしぼる（なくてもよい）' },
+        limit:{ type:'NUMBER', description:'最大の件数（ふつう40）' } }, required:['section'] } },
+    { name:'search_app', description:'ことばで、手帳のぜんぶの分野をさがす（どの分野にあるか分からないときに使う）。',
+      parameters:{ type:'OBJECT', properties:{ query:{ type:'STRING', description:'さがすことば' } }, required:['query'] } }
+  ] }];
+}
+function aiPick_(sec, query, limit){
+  var q = String(query || '').trim().toLowerCase(), lim = Math.max(1, Math.min(200, Number(limit) || 40));
+  if(!q && !limit) return sec;
+  var out = { section:sec.section, name:sec.name, data:{} };
+  Object.keys(sec).forEach(function(k){ if(k !== 'data' && k !== 'section' && k !== 'name') out[k] = sec[k]; });
+  Object.keys(sec.data || {}).forEach(function(k){
+    var d = sec.data[k];
+    if(!d || typeof d !== 'object'){ out.data[k] = d; return; }
+    var items = d.items;
+    if(Array.isArray(items)){
+      var list = q ? items.filter(function(x){ return JSON.stringify(x).toLowerCase().indexOf(q) >= 0; }) : items;
+      out.data[k] = { total:d.total, shown:Math.min(lim, list.length), items:list.slice(0, lim) };
+    }else if(items && typeof items === 'object'){
+      var o = {}, n = 0;
+      Object.keys(items).forEach(function(kk){
+        if(n >= lim) return;
+        if(q && (kk + JSON.stringify(items[kk])).toLowerCase().indexOf(q) < 0) return;
+        o[kk] = items[kk]; n++;
+      });
+      out.data[k] = { total:d.total, shown:n, items:o };
+    }else out.data[k] = d;
+  });
+  return out;
+}
+function aiSearchSnap_(data, query){
+  var q = String(query || '').trim().toLowerCase();
+  if(!q) return { error:'さがすことばがありません' };
+  var hits = [];
+  Object.keys(data.sections || {}).forEach(function(id){
+    var sec = data.sections[id] || {};
+    Object.keys(sec.data || {}).forEach(function(k){
+      var items = (sec.data[k] || {}).items;
+      var look = function(x, key){
+        if(hits.length >= 40) return;
+        var txt = '';
+        try{ txt = JSON.stringify(x); }catch(e){ return; }
+        var at = txt.toLowerCase().indexOf(q);
+        if(at < 0) return;
+        hits.push({ section:id, name:sec.name, key:k, id:(x && x.id) || key || '',
+          title:clip_((x && (x.title || x.name || x.q || x.text || x.subject)) || key || '', 60),
+          snippet:clip_(txt.slice(Math.max(0, at - 60), at + 160), 240) });
+      };
+      if(Array.isArray(items)) items.forEach(function(x){ look(x); });
+      else if(items && typeof items === 'object') Object.keys(items).forEach(function(kk){ look(items[kk], kk); });
+    });
+  });
+  return { query:query, count:hits.length, hits:hits };
+}
+function aiRunTool_(data, call){
+  var a = call.args || {};
+  if(call.name === 'get_app_data'){
+    var sec = (data.sections || {})[String(a.section || '')];
+    if(!sec) return { error:'知らない分野です：' + a.section, sections:Object.keys(data.sections || {}) };
+    return aiPick_(sec, a.query, a.limit);
+  }
+  if(call.name === 'search_app') return aiSearchSnap_(data, a.query);
+  return { error:'知らない道具です' };
+}
+/* 手帳の中身を読んで、質問に答える（できないときは null を返して、決まった答え方にもどす） */
+function aiAsk_(q, opt){
+  opt = opt || {};
+  var key = props_().getProperty('GEMINI_KEY');
+  if(!key || !String(q || '').trim()) return null;
+  var d = aiData_();
+  if(!d || !d.data) return null;
+  var j = jst_(), hours = Math.round((Date.now() - (Number(d.at) || 0)) / 3600000);
+  var old = hours >= 24 ? '\n※この手帳の中身は約' + Math.round(hours / 24) + '日前のものです。答えの最後に、その日付とアプリを開くと新しくなることを1行で添えてください。' : '';
+  var sys = 'あなたは「くらしの手帳」（看護学生の持ち主が1人で使うアプリ）のアシスタントです。' +
+    'いまは ' + j.ymd + '（' + WD_[j.dow] + '）' + j.hm + '（日本時間）です。\n' +
+    '下の「手帳の中身」だけを根拠に、日本語で答えてください。やさしいことばで、' + (opt.short ? '2〜3行' : '5行以内') + 'にまとめます。' +
+    '見出しや箇条書きは短く。\n' +
+    '・日付・時刻・金額・点数は、手帳のとおり正確に書く（勝手に足し算しない）。\n' +
+    '・手帳に無いことは「手帳には見つかりませんでした」と正直に言う。想像で書かない。\n' +
+    '・カギ・合言葉の話は答えない。\n' +
+    '・健康や薬の話は「目安。教科書や先生の資料で確かめて」と添える。' + old + '\n' +
+    '【手帳の調べ方】下にあるのは「目次」と「よく聞かれること」だけです。' +
+    'それで足りないことを聞かれたら、必ず道具（get_app_data / search_app）で手帳を調べてから答えてください。' +
+    '家計簿の明細・メモの全文・暗記カード・国試の記録・おせわ・健康・設定など、どの分野でも読めます。' +
+    'どの分野か分からないときは search_app でさがします。調べても無いときだけ「手帳には見つかりませんでした」と言います。';
+  var ids = Object.keys(d.data.sections || {});
+  var l2 = l2_();
+  var first = sys + '\n\n===== 手帳の目次 =====\n' + JSON.stringify(d.data.overview || {}) +
+    (l2 ? '\n\n===== よく聞かれること（今日・明日・締切・お金・暗記・おせわ）=====\n' + clip_(JSON.stringify(l2), 12000) : '') +
+    '\n\n===== 聞かれたこと =====\n' + clip_(q, 500);
+  var contents = [{ role:'user', parts:[{ text:first }] }];
+  var tools = ids.length ? aiTools_(ids) : null;
+  for(var round = 0; round < 5; round++){
+    var c = aiChat_(key, contents, tools, { maxTokens:1500, temperature:0.3 });
+    var parts = ((c && c.content) || {}).parts || [];
+    var calls = parts.filter(function(p){ return p.functionCall; }).map(function(p){ return p.functionCall; });
+    if(!calls.length){
+      var text = parts.map(function(p){ return p.text || ''; }).join('').trim();
+      return text ? clip_(text, 1800) : null;
+    }
+    contents.push(c.content);
+    contents.push({ role:'user', parts:calls.map(function(call){
+      var r;
+      try{ r = aiRunTool_(d.data, call); }catch(e){ r = { error:String(e && e.message || e) }; }
+      return { functionResponse:{ name:call.name, response:{ result:clip_(JSON.stringify(r), 30000) } } };
+    }) });
+  }
+  return null;
 }
 /* 聞かれたことに答える（Siri・Discordボット）。q は「明日の1限は？」のような文、または tomorrow1・due などの合図 */
 function ask_(q, opt){
@@ -1124,8 +1382,15 @@ function ask_(q, opt){
   var mm = /^(?:メモ|めも)\s*[:：]\s*([\s\S]+)$/.exec(raw);
   if(mm){ inboxPush_({ kind:'memo', text:clip_(mm[1].trim(), 500) }, !!opt.locked); return 'メモを預かりました。アプリを開くと入ります。'; }
   if(!t || /^(help|へるぷ|ヘルプ|使い方|つかいかた|できること|なにができる|何ができる|\?)$/.test(t)) return askHelp_();
+  /* Discordの質問は、まずAIが手帳ぜんぶを読んで答える（AIのカギと手帳の中身が預けてあるときだけ） */
+  if(opt.ai){
+    try{
+      var byAi = aiAsk_(raw, { short:!!opt.short });
+      if(byAi) return byAi;
+    }catch(e){ extraErr_('AIの答え', e); }
+  }
   var l2 = l2_();
-  if(!l2) return 'まだアプリからまとめが届いていません。アプリを開いてから、もう一度聞いてください。';
+  if(!l2) return aiHelpNoData_();
   var td = jst_().ymd, tm = ymdAdd_(td, 1);
   var code = /^(tomorrow|today)([1-7])$/.exec(t), per = /([1-7])\s*限/.exec(t);
   if(code || per){
@@ -1143,7 +1408,20 @@ function ask_(q, opt){
   if(t === 'due' || /課題|かだい|宿題|締切|しめきり|〆切|レポート/.test(t)) return askDue_(l2);
   if(t === 'tomorrow' || /明日|あした|あす/.test(t)) return askDay_(l2, tm, '明日');
   if(t === 'today' || /今日|きょう|本日|予定/.test(t)) return askDay_(l2, td, '今日');
-  return 'ごめんなさい、分かりませんでした。\n' + askHelp_();
+  /* 決まった聞き方に合わないときも、AIが手帳を読んで答える */
+  if(!opt.ai){
+    try{
+      var late = aiAsk_(raw, { short:true });
+      if(late) return late;
+    }catch(e2){ extraErr_('AIの答え', e2); }
+  }
+  return 'ごめんなさい、分かりませんでした。\n' + (props_().getProperty('GEMINI_KEY') && !aiDataMeta_()
+    ? 'アプリの 設定 › Discordのボット で「いま送る」を押すと、AIが手帳を読んで答えられるようになります。\n' : '') + askHelp_();
+}
+/* まとめも手帳の中身も届いていないとき */
+function aiHelpNoData_(){
+  return 'まだアプリからまとめが届いていません。アプリを開いてから、もう一度聞いてください。' +
+    (props_().getProperty('GEMINI_KEY') ? '\n（設定 › Discordのボット の「いま送る」でも送れます）' : '');
 }
 /* iPhoneのリマインダーへ：まだ終わっていない課題（new=1 … まだ渡していないものだけ。渡したものは覚える） */
 function reminders_(p){
@@ -1170,7 +1448,7 @@ function remindersReset_(){ props_().deleteProperty('REM_SENT'); return { ok:tru
    ウェブフック（通知を送るだけ）とはべつ。ボットのトークンは、この橋わたしにだけ置く。 */
 var DC_API = 'https://discord.com/api/v10';
 function dcBot_(){ try{ return JSON.parse(props_().getProperty('DC_BOT') || 'null'); }catch(e){ return null; } }
-function dcBotInfo_(){ var b = dcBot_(); return b ? { name:b.name || '', channel:b.cname || '', on:b.channel ? 1 : 0 } : null; }
+function dcBotInfo_(){ var b = dcBot_(); return b ? { name:b.name || '', channel:b.cname || '', on:b.channel ? 1 : 0, chans:b.chans || {}, cnames:b.cnames || {} } : null; }
 function dcFetch_(bot, method, path, body){
   var opt = { method:method, muteHttpExceptions:true, headers:{ Authorization:'Bot ' + bot.token } };
   if(body){ opt.contentType = 'application/json'; opt.payload = JSON.stringify(body); }
@@ -1211,7 +1489,9 @@ function dcBotUse_(channel){
   var last = dcFetch_(bot, 'get', '/channels/' + channel + '/messages?limit=1');
   bot.channel = channel; bot.cname = clip_(ch.j.name, 60);
   bot.after = (Array.isArray(last.j) && last.j[0] && last.j[0].id) ? String(last.j[0].id) : '';
-  var hi = dcFetch_(bot, 'post', '/channels/' + channel + '/messages', { content:'くらしの手帳のボットです📒 このチャンネルに「明日」「課題」「ヘルプ」などと書くと、5分以内に答えます。' });
+  var hi = dcFetch_(bot, 'post', '/channels/' + channel + '/messages', { content:'くらしの手帳のボットです📒 ' + (props_().getProperty('GEMINI_KEY') && aiDataMeta_()
+    ? 'このチャンネルに、手帳のことをふつうのことばで聞いてください（例：「今月いくら使った？」「明日の持ち物は？」）。AIが手帳を読んで、' + dcSpeed_() + 'で答えます。'
+    : 'このチャンネルに「明日」「課題」「ヘルプ」などと書くと、' + dcSpeed_() + 'で答えます。') });
   if(hi.j && hi.j.id) bot.after = String(hi.j.id);
   props_().setProperty('DC_BOT', JSON.stringify(bot));
   return { ok:true, channel:bot.cname };
@@ -1219,21 +1499,41 @@ function dcBotUse_(channel){
 function dcBotPoll_(){
   var bot = dcBot_();
   if(!bot || !bot.channel) return 0;
+  /* 1分ごとの見回りと5分ごとの確認が重なっても、同じメッセージに2回答えないように */
+  var lock = LockService.getScriptLock();
+  if(!lock.tryLock(3000)) return 0;
+  try{ return dcBotPollRun_(dcBot_()); }
+  finally{ try{ lock.releaseLock(); }catch(e){} }
+}
+function dcBotPollRun_(bot){
   var r = dcFetch_(bot, 'get', '/channels/' + bot.channel + '/messages?limit=20' + (bot.after ? '&after=' + bot.after : ''));
   if(r.code !== 200 || !Array.isArray(r.j)){
     if(r.code === 401 || r.code === 403 || r.code === 404) throw new Error('チャンネルを読めませんでした（' + r.code + '）');
     return 0;
   }
-  var list = r.j.slice().sort(function(a, b){ return dcCmp_(a.id, b.id); }), n = 0, after0 = bot.after;
+  var list = r.j.slice().sort(function(a, b){ return dcCmp_(a.id, b.id); }), n = 0, after0 = bot.after, mute = 0;
   list.forEach(function(msg){
     if(dcCmp_(msg.id, bot.after) > 0) bot.after = String(msg.id);
     if(!msg.author || msg.author.bot || String(msg.author.id) === String(bot.id) || n >= 5) return;
     var text = String(msg.content || '').replace(/<@!?\d+>/g, '').trim();
-    if(!text) return;
-    dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:clip_(ask_(text, { from:'discord' }), 1900),
+    /* 中身が空 ＝ Discordの「MESSAGE CONTENT INTENT」がオフのことが多い（写真だけの投稿もある） */
+    if(!text){ if(!(msg.attachments || []).length && !(msg.embeds || []).length) mute++; return; }
+    dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { content:clip_(ask_(text, { from:'discord', ai:true }), 1900),
       message_reference:{ message_id:String(msg.id), fail_if_not_exists:false }, allowed_mentions:{ parse:[] } });
     n++;
   });
+  /* 中身が読めないときは、1日に1回だけ直し方を知らせる */
+  if(mute && !n){
+    var p0 = props_(), last = Number(p0.getProperty('DC_MUTE_AT')) || 0;
+    if(Date.now() - last > 20 * 3600000){
+      p0.setProperty('DC_MUTE_AT', String(Date.now()));
+      dcFetch_(bot, 'post', '/channels/' + bot.channel + '/messages', { allowed_mentions:{ parse:[] }, content:
+        'メッセージの**中身が読めません**でした。Discordの設定を1つ変えると答えられるようになります。\n' +
+        '1. https://discord.com/developers/applications でこのボットを開く\n' +
+        '2. 左の「Bot」→ **MESSAGE CONTENT INTENT** をオン →「Save Changes」\n' +
+        '3. このチャンネルで、もう一度聞いてみてください（答えるまで最大5分かかります）' });
+    }
+  }
   if(bot.after !== after0) props_().setProperty('DC_BOT', JSON.stringify(bot));
   return n;
 }

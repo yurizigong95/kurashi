@@ -257,6 +257,67 @@ function aiDataRun(call){
   if(s.length > 40000) s = s.slice(0, 40000) + '…（多いので切りました。日付やことばでしぼって、もう一度読んでください）';
   return { result:s };
 }
+/* ============================== 橋わたしに預ける「手帳のまとめ」 ==============================
+   Discordのボット・Siriは、アプリが閉じていても答えるので、手帳の中身をGoogle側（自分のApps Script・ドライブ）に置いておく。
+   中身は、そうだんのAIが読むのと同じしくみ（aiSectionData）で作るので、カギ・合言葉・同期の部屋は入らない。
+   大きくなりすぎないように、分野ごとの件数を少しずつへらして、決めた大きさにおさめる。 */
+var AI_SNAP_SMALL = { trash:0.2, ai:0.25, chara:0.3, reviews:0.5, settings:0.5, pet:0.5, study:0.7, kokushi:0.3 };
+function aiSnapSize(v){ try{ return JSON.stringify(v).length; }catch(e){ return 0; } }
+/* 1つの分野が大きすぎるときは、まず「計算した数字」の大きいものから外し、それでも大きければ件数を半分ずつへらす */
+function aiSnapTrim(sec, cap){
+  if(!sec || typeof sec !== 'object' || aiSnapSize(sec) <= cap) return sec;
+  var extras = Object.keys(sec).filter(function(k){ return k !== 'section' && k !== 'name' && k !== 'data'; });
+  extras.sort(function(a, b){ return aiSnapSize(sec[b]) - aiSnapSize(sec[a]); });
+  while(extras.length && aiSnapSize(sec) > cap) sec[extras.shift()] = '（多いので省きました。アプリのAIそうだんなら読めます）';
+  /* 大きい順に、一覧・表の件数を半分ずつへらす */
+  var keys = Object.keys(sec.data || {}).sort(function(a, b){ return aiSnapSize(sec.data[b]) - aiSnapSize(sec.data[a]); });
+  keys.forEach(function(k){
+    var d = sec.data[k];
+    if(!d || typeof d !== 'object') return;
+    while(aiSnapSize(sec) > cap){
+      if(Array.isArray(d.items) && d.items.length > 1){
+        d.items = d.items.slice(0, Math.floor(d.items.length / 2));
+      }else if(d.items && typeof d.items === 'object' && Object.keys(d.items).length > 1){
+        var ks = Object.keys(d.items).slice(0, Math.floor(Object.keys(d.items).length / 2)), o = {};
+        ks.forEach(function(kk){ o[kk] = d.items[kk]; });
+        d.items = o;
+      }else if(aiSnapSize(d) > Math.round(cap / 2)){
+        sec.data[k] = { total:d.total, shown:0, note:'（多いので省きました。アプリのAIそうだんなら読めます）' };
+        return;
+      }else return;
+      d.shown = Array.isArray(d.items) ? d.items.length : Object.keys(d.items || {}).length;
+      d.note = '（多いので、ここまで）';
+    }
+  });
+  return sec;
+}
+function aiSnapshot(maxChars){
+  var max = Math.max(20000, Math.min(300000, toNum(maxChars) || 90000));
+  var cap = Math.max(4000, Math.round(max / Math.max(1, AI_SECTIONS.length) * 2));   /* 1つの分野の上限 */
+  var steps = [40, 25, 15, 8, 4], out = null;
+  for(var li = 0; li < steps.length; li++){
+    var now = new Date();
+    out = { at:Date.now(), build:(typeof APP_BUILD === 'string' ? APP_BUILD : ''), today:today(),
+            now:pad(now.getHours()) + ':' + pad(now.getMinutes()), overview:aiOverview(), sections:{} };
+    AI_SECTIONS.forEach(function(s){
+      var lim = Math.max(2, Math.round(steps[li] * (AI_SNAP_SMALL[s.id] || 1)));
+      try{ out.sections[s.id] = aiSnapTrim(aiSectionData(s.id, { limit:lim }), cap); }
+      catch(e){ out.sections[s.id] = { section:s.id, error:String(e && e.message || e) }; }
+    });
+    var str = '';
+    try{ str = JSON.stringify(out); }catch(e){ return null; }
+    out.size = str.length;
+    if(str.length <= max) return out;
+  }
+  /* それでも大きいときは、大きい分野から中身を省く（目次は残す） */
+  var ids = Object.keys(out.sections).sort(function(a, b){ return aiSnapSize(out.sections[b]) - aiSnapSize(out.sections[a]); });
+  for(var i = 0; i < ids.length && aiSnapSize(out) > max; i++){
+    var s2 = out.sections[ids[i]];
+    out.sections[ids[i]] = { section:ids[i], name:s2 && s2.name, note:'（多いので省きました。アプリのAIそうだんなら読めます）' };
+  }
+  out.size = aiSnapSize(out);
+  return out;
+}
 /* 分野の一覧（相談のはじめにAIへ渡す） */
 function aiIndexText(){
   return AI_SECTIONS.map(function(s){
