@@ -347,7 +347,7 @@ KT.test('生活＋：寒暖差・花粉・暑さ指数・熱中症警戒アラ�
   eq(A.lfTempDiff('2027-03-15'), null, 'その日の最低気温がないときは、寒暖差を出さない');
   A.lfWx.om = om0;
   /* 朝の通知 */
-  A.notifySet({ push:1, quiet:0, amTime:'06:45' });
+  A.notifySet({ push:1, quiet:0, amTime:'06:45', amSet:1 });
   var j = A.notifyJobs().filter(function(x){ return x.id === 'lf-wbgt-' + tm; })[0];
   ok(j && /警戒アラート/.test(j.title) && new Date(j.at).getHours() === 6, '明日の朝に知らせる');
   var hd = A.aiSectionData('health');

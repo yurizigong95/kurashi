@@ -438,3 +438,38 @@ KT.test('総点検：通知の中身（今日のまとめ・明日の準備・�
   await KT.settle([A, KT.frames().B]);
 });
 })();
+
+(function(){
+'use strict';
+var ok = KT.ok, eq = KT.eq;
+KT.test('総点検：何もしていないのに手帳を送り直さない・朝の時刻は7:30にそろう', async function(){
+  var A = KT.frames().A, sent = 0;
+  var keepGas = JSON.stringify(A.GAS), keepN = A.S.ui.notify;
+  var fake = function(req){ if(req.action !== 'aiDataPut') return null; sent++; return { ok:true, size:100 }; };
+  KT.gas.push(fake);
+  try{
+    A.GAS.url = 'https://script.google.com/macros/s/test/exec'; A.GAS.token = 'tok'; A.GAS.ver = 3; A.GAS.api = 5; A.saveGas();
+    A.l2PrefSet({ aiData:1 }); A.l2Local('aiData', null);
+    eq(await A.l2AiPush(true), true, 'はじめの1回');
+    /* 10分たっても、中身が同じなら送らない（時刻・おせわの子の数字が変わっても） */
+    A.l2Local('aiData', Object.assign({}, A.l2AiSt(), { at:Date.now() - 20 * 60000 }));
+    var realNow = A.aiOverview;
+    A.aiOverview = function(){ var o = realNow(); o.now = '23:59'; return o; };
+    try{ eq(await A.l2AiPush(false), false, '時刻が変わっただけでは送らない'); }finally{ A.aiOverview = realNow; }
+    eq(sent, 1, '送ったのは1回だけ');
+    /* 朝の時刻：前のはじめの時刻（6:45）のままの人は 7:30 に。自分で保存した人は、そのまま */
+    A.S.ui.notify = { amTime:'06:45' };
+    eq(A.notifyPrefs().amTime, '07:30', '前のはじめの時刻は 7:30 にそろえる');
+    A.S.ui.notify = { amTime:'06:45', amSet:1 };
+    eq(A.notifyPrefs().amTime, '06:45', '自分で保存した時刻は、そのまま');
+    A.S.ui.notify = { amTime:'06:10' };
+    eq(A.notifyPrefs().amTime, '06:10', 'ほかの時刻も、そのまま');
+  }finally{
+    KT.gas.splice(KT.gas.indexOf(fake), 1);
+    A.S.ui.notify = keepN;
+    var g = JSON.parse(keepGas);
+    ['url', 'token', 'ver', 'api'].forEach(function(k){ A.GAS[k] = g[k]; });
+    A.saveGas(); A.l2Local('aiData', null);
+  }
+});
+})();

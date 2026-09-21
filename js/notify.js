@@ -12,9 +12,13 @@ var PUSH = (function(){
 })();
 function savePush(){ try{ localStorage.setItem(PUSH_KEY, JSON.stringify(PUSH)); }catch(e){} }
 function notifyPrefs(){
-  return Object.assign({ push:1, discord:0, dl3:1, dl1:1, dl0:1, dlTime:'20:00', dlMorning:'07:30',
+  var p = Object.assign({ push:1, discord:0, dl3:1, dl1:1, dl0:1, dlTime:'20:00', dlMorning:'07:30',
     exam:1, exam3:1, cls:1, clsLead:10, quiet:1, vapid:'', am:1, amTime:'07:30', pet:1,
     night:1, nightTime:'22:00', work1:1 }, S.ui.notify || {});
+  /* 前の版のはじめの時刻（6:45）が残っている人は、新しいはじめの時刻（7:30）にそろえる。
+     自分で時刻を保存した人（amSet）は、そのまま */
+  if(p.amTime === '06:45' && !p.amSet) p.amTime = '07:30';
+  return p;
 }
 
 /* ===== 朝の持ち物 =====
@@ -414,7 +418,7 @@ function notifyAction(act, t){
       try{ new RegExp(m2[1]); }catch(e){ return; }
       rules.push({ k:m2[1].slice(0, 60), v:m2[2].slice(0, 80) });
     });
-    notifySet({ amTime:hhmmOf(minutesOf(am)), nightTime:hhmmOf(minutesOf(ni)), amRules:rules.slice(0, 20) }); commit(); notifyPush(true); toast('保存しました'); return true;
+    notifySet({ amTime:hhmmOf(minutesOf(am)), amSet:1, nightTime:hhmmOf(minutesOf(ni)), amRules:rules.slice(0, 20) }); commit(); notifyPush(true); toast('保存しました'); return true;
   }
   if(act === 'nt-push'){ notifyPush(true).then(function(){ toast(NOTIFY.msg ? '送れませんでした' : '通知の予定を送りました', !!NOTIFY.msg); render(); }); return true; }
   if(act === 'nt-vapid'){

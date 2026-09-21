@@ -615,7 +615,14 @@ async function l2AiPush(force){
   if(!force && st.at && Date.now() - st.at < L2_AI_MIN) return false;
   var snap = aiSnapshot(250000);            /* AIは、この中から必要な分野だけを道具で読む */
   if(!snap) return false;
-  var sig = hash53(canon(Object.assign({}, snap, { at:0, now:'', size:0 })));
+  /* 「変わったか」は、手帳に入れた中身（data）だけで見る。
+     時刻・おせわの子のおなか・「あと何分」のように、何もしなくても変わる数字では送り直さない */
+  var core = {};
+  Object.keys(snap.sections || {}).forEach(function(id){
+    if(id === 'pet' || id === 'chara' || id === 'ai' || id === 'trash') return;
+    core[id] = (snap.sections[id] || {}).data || null;
+  });
+  var sig = hash53(canon({ day:snap.today, build:snap.build, core:core }));
   if(!force && sig === st.sig && st.build === APP_BUILD && Date.now() - (st.at || 0) < L2_AI_MAX_AGE) return false;
   l2AiBusy = true;
   try{

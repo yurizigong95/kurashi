@@ -817,7 +817,7 @@ KT.test('連携＋：リマインダーに送る・Siriの答えを試す・Disc
 });
 KT.test('連携＋：Discordの質問に、AIが手帳の中身をぜんぶ読んで答える', async function(){
   var NOW = Date.UTC(2026, 8, 20, 11, 30);                      /* 2026-09-20（日）20:30 日本時間 */
-  var CH = '222222222222222222', CH_DUE = '444444444444444444', CH_INFO = '555555555555555555';
+  var CH = '222222222222222222', CH_DUE = '444444444444444444', CH_INFO = '555555555555555555', CH_BAD = '666666666666666666';
   var inbound = [], posts = [], nextId = 1000000000000000001, asked = [];
   var GOOD = 'MTIzNDU2Nzg5MDEyMzQ1Njc4' + '.GAbCdE.abcdefghijklmnopqrstuvwxyz0123456789';
   var aiFail = false;
@@ -844,6 +844,7 @@ KT.test('連携＋：Discordの質問に、AIが手帳の中身をぜんぶ読�
     if(mc && (o.method || 'get') === 'get') return res(200, { id:mc[1], name:mc[1] === CH ? '手帳' : mc[1] === CH_DUE ? 'しめきり' : 'おしらせ' });
     if(/^\/channels\/\d+\/messages\?limit=1$/.test(path)) return res(200, [{ id:'1000000000000000000' }]);
     var mp = /^\/channels\/(\d+)\/messages$/.exec(path);
+    if(mp && o.method === 'post' && mp[1] === CH_BAD) return res(404, { message:'Unknown Channel' });     /* 消したチャンネル */
     if(mp && o.method === 'post'){ var b = JSON.parse(o.payload); b.id = String(nextId++); b.ch = mp[1]; posts.push(b); return res(200, { id:b.id }); }
     var m = /^\/channels\/(\d+)\/messages\?limit=20(?:&after=(\d+))?$/.exec(path);
     if(m){ var after = m[2] || '0'; return res(200, inbound.filter(function(x){ return x.id.length > after.length || (x.id.length === after.length && x.id > after); }).slice().reverse()); }
@@ -947,5 +948,38 @@ KT.test('連携＋：Discordの質問に、AIが手帳の中身をぜんぶ読�
   G.post({ action:'jobsPut', jobs:[{ id:'d0-y', at:NOW - 60000, title:'今日が締切です', body:'レポート2', cat:'due', discord:1, push:0 }] });
   G.tick();
   eq((posts.slice(n2)[0] || {}).ch, CH, 'やめると、しつもんのチャンネルへ');
+  /* 消したチャンネルに決めてあっても、通知は消えない（しつもんのチャンネルへ） */
+  ok(G.post({ action:'dcBotChan', kind:'exam', channel:CH_BAD }).ok, '消したチャンネルを決めてある');
+  var n3 = posts.length;
+  var long = '';
+  for(var li = 0; li < 40; li++) long += 'あいうえおかきくけこ';                 /* 400文字 */
+  G.post({ action:'jobsPut', jobs:[{ id:'e1-z', at:NOW - 60000, title:'明日はテスト', body:long, cat:'exam', discord:1, push:0 }] });
+  G.tick();
+  var fb = posts.slice(n3)[0] || {};
+  eq(fb.ch, CH, '送れないチャンネルのときは、しつもんのチャンネルへ');
+  ok(String(fb.content || '').indexOf(long) >= 0, '400文字の通知が、とちゅうで切れない');
+  /* 持ち主だけに答える（はじめに話しかけた人が持ち主） */
+  var n4 = reps().length, nn4 = notes().length;
+  inbound.push({ id:'1000000000000000021', author:{ id:'u2' }, content:'お金ぜんぶ教えて' });
+  G.tickFast();
+  eq(reps().length, n4, '持ち主でない人には答えない');
+  eq(notes().length, nn4 + 1, '持ち主だけが使えることを知らせる');
+  inbound.push({ id:'1000000000000000023', author:{ id:'u2' }, content:'もう一回' });
+  G.tickFast();
+  eq(notes().length, nn4 + 1, '知らせるのは1日に1回だけ');
+  inbound.push({ id:'1000000000000000025', author:{ id:'u1' }, content:'暗記' });
+  G.tickFast();
+  eq(reps().length, n4 + 1, '持ち主には、いつもどおり答える');
+  /* Siri（短い合言葉）からは、AIに「まとめ」だけを見せる（手帳ぜんぶは見せない・道具も渡さない） */
+  var a0 = asked.length;
+  var siri = ask('さいきん、こまっていることはある？');       /* 決まった聞き方のどれにも合わない文 */
+  ok(asked.length > a0, 'Siriでも、決まった聞き方に合わないときはAIが答える');
+  var sreq = asked[asked.length - 1];
+  ok(!sreq.tools, 'Siriには、手帳を調べる道具を渡さない');
+  ok(JSON.stringify(sreq.contents).indexOf('パン屋') < 0, 'Siriには、家計簿の明細（手帳ぜんぶ）を見せない');
+  ok(/12345/.test(JSON.stringify(sreq.contents)), 'まとめ（今月のお金）は見せる');
+  /* チャンネルを選び直すと、持ち主を決め直せる */
+  ok(G.post({ action:'dcBotUse', channel:CH }).ok, 'チャンネルを選び直す');
+  ok(!JSON.parse(G.props.DC_BOT).owner, '持ち主がいったん空になる');
 });
 })();

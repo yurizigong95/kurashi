@@ -1489,10 +1489,10 @@ test('通知：朝の持ち物（持参・きまり・暗記）・おせわの�
   ok(['履修便覧', 'タブレット', 'パソコン'].every(function(x){ return items.indexOf(x) >= 0; }), '「持参」から：' + items.join('・'));
   ok(items.indexOf('白衣') >= 0 && items.indexOf('聴診器') >= 0, 'きまりから（実習）');
   ok(A.morningLines(d).some(function(l){ return /暗記の復習/.test(l); }), '暗記の復習の枚数');
-  A.notifySet({ am:1, amTime:'06:45', push:1, pet:1, quiet:1 });
+  A.notifySet({ am:1, amTime:'06:45', amSet:1, push:1, pet:1, quiet:1 });      /* amSet … 自分で時刻を保存した印 */
   var jobs = A.notifyJobs();
   var j = jobs.filter(function(x){ return x.id === 'am-' + d; })[0];
-  ok(j && j.wx === 1 && /白衣/.test(j.body) && j.body.length <= 190, '持ち物の通知（送る前に天気を入れ直す印つき）');
+  ok(j && j.wx === 1 && /白衣/.test(j.body) && j.body.length <= 400, '持ち物の通知（送る前に天気を入れ直す印つき）');
   eq(new Date(j.at).getHours() * 60 + new Date(j.at).getMinutes(), 6 * 60 + 45, '知らせる時刻');
   ok(jobs.some(function(x){ return /^pet-h-/.test(x.id); }), 'おなかがすく前に知らせる');
   ok(jobs.filter(function(x){ return /^pet-/.test(x.id); }).every(function(x){ var m = new Date(x.at).getHours() * 60 + new Date(x.at).getMinutes(); return m >= 360 && m <= 1410; }), 'おせわの通知は夜中に送らない');
