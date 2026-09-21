@@ -1,6 +1,6 @@
 {
-    "build":  "2026-09-20c",
-    "made":  "2026-09-21 02:42",
+    "build":  "2026-09-21a",
+    "made":  "2026-09-21 19:11",
     "files":  [
                   {
                       "path":  "css/app.css",
@@ -52,7 +52,7 @@
                   },
                   {
                       "path":  "gas/Code.gs",
-                      "sha256":  "bdeb7ee2973842f3"
+                      "sha256":  "d7b9eb638e8fd258"
                   },
                   {
                       "path":  "icon-180.png"
@@ -121,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "998599ff13e97838"
+                      "sha256":  "fd0647fe7ffcdd6f"
                   },
                   {
                       "path":  "js/data.js",
@@ -181,7 +181,7 @@
                   },
                   {
                       "path":  "js/m-links2.js",
-                      "sha256":  "96a38cf3e1408ec3"
+                      "sha256":  "b2c4722f4707d76f"
                   },
                   {
                       "path":  "js/money.js",
@@ -197,7 +197,7 @@
                   },
                   {
                       "path":  "js/notify.js",
-                      "sha256":  "70c456fcff42cb7d"
+                      "sha256":  "ad99181eb9a231bc"
                   },
                   {
                       "path":  "js/ops.js",
@@ -237,7 +237,7 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "b066aea9a760422b"
+                      "sha256":  "5581a93e7e57cd4e"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -249,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "56c61e9946a49a96"
+                      "sha256":  "4ca575f1dcc72b7b"
                   }
               ]
 }
