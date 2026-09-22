@@ -364,7 +364,13 @@ KT.test('生活＋：今日の作戦（すきま時間に課題・テスト・�
   A.S.shifts.push(J(A, { id:'wk_lfp', title:'バイト', date:td, start:'18:00', end:'22:00', realEnd:'', ot:0, rate:0, memo:'', photos:[], mt:Date.now() }));
   A.commit();
   var pl = A.lfPlanFor(td, 7 * 60);
-  ok(pl.picks.some(function(x){ return /lf看護レポート/.test(x.what); }), '締切の近い課題をすきまに：' + pl.picks.map(function(x){ return x.what; }).join('／'));
+  /* すきまの数は、その日の授業・バイトで変わる。ほかのテストが作った課題（締切が今日・明日）とならぶので、
+     「候補に入って、長いすきまは課題・テスト勉強で埋まる」ことをたしかめる（入る順番は日によって変わる）。 */
+  var cands = pl.picks.concat(pl.left).map(function(x){ return x.what; });
+  ok(cands.some(function(w){ return /lf看護レポート/.test(w); }), '締切の近い課題が、すきまか次の候補に：' + cands.join('／'));
+  var longSlots = pl.slots.filter(function(g){ return g.kind !== 'move' && g.e - g.s >= 30; }).length;
+  ok(pl.picks.filter(function(x){ return /^課題：|^テスト勉強：/.test(x.what); }).length >= Math.min(longSlots, 1),
+     '長いすきまには課題・テスト勉強を入れる：' + pl.picks.map(function(x){ return x.what; }).join('／'));
   ok(pl.slots.every(function(g){ return g.kind === 'move' || g.e <= 17 * 60 + 30 || g.s >= 22 * 60; }), 'バイトの時間（と移動）はすきまにしない');
   ok(pl.blocks.some(function(b){ return b.label === 'バイトへ移動' && b.kind === 'move'; }), 'バイトへの移動は「移動中」');
   ok(pl.picks.concat(pl.left).length >= 1 && (pl.picks.some(function(x){ return /解剖/.test(x.what); }) || pl.left.some(function(x){ return /解剖/.test(x.what); })), 'テスト勉強も候補に');
