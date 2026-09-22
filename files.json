@@ -1,6 +1,6 @@
 {
-    "build":  "2026-09-21a",
-    "made":  "2026-09-21 19:11",
+    "build":  "2026-09-22a",
+    "made":  "2026-09-22 13:26",
     "files":  [
                   {
                       "path":  "css/app.css",
@@ -39,6 +39,10 @@
                       "sha256":  "d1ef2dd745e4f57b"
                   },
                   {
+                      "path":  "css/m-quiz.css",
+                      "sha256":  "3acffcffb93d1365"
+                  },
+                  {
                       "path":  "css/m-research.css",
                       "sha256":  "ac8f946c2191e482"
                   },
@@ -65,7 +69,7 @@
                   },
                   {
                       "path":  "index.html",
-                      "sha256":  "85bf457a6475f07e"
+                      "sha256":  "6a756c7c9afa1e8b"
                   },
                   {
                       "path":  "js/ai.js",
@@ -121,7 +125,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "fd0647fe7ffcdd6f"
+                      "sha256":  "ec7a958390aede6a"
                   },
                   {
                       "path":  "js/data.js",
@@ -192,6 +196,10 @@
                       "sha256":  "5f508e5d98f0ef4d"
                   },
                   {
+                      "path":  "js/m-quiz.js",
+                      "sha256":  "638721c4d7ce7083"
+                  },
+                  {
                       "path":  "js/m-research.js",
                       "sha256":  "d1524770956fefc9"
                   },
@@ -237,7 +245,7 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "5581a93e7e57cd4e"
+                      "sha256":  "0b29b09a31ac23bf"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -249,7 +257,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "4ca575f1dcc72b7b"
+                      "sha256":  "cb33e98c1e882d43"
                   }
               ]
 }

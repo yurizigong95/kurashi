@@ -1,0 +1,85 @@
+/* くらしの手帳：授業の資料から問題を作って解く の見た目 */
+
+/* ===== 科目のえらぶボタン ===== */
+.qz-chips button{padding:7px 12px; border-radius:999px; border:1px solid var(--edge); background:var(--glass2); color:var(--ink);
+  font:inherit; font-size:.8em; cursor:pointer}
+.qz-chips button.on{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:700}
+.qz-icons button{font-size:1.1em; padding:5px 9px; line-height:1}
+
+/* ===== えらんだ資料 ===== */
+.qz-files{margin-top:8px}
+.qz-file .t{word-break:break-all}
+.qz-fic, .qz-sic{flex:none; font-size:1.3em; line-height:1; width:1.5em; text-align:center}
+
+/* ===== できた問題を見る ===== */
+.qz-sum{margin:8px 0; padding:10px 12px; border-radius:14px; background:var(--soft); font-size:.86em; line-height:1.6}
+.qz-sum b{display:block; margin-bottom:3px}
+.qz-pv{align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--rule)}
+.qz-pv:last-of-type{border-bottom:0}
+.qz-pv input[type="checkbox"]{flex:none; margin-top:3px; width:20px; height:20px}
+.qz-pv .t{white-space:pre-wrap; word-break:break-word; font-weight:600}
+.qz-pvc{margin-top:5px; font-size:.84em; line-height:1.7; color:var(--sub)}
+.qz-pvc .ok{color:var(--ok); font-weight:700}
+.qz-exp{margin-top:5px; white-space:pre-wrap; word-break:break-word}
+
+/* ===== 目じるし（種類・科目） ===== */
+.qz-badges{display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-bottom:4px}
+.qz-b{display:inline-block; padding:2px 8px; border-radius:999px; font-size:.7em; font-weight:700;
+  background:var(--risyubg); color:var(--risyu)}
+.qz-b.sub{background:var(--soft); color:var(--sub); font-weight:400}
+.qz-star{flex:none; border:0; background:transparent; color:var(--sub); font-size:1.1em; line-height:1; cursor:pointer; padding:2px 4px}
+.qz-star.on{color:var(--e3)}
+button.mini.qz-star.on{color:var(--e3)}
+
+/* ===== 解く ===== */
+.qz-modes{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px}
+@media (min-width:640px){ .qz-modes{grid-template-columns:repeat(3, minmax(0, 1fr))} }
+.qz-modes button{display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:16px; border:1px solid var(--edge);
+  background:var(--glass2); color:var(--ink); font:inherit; text-align:left; cursor:pointer}
+.qz-modes button.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+.qz-modes button b{font-size:.92em}
+.qz-modes button i{font-style:normal; font-size:.78em; font-weight:700}
+.qz-modes button span{font-size:.72em; opacity:.8; line-height:1.4}
+.qz-q{margin:6px 0 12px; font-size:1.04em; font-weight:700; line-height:1.7; white-space:pre-wrap; word-break:break-word}
+.qz-choices{display:flex; flex-direction:column; gap:8px}
+.qz-ch{display:flex; align-items:flex-start; gap:9px; width:100%; padding:12px 14px; border-radius:16px; border:1px solid var(--edge);
+  background:var(--glass); color:var(--ink); font:inherit; text-align:left; line-height:1.6; cursor:pointer}
+.qz-ch .n{flex:none; font-weight:700; color:var(--sub)}
+.qz-ch .t{word-break:break-word}
+.qz-ch.sel{border-color:var(--accent); background:var(--glasstint)}
+.qz-ch.ok{border-color:var(--ok); background:var(--okbg); color:var(--ok); font-weight:700}
+.qz-ch.ng{border-color:var(--rakuten); background:var(--rakutenbg); color:var(--rakuten)}
+.qz-ch[disabled]{opacity:1}
+.qz-res{margin:12px 0 0; padding:11px 13px; border-radius:14px; background:var(--soft); font-size:.9em; line-height:1.6}
+.qz-res.ok{background:var(--okbg); color:var(--ok)}
+.qz-res.ng{background:var(--rakutenbg); color:var(--rakuten)}
+.qz-res .s{margin-top:3px; font-size:.86em; opacity:.9}
+.qz-exp2{margin-top:10px; padding:11px 13px; border-radius:14px; background:var(--soft); font-size:.86em; line-height:1.7}
+.qz-exp2 b{display:block; margin-bottom:3px}
+.qz-exp2 div{white-space:pre-wrap; word-break:break-word}
+.qz-src{margin-top:8px; font-size:.74em; color:var(--sub); line-height:1.5; word-break:break-word}
+.qz-wrow{align-items:flex-start; padding:8px 0}
+.qz-wrow .t, .qz-wrow .s{white-space:pre-wrap; word-break:break-word}
+
+/* ===== 科目と資料の整理 ===== */
+.qz-srow.off{opacity:.55}
+.qz-sedit{margin:0 0 12px; padding:12px; border-radius:14px; background:var(--soft)}
+.qz-ask{margin-top:10px; padding:11px 13px; border-radius:14px; background:var(--warnbg); color:var(--warn); font-size:.86em; line-height:1.6}
+.qz-ask .t{font-weight:700; margin-bottom:8px}
+.qz-ask .btn{color:var(--ink)}
+.qz-mrow{cursor:pointer}
+.qz-mbody{margin:0 0 12px; padding:12px; border-radius:14px; background:var(--soft)}
+.qz-mtext{max-height:11em; overflow:auto; margin-top:8px; padding:9px 11px; border-radius:12px; background:var(--card);
+  font-size:.78em; line-height:1.65; white-space:pre-wrap; word-break:break-word}
+.qz-thumbs{display:flex; flex-wrap:wrap; gap:6px}
+.qz-thumbs img{width:88px; height:88px; object-fit:cover; border-radius:12px; border:1px solid var(--edge); cursor:pointer}
+.qz-qrow{align-items:flex-start; gap:8px}
+.qz-qrow .grow{cursor:pointer; min-width:0}
+.qz-qrow .t, .qz-qrow .s{white-space:pre-wrap; word-break:break-word}
+.qz-qedit{margin:0 0 12px; padding:12px; border-radius:14px; background:var(--soft)}
+.qz-erow{display:flex; align-items:center; gap:8px; margin-bottom:6px}
+.qz-erow input[type="checkbox"]{flex:none; width:20px; height:20px}
+.qz-erow input[type="text"], .qz-erow input:not([type]){flex:1; min-width:0}
+
+/* ===== 今日タブ ===== */
+.qz-todaysubs{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px}
