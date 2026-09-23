@@ -121,3 +121,23 @@ button.mini.qz-star.on{color:var(--e3)}
 
 /* ===== なぜ？ ===== */
 .qz-why{background:var(--risyubg)}
+
+/* ===== 作る画面（くわしい設定・進みぐあい・写真の手入れ） ===== */
+.qz-2col{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px}
+.qz-more{margin-top:8px; padding:10px 12px; border-radius:14px; background:var(--soft)}
+.qz-more .row{padding:7px 0}
+.qz-fbtn{margin:-2px 0 8px}
+.qz-fbtn button{font-size:.74em; padding:5px 10px}
+.qz-prog{margin-top:12px; padding:11px 13px; border-radius:14px; background:var(--soft)}
+.qz-prog .t{font-weight:700; font-size:.9em}
+.qz-prog .s{font-size:.78em; color:var(--sub); margin-top:2px}
+.qz-bar{height:6px; border-radius:999px; background:var(--card); overflow:hidden; margin-top:7px}
+.qz-bar i{display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg, var(--accent2), var(--accent)); transition:width .8s linear}
+
+/* ===== 写真をまっすぐにする ===== */
+.qz-wrap{position:relative; display:inline-block; max-width:100%; line-height:0; touch-action:manipulation}
+.qz-wrap img{max-width:100%; border-radius:12px; border:1px solid var(--edge)}
+.qz-wpt{position:absolute; transform:translate(-50%, -50%); width:26px; height:26px; border-radius:999px;
+  border:2px solid #fff; background:var(--accent); color:#fff; font:inherit; font-size:.72em; font-weight:700;
+  line-height:1; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.qz-wpt[data-on="1"]{background:#fff; color:var(--accent); border-color:var(--accent); transform:translate(-50%, -50%) scale(1.25)}

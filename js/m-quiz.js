@@ -47,7 +47,11 @@ var qzState = {
   busy:'', pv:null,          /* AIが作っているところ・できた問題の下書き */
   run:null,                  /* 解いているとき */
   libTab:'sub', matOpen:'', subEdit:'', delAsk:'', qEdit:'', drillMode:'due', drillN:10, modePicked:0,
-  mk:{ n:10, types:['mc', 'tf', 'cloze'], lv:2 }      /* 作るときの決めごと（問題数・種類・むずかしさ） */
+  mk:{ n:10, auto:1, types:['mc', 'tf', 'cloze'], lv:2, style:'', kokushi:0, en:0, two:0, both:0, anki:0, noai:0 },
+  /* 作るときの決めごと（数・自動で決める・種類・むずかしさ・事例/国試ふう/英語/2つ選べ/2通り/暗記カード/AIなし） */
+  mat:{ no:'', memo:'', at:'' },   /* 資料につける「第◯回」「メモ」「日付」 */
+  warp:null,                       /* 写真をまっすぐにするとき { i, quad } */
+  more:0, prog:null, abort:null, picks:null   /* くわしい設定・進みぐあい・止める・ノートえらび */
 };
 
 /* ============================== 共通の道具 ============================== */
@@ -322,6 +326,7 @@ function qzStats(sub){
    写真とPDFは、そのままAIに見てもらう。                                                     */
 function qzKindOf(f){
   var name = String(f && f.name || '');
+  if(/\.zip$/i.test(name) || /zip/i.test(f.type || '')) return 'zip';
   if(/\.(pptx|docx)$/i.test(name)) return 'slide';
   if(/pdf/i.test(f.type || '') || /\.pdf$/i.test(name)) return 'pdf';
   if(/^image\//.test(f.type || '') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(name)) return 'photo';
@@ -399,15 +404,36 @@ function qzZipEntries(buf, want){
   return out;
 }
 function qzSlideNo(name){ var m = String(name).match(/(\d+)\.xml$/); return m ? Number(m[1]) : 0; }
+/* 太字・下線・色つきの字を取り出す（#36） */
+function qzEmphFrom(xml, isDoc){
+  var out = [], re = isDoc ? /<w:r\b[\s\S]*?<\/w:r>/g : /<a:r\b[\s\S]*?<\/a:r>/g, m;
+  while((m = re.exec(xml)) && out.length < 40){
+    var run = m[0];
+    var pr = run.match(isDoc ? /<w:rPr>[\s\S]*?<\/w:rPr>/ : /<a:rPr[\s\S]*?(?:\/>|<\/a:rPr>)/);
+    if(!pr) continue;
+    var p = pr[0];
+    var hot = isDoc
+      ? (/<w:b\b/.test(p) || /<w:u\b/.test(p) || /<w:color[^>]*w:val="(?!auto|000000)/.test(p) || /<w:highlight/.test(p))
+      : (/\bb="1"/.test(p) || /\bu="(?!none)/.test(p) || /srgbClr val="(?!000000)/.test(p));
+    if(!hot) continue;
+    var t = qzTagText(run, isDoc ? 'w:t' : 'a:t').join('').trim();
+    if(t && t.length >= 2 && t.length <= 60 && out.indexOf(t) < 0) out.push(t);
+  }
+  return out;
+}
 /* スライド（.pptx）・Word（.docx）から字を取り出す */
 async function qzDocText(f){
-  var isDoc = /\.docx$/i.test(f.name);
   var buf = await qzReadAs(f, 'buf');
+  return qzDocTextBuf(buf, /\.docx$/i.test(f.name), f.name);
+}
+async function qzDocTextBuf(buf, isDoc, name){
+  var f = { name:name || (isDoc ? 'document.docx' : 'slides.pptx') };
   var want = isDoc
     ? function(n){ return n === 'word/document.xml'; }
     : function(n){ return /^ppt\/(slides\/slide|notesSlides\/notesSlide)\d+\.xml$/.test(n); };
   var files = qzZipEntries(buf, want);
   if(!files.length) throw new Error('「' + f.name + '」の中に字が見つかりませんでした');
+  var emph = [];
   files.sort(function(a, b){
     var na = /notesSlide/.test(a.name) ? 1 : 0, nb = /notesSlide/.test(b.name) ? 1 : 0;
     return (na - nb) || (qzSlideNo(a.name) - qzSlideNo(b.name)) || a.name.localeCompare(b.name);
@@ -416,33 +442,108 @@ async function qzDocText(f){
   for(var i = 0; i < files.length; i++){
     var xml = dec.decode(await qzInflate(files[i].data, files[i].method));
     var t = isDoc ? qzOoxText(xml, 'w:p', 'w:t') : qzOoxText(xml, 'a:p', 'a:t');
+    qzEmphFrom(xml, isDoc).forEach(function(w){ if(emph.indexOf(w) < 0 && emph.length < 30) emph.push(w); });
     if(!t.trim()) continue;
     if(isDoc) out.push(t);
     else out.push((/notesSlide/.test(files[i].name) ? '【ノート ' : '【スライド ') + qzSlideNo(files[i].name) + '】\n' + t);
   }
   if(!out.length) throw new Error('「' + f.name + '」の中に字が見つかりませんでした');
-  return out.join('\n\n');
+  return { text:out.join('\n\n'), emph:emph };
 }
-/* えらんだファイルを、AIに渡せる形にする */
+/* えらんだファイルを、AIに渡せる形にする
+   写真は撮った日（EXIF）とくっきり具合を見て、スライドは強調のことばも取り出す。
+   ZIP（大学のポータルからまとめて落としたもの）は、中のファイルをほどいて読む（#15）。 */
 async function qzLoadFiles(files){
   var out = [];
   for(var i = 0; i < files.length; i++){
     var f = files[i], kind = qzKindOf(f);
-    if(!kind) throw new Error('「' + f.name + '」は読めません（写真・PDF・.pptx・.docx・文章のファイル）');
-    if(kind === 'photo'){
-      out.push({ name:f.name, kind:'photo', url:await resizeImage(f, 1800, 0.82), text:'' });
-    }else if(kind === 'pdf'){
-      if(f.size > QZ_PDF_MAX) throw new Error('PDFは15MBまでです（' + f.name + '）');
-      out.push({ name:f.name, kind:'pdf', url:await qzReadAs(f, 'url'), text:'' });
-    }else if(kind === 'slide'){
-      if(f.size > QZ_DOC_MAX) throw new Error('スライド・Wordは25MBまでです（' + f.name + '）');
-      out.push({ name:f.name, kind:'slide', url:'', text:await qzDocText(f) });
-    }else{
-      if(f.size > QZ_TXT_MAX) throw new Error('文章のファイルは5MBまでです（' + f.name + '）');
-      out.push({ name:f.name, kind:'text', url:'', text:String(await qzReadAs(f, 'text') || '') });
+    if(!kind) throw new Error('「' + f.name + '」は読めません（写真・PDF・.pptx・.docx・文章・ZIP）');
+    if(kind === 'zip'){
+      var inner = await qzLoadZip(f);
+      inner.forEach(function(x){ if(out.length < QZ_MAX_FILES) out.push(x); });
+      continue;
     }
+    out.push(await qzLoadOne(f, kind));
   }
   return out;
+}
+async function qzLoadOne(f, kind){
+  if(kind === 'photo'){
+    var url = await resizeImage(f, 1800, 0.82);
+    var o = { name:f.name, kind:'photo', url:url, text:'' };
+    try{ o.at = await qz2ExifDate(f); }catch(e){}
+    try{
+      var sharp = await qz2ImgSharp(url);
+      if(sharp < 60) o.warn = '⚠️ ぼけている・手ぶれしているかもしれません（読みやすさ ' + sharp + '）。撮り直すか、「明るく・くっきり」を押してみてください。';
+    }catch(e){}
+    return o;
+  }
+  if(kind === 'pdf'){
+    if(f.size > QZ_PDF_MAX) throw new Error('PDFは15MBまでです（' + f.name + '）');
+    return { name:f.name, kind:'pdf', url:await qzReadAs(f, 'url'), text:'' };
+  }
+  if(kind === 'slide'){
+    if(f.size > QZ_DOC_MAX) throw new Error('スライド・Wordは25MBまでです（' + f.name + '）');
+    var d = await qzDocText(f);
+    return { name:f.name, kind:'slide', url:'', text:d.text, emph:d.emph || [] };
+  }
+  if(f.size > QZ_TXT_MAX) throw new Error('文章のファイルは5MBまでです（' + f.name + '）');
+  return { name:f.name, kind:'text', url:'', text:String(await qzReadAs(f, 'text') || '') };
+}
+/* ZIP の中の、読めるものだけを取り出す（#15） */
+async function qzLoadZip(f){
+  if(f.size > QZ_DOC_MAX) throw new Error('ZIPは25MBまでです（' + f.name + '）');
+  var buf = await qzReadAs(f, 'buf');
+  var want = function(n){ return !/\/$/.test(n) && !/^__MACOSX/.test(n) && /\.(pptx|docx|txt|md|csv|pdf|jpe?g|png)$/i.test(n); };
+  var entries = qzZipEntries(buf, want);
+  if(!entries.length) throw new Error('「' + f.name + '」の中に、読めるファイルがありませんでした');
+  entries.sort(function(a, b){ return a.name.localeCompare(b.name); });
+  var out = [], dec = new TextDecoder('utf-8');
+  for(var i = 0; i < entries.length && out.length < QZ_MAX_FILES; i++){
+    var e = entries[i], base = String(e.name).split('/').pop();
+    var bytes;
+    try{ bytes = await qzInflate(e.data, e.method); }catch(err){ continue; }
+    if(/\.(pptx|docx)$/i.test(base)){
+      try{
+        var d = await qzDocTextBuf(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), /\.docx$/i.test(base), base);
+        out.push({ name:base, kind:'slide', url:'', text:d.text, emph:d.emph || [] });
+      }catch(err2){}
+    }else if(/\.(txt|md|csv)$/i.test(base)){
+      out.push({ name:base, kind:'text', url:'', text:dec.decode(bytes) });
+    }else if(/\.pdf$/i.test(base)){
+      if(bytes.length <= QZ_PDF_MAX) out.push({ name:base, kind:'pdf', url:qzDataUrl(bytes, 'application/pdf'), text:'' });
+    }else{
+      out.push({ name:base, kind:'photo', url:qzDataUrl(bytes, /\.png$/i.test(base) ? 'image/png' : 'image/jpeg'), text:'' });
+    }
+  }
+  if(!out.length) throw new Error('「' + f.name + '」の中身を読めませんでした');
+  return out;
+}
+/* バイトの列を data: の形にする */
+function qzDataUrl(bytes, mime){
+  var bin = '', chunk = 0x8000;
+  for(var i = 0; i < bytes.length; i += chunk){
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(bytes.length, i + chunk)));
+  }
+  return 'data:' + mime + ';base64,' + btoa(bin);
+}
+/* 同じ資料を2回取りこんでいないか（#19） */
+function qzHash(s){
+  var h = 5381;
+  s = String(s || '');
+  for(var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return String(h);
+}
+function qzFileSig(f){ return qzHash((f.text || '').slice(0, 800) || (f.name + '|' + (f.url || '').length)); }
+function qzDupMark(list){
+  var mats = qzMats('');
+  list.forEach(function(f){
+    var sig = qzFileSig(f);
+    f.sig = sig;
+    var hit = mats.filter(function(m){ return m.sig === sig; })[0];
+    if(hit) f.dup = '📌 この資料は「' + hit.title + '」（' + qzMd(hit.at) + '）で、もう取りこんでいます。';
+  });
+  return list;
 }
 function qzPickFiles(){
   var inp = document.createElement('input');
@@ -451,23 +552,94 @@ function qzPickFiles(){
   inp.accept = ['image/*', '.pdf', 'application/pdf',
     '.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     '.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.txt', '.md', '.csv', 'text/plain', 'text/csv'].join(',');
+    '.txt', '.md', '.csv', 'text/plain', 'text/csv', '.zip', 'application/zip'].join(',');
   inp.multiple = true;
-  inp.onchange = async function(){
+  inp.onchange = function(){
     var files = Array.prototype.slice.call(inp.files || [], 0, QZ_MAX_FILES);
-    if(!files.length) return;
-    qzState.busy = 'read'; qzRender();
-    try{
-      var loaded = await qzLoadFiles(files);
-      qzState.files = qzState.files.concat(loaded).slice(0, QZ_MAX_FILES);
-      toast(loaded.length + 'つ読みこみました');
-    }catch(e){
-      toast(e.message, true);
-    }finally{
-      qzState.busy = ''; qzRender();
+    if(files.length) qzTakeFiles(files);
+  };
+  inp.click();
+}
+/* つづけて写真をとる（スライドを何枚も：#10） */
+function qzShotLoop(){
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  try{ inp.capture = 'environment'; }catch(e){}
+  inp.onchange = async function(){
+    var f = (inp.files || [])[0];
+    if(!f) return;
+    await qzTakeFiles([f], true);
+    if(qzState.files.length < QZ_MAX_FILES){
+      toast(qzState.files.length + '枚目まで読みました。次の1枚をどうぞ（とらないときは、そのまま閉じてください）');
+      setTimeout(function(){ inp.value = ''; inp.click(); }, 400);
+    }else{
+      toast(QZ_MAX_FILES + '枚まで読みました');
     }
   };
   inp.click();
+}
+/* えらんだファイルを、読みこんで一覧に足す */
+async function qzTakeFiles(files, quiet){
+  if(qzState.busy) return;
+  qzState.busy = 'read'; qzRender();
+  try{
+    var loaded = await qzLoadFiles(files);
+    qzState.files = qzDupMark(qzState.files.concat(loaded)).slice(0, QZ_MAX_FILES);
+    /* 写真をとった日を、資料の日付にする（#17） */
+    if(!qzState.mat.at){
+      var withAt = qzState.files.filter(function(x){ return x.at; })[0];
+      if(withAt){ qzState.mat.at = withAt.at; qzState.inp.qz_mat = withAt.at; }
+    }
+    /* 名前から「第◯回」を見つける（#20） */
+    if(!qzState.mat.no){
+      var m = String((loaded[0] && loaded[0].name) || '').match(/第?\s*(\d{1,2})\s*回/);
+      if(m){ qzState.mat.no = m[1]; qzState.inp.qz_mno = m[1]; }
+    }
+    if(!quiet) toast(loaded.length + 'つ読みこみました');
+  }catch(e){
+    toast(e.message, true);
+  }finally{
+    qzState.busy = ''; qzRender();
+  }
+}
+/* 写真を1枚ととのえる（明るく・分ける・まっすぐ） */
+async function qzFileFix(i, how){
+  var f = qzState.files[i];
+  if(!f || f.kind !== 'photo' || !f.url || qzState.busy) return;
+  qzState.busy = 'fix'; qzRender();
+  try{
+    if(how === 'auto'){
+      f.url = await qz2ImgAuto(f.url);
+      f.done = 1; f.warn = '';
+      toast('明るさとコントラストをととのえました');
+    }else if(how === 'split'){
+      var two = await qz2ImgSplit(f.url);
+      var a = { name:f.name.replace(/(\.[a-z]+)?$/i, '') + '（左）', kind:'photo', url:two[0], text:'', at:f.at, done:1 };
+      var b = { name:f.name.replace(/(\.[a-z]+)?$/i, '') + '（右）', kind:'photo', url:two[1], text:'', at:f.at, done:1 };
+      qzState.files.splice(i, 1, a, b);
+      qzState.files = qzState.files.slice(0, QZ_MAX_FILES);
+      toast('2つに分けました');
+    }
+  }catch(e){
+    toast('できませんでした：' + e.message, true);
+  }finally{
+    qzState.busy = ''; qzRender();
+  }
+}
+async function qzWarpApply(){
+  var w = qzState.warp, f = w && qzState.files[w.i];
+  if(!f || qzState.busy) return;
+  qzState.busy = 'fix'; qzRender();
+  try{
+    f.url = await qz2ImgWarp(f.url, w.quad);
+    f.done = 1;
+    qzState.warp = null;
+    toast('まっすぐにしました');
+  }catch(e){
+    toast('できませんでした：' + e.message, true);
+  }finally{
+    qzState.busy = ''; qzRender();
+  }
 }
 /* 資料から取り出した字（ぜんぶ合わせたもの） */
 function qzFilesText(){
@@ -482,24 +654,38 @@ function qzFilesTitle(){
 
 /* ============================== AIで問題を作る ============================== */
 function qzMakePrompt(o){
-  var types = o.types.map(function(t){ return t + '（' + qzTypeName(t) + '）'; }).join('、');
+  var names = { mc:'mc（4択）', tf:'tf（○×）', cloze:'cloze（穴うめ）', short:'short（記述）',
+                order:'order（並べかえ）', match:'match（組み合わせ）' };
+  var types = o.types.map(function(t){ return names[t] || t; }).join('、');
   var lvName = { 1:'基本（授業に出たことばの意味・正常値など）', 2:'ふつう（テストによく出るところ）', 3:'応用（理由を考えるもの・まちがえやすいところ）' }[o.lv] || 'ふつう';
-  return 'あなたは看護学部1年生の授業の資料から、テスト対策の問題を作る先生です。\n' +
+  var p = 'あなたは看護学部1年生の授業の資料から、テスト対策の問題を作る先生です。\n' +
     '渡した資料（授業の写真・スライド・配布資料）を読んで、問題を' + o.n + '問作ってください。\n' +
     '・問題は次の種類から作る：' + types + '。指定された種類だけを使う。\n' +
-    '・むずかしさ：' + lvName + '\n' +
+    (o.both ? '・むずかしさは、半分を「基本」（lv=1）、半分を「応用」（lv=3）にする。\n' : '・むずかしさ：' + lvName + '\n') +
     '・資料に書いてあることだけから作る。書いていないことは作らない。読めない字は、むりに読まない。\n' +
     '・1問に1つのことだけ。問題文は短く、はっきり書く。\n' +
     '・mc（4択）は choices を4つ。正解は1つ。ほかの3つも、ありそうなまちがいにする。ans は正解の番号（1からかぞえる）。\n' +
     '・tf（○×）は「〜である。」の形の文にして、answer に "○" か "×" を書く。choices は書かない。\n' +
     '・cloze（穴うめ）は、文の中の大事なことばを1つだけ（　）にして、answer にその答えを書く。\n' +
     '・short（記述）は、1〜2文で答えられる問い。answer に模範の答えを書く。alt に、同じ意味の別の言い方を2つまで。\n' +
+    (o.types.indexOf('order') >= 0 ? '・order（並べかえ）は、資料にある手順を steps に「正しい順」で3〜6つ書く。問題文は「正しい順にならべてください。」でよい。\n' : '') +
+    (o.types.indexOf('match') >= 0 ? '・match（組み合わせ）は、pairs に [左, 右] の組を3〜4つ書く（用語と意味、検査と基準値 など）。\n' : '') +
+    (o.two ? '・4択のうち2〜3割は「2つ選べ。」の問題にして、ans に正解を2つ入れる。\n' : '') +
+    (o.style === 'case' ? '・できるだけ、患者さんの短い場面（年齢・症状・数値）から考えさせる事例問題にする。個人が特定できることは書かない。\n' : '') +
+    (o.style === 'exam' ? '・定期テストに出そうな、用語・数値・理由をまっすぐ聞く形にする。\n' : '') +
+    (o.kokushi ? '・看護師国家試験の言い回しに寄せる（「〜はどれか。」「〜で正しいのはどれか。」）。本物の過去問の文をそのまま写さない。\n' : '') +
+    (o.en ? '・3割ほどは、英語の用語や略語（正式名）も問題に入れる。\n' : '') +
     '・exp（解説）は、正解の理由とまちがえやすい点を1〜2文で。\n' +
-    '・tag は、その問題が出てきた資料の小見出し（なければ短いキーワード）。\n' +
+    '・tag は小見出し、ch はこの問題が入る章や単元の名前（分かるときだけ）。\n' +
+    '・page は、その問題を作ったところ（「スライド3」「p.12」など。分かるときだけ）。\n' +
     '・患者さんや先生の名前など、個人がわかることは入れない。\n' +
-    '・title は資料ぜんたいの見出し、summary は資料の要点を2〜3行で。\n' +
-    'JSONだけで答える：{"title":"資料の見出し","summary":"要点","questions":[' +
-    '{"type":"mc","q":"問題文","choices":["選択肢1","選択肢2","選択肢3","選択肢4"],"ans":[1],"answer":"","alt":[],"exp":"解説","tag":"小見出し","lv":2}]}';
+    '・title は資料ぜんたいの見出し、summary は資料の要点を2〜3行で。\n';
+  if(o.emph && o.emph.length) p += '・資料で太字・下線・色がついていたことば（大事なところ）：' + o.emph.slice(0, 20).join('、') + '\n';
+  if(o.memo) p += '・先生が強調したところ（ここを重点的に）：' + String(o.memo).slice(0, 200) + '\n';
+  if(o.confuse && o.confuse.length) p += '・まちがえやすい組み合わせ（ひっかけの選択肢のもとに使う）：' + o.confuse.join('、') + '\n';
+  if(o.have && o.have.length) p += '・次の問題とかぶらないように、別のところから作る：\n' + o.have.map(function(q){ return '　' + q; }).join('\n') + '\n';
+  return p + 'JSONだけで答える：{"title":"資料の見出し","summary":"要点","questions":[' +
+    '{"type":"mc","q":"問題文","choices":["選択肢1","選択肢2","選択肢3","選択肢4"],"ans":[1],"answer":"","alt":[],"steps":[],"pairs":[],"exp":"解説","tag":"小見出し","ch":"単元","page":"スライド3","lv":2}]}';
 }
 /* AIの答えを、使える形にそろえる */
 function qzCleanQs(arr, want, max){
@@ -513,9 +699,25 @@ function qzCleanQs(arr, want, max){
     var o = { qt:qt, q:q, c:[], a:[], at:'', alt:[], on:1,
               exp:String(x.exp || x.explanation || '').trim().slice(0, 600),
               tag:String(x.tag || '').trim().slice(0, 40),
+              ch:String(x.ch || x.unit || '').trim().slice(0, 40),
+              pg:String(x.page || x.pg || '').trim().slice(0, 20),
               lv:Math.max(1, Math.min(3, toNum(x.lv) || 2)) };
     var ansText = String(x.answer == null ? '' : x.answer).trim();
-    if(qt === 'tf'){
+    if(qt === 'order'){
+      var steps = (Array.isArray(x.steps) ? x.steps : Array.isArray(x.choices) ? x.choices : [])
+        .map(function(t){ return String(t == null ? '' : t).trim().replace(/^\d+[\.\)．、]\s*/, '').slice(0, 120); })
+        .filter(function(t, k, ar){ return t && ar.indexOf(t) === k; });
+      if(steps.length < 3) return;
+      o.c = steps.slice(0, 6);
+    }else if(qt === 'match'){
+      var pairs = (Array.isArray(x.pairs) ? x.pairs : []).map(function(pp){
+        if(Array.isArray(pp)) return [String(pp[0] || '').trim().slice(0, 60), String(pp[1] || '').trim().slice(0, 80)];
+        if(pp && typeof pp === 'object') return [String(pp.left || pp.l || '').trim().slice(0, 60), String(pp.right || pp.r || '').trim().slice(0, 80)];
+        return ['', ''];
+      }).filter(function(pp){ return pp[0] && pp[1]; });
+      if(pairs.length < 2) return;
+      o.pairs = pairs.slice(0, 5);
+    }else if(qt === 'tf'){
       var yes = /^(○|◯|まる|正しい|true|はい|1)$/i.test(ansText);
       var no = /^(×|✕|ばつ|まちがい|誤|false|いいえ|2|0)$/i.test(ansText);
       if(!yes && !no){
@@ -558,6 +760,9 @@ function qzCleanQs(arr, want, max){
 }
 function qzCleanType(v){
   var s = String(v || '').toLowerCase();
+  if(/order|sort|ならべ|並べ|手順/.test(s)) return 'order';
+  if(/match|pair|組み合わせ|むすぶ/.test(s)) return 'match';
+  if(/calc|計算/.test(s)) return 'calc';
   if(/tf|ox|true|○×|まるばつ/.test(s)) return 'tf';
   if(/cloze|blank|穴/.test(s)) return 'cloze';
   if(/short|desc|記述|自由/.test(s)) return 'short';
@@ -578,40 +783,141 @@ function qzAnsNums(v){
   });
   return out;
 }
-/* 資料をAIに渡して、問題を作ってもらう */
+/* ===== 作れなかったときの「続き」（#46） ===== */
+function qzPendKey(){ return KEY + ':quizpend'; }
+function qzPendOf(){
+  try{
+    var o = JSON.parse(localStorage.getItem(qzPendKey()) || 'null');
+    if(!o || !o.text || Date.now() - toNum(o.at) > 3 * 86400000) return null;
+    return o;
+  }catch(e){ return null; }
+}
+function qzPendSet(o){ try{ localStorage.setItem(qzPendKey(), JSON.stringify(Object.assign({ at:Date.now() }, o))); }catch(e){} }
+function qzPendDrop(){ try{ localStorage.removeItem(qzPendKey()); }catch(e){} }
+function qzMakeAgain(){
+  var p = qzPendOf();
+  if(!p){ toast('やり直す分はありません', true); return; }
+  qzMake(Object.assign({}, p.opt || {}, { sub:p.sub || qzCurSub(), text:p.text, title:p.title, again:1 }));
+}
+/* 資料をAIに渡して、問題を作ってもらう（AIを使わない作り方もここから） */
 async function qzMake(o){
   if(qzState.busy) return null;
-  if(!aiReady()){ toast('先に設定タブでAI（Gemini）のキーを登録してください', true); return null; }
-  var text = qzFilesText();
-  var hasFile = qzState.files.some(function(f){ return f.url; });
+  var text = o.again ? '' : qzFilesText();
+  var hasFile = !o.again && qzState.files.some(function(f){ return f.url; });
   var extra = String(o.text || '').trim();
   if(!hasFile && !text.trim() && !extra){ toast('資料をえらぶか、文章を貼りつけてください', true); return null; }
-  qzState.busy = 'make'; qzState.pv = null; qzRender();
+  var body = [text, extra].filter(Boolean).join('\n\n');
+  var title = String(o.title || '').trim() || qzFilesTitle() || (today() + ' の資料');
+  /* ===== AIを使わない（APIをまったく使わない） ===== */
+  if(o.noai){
+    if(!body.trim()){ toast('AIを使わないときは、字のある資料（スライド・文章）か、貼りつけた文章が必要です', true); return null; }
+    var mine = [];
+    if(typeof qz2MakeText === 'function') mine = qz2MakeText(body, Math.ceil(o.n * 0.7), { src:title, ch:o.ch });
+    if(typeof qz2MakeTextTf === 'function') mine = mine.concat(qz2MakeTextTf(body, o.n - mine.length, { src:title, ch:o.ch }));
+    if(!mine.length){ toast('その場で作れるところが見つかりませんでした（数字や用語のある文があると作れます）', true); return null; }
+    qzState.pv = { sub:o.sub, title:title, summary:'', items:mine.slice(0, o.n), local:1 };
+    render(); window.scrollTo(0, 0);
+    toast(qzState.pv.items.length + '問できました（AIは使っていません）');
+    return qzState.pv;
+  }
+  if(!aiReady()){ toast('先に設定タブでAI（Gemini）のキーを登録してください', true); return null; }
+  qzState.busy = 'make'; qzState.pv = null;
+  qzState.prog = { step:'資料をまとめています…', at:Date.now() };
+  qzState.abort = (typeof AbortController === 'function') ? new AbortController() : null;
+  var timer = setInterval(function(){ if(qzState.busy === 'make') qzRender(); }, 1000);
+  qzRender();
   try{
     var parts = [];
-    qzState.files.forEach(function(f){
-      var m = String(f.url || '').match(/^data:([^;]+);base64,(.*)$/);
-      if(m) parts.push({ inline_data:{ mime_type:m[1], data:m[2] } });
-    });
-    var body = [text, extra].filter(Boolean).join('\n\n').slice(0, QZ_TEXT_SEND);
-    parts.push({ text:qzMakePrompt(o) + (body ? '\n\n資料の中身：\n' + body : '') });
-    var out = await aiGenerate({ contents:[{ role:'user', parts:parts }], json:true, temperature:0.25, maxTokens:8192, tag:'qz-make' });
+    /* 字が取り出せている資料は、写真を送らない（送る量をへらす） */
+    var sendImages = !body.trim() || qzState.files.some(function(f){ return f.url && !f.text; });
+    if(sendImages){
+      qzState.files.forEach(function(f){
+        var m = String(f.url || '').match(/^data:([^;]+);base64,(.*)$/);
+        if(m) parts.push({ inline_data:{ mime_type:m[1], data:m[2] } });
+      });
+    }
+    var emph = [];
+    qzState.files.forEach(function(f){ (f.emph || []).forEach(function(w){ if(emph.indexOf(w) < 0) emph.push(w); }); });
+    var opt = {
+      n:o.n, types:o.types, lv:o.lv, both:o.both, style:o.style, kokushi:o.kokushi, en:o.en, two:o.two,
+      emph:emph, memo:o.memo || '',
+      confuse:(typeof qz2ConfuseIn === 'function') ? qz2ConfuseIn(body) : [],
+      have:qzHaveStems(o.sub)
+    };
+    qzState.prog.step = 'AIが問題を作っています…';
+    qzRender();
+    parts.push({ text:qzMakePrompt(opt) + (body ? '\n\n資料の中身：\n' + body.slice(0, QZ_TEXT_SEND) : '') });
+    var out = await aiGenerate({ contents:[{ role:'user', parts:parts }], json:true, temperature:0.25, maxTokens:8192,
+      tag:'qz-make', signal:qzState.abort ? qzState.abort.signal : null });
+    qzState.prog.step = '答えをととのえています…';
     var j = parseJsonLoose(out) || {};
     var items = qzCleanQs(j.questions, o.types, o.n);
     if(!items.length) throw new Error('問題を作れませんでした。資料の字がはっきりうつっているか見てください');
+    qzPendDrop();
     qzState.pv = {
       sub:o.sub,
-      title:String(j.title || '').trim().slice(0, 60) || qzFilesTitle() || (today() + ' の資料'),
+      title:String(j.title || '').trim().slice(0, 60) || title,
       summary:String(j.summary || '').trim().slice(0, 400),
       items:items
     };
     toast(items.length + '問できました。見てから追加してください');
   }catch(e){
-    toast('作れませんでした：' + e.message, true);
+    var stopped = qzState.abort && qzState.abort.signal && qzState.abort.signal.aborted;
+    if(stopped){
+      toast('やめました');
+    }else{
+      /* あとで「もう一度ためす」ができるように、送る中身を覚えておく（#46） */
+      if(body.trim()) qzPendSet({ text:body.slice(0, QZ_TEXT_SEND), title:title, sub:o.sub,
+        opt:{ n:o.n, types:o.types, lv:o.lv, both:o.both, style:o.style, kokushi:o.kokushi, en:o.en, two:o.two, memo:o.memo || '' } });
+      toast('作れませんでした：' + e.message, true);
+    }
+  }finally{
+    clearInterval(timer);
+    qzState.busy = ''; qzState.prog = null; qzState.abort = null;
+    qzRender();
+  }
+  return qzState.pv;
+}
+/* すでにある問題の問題文（かぶり防止に、短くしてAIへ：#38） */
+function qzHaveStems(sub){
+  return qzQs(sub).slice(-40).map(function(x){ return String(x.q).slice(0, 28); });
+}
+/* 1問だけ作り直す（#44） */
+async function qzRemake(i){
+  var pv = qzState.pv;
+  if(!pv || !pv.items[i] || qzState.busy) return;
+  var old = pv.items[i];
+  if(pv.local){
+    /* AIを使わずに作ったものは、その場で別の1問に入れかえる */
+    var body = qzFilesText() + '\n' + String(qzV('qz_text') || '');
+    var fresh = (typeof qz2MakeText === 'function') ? qz2MakeText(body, 8, { src:pv.title }) : [];
+    var used = {};
+    pv.items.forEach(function(x){ used[x.q] = 1; });
+    var pick = fresh.filter(function(x){ return !used[x.q]; })[0];
+    if(!pick){ toast('ほかに作れるところが見つかりませんでした', true); return; }
+    pv.items[i] = pick;
+    render(); toast('作り直しました');
+    return;
+  }
+  if(!aiReady()){ toast('AIのキーがないので、作り直せません', true); return; }
+  qzState.busy = 'remake'; qzRender();
+  try{
+    var text = await aiGenerate({ contents:[{ role:'user', parts:[{ text:
+      '次の問題は、うまくありませんでした。同じ資料の同じところから、もっとよい問題を1問だけ作り直してください。\n' +
+      '・種類は ' + old.qt + ' のまま。・答えがはっきり決まるようにする。・もとの問題とは別の聞き方にする。\n' +
+      'もとの問題：' + old.q + '\n答え：' + (old.at || (old.c || []).filter(function(c, k){ return (old.a || []).indexOf(k) >= 0; }).join('・')) + '\n' +
+      (pv.summary ? '資料の要点：' + pv.summary + '\n' : '') +
+      'JSONだけで答える：{"type":"' + old.qt + '","q":"問題文","choices":[],"ans":[1],"answer":"","exp":"解説"}' }] }],
+      json:true, temperature:0.4, maxTokens:1024, tag:'qz-remake' });
+    var one = qzCleanQs([parseJsonLoose(text)], [old.qt], 1)[0];
+    if(!one) throw new Error('作り直せませんでした');
+    pv.items[i] = one;
+    toast('作り直しました');
+  }catch(e){
+    toast('作り直せませんでした：' + e.message, true);
   }finally{
     qzState.busy = ''; qzRender();
   }
-  return qzState.pv;
 }
 /* できた問題を、科目と資料に入れる */
 async function qzPvAdd(){
@@ -645,10 +951,22 @@ async function qzPvAdd(){
     }
     var text = qzFilesText();
     var body = [pv.summary, text].filter(Boolean).join('\n\n');
+    var at = isYmd(String(qzV('qz_mat') || qzState.mat.at || '')) ? String(qzV('qz_mat') || qzState.mat.at) : today();
+    var no = String(qzV('qz_mno') || qzState.mat.no || '').replace(/[^0-9]/g, '').slice(0, 2);
+    var memo = String(qzV('qz_mmemo') || qzState.mat.memo || '').slice(0, 300);
+    var sig = qzState.files.length ? qzFileSig(qzState.files[0]) : qzHash(body.slice(0, 800));
     var mat = qzPush({ id:uid('qzm'), mt:Date.now(), mod:QZ_MOD, type:'mat', sub:sub, title:title, kind:kind,
-                       at:today(), photos:photos, text:body.slice(0, QZ_TEXT_KEEP), cut:body.length > QZ_TEXT_KEEP ? 1 : 0, n:0 });
+                       at:at, no:no, memo:memo, sig:sig, photos:photos,
+                       text:body.slice(0, QZ_TEXT_KEEP), cut:body.length > QZ_TEXT_KEEP ? 1 : 0, n:0 });
     n = qzAddQs(picked, sub, mat.id, '資料：' + title);
     mat.n = n;
+    /* 暗記カードも同時に作る（AIは呼ばない：#48） */
+    if(qzState.mk.anki && typeof ankiAddMany === 'function'){
+      var cards = picked.map(function(x){ return { q:qzCardQ(x), a:qzAnswerText(x) }; })
+        .filter(function(c){ return c.q && c.a; });
+      var added = ankiAddMany(sub ? qzSubName(sub) : 'そのほか', cards, 'ai');
+      if(added) toast(added + '枚の暗記カードも作りました');
+    }
     qzState.pv = null; qzState.files = [];
     qzClearForm(['qz_pv_title']);
     commit();
@@ -661,6 +979,14 @@ async function qzPvAdd(){
     qzRender();
   }
   return n;
+}
+/* 暗記カードにするときの問い（穴うめは（　）を「何？」にする） */
+function qzCardQ(x){
+  var q = String(x.q || '');
+  if(x.qt === 'cloze') return q.replace(/（\s*）/, '（ ？ ）');
+  if(x.qt === 'order') return q + '（正しい順は？）';
+  if(x.qt === 'match') return q + '（' + (x.pairs || []).map(function(p){ return p[0]; }).join('・') + '）';
+  return q;
 }
 /* 問題を入れる（同じ問題文はとばす） */
 function qzAddQs(list, sub, mat, src){
@@ -708,46 +1034,202 @@ function qzNoSubHtml(){
     (n ? '<button class="btn ghost" data-act="qz-sub-import">時間割の' + n + '科目から作る</button>' : '') + '</div>';
 }
 function qzFileRow(f, i){
-  return '<div class="row qz-file">' +
+  var h = '<div class="row qz-file">' +
     '<span class="qz-fic" aria-hidden="true">' + (f.kind === 'photo' ? '🖼' : f.kind === 'pdf' ? '📄' : f.kind === 'slide' ? '📊' : '📝') + '</span>' +
     '<div class="grow"><div class="t">' + esc(f.name) + '</div>' +
-    '<div class="s">' + esc(qzKindName(f.kind)) + (f.text ? '・字' + f.text.length + '文字' : '') + '</div></div>' +
+    '<div class="s">' + esc(qzKindName(f.kind)) + (f.text ? '・字' + f.text.length + '文字' : '') +
+      (f.at ? '・' + esc(qzMd(f.at)) + 'にとった写真' : '') + (f.done ? '・ととのえました' : '') + '</div></div>' +
     '<button class="mini" data-act="qz-file-del" data-i="' + i + '">はずす</button></div>';
+  if(f.kind === 'photo'){
+    h += '<div class="pillrow qz-fbtn">' +
+      '<button data-act="qz-file-auto" data-i="' + i + '">明るく・くっきり</button>' +
+      '<button data-act="qz-file-warp" data-i="' + i + '">まっすぐにする</button>' +
+      '<button data-act="qz-file-split" data-i="' + i + '">見開きを2つに</button></div>';
+    if(f.warn) h += '<div class="qz-ask" style="margin-top:6px">' + esc(f.warn) + '</div>';
+  }
+  if(f.dup) h += '<div class="qz-ask" style="margin-top:6px">' + esc(f.dup) + '</div>';
+  return h;
+}
+/* ===== 写真をまっすぐにする画面（#8） ===== */
+function qzWarpView(){
+  var w = qzState.warp, f = qzState.files[w.i];
+  if(!f){ qzState.warp = null; return qzMakeView(); }
+  var pts = w.quad.map(function(p, k){
+    return '<button class="qz-wpt" data-act="qz-warp-sel" data-k="' + k + '" style="left:' + (p[0] * 100) + '%;top:' + (p[1] * 100) + '%"' +
+      (w.sel === k ? ' data-on="1"' : '') + '>' + (k + 1) + '</button>';
+  }).join('');
+  return section('写真をまっすぐにする', f.name,
+    '<p class="note" style="margin-top:0">① 動かしたい角（①〜④）を押してから、② 写真の中の、その角にしたいところを押してください。' +
+      '角の順番は、左上→右上→右下→左下です。</p>' +
+    '<div class="qz-wrap" data-act="qz-warp-put"><img src="' + esc(f.url) + '" alt="資料の写真">' + pts + '</div>' +
+    '<div class="pair" style="margin-top:10px"><button class="btn" data-act="qz-warp-ok">この四すみでまっすぐにする</button>' +
+      '<button class="btn ghost" data-act="qz-warp-cancel" style="flex:0 0 auto">やめる</button></div>');
 }
 function qzMakeView(){
   var sub = qzCurSub(), subs = qzSubs(), mk = qzState.mk;
-  var h = '';
   if(qzState.pv) return qzPvView();
+  if(qzState.warp) return qzWarpView();
+  var h = '';
+  /* ===== 科目（#18 時間割から、いまの授業をおすすめ） ===== */
+  var guess = qzGuessSub();
   h += section('どの科目の資料？', subs.length ? qzSubName(sub || (subs[0] && subs[0].id)) : null,
     subs.length ? qzSubChips('qz-sub', sub || (subs[0] && subs[0].id), false) +
+      (guess && guess !== sub ? '<div class="pair" style="margin-top:8px"><button class="btn ghost" data-act="qz-sub" data-v="' + esc(guess) + '">' +
+        'いまの授業（' + esc(qzSubName(guess)) + '）にする</button></div>' : '') +
       '<div class="pair" style="margin-top:8px"><button class="btn ghost" data-act="qz-go" data-tool="qz-lib">科目を足す・名前を変える・並べ替える</button></div>'
       : qzNoSubHtml());
+  /* ===== 資料 ===== */
   h += section('授業の資料', qzState.files.length ? qzState.files.length + 'つ' : null,
     '<div class="pair"><button class="btn" data-act="qz-pick"' + (qzState.busy ? ' disabled' : '') + '>' +
-      (qzState.busy === 'read' ? '読みこんでいます…' : '📎 資料をえらぶ') + '</button></div>' +
-    '<p class="note">授業の写真・黒板・ノート・スライド（.pptx）・配布資料（PDF・Word・テキスト）。' + QZ_MAX_FILES + 'つまで。</p>' +
+      (qzState.busy === 'read' ? '読みこんでいます…' : '📎 資料をえらぶ') + '</button>' +
+      '<button class="btn ghost" data-act="qz-shot"' + (qzState.busy ? ' disabled' : '') + ' style="flex:0 0 auto">📷 つづけて撮る</button></div>' +
+    '<p class="note">授業の写真・黒板・ノート・スライド（.pptx）・配布資料（PDF・Word・テキスト・ZIP）。' + QZ_MAX_FILES + 'つまで。</p>' +
     (qzState.files.length ? '<div class="qz-files">' + qzState.files.map(qzFileRow).join('') + '</div>' : '') +
+    qzOtherSrcHtml() +
     '<div class="field" style="margin-top:10px"><label class="f" for="qz_text">文章を貼りつける（写真のかわり・足したいことも）</label>' +
       '<textarea id="qz_text" rows="3" placeholder="授業のまとめ、教科書の文章、先生が言っていたことなど">' + esc(qzIn('qz_text')) + '</textarea></div>' +
     '<p class="note">' + QZ_WARN + '</p>');
-  h += section('どんな問題にする？', mk.n + '問',
+  h += qzPicksHtml();
+  /* ===== 資料につける名前・回・メモ（#20・#21・#37） ===== */
+  h += section('資料のこと', qzState.mat.no ? '第' + qzState.mat.no + '回' : null,
+    '<div class="qz-2col">' +
+      '<div class="field"><label class="f" for="qz_mno">第何回？（なくてもよい）</label>' +
+        '<input id="qz_mno" inputmode="numeric" placeholder="例：3" value="' + esc(qzIn('qz_mno', qzState.mat.no)) + '"></div>' +
+      '<div class="field"><label class="f" for="qz_mat">日付</label>' +
+        '<input id="qz_mat" type="date" value="' + esc(qzIn('qz_mat', qzState.mat.at || today())) + '"></div>' +
+    '</div>' +
+    '<div class="field"><label class="f" for="qz_mmemo">メモ（先生が「ここ出る」と言ったところなど）</label>' +
+      '<textarea id="qz_mmemo" rows="2" placeholder="例：血液ガスの見かたは必ず出す、と言っていた">' + esc(qzIn('qz_mmemo', qzState.mat.memo)) + '</textarea></div>' +
+    '<p class="note">メモに書いたところは、問題を作るときに大事にします。</p>');
+  /* ===== どんな問題にする？ ===== */
+  var n = mk.auto ? qzAutoN() : mk.n;
+  h += section('どんな問題にする？', (mk.noai ? 'AIなし・' : '') + n + '問',
     '<label class="f">問題の数</label>' +
-    '<div class="pillrow">' + [5, 10, 15, 20].map(function(n){
-      return '<button data-act="qz-mk-n" data-v="' + n + '" class="' + (mk.n === n ? 'on' : '') + '">' + n + '問</button>';
-    }).join('') + '</div>' +
+    '<div class="pillrow"><button data-act="qz-mk-auto" class="' + (mk.auto ? 'on' : '') + '">おまかせ（' + qzAutoN() + '問）</button>' +
+      [5, 10, 15, 20].map(function(v){
+        return '<button data-act="qz-mk-n" data-v="' + v + '" class="' + (!mk.auto && mk.n === v ? 'on' : '') + '">' + v + '問</button>';
+      }).join('') + '</div>' +
     '<label class="f" style="margin-top:10px">問題の種類（えらんだ中から作ります）</label>' +
-    '<div class="chips qz-chips">' + QZ_TYPES.map(function(t){
+    '<div class="chips qz-chips">' + QZ_TYPES.filter(function(t){ return QZ_AI_TYPES.indexOf(t[0]) >= 0; }).map(function(t){
       return '<button data-act="qz-mk-type" data-v="' + t[0] + '" class="' + (mk.types.indexOf(t[0]) >= 0 ? 'on' : '') + '">' +
         esc(t[1]) + '</button>';
     }).join('') + '</div>' +
     '<label class="f" style="margin-top:10px">むずかしさ</label>' +
     '<div class="pillrow">' + [[1, '基本'], [2, 'ふつう'], [3, '応用']].map(function(x){
-      return '<button data-act="qz-mk-lv" data-v="' + x[0] + '" class="' + (mk.lv === x[0] ? 'on' : '') + '">' + x[1] + '</button>';
-    }).join('') + '</div>' +
-    '<button class="btn" style="margin-top:12px" data-act="qz-make"' + (qzState.busy ? ' disabled' : '') + '>' +
-      (qzState.busy === 'make' ? 'AIが作っています…' : '✨ この資料から問題を作る') + '</button>' +
-    (aiReady() ? '' : '<p class="note">設定タブでAI（Gemini）のキーを登録すると使えます。</p>'));
+      return '<button data-act="qz-mk-lv" data-v="' + x[0] + '" class="' + (!mk.both && mk.lv === x[0] ? 'on' : '') + '">' + x[1] + '</button>';
+    }).join('') +
+      '<button data-act="qz-mk-tg" data-v="both" class="' + (mk.both ? 'on' : '') + '">やさしい＋むずかしい</button></div>' +
+    '<button class="mini" style="margin-top:10px" data-act="qz-mk-more">' + (qzState.more ? '▾ くわしい設定' : '▸ くわしい設定') + '</button>' +
+    (qzState.more ? qzMoreHtml(mk) : '') +
+    qzMakeBtnHtml(n) +
+    (mk.noai || aiReady() ? '' : '<p class="note">設定タブでAI（Gemini）のキーを登録すると使えます。「AIを使わずに作る」なら、いまのままでも作れます。</p>'));
   return h;
+}
+/* くわしい設定（#33・#34・#35・#42・#43・#47・#48・AIなし） */
+function qzMoreHtml(mk){
+  var tg = function(k, label, note){
+    return '<div class="row"><div class="grow"><div class="t">' + esc(label) + '</div>' +
+      (note ? '<div class="s">' + esc(note) + '</div>' : '') + '</div>' +
+      '<button class="mini' + (mk[k] ? ' on' : '') + '" data-act="qz-mk-tg" data-v="' + k + '" aria-pressed="' + (mk[k] ? 'true' : 'false') + '">' +
+      (mk[k] ? 'する' : 'しない') + '</button></div>';
+  };
+  return '<div class="qz-more">' +
+    '<label class="f">言い方</label>' +
+    '<div class="pillrow">' + [['', 'ふつう'], ['case', '事例（患者さんの様子から考える）'], ['exam', 'テストに出る形']].map(function(x){
+      return '<button data-act="qz-mk-style" data-v="' + x[0] + '" class="' + (mk.style === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</button>';
+    }).join('') + '</div>' +
+    tg('kokushi', '国試ふうの言い回しにする', '「〜はどれか。」の形に寄せます') +
+    tg('two', '「2つ選べ」の問題もまぜる', '国試によく出る形です') +
+    tg('en', '英語の用語も入れる', '医学英語の授業むけ') +
+    tg('anki', '暗記カードも同時に作る', 'AIは追加で呼びません（「暗記」タブに入ります）') +
+    tg('noai', 'AIを使わずに作る', '資料の字から、その場で穴うめ・○×を作ります（APIを使いません）') +
+    '</div>';
+}
+/* 作るボタン（進みぐあい・止める・続き：#40・#45・#46） */
+function qzMakeBtnHtml(n){
+  var mk = qzState.mk;
+  if(qzState.busy === 'make'){
+    var p = qzState.prog || {};
+    return '<div class="qz-prog"><div class="t">' + esc(p.step || '作っています…') + '</div>' +
+      '<div class="s">' + Math.max(0, Math.round((Date.now() - (p.at || Date.now())) / 1000)) + '秒</div>' +
+      '<div class="qz-bar"><i style="width:' + Math.min(95, 8 + Math.round((Date.now() - (p.at || Date.now())) / 300)) + '%"></i></div></div>' +
+      '<button class="btn ghost" data-act="qz-make-stop">やめる</button>';
+  }
+  var again = qzPendOf();
+  return '<button class="btn" style="margin-top:12px" data-act="qz-make"' + (qzState.busy ? ' disabled' : '') + '>' +
+    (mk.noai ? '⚡ AIを使わずに' + n + '問つくる' : '✨ この資料から' + n + '問つくる') + '</button>' +
+    (again ? '<button class="btn ghost" style="margin-top:8px" data-act="qz-make-again">前に作れなかった分（' + esc(again.title || '資料') + '）を、もう一度ためす</button>' : '');
+}
+/* ほかの画面からもらう（#12 録音・#13 手書きノート・#14 ドライブ） */
+function qzOtherSrcHtml(){
+  var btns = [];
+  if(typeof rsLecText === 'function'){
+    var lec = '';
+    try{ lec = rsLecText(); }catch(e){}
+    if(lec && lec.length > 40) btns.push('<button class="btn ghost" data-act="qz-src-lec">🎙️ 講義の録音の文字（' + lec.length + '字）を使う</button>');
+  }
+  if(typeof l2GnSearch === 'function' && typeof gasReady === 'function' && gasReady()){
+    btns.push('<button class="btn ghost" data-act="qz-go" data-tool="l2-notes">✍️ 手書きノートをさがす</button>');
+  }
+  if(typeof gasReady === 'function' && gasReady()){
+    btns.push('<button class="btn ghost" data-act="qz-src-drive">📂 ドライブの「講義資料」から取りこむ</button>');
+  }
+  return btns.length ? '<div class="pair" style="margin-top:8px">' + btns.join('') + '</div>' : '';
+}
+/* ===== AIが読んだノート（ドライブの講義資料・Goodnotes）からもらう（#13・#14） =====
+   橋わたし（Google連携）が読んで「メモ」にしてくれたものを、そのまま資料として使う。
+   もう一度AIに読ませないので、APIは増えない。 */
+function qzNoteSrcs(){
+  return (S.notes || []).filter(function(n){
+    return n && !n.del && String(n.body || '').length >= 120;
+  }).sort(function(a, b){ return toNum(b.mt) - toNum(a.mt); }).slice(0, 12);
+}
+function qzDrivePull(){
+  var list = qzNoteSrcs();
+  if(!list.length){
+    toast('取りこめるメモがありません。設定 › Google連携で「講義資料」フォルダを使うと、AIが読んでメモにします', true);
+    return;
+  }
+  qzState.picks = list.map(function(n){ return { id:n.id, title:n.title || '（無題）', len:String(n.body || '').length, mt:n.mt }; });
+  render(); window.scrollTo(0, 0);
+}
+function qzPicksHtml(){
+  if(!qzState.picks) return '';
+  return section('ノートから取りこむ', qzState.picks.length + 'こ',
+    qzState.picks.map(function(p){
+      return '<div class="row"><div class="grow"><div class="t">' + esc(p.title) + '</div>' +
+        '<div class="s">' + p.len + '字</div></div>' +
+        '<button class="mini" data-act="qz-src-note" data-id="' + esc(p.id) + '">これを使う</button></div>';
+    }).join('') +
+    '<button class="mini" style="margin-top:8px" data-act="qz-src-close">とじる</button>' +
+    '<p class="note">Googleドライブの「くらしの手帳 講義資料」フォルダやGoodnotesのノートを、橋わたしのAIが読んでメモにしたものです。</p>');
+}
+/* 資料の量から、ちょうどよい問題数を決める（#39） */
+function qzAutoN(){
+  var len = 0;
+  qzState.files.forEach(function(f){ len += (f.text || '').length + (f.url ? 600 : 0); });
+  len += String(qzV('qz_text') || qzIn('qz_text') || '').length;
+  if(!len) return 10;
+  var n = Math.round(len / 350);
+  return Math.max(5, Math.min(QZ_MAX_Q, n));
+}
+/* いまの時間の授業から、科目をおすすめする（#18） */
+function qzGuessSub(){
+  if(typeof classesForDate !== 'function') return '';
+  var list = [];
+  try{ list = classesForDate(today()).filter(function(c){ return !c.off; }); }catch(e){ return ''; }
+  if(!list.length) return '';
+  var now = (new Date()).getHours() * 60 + (new Date()).getMinutes(), best = null, bestD = 1e9;
+  list.forEach(function(c){
+    var st = 0;
+    try{ st = minutesOf(S.commute.periods[c.period - 1]); }catch(e){}
+    if(st == null) return;
+    var d = Math.abs(now - st);
+    if(d < bestD){ bestD = d; best = c; }
+  });
+  if(!best) return '';
+  var hit = qzSubs().filter(function(x){ return x.name === best.name || (x.link && x.link === best.name); })[0];
+  return hit ? hit.id : '';
 }
 /* できた問題を見て、えらんで入れる */
 function qzPvItemHtml(x, i){
@@ -757,18 +1239,33 @@ function qzPvItemHtml(x, i){
       var on = x.a.indexOf(k) >= 0;
       return '<div class="' + (on ? 'ok' : '') + '">' + (on ? '✓ ' : QZ_NUM[k] + ' ') + esc(c) + '</div>';
     }).join('') + '</div>';
+  }else if(x.qt === 'order'){
+    body = '<div class="qz-pvc">' + (x.c || []).map(function(c, k){
+      return '<div>' + (k + 1) + '. ' + esc(c) + '</div>';
+    }).join('') + '</div>';
+  }else if(x.qt === 'match'){
+    body = '<div class="qz-pvc">' + (x.pairs || []).map(function(p){
+      return '<div>' + esc(p[0]) + ' ＝ ' + esc(p[1]) + '</div>';
+    }).join('') + '</div>';
+  }else if(x.qt === 'calc'){
+    body = '<div class="qz-pvc"><div class="ok">✓ ' + esc(x.at) + (x.un ? ' ' + esc(x.un) : '') + '</div>' +
+      (x.how ? '<div class="s">' + esc(x.how) + '</div>' : '') + '</div>';
   }else{
     body = '<div class="qz-pvc"><div class="ok">✓ ' + esc(x.at) + '</div>' +
-      (x.alt.length ? '<div class="s">ほかの言い方：' + esc(x.alt.join('／')) + '</div>' : '') + '</div>';
+      ((x.alt || []).length ? '<div class="s">ほかの言い方：' + esc(x.alt.join('／')) + '</div>' : '') + '</div>';
   }
   return '<label class="row qz-pv">' +
     '<input type="checkbox" data-act="qz-pv-toggle" data-i="' + i + '"' + (x.on ? ' checked' : '') + '>' +
     '<div class="grow">' +
       '<div class="qz-badges"><span class="qz-b">' + esc(qzTypeName(x.qt)) + '</span>' +
+        (x.ch ? '<span class="qz-b sub">' + esc(x.ch) + '</span>' : '') +
         (x.tag ? '<span class="qz-b sub">' + esc(x.tag) + '</span>' : '') +
+        (x.pg ? '<span class="qz-b sub">' + esc(x.pg) + '</span>' : '') +
         '<span class="qz-b sub">' + ['', '基本', 'ふつう', '応用'][x.lv] + '</span></div>' +
       '<div class="t">' + esc(x.q) + '</div>' + body +
       (x.exp ? '<div class="s qz-exp">' + esc(x.exp) + '</div>' : '') +
+      '<button class="mini" data-act="qz-pv-remake" data-i="' + i + '"' + (qzState.busy ? ' disabled' : '') + '>' +
+        (qzState.busy === 'remake' ? '作り直しています…' : '🔁 この問題は変（作り直す）') + '</button>' +
     '</div></label>';
 }
 function qzPvView(){
@@ -1396,7 +1893,7 @@ function qzQSave(id){
   commit(); toast('直しました');
   return true;
 }
-function qzAction(act, t){
+function qzAction(act, t, e){
   if(act.indexOf('qz-') !== 0) return false;
   var id = t.dataset.id || '', v = t.dataset.v || '';
   /* ===== 行き先 ===== */
@@ -1447,7 +1944,62 @@ function qzAction(act, t){
   }
   /* ===== 資料をえらぶ・作る ===== */
   if(act === 'qz-pick'){ qzPickFiles(); return true; }
+  if(act === 'qz-shot'){ qzShotLoop(); return true; }
   if(act === 'qz-file-del'){ qzState.files.splice(toNum(t.dataset.i), 1); render(); return true; }
+  if(act === 'qz-file-auto'){ qzFileFix(toNum(t.dataset.i), 'auto'); return true; }
+  if(act === 'qz-file-split'){ qzFileFix(toNum(t.dataset.i), 'split'); return true; }
+  if(act === 'qz-file-warp'){
+    qzState.warp = { i:toNum(t.dataset.i), sel:0, quad:[[0.04, 0.04], [0.96, 0.04], [0.96, 0.96], [0.04, 0.96]] };
+    render(); window.scrollTo(0, 0);
+    return true;
+  }
+  if(act === 'qz-warp-sel'){ if(qzState.warp){ qzState.warp.sel = toNum(t.dataset.k); render(); } return true; }
+  if(act === 'qz-warp-put'){
+    var w = qzState.warp;
+    if(w && e && t.getBoundingClientRect){
+      var box = t.getBoundingClientRect();
+      var x = Math.max(0, Math.min(1, ((e.clientX == null ? 0 : e.clientX) - box.left) / (box.width || 1)));
+      var y = Math.max(0, Math.min(1, ((e.clientY == null ? 0 : e.clientY) - box.top) / (box.height || 1)));
+      w.quad[w.sel] = [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000];
+      w.sel = (w.sel + 1) % 4;                       /* 次の角へ、じゅんばんに */
+      render();
+    }
+    return true;
+  }
+  if(act === 'qz-warp-ok'){ qzWarpApply(); return true; }
+  if(act === 'qz-warp-cancel'){ qzState.warp = null; render(); return true; }
+  if(act === 'qz-mk-more'){ qzState.more = qzState.more ? 0 : 1; render(); return true; }
+  if(act === 'qz-mk-auto'){ qzState.mk.auto = qzState.mk.auto ? 0 : 1; render(); return true; }
+  if(act === 'qz-mk-style'){ qzState.mk.style = v; render(); return true; }
+  if(act === 'qz-mk-tg'){
+    if(v === 'both'){ qzState.mk.both = qzState.mk.both ? 0 : 1; }
+    else qzState.mk[v] = qzState.mk[v] ? 0 : 1;
+    render();
+    return true;
+  }
+  if(act === 'qz-make-stop'){
+    if(qzState.abort){ try{ qzState.abort.abort(); }catch(e2){} }
+    return true;
+  }
+  if(act === 'qz-make-again'){ qzMakeAgain(); return true; }
+  if(act === 'qz-src-lec'){
+    var lec = '';
+    try{ lec = (typeof rsLecText === 'function') ? rsLecText() : ''; }catch(e3){}
+    if(!lec || lec.length < 40){ toast('録音の文字がまだありません（勉強 › 講義の録音）', true); return true; }
+    qzState.files = qzDupMark(qzState.files.concat([{ name:'講義の録音（' + today() + '）', kind:'text', url:'', text:lec }])).slice(0, QZ_MAX_FILES);
+    render(); toast('録音の文字を取りこみました');
+    return true;
+  }
+  if(act === 'qz-src-drive'){ qzDrivePull(); return true; }
+  if(act === 'qz-src-close'){ qzState.picks = null; render(); return true; }
+  if(act === 'qz-src-note'){
+    var note = (S.notes || []).filter(function(x){ return x.id === id; })[0];
+    if(!note){ toast('メモが見つかりませんでした', true); return true; }
+    qzState.files = qzDupMark(qzState.files.concat([{ name:(note.title || 'メモ').slice(0, 40), kind:'text', url:'', text:String(note.body || '') }])).slice(0, QZ_MAX_FILES);
+    qzState.picks = null;
+    render(); toast('メモを資料にしました');
+    return true;
+  }
   if(act === 'qz-mk-n'){ qzState.mk.n = Math.max(1, Math.min(QZ_MAX_Q, toNum(v))); render(); return true; }
   if(act === 'qz-mk-lv'){ qzState.mk.lv = Math.max(1, Math.min(3, toNum(v))); render(); return true; }
   if(act === 'qz-mk-type'){
@@ -1458,11 +2010,17 @@ function qzAction(act, t){
     return true;
   }
   if(act === 'qz-make'){
-    var subs = qzSubs();
+    var subs = qzSubs(), mk = qzState.mk;
     var sub = qzCurSub() || (subs[0] && subs[0].id) || '';
-    qzMake({ sub:sub, n:qzState.mk.n, types:qzState.mk.types.slice(), lv:qzState.mk.lv, text:qzV('qz_text') });
+    qzState.mat.no = String(qzV('qz_mno') || '').replace(/[^0-9]/g, '').slice(0, 2);
+    qzState.mat.memo = String(qzV('qz_mmemo') || '').slice(0, 300);
+    qzState.mat.at = isYmd(String(qzV('qz_mat') || '')) ? String(qzV('qz_mat')) : today();
+    qzMake({ sub:sub, n:mk.auto ? qzAutoN() : mk.n, types:mk.types.slice(), lv:mk.lv, both:mk.both,
+             style:mk.style, kokushi:mk.kokushi, en:mk.en, two:mk.two, noai:mk.noai,
+             memo:qzState.mat.memo, text:qzV('qz_text') });
     return true;
   }
+  if(act === 'qz-pv-remake'){ qzRemake(toNum(t.dataset.i)); return true; }
   if(act === 'qz-pv-toggle'){
     var pv = qzState.pv, i = toNum(t.dataset.i);
     if(pv && pv.items[i]) pv.items[i].on = t.checked ? 1 : 0;

@@ -258,11 +258,13 @@ KT.test('授業の問題：スライド（.pptx）の中の字を読む', async 
     { name:'docProps/app.xml', text:'<Properties><Slides>2</Slides></Properties>' }
   ]);
   var file = new A.File([new A.Uint8Array(bytes)], '第3回.pptx');
-  var text = await A.qzDocText(file);
+  var got = await A.qzDocText(file);
+  var text = got.text;
   ok(/【スライド 1】/.test(text) && /【スライド 2】/.test(text), 'スライドごとに分ける');
   ok(text.indexOf('第3回 呼吸のしくみ') < text.indexOf('呼吸数の見かた'), 'スライドの順にならべる');
   ok(/【ノート 1】[\s\S]*テストに出ます/.test(text), '発表者ノートも読む');
   ok(!/Properties/.test(text), 'スライドでないファイルは読まない');
+  ok(Array.isArray(got.emph), '強調のことばの入れものがある');
   /* えらんだ資料として読みこめる */
   var loaded = await A.qzLoadFiles([file]);
   eq(loaded.length, 1, '1つ読みこむ');
