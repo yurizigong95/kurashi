@@ -83,3 +83,41 @@ button.mini.qz-star.on{color:var(--e3)}
 
 /* ===== 今日タブ ===== */
 .qz-todaysubs{display:flex; flex-wrap:wrap; gap:5px; margin-top:8px}
+
+/* ===== 小テスト工房（AIを使わない問題づくり） ===== */
+.qz-kits{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px}
+@media (min-width:640px){ .qz-kits{grid-template-columns:repeat(3, minmax(0, 1fr))} }
+.qz-kits button{display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:16px; border:1px solid var(--edge);
+  background:var(--glass2); color:var(--ink); font:inherit; text-align:left; cursor:pointer}
+.qz-kits button.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+.qz-kits button b{font-size:.9em}
+.qz-kits button span{font-size:.72em; opacity:.8; line-height:1.4}
+
+/* ===== 並べかえ ===== */
+.qz-ordpick{display:flex; flex-direction:column; gap:6px; margin-bottom:8px}
+.qz-ordres{display:flex; flex-direction:column; gap:6px; margin-top:6px}
+.qz-ordrow{display:flex; align-items:flex-start; gap:8px; padding:9px 12px; border-radius:14px; background:var(--soft); line-height:1.6}
+.qz-ordrow .n{flex:none; min-width:1.6em; height:1.6em; border-radius:999px; background:var(--accent); color:#fff;
+  font-size:.78em; font-weight:700; display:flex; align-items:center; justify-content:center}
+.qz-ordrow .t{word-break:break-word; font-size:.92em}
+.qz-ordrow .mk{flex:none; margin-left:auto; font-size:.78em; font-weight:700}
+.qz-ordrow.ok{background:var(--okbg); color:var(--ok)}
+.qz-ordrow.ng{background:var(--rakutenbg); color:var(--rakuten)}
+.qz-ordrow.ok .n, .qz-ordrow.ng .n{background:currentColor; color:#fff}
+
+/* ===== 組み合わせ ===== */
+.qz-match{display:flex; flex-direction:column; gap:10px}
+.qz-mrow{padding:10px 12px; border-radius:14px; background:var(--soft)}
+.qz-mrow > .t{font-weight:700; margin-bottom:6px; word-break:break-word}
+.qz-mres{font-size:.88em; line-height:1.6; word-break:break-word}
+.qz-mres.ok{color:var(--ok)}
+.qz-mres.ng{color:var(--rakuten)}
+.qz-mres .s{color:var(--sub); font-size:.86em}
+
+/* ===== 計算 ===== */
+.qz-calc{display:flex; align-items:center; gap:8px}
+.qz-calc input{flex:1; min-width:0; font-size:1.05em; text-align:right}
+.qz-calc .u{flex:none; font-size:.9em; color:var(--sub); font-weight:700}
+
+/* ===== なぜ？ ===== */
+.qz-why{background:var(--risyubg)}

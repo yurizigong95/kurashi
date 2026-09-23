@@ -1,6 +1,6 @@
 {
     "build":  "2026-09-22a",
-    "made":  "2026-09-22 13:26",
+    "made":  "2026-09-23 01:38",
     "files":  [
                   {
                       "path":  "css/app.css",
@@ -40,7 +40,7 @@
                   },
                   {
                       "path":  "css/m-quiz.css",
-                      "sha256":  "3acffcffb93d1365"
+                      "sha256":  "bea65b498c57a98a"
                   },
                   {
                       "path":  "css/m-research.css",
@@ -69,7 +69,7 @@
                   },
                   {
                       "path":  "index.html",
-                      "sha256":  "6a756c7c9afa1e8b"
+                      "sha256":  "3caa88e0ca07c5e2"
                   },
                   {
                       "path":  "js/ai.js",
@@ -197,7 +197,11 @@
                   },
                   {
                       "path":  "js/m-quiz.js",
-                      "sha256":  "638721c4d7ce7083"
+                      "sha256":  "36a2288a08007ba0"
+                  },
+                  {
+                      "path":  "js/m-quiz2.js",
+                      "sha256":  "87df7a4dd098c2bb"
                   },
                   {
                       "path":  "js/m-research.js",
@@ -257,7 +261,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "cb33e98c1e882d43"
+                      "sha256":  "eea4414208c012ea"
                   }
               ]
 }

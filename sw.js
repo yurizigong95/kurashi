@@ -11,7 +11,7 @@ var FILES = [
   './js/commute.js', './js/today.js', './js/money.js', './js/kakeibo.js', './js/risyu.js', './js/calendar.js',
   './js/settings.js', './js/google.js', './js/links.js', './js/notify.js', './js/wx-plus.js', './js/timetable.js',
   './js/todo.js', './js/chat.js', './js/ai-plus.js', './js/anki.js', './js/gasplus.js',
-  './js/m-kokushi.js', './js/m-research.js', './js/m-anki2.js', './js/m-quiz.js', './js/m-campus.js', './js/m-life.js', './js/m-petplus.js', './js/m-chara2.js', './js/m-links2.js', './js/m-core2.js', './js/review.js', './js/whatsnew.js', './js/ops.js', './js/main.js',
+  './js/m-kokushi.js', './js/m-research.js', './js/m-anki2.js', './js/m-quiz.js', './js/m-quiz2.js', './js/m-campus.js', './js/m-life.js', './js/m-petplus.js', './js/m-chara2.js', './js/m-links2.js', './js/m-core2.js', './js/review.js', './js/whatsnew.js', './js/ops.js', './js/main.js',
   './gas/Code.gs', './gas/appsscript.json'
 ];
 var usePrev = null;
