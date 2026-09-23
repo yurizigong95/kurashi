@@ -1,6 +1,6 @@
 {
-    "build":  "2026-09-23a",
-    "made":  "2026-09-23 01:59",
+    "build":  "2026-09-21a",
+    "made":  "2026-09-21 19:11",
     "files":  [
                   {
                       "path":  "css/app.css",
@@ -39,10 +39,6 @@
                       "sha256":  "d1ef2dd745e4f57b"
                   },
                   {
-                      "path":  "css/m-quiz.css",
-                      "sha256":  "bd5b42218fc2d04c"
-                  },
-                  {
                       "path":  "css/m-research.css",
                       "sha256":  "ac8f946c2191e482"
                   },
@@ -56,7 +52,7 @@
                   },
                   {
                       "path":  "gas/Code.gs",
-                      "sha256":  "01d093dfc1da68aa"
+                      "sha256":  "d7b9eb638e8fd258"
                   },
                   {
                       "path":  "icon-180.png"
@@ -69,7 +65,7 @@
                   },
                   {
                       "path":  "index.html",
-                      "sha256":  "3caa88e0ca07c5e2"
+                      "sha256":  "85bf457a6475f07e"
                   },
                   {
                       "path":  "js/ai.js",
@@ -125,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "1c3c20201b7513b2"
+                      "sha256":  "fd0647fe7ffcdd6f"
                   },
                   {
                       "path":  "js/data.js",
@@ -196,14 +192,6 @@
                       "sha256":  "5f508e5d98f0ef4d"
                   },
                   {
-                      "path":  "js/m-quiz.js",
-                      "sha256":  "cff7ca59be54837a"
-                  },
-                  {
-                      "path":  "js/m-quiz2.js",
-                      "sha256":  "7751cad5f253e82f"
-                  },
-                  {
                       "path":  "js/m-research.js",
                       "sha256":  "d1524770956fefc9"
                   },
@@ -249,7 +237,7 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "e345c59a7972c4bd"
+                      "sha256":  "5581a93e7e57cd4e"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -261,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "eea4414208c012ea"
+                      "sha256":  "4ca575f1dcc72b7b"
                   }
               ]
 }

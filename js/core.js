@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-09-23a';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-09-21a';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -629,7 +629,7 @@ var UNDO_LISTS = ['spends','income','fixed','balances','events','tasks','exams',
 var UNDO_KEYS = ['attend','courseMeta','memos','payApplied','attendLog','grades','biweek','termsDone','progress','taskLog',
                  'syllabus','dayReview','terms','commute','transit','termsList','chatQuick','risyu','termId'];
 /* 押しただけで、ほとんど何も変えない操作（覚えておく手間をはぶく） */
-var UNDO_SKIP = /^(go|fold|cal-(prev|next|today|day|mode|view|filter|mset|addopen)|km-|cw-|kind-(pick|mode)|subj-pick|tt-(week|weekset|terms|subj-past)|course-(open|back)|ev-(open|close|kind|pri|how|photo|edit|edit-from-detail|reset)|chat-(room|att|q|send|speak|stop|sum)|voice-|quick-edit|work-(prev|next|now)|fd-|dl-|photo-(pick|list|close)|memo-photo-view|go-|today-toggle|range|toggle-|wstyle|manual|cancel-stmt|cam|pick|syl-(ai|cancel)|shift-ocr$|shift-ocr-cancel|gas-|storage-recount|errlog-copy|note-(open|back)|dev-rename|sync-|export|import|ics|chara-(talk|cat|make|edit)|kb-(ym|cat|all|csv|csv-cancel)|link-copy|inbox-pull|summary-push|tasks-sync|place-check|share-(day|item|note|chat)|nt-(on|off|test|push)|chat-web|talk-start|att-ask|wkrev-hist|radar-[a-z]+|warn-reload|pet-(panel|game|rename)|anki-[a-z-]+|qz-[a-z-]+|perf-run|files-check|ver-[a-z]+|sentry-test|copy-text|gas-(manifest|setup))$/;
+var UNDO_SKIP = /^(go|fold|cal-(prev|next|today|day|mode|view|filter|mset|addopen)|km-|cw-|kind-(pick|mode)|subj-pick|tt-(week|weekset|terms|subj-past)|course-(open|back)|ev-(open|close|kind|pri|how|photo|edit|edit-from-detail|reset)|chat-(room|att|q|send|speak|stop|sum)|voice-|quick-edit|work-(prev|next|now)|fd-|dl-|photo-(pick|list|close)|memo-photo-view|go-|today-toggle|range|toggle-|wstyle|manual|cancel-stmt|cam|pick|syl-(ai|cancel)|shift-ocr$|shift-ocr-cancel|gas-|storage-recount|errlog-copy|note-(open|back)|dev-rename|sync-|export|import|ics|chara-(talk|cat|make|edit)|kb-(ym|cat|all|csv|csv-cancel)|link-copy|inbox-pull|summary-push|tasks-sync|place-check|share-(day|item|note|chat)|nt-(on|off|test|push)|chat-web|talk-start|att-ask|wkrev-hist|radar-[a-z]+|warn-reload|pet-(panel|game|rename)|anki-[a-z-]+|perf-run|files-check|ver-[a-z]+|sentry-test|copy-text|gas-(manifest|setup))$/;
 var UNDO_LABEL = { 'task-done':'完了にしました', 'task-undone':'未完了にもどしました', 'paid':'支払いの印を変えました',
   'prog-step':'進みぐあいを変えました', 'att-set':'出欠を記録しました', 'ot-plus':'時間を直しました',
   'sub-toggle':'小項目を変えました', 'note-check':'チェックを変えました', 'kind-up':'順番を変えました', 'kind-down':'順番を変えました',
