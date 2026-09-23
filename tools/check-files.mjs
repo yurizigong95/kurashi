@@ -10,19 +10,6 @@ const sw = readFileSync('sw.js', 'utf8');
 for (const m of sw.matchAll(/'\.\/([^']+)'/g)) if (m[1] && !m[1].startsWith('__')) need.add(m[1]);
 need.add('sw.js');
 
-// もんだいメーカー（study/）も、同じやり方で調べる
-if (existsSync('study/index.html')) {
-  const h2 = readFileSync('study/index.html', 'utf8');
-  for (const m of h2.matchAll(/(?:src|href)="((?:js|css)\/[^"?#]+)"/g)) need.add('study/' + m[1]);
-  const s2 = readFileSync('study/sw.js', 'utf8');
-  for (const m of s2.matchAll(/'\.\/([^']+)'/g)) {
-    if (m[1] && m[1] !== '' && !m[1].startsWith('__')) need.add('study/' + m[1]);
-  }
-  need.add('study/sw.js');
-  need.add('study/manifest.json');
-  need.delete('study/');
-}
-
 let bad = 0;
 for (const f of [...need].sort()) {
   if (!existsSync(f)) { console.log(`::error file=${f}::見つかりません：${f}`); bad++; }
