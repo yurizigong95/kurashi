@@ -43,13 +43,23 @@ function qz2FieldName(id){
 /* ============================== 科目ごとの章（単元）の見本（#110） ==============================
    教科書によくある章立て。科目名にことばが合ったものを出して、えらぶだけで使えるようにする。 */
 var QZ2_UNITS = [
+  { key:['母性', '助産'], name:'母性看護学',
+    units:['女性のライフサイクル', '妊娠', '分娩', '産褥', '新生児', '母乳育児', '母子保健の制度'] },
+  { key:['小児'], name:'小児看護学',
+    units:['成長と発達', 'バイタルと観察', '予防接種', 'よくある病気', '家族への支援', '事故予防'] },
+  { key:['老年', '高齢'], name:'老年看護学',
+    units:['加齢による変化', '認知症', 'フレイル・サルコペニア', '転倒・骨折', '介護と家族', '高齢者の権利'] },
+  { key:['精神'], name:'精神看護学',
+    units:['こころのしくみ', '主な精神疾患', '治療（薬物・精神療法）', '対人関係と看護', '権利擁護と法'] },
+  { key:['成人'], name:'成人看護学',
+    units:['成人の特徴', '生活習慣病', '急性期（周術期）', '慢性期', 'がん看護', 'リハビリテーション', '終末期'] },
+  { key:['在宅', '地域', '訪問', '公衆衛生'], name:'地域・在宅看護論',
+    units:['地域包括ケア', '訪問看護', '多職種連携', '在宅の医療機器', '介護保険', '災害と地域'] },
+  { key:['社会保障', '社会福祉', '法規', '制度'], name:'健康支援と社会保障',
+    units:['医療保険', '介護保険', '年金・生活保護', '保健師助産師看護師法', '医療法', '母子・高齢者・障害者の福祉'] },
   { key:['解剖', '生理', '人体', '形態機能', '機能形態'], name:'解剖生理学',
     units:['細胞と組織', '骨格と筋', '神経系', '感覚器', '循環器（心臓）', '循環器（血管）', '血液', '呼吸器',
            '消化器', '腎・泌尿器', '内分泌', '生殖器', '体液・恒常性', '免疫'] },
-  { key:['基礎看護', '看護技術', '援助論', '初期演習', '看護学概論'], name:'基礎看護学',
-    units:['看護とは', 'コミュニケーション', '環境整備', 'バイタルサイン', 'フィジカルアセスメント', '感染予防',
-           '清潔の援助', '食事の援助', '排泄の援助', '活動と休息（体位・移動）', '与薬', '注射・採血',
-           '呼吸の援助（酸素・吸引）', '創傷・褥瘡', '救急・BLS', '記録と報告', '看護過程'] },
   { key:['病理', '病態', '疾病'], name:'疾病の成り立ち',
     units:['炎症', '感染症', '腫瘍', '循環障害', '代謝の異常', '免疫・アレルギー', '遺伝', '老化と死'] },
   { key:['薬理'], name:'薬理学',
@@ -61,26 +71,16 @@ var QZ2_UNITS = [
     units:['糖質', '脂質', 'たんぱく質', '酵素', 'ビタミン・ミネラル', '代謝のつながり'] },
   { key:['栄養'], name:'栄養学',
     units:['三大栄養素', 'ビタミン・ミネラル', '食事摂取基準', '病気と食事療法', '経腸栄養・静脈栄養', '嚥下と食形態'] },
-  { key:['成人'], name:'成人看護学',
-    units:['成人の特徴', '生活習慣病', '急性期（周術期）', '慢性期', 'がん看護', 'リハビリテーション', '終末期'] },
-  { key:['老年', '高齢'], name:'老年看護学',
-    units:['加齢による変化', '認知症', 'フレイル・サルコペニア', '転倒・骨折', '介護と家族', '高齢者の権利'] },
-  { key:['小児'], name:'小児看護学',
-    units:['成長と発達', 'バイタルと観察', '予防接種', 'よくある病気', '家族への支援', '事故予防'] },
-  { key:['母性', '助産'], name:'母性看護学',
-    units:['女性のライフサイクル', '妊娠', '分娩', '産褥', '新生児', '母乳育児', '母子保健の制度'] },
-  { key:['精神'], name:'精神看護学',
-    units:['こころのしくみ', '主な精神疾患', '治療（薬物・精神療法）', '対人関係と看護', '権利擁護と法'] },
-  { key:['在宅', '地域', '訪問', '公衆衛生'], name:'地域・在宅看護論',
-    units:['地域包括ケア', '訪問看護', '多職種連携', '在宅の医療機器', '介護保険', '災害と地域'] },
-  { key:['社会保障', '社会福祉', '法規', '制度'], name:'健康支援と社会保障',
-    units:['医療保険', '介護保険', '年金・生活保護', '保健師助産師看護師法', '医療法', '母子・高齢者・障害者の福祉'] },
   { key:['心理'], name:'心理学',
     units:['発達', '学習', '記憶', '感情と動機づけ', 'パーソナリティ', 'ストレスと対処'] },
   { key:['英語'], name:'医学英語',
     units:['からだの部位', '症状', '検査', '病名', '略語', '会話（問診）'] },
   { key:['統計', '情報', 'データ', 'AI'], name:'情報・統計',
-    units:['データの種類', '代表値（平均・中央値）', 'ばらつき', 'グラフの読み方', '相関と因果', '個人情報と倫理'] }
+    units:['データの種類', '代表値（平均・中央値）', 'ばらつき', 'グラフの読み方', '相関と因果', '個人情報と倫理'] },
+  { key:['基礎看護', '看護技術', '援助論', '初期演習', '看護学概論'], name:'基礎看護学',
+    units:['看護とは', 'コミュニケーション', '環境整備', 'バイタルサイン', 'フィジカルアセスメント', '感染予防',
+           '清潔の援助', '食事の援助', '排泄の援助', '活動と休息（体位・移動）', '与薬', '注射・採血',
+           '呼吸の援助（酸素・吸引）', '創傷・褥瘡', '救急・BLS', '記録と報告', '看護過程'] }
 ];
 /* 科目名に合う章の見本（合うものがなければ、ひろく使える見本） */
 var QZ2_UNITS_ANY = ['第1回', '第2回', '第3回', '中間テストの範囲', '期末テストの範囲', '実習の前に'];
@@ -571,7 +571,8 @@ var QZ2_KITS = [
   { id:'match',    name:'組み合わせ',           desc:'略語と意味をむすぶ',         make:function(n, o){ return qz2MakeMatch(n, o); } },
   { id:'calc',     name:'計算',                 desc:'点滴・薬の量・BMI など',     make:function(n, o){ return qz2MakeCalc(n, o && o.calcIds); } }
 ];
-var qz2State = { kit:'lab', n:10, cat:'', calcIds:[], mocRun:null, weakSub:'', mocSub:'', mocN:50, mocMin:50 };
+var qz2State = { kit:'lab', n:10, cat:'', calcIds:[],
+  weakSub:'all', mocSub:'all', mocField:'', mocN:50, mocMin:50 };
 
 function qz2KitOf(id){ return QZ2_KITS.filter(function(k){ return k.id === id; })[0] || QZ2_KITS[0]; }
 function qz2KitMake(){
@@ -615,7 +616,9 @@ function qz2KitView(){
       return '<button data-act="qz2-n" data-v="' + n + '" class="' + (qz2State.n === n ? 'on' : '') + '">' + n + '問</button>';
     }).join('') + '</div>' +
     '<button class="btn" style="margin-top:12px" data-act="qz2-make">この中から' + qz2State.n + '問つくる</button>' +
-    '<p class="note">くらしの手帳に入っている表（基準値149・略語334・薬95・手順21）から作ります。' +
+    '<div class="pair" style="margin-top:8px"><button class="btn ghost" data-act="qz-go" data-tool="kq-anat">🫀 解剖図の穴うめをひらく</button>' +
+      '<button class="btn ghost" data-act="qz-go" data-tool="kq-drill" style="flex:0 0 auto">📝 国試ドリル</button></div>' +
+    '<p class="note">くらしの手帳に入っている表（基準値149・略語334・薬95・手順21・解剖図4）から作ります。' +
       '<b>AI（Gemini）は使いません</b>ので、通信も、APIの使用量もかかりません。数字や式は教科書で確かめてください。</p>');
   return h;
 }
@@ -634,7 +637,7 @@ kmAction(function(act, t){
     return true;
   }
   if(act === 'qz2-make'){ qz2KitMake(); return true; }
-  return true;
+  return false;                      /* ほかの qz2- の操作は、下の登録にまかせる */
 });
 kmStudy({ id:'qz-kit', icon:'🧪', title:'基準値・略語の小テスト', desc:'手帳の中の表から、AIを使わずに作ります', order:8,
   view:qz2KitView, badge:function(){ return 'AIなし'; } });
@@ -811,3 +814,244 @@ function qz2ExifWalk(v, tiff, ifd, le, depth){
   }
   return out;
 }
+
+/* ============================== 模擬テスト（#124・#125） ==============================
+   まとめて解いて、最後に点数を出す。結果は残して、前の回とくらべる。 */
+function qz2Mocs(){
+  return (S.kmItems || []).filter(function(x){ return x && x.mod === 'quiz' && x.type === 'moc'; })
+    .sort(function(a, b){ return toNum(b.mt) - toNum(a.mt); });
+}
+function qz2MocStart(){
+  var sub = qz2State.mocSub, n = qz2State.mocN, min = qz2State.mocMin;
+  var pool = (sub === 'field'
+    ? qz2FieldPool(qz2State.mocField)
+    : qzQs(sub === 'all' ? '' : sub)).slice();
+  if(pool.length < 3){ toast('問題が足りません（3問以上必要です）', true); return false; }
+  qz2Shuffle(pool);
+  var ids = pool.slice(0, Math.min(n, pool.length)).map(function(x){ return x.id; });
+  appId = 'study'; studyTool = 'qz-drill';
+  qzRunSet(ids, sub === 'all' || sub === 'field' ? '' : sub, 'all',
+    { moc:{ min:min, at:Date.now(), sub:sub, field:qz2State.mocField || '' }, ans:{} });
+  return true;
+}
+/* 国試の分野でまとめて出す（#127） */
+function qz2FieldPool(field){
+  if(!field) return qzQs('');
+  var subs = qzSubs().filter(function(s){ return (s.field || (typeof qz2FieldOf === 'function' ? qz2FieldOf(s.name) : '')) === field; });
+  var ids = {};
+  subs.forEach(function(s){ ids[s.id] = 1; });
+  return qzQs('').filter(function(x){ return ids[x.sub]; });
+}
+function qz2MocSave(r){
+  var by = {}, n = 0, ok = 0;
+  (r.ids || []).forEach(function(id){
+    var q = qzItem(id);
+    if(!q) return;
+    var res = (r.ans || {})[id];
+    if(res == null) return;
+    var k = q.sub || '';
+    by[k] = by[k] || { n:0, ok:0 };
+    by[k].n++; n++;
+    if(res){ by[k].ok++; ok++; }
+  });
+  var rec = { id:uid('qzmo'), mt:Date.now(), mod:'quiz', type:'moc', at:today(),
+    sub:(r.moc && r.moc.sub) || '', field:(r.moc && r.moc.field) || '',
+    n:n, ok:ok, all:(r.ids || []).length, min:(r.moc && r.moc.min) || 0,
+    sec:Math.round((Date.now() - toNum(r.moc && r.moc.at)) / 1000), by:by, timeup:r.timeup ? 1 : 0 };
+  if(!Array.isArray(S.kmItems)) S.kmItems = [];
+  S.kmItems.push(rec);
+  touch('kmItems');
+  persist();
+  if(typeof pushRemote === 'function') pushRemote();       /* ここで render は呼ばない（画面を作っている途中のため） */
+  return rec;
+}
+function qz2MocEndHtml(r){
+  if(!r.saved && !r.saving){
+    r.saving = 1;
+    try{ r.saved = qz2MocSave(r); }
+    finally{ r.saving = 0; }
+  }
+  if(!r.saved) return section('模擬テストの結果', null, '<div class="empty">記録できませんでした。</div>');
+  var rec = r.saved, rate = rec.n ? Math.round(rec.ok * 100 / rec.n) : 0;
+  var prev = qz2Mocs().filter(function(x){ return x.id !== rec.id && x.sub === rec.sub; })[0];
+  var diff = '';
+  if(prev && prev.n){
+    var d = rate - Math.round(prev.ok * 100 / prev.n);
+    diff = '前の回（' + qzMd(prev.at) + '・' + Math.round(prev.ok * 100 / prev.n) + '%）より ' +
+      (d > 0 ? '＋' + d : d) + 'ポイント';
+  }
+  var wrong = (r.wrong || []).map(function(id){ return qzItem(id); }).filter(Boolean);
+  return section('模擬テストの結果', rec.n + '問',
+    '<div class="qz-score"><b>' + rate + '</b><span>点（' + rec.ok + ' / ' + rec.n + '問）</span></div>' +
+    (rec.timeup ? '<div class="qz-ask">⏱ 時間切れでおわりました（' + (rec.all - rec.n) + '問のこり）</div>' : '') +
+    (diff ? '<div class="qz-res ' + (/＋/.test(diff) ? 'ok' : '') + '">' + esc(diff) + '</div>' : '') +
+    '<div class="stats" style="margin-top:8px">' +
+      qzStat('かかった時間', Math.floor(rec.sec / 60) + '分' + (rec.sec % 60) + '秒') +
+      qzStat('1問あたり', rec.n ? Math.round(rec.sec / rec.n) + '秒' : '—') +
+      qzStat('まちがい', (rec.n - rec.ok) + '問') + '</div>' +
+    (Object.keys(rec.by).length > 1
+      ? '<label class="f" style="margin-top:10px">科目ごと</label>' + Object.keys(rec.by).map(function(k){
+          var b = rec.by[k];
+          return '<div class="row"><div class="grow"><div class="t">' + esc(qzSubName(k)) + '</div>' +
+            '<div class="s">' + b.ok + ' / ' + b.n + '問（' + Math.round(b.ok * 100 / b.n) + '%）</div></div></div>';
+        }).join('')
+      : '') +
+    (wrong.length
+      ? '<label class="f" style="margin-top:10px">まちがえた問題</label>' + wrong.slice(0, 20).map(function(q){
+          return '<div class="row qz-wrow"><div class="grow"><div class="t">' + esc(q.q) + '</div>' +
+            '<div class="s">答え：' + esc(qzAnswerText(q)) + '</div></div>' +
+            '<button class="mini' + (q.star ? ' on' : '') + '" data-act="qz-star" data-id="' + esc(q.id) + '">' + (q.star ? '★' : '☆') + '</button></div>';
+        }).join('')
+      : '<div class="qz-res ok" style="margin-top:10px">ぜんぶ正かいです！</div>') +
+    '<div class="pair" style="margin-top:12px">' +
+      (wrong.length ? '<button class="btn" data-act="qz-again-wrong">まちがえた' + wrong.length + '問をやり直す</button>' : '') +
+      '<button class="btn ghost" data-act="qz-quit">おわる</button></div>');
+}
+function qz2MocView(){
+  if(qzState.run) return qzState.run.end ? qz2MocEndHtml(qzState.run) : qzQView(qzState.run);
+  var subs = qzSubs(), mocs = qz2Mocs();
+  var total = qzQs('').length;
+  var fields = (typeof KQ_FIELDS !== 'undefined' ? KQ_FIELDS : []).filter(function(f){ return qz2FieldPool(f[0]).length >= 3; });
+  var h = section('模擬テスト', total + '問から出します',
+    '<label class="f">どこから出す？</label>' +
+    '<div class="chips qz-chips">' +
+      '<button data-act="qz2-mocsub" data-v="all" class="' + (qz2State.mocSub === 'all' ? 'on' : '') + '">ぜんぶ（' + total + '問）</button>' +
+      subs.map(function(s){
+        return '<button data-act="qz2-mocsub" data-v="' + esc(s.id) + '" class="' + (qz2State.mocSub === s.id ? 'on' : '') + '">' +
+          esc(s.icon + ' ' + s.name) + '（' + qzQs(s.id).length + '）</button>';
+      }).join('') +
+      (fields.length ? '<button data-act="qz2-mocsub" data-v="field" class="' + (qz2State.mocSub === 'field' ? 'on' : '') + '">国試の分野で</button>' : '') +
+    '</div>' +
+    (qz2State.mocSub === 'field'
+      ? '<label class="f" style="margin-top:8px">分野</label><div class="chips qz-chips">' + fields.map(function(f){
+          return '<button data-act="qz2-mocfield" data-v="' + f[0] + '" class="' + (qz2State.mocField === f[0] ? 'on' : '') + '">' +
+            esc(f[1]) + '（' + qz2FieldPool(f[0]).length + '）</button>';
+        }).join('') + '</div>'
+      : '') +
+    '<label class="f" style="margin-top:10px">問題の数</label>' +
+    '<div class="pillrow">' + [20, 50, 100].map(function(n){
+      return '<button data-act="qz2-mocn" data-v="' + n + '" class="' + (qz2State.mocN === n ? 'on' : '') + '">' + n + '問</button>';
+    }).join('') + '</div>' +
+    '<label class="f" style="margin-top:10px">時間</label>' +
+    '<div class="pillrow">' + [0, 20, 30, 50, 90].map(function(m){
+      return '<button data-act="qz2-mocmin" data-v="' + m + '" class="' + (qz2State.mocMin === m ? 'on' : '') + '">' + (m ? m + '分' : '時間なし') + '</button>';
+    }).join('') + '</div>' +
+    '<button class="btn" style="margin-top:12px" data-act="qz2-mocgo">はじめる</button>' +
+    '<p class="note">1問ずつの答え合わせは出ません。最後にまとめて点数が出ます。まちがえた問題は、あとで復習に出ます。</p>');
+  if(mocs.length){
+    h += section('これまでの結果', mocs.length + '回',
+      mocs.slice(0, 10).map(function(m){
+        var rate = m.n ? Math.round(m.ok * 100 / m.n) : 0;
+        return '<div class="row"><div class="grow"><div class="t">' + rate + '点（' + m.ok + '/' + m.n + '問）' +
+          (m.sub && m.sub !== 'all' && m.sub !== 'field' ? '　' + esc(qzSubName(m.sub)) : m.field ? '　' + esc(qz2FieldName(m.field)) : '') + '</div>' +
+          '<div class="s">' + esc(qzMd(m.at)) + '・' + Math.floor(toNum(m.sec) / 60) + '分' + (m.timeup ? '・時間切れ' : '') + '</div></div>' +
+          '<button class="mini" data-act="qz2-mocdel" data-id="' + esc(m.id) + '" aria-label="消す">✕</button></div>';
+      }).join('') +
+      (mocs.length > 1 ? '<p class="note">いちばん上が新しい回です。同じ「どこから出す？」の回とくらべます。</p>' : ''));
+  }
+  return h;
+}
+
+/* ============================== にが手ノート（#77） ==============================
+   まちがえた問題だけを集めて、答えと解説をならべる。印刷・書き出しもできる。 */
+function qz2WeakList(sub){
+  var list = qzQs(sub === 'all' ? '' : sub).map(function(x){
+    var l = qzLogOf(x.id) || {};
+    return { q:x, miss:toNum(l.miss), n:toNum(l.n), ok:toNum(l.ok), res:l.res, last:l.last || '' };
+  }).filter(function(o){ return o.miss > 0 || o.res === 0; });
+  return list.sort(function(a, b){
+    return (b.miss - a.miss) || (String(b.last).localeCompare(String(a.last)));
+  });
+}
+function qz2WeakView(){
+  var sub = qz2State.weakSub || 'all';
+  var subs = qzSubs(), list = qz2WeakList(sub);
+  var h = section('どの科目？', null,
+    '<div class="chips qz-chips"><button data-act="qz2-weaksub" data-v="all" class="' + (sub === 'all' ? 'on' : '') + '">すべて</button>' +
+    subs.map(function(s){
+      return '<button data-act="qz2-weaksub" data-v="' + esc(s.id) + '" class="' + (sub === s.id ? 'on' : '') + '">' +
+        esc(s.icon + ' ' + s.name) + '（' + qz2WeakList(s.id).length + '）</button>';
+    }).join('') + '</div>');
+  if(!list.length){
+    return h + section('にが手ノート', null, '<div class="empty">まちがえた問題はありません。よくできています！</div>');
+  }
+  h += section('にが手ノート', list.length + '問',
+    '<div class="pair"><button class="btn" data-act="qz2-weakdrill">この' + Math.min(list.length, 20) + '問を解く</button>' +
+      '<button class="btn ghost" data-act="qz2-weakout" style="flex:0 0 auto">書き出す</button></div>' +
+    list.slice(0, 60).map(function(o){
+      var x = o.q, why = (typeof qzWhyOf === 'function') ? qzWhyOf(x.id) : null;
+      return '<div class="qz-weak">' +
+        '<div class="qz-badges"><span class="qz-b">' + esc(qzTypeName(x.qt)) + '</span>' +
+          '<span class="qz-b sub">' + esc(qzSubName(x.sub)) + '</span>' +
+          (x.ch ? '<span class="qz-b sub">' + esc(x.ch) + '</span>' : '') +
+          '<span class="qz-b sub">まちがえ ' + o.miss + '回</span>' +
+          '<button class="qz-star' + (x.star ? ' on' : '') + '" data-act="qz-star" data-id="' + esc(x.id) + '">' + (x.star ? '★' : '☆') + '</button></div>' +
+        '<div class="t">' + esc(x.q) + '</div>' +
+        '<div class="qz-weakans">答え：<b>' + esc(qzAnswerText(x)) + '</b></div>' +
+        (x.exp ? '<div class="s">' + esc(x.exp) + '</div>' : '') +
+        (why ? '<div class="s qz-weakwhy">なぜ？：' + esc(why.text) + '</div>'
+             : '<button class="mini" data-act="qz-why" data-id="' + esc(x.id) + '">❓ なぜまちがい？をしらべる</button>') +
+        '</div>';
+    }).join('') +
+    (list.length > 60 ? '<p class="note">多いので、まちがえた回数の多い60問だけ出しています。</p>' : ''));
+  return h;
+}
+function qz2WeakOut(){
+  var sub = qz2State.weakSub || 'all', list = qz2WeakList(sub);
+  if(!list.length){ toast('書き出すものがありません', true); return; }
+  var lines = ['にが手ノート（' + (sub === 'all' ? 'すべての科目' : qzSubName(sub)) + '）　' + today(), ''];
+  list.forEach(function(o, i){
+    var x = o.q, why = (typeof qzWhyOf === 'function') ? qzWhyOf(x.id) : null;
+    lines.push((i + 1) + '. [' + qzSubName(x.sub) + (x.ch ? '／' + x.ch : '') + '] ' + x.q);
+    lines.push('　答え：' + qzAnswerText(x));
+    if(x.exp) lines.push('　解説：' + x.exp);
+    if(why) lines.push('　なぜ？：' + why.text);
+    lines.push('　まちがえた回数：' + o.miss + '回');
+    lines.push('');
+  });
+  download(new Blob(['﻿' + lines.join('\n')], { type:'text/plain;charset=utf-8' }), 'nigate-' + today() + '.txt');
+  toast(list.length + '問を書き出しました');
+}
+
+/* ============================== 操作・登録（模擬テスト・にが手ノート） ============================== */
+kmAction(function(act, t){
+  if(act.indexOf('qz2-') !== 0) return false;
+  var v = t.dataset.v || '', id = t.dataset.id || '';
+  if(act === 'qz2-mocsub'){ qz2State.mocSub = v; render(); return true; }
+  if(act === 'qz2-mocfield'){ qz2State.mocField = v; render(); return true; }
+  if(act === 'qz2-mocn'){ qz2State.mocN = toNum(v) || 50; render(); return true; }
+  if(act === 'qz2-mocmin'){ qz2State.mocMin = toNum(v); render(); return true; }
+  if(act === 'qz2-mocgo'){ qz2MocStart(); return true; }
+  if(act === 'qz2-mocdel'){
+    var rec = (S.kmItems || []).filter(function(x){ return x.id === id; })[0];
+    if(rec){ removeItem('kmItems', id); commit(); toast('結果を消しました'); }
+    return true;
+  }
+  if(act === 'qz2-weaksub'){ qz2State.weakSub = v; render(); return true; }
+  if(act === 'qz2-weakout'){ qz2WeakOut(); return true; }
+  if(act === 'qz2-weakdrill'){
+    var list = qz2WeakList(qz2State.weakSub || 'all');
+    if(!list.length){ toast('まちがえた問題がありません', true); return true; }
+    appId = 'study'; studyTool = 'qz-drill';
+    qzRunSet(list.slice(0, 20).map(function(o){ return o.q.id; }), '', 'wrong');
+    return true;
+  }
+  return false;
+});
+kmStudy({ id:'qz-moc', icon:'📝', title:'模擬テスト', desc:'まとめて解いて、点数と前回との差を出します', order:9,
+  view:qz2MocView, badge:function(){ var m = qz2Mocs()[0]; return m && m.n ? Math.round(m.ok * 100 / m.n) + '点' : ''; } });
+kmStudy({ id:'qz-weak', icon:'❌', title:'にが手ノート', desc:'まちがえた問題だけを集めます', order:10,
+  view:qz2WeakView, badge:function(){ var n = qz2WeakList('all').length; return n ? n + '問' : ''; } });
+
+/* まとめ（ウィジェット・Discordのボットが出す問題：#170） */
+kmSummary(function(s){
+  var pool = qzPool('', 'due').concat(qzPool('', 'new')).filter(function(x){ return x.qt === 'mc' || x.qt === 'tf'; });
+  if(!pool.length) pool = qzQs('').filter(function(x){ return x.qt === 'mc' || x.qt === 'tf'; });
+  if(!pool.length) return;
+  s.quizAsk = qz2Pick(pool, 5).map(function(x){
+    return { id:x.id, subject:qzSubName(x.sub), q:String(x.q).slice(0, 200),
+      choices:(x.c || []).map(function(c){ return String(c).slice(0, 80); }),
+      answer:(x.a || []).map(function(i){ return i + 1; }),
+      exp:String(x.exp || '').slice(0, 200) };
+  });
+});

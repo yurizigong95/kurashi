@@ -46,7 +46,7 @@ var qzState = {
   files:[],                  /* えらんだ資料（追加するまでは、この画面の中だけ） */
   busy:'', pv:null,          /* AIが作っているところ・できた問題の下書き */
   run:null,                  /* 解いているとき */
-  libTab:'sub', matOpen:'', subEdit:'', delAsk:'', qEdit:'', drillMode:'due', drillN:10, modePicked:0,
+  libTab:'sub', matOpen:'', subEdit:'', delAsk:'', qEdit:'', drillMode:'due', drillN:10, modePicked:0, unit:'',
   mk:{ n:10, auto:1, types:['mc', 'tf', 'cloze'], lv:2, style:'', kokushi:0, en:0, two:0, both:0, anki:0, noai:0 },
   /* 作るときの決めごと（数・自動で決める・種類・むずかしさ・事例/国試ふう/英語/2つ選べ/2通り/暗記カード/AIなし） */
   mat:{ no:'', memo:'', at:'' },   /* 資料につける「第◯回」「メモ」「日付」 */
@@ -118,11 +118,25 @@ function qzRemove(x){
 /* ===== 科目 ===== */
 function qzSubSort(a, b){ return (toNum(a.ord) - toNum(b.ord)) || String(a.id).localeCompare(String(b.id)); }
 function qzSubsAll(){ return qzOf('subject').sort(qzSubSort); }
-function qzSubs(){ return qzSubsAll().filter(function(x){ return !x.arch; }); }
+function qzSubs(){ return qzSubsAll().filter(function(x){ return !x.arch && qzTermOk(x); }); }
 function qzSub(id){ var s = qzItem(id); return (s && s.type === 'subject') ? s : null; }
 function qzSubName(id){ var s = qzSub(id); return s ? s.name : 'そのほか'; }
 function qzSubIcon(id){ var s = qzSub(id); return (s && s.icon) || '📘'; }
 function qzSubLabel(id){ return qzSubIcon(id) + ' ' + qzSubName(id); }
+function qzSubColor(id){
+  var s = qzSub(id);
+  return (s && s.color && typeof colorOf === 'function') ? colorOf(s.color) : '';
+}
+function qzSubStyle(id){
+  var c = qzSubColor(id);
+  return c ? ' style="border-color:' + c + '"' : '';
+}
+/* いまの学期の科目だけ出す（#113。学期を決めていない科目は、いつも出す） */
+function qzTermOk(x){
+  if(!x || !x.term) return true;
+  if(qzCfg().allTerms) return true;
+  return x.term === S.termId;
+}
 /* いまえらんでいる科目（消された科目をえらんだままにしない） */
 function qzCurSub(){
   if(qzState.sub && qzSub(qzState.sub) && !qzSub(qzState.sub).arch) return qzState.sub;
@@ -140,7 +154,10 @@ function qzSubAdd(name, icon, link){
   var max = 0, n = qzSubsAll().length;
   qzSubsAll().forEach(function(x){ max = Math.max(max, toNum(x.ord)); });
   return qzPush({ id:uid('qzs'), mt:Date.now(), mod:QZ_MOD, type:'subject', name:name,
-                  icon:icon || QZ_ICONS[n % QZ_ICONS.length], ord:max + 10, link:String(link || ''), arch:0 });
+                  icon:icon || QZ_ICONS[n % QZ_ICONS.length], ord:max + 10, link:String(link || ''), arch:0,
+                  color:COLORS[n % COLORS.length].id,                                   /* 時間割と同じ色づかい（#108） */
+                  term:S.termId || '',                                                   /* 学期（#113） */
+                  field:(typeof qz2FieldOf === 'function') ? qz2FieldOf(name) : '' });   /* 国試の分野（#127） */
 }
 function qzSubRename(id, name){
   var s = qzSub(id);
@@ -1018,7 +1035,9 @@ function qzSubChips(act, cur, withAll, extra){
   return '<div class="chips qz-chips">' +
     (withAll ? '<button' + at + ' data-v="" class="' + (cur ? '' : 'on') + '">すべて</button>' : '') +
     subs.map(function(s){
-      return '<button' + at + ' data-v="' + esc(s.id) + '" class="' + (cur === s.id ? 'on' : '') + '">' +
+      var col = (s.color && typeof colorOf === 'function') ? colorOf(s.color) : '';
+      var st = col ? ' style="' + (cur === s.id ? 'background:' + col + ';border-color:' + col : 'border-color:' + col) + '"' : '';
+      return '<button' + at + ' data-v="' + esc(s.id) + '" class="' + (cur === s.id ? 'on' : '') + '"' + st + '>' +
         esc(s.icon + ' ' + s.name) + '</button>';
     }).join('') +
     (withAll && qzQs('').some(function(x){ return !x.sub; })
@@ -1305,6 +1324,15 @@ function qzDrillView(){
     '<div class="stats">' + qzStat('今日といた', dc.n + '問') + qzStat('正かい', dc.n ? Math.round(dc.ok * 100 / dc.n) + '%' : '—') +
       qzStat('つづけて', qzStreak() + '日') + qzStat('ぜんぶで', qzQs('').length + '問') + '</div>');
   h += section('どの科目？', null, qzSubChips('qz-sub', sub, true));
+  var fields = (typeof KQ_FIELDS !== 'undefined' && typeof qz2FieldPool === 'function')
+    ? KQ_FIELDS.filter(function(f){ return qz2FieldPool(f[0]).length >= 3; }) : [];
+  if(fields.length >= 2){
+    h += section('国試の分野でまとめて解く', fields.length + '分野',
+      '<div class="chips qz-chips">' + fields.map(function(f){
+        return '<button data-act="qz-field-drill" data-v="' + f[0] + '">' + esc(f[1]) + '（' + qz2FieldPool(f[0]).length + '）</button>';
+      }).join('') + '</div>' +
+      '<p class="note">科目ごとの「国試の分野」でまとめます（科目と資料の整理 › 科目 › 直す で変えられます）。</p>');
+  }
   var counts = {};
   QZ_MODES.forEach(function(m){ counts[m[0]] = qzPoolFor(sub, m[0]).length; });
   /* まだ自分でえらんでいないときは、問題のあるところをはじめに出す */
@@ -1331,6 +1359,13 @@ function qzCurQ(){
   var r = qzState.run;
   return r ? qzItem(r.ids[r.i]) : null;
 }
+/* 模擬テストののこり時間（#124） */
+function qzMocLeft(r){
+  if(!r || !r.moc || !r.moc.min) return '';
+  var sec = Math.max(0, Math.round(r.moc.min * 60 - (Date.now() - toNum(r.moc.at)) / 1000));
+  if(sec <= 0 && !r.end){ r.end = 1; r.timeup = 1; }
+  return Math.floor(sec / 60) + ':' + pad(sec % 60);
+}
 /* その問題の答え方（choice 選ぶ／text 書いて自分で○×／order 並べかえ／match 組み合わせ／calc 計算） */
 function qzKind(q){
   if(q.qt === 'order' || q.qt === 'match' || q.qt === 'calc') return q.qt;
@@ -1341,8 +1376,9 @@ function qzQView(r){
   var q = qzCurQ();
   if(!q){ return section('解く', null, '<div class="empty">問題が見つかりませんでした。</div><button class="btn" data-act="qz-quit">おわる</button>'); }
   var shown = !!r.shown, kind = qzKind(q);
-  var h = '<div class="pillrow studyback"><button data-act="qz-quit">‹ やめる</button>' +
-    '<b class="studyttl">' + esc((r.i + 1) + ' / ' + r.ids.length) + '</b></div>';
+  var left = qzMocLeft(r);
+  var h = '<div class="pillrow studyback"><button data-act="qz-quit">‹ ' + (r.moc ? '中断' : 'やめる') + '</button>' +
+    '<b class="studyttl">' + esc((r.i + 1) + ' / ' + r.ids.length) + (left ? '　⏱ ' + left : '') + '</b></div>';
   var head = '<div class="qz-badges"><span class="qz-b">' + esc(qzTypeName(q.qt)) + '</span>' +
     '<span class="qz-b sub">' + esc(qzSubLabel(q.sub)) + '</span>' +
     (q.ch ? '<span class="qz-b sub">' + esc(q.ch) + '</span>' : '') +
@@ -1354,8 +1390,8 @@ function qzQView(r){
   else if(kind === 'match') body += qzMatchHtml(q, r, shown);
   else if(kind === 'calc') body += qzCalcHtml(q, r, shown);
   else{
-    body += '<div class="field"><input id="qz_ans" placeholder="答えを書く（書かなくても見られます）" value="' + esc(qzIn('qz_ans')) + '"' + (shown ? ' disabled' : '') + '></div>';
-    if(!shown) body += '<button class="btn" data-act="qz-show">答えを見る</button>';
+    body += '<div class="field"><input id="qz_ans" placeholder="答えを書く' + (r.moc ? '' : '（書かなくても見られます）') + '" value="' + esc(qzIn('qz_ans')) + '"' + (shown ? ' disabled' : '') + '></div>';
+    if(!shown) body += '<button class="btn" data-act="qz-show">' + (r.moc ? 'つぎへ' : '答えを見る') + '</button>';
   }
   if(shown){
     var okNow = r.res === 1;
@@ -1513,6 +1549,7 @@ function qzTextMatch(typed, q){
   });
 }
 function qzEndView(r){
+  if(r.moc && typeof qz2MocEndHtml === 'function') return qz2MocEndHtml(r);
   var rate = r.n ? Math.round(r.ok * 100 / r.n) : 0;
   var wrong = r.wrong.map(function(id){ return qzItem(id); }).filter(Boolean);
   return section('おつかれさま', r.n + '問',
@@ -1542,11 +1579,21 @@ function qzStart(sub, mode, n){
   qzRunSet(list.slice(0, Math.max(1, n || 10)).map(function(x){ return x.id; }), sub, mode);
   return true;
 }
+var qzMocTimer = null;
 function qzRunSet(ids, sub, mode, extra){
   qzState.run = Object.assign({ sub:sub || '', mode:mode || 'all', ids:ids, i:0, sel:[], ord:[], mat:{}, shuf:null, cur:'',
     shown:0, res:0, typed:'', ok:0, n:0, wrong:[], end:0, at:Date.now() }, extra || {});
   qzClearForm(['qz_ans']);
   qzRunSave();
+  clearInterval(qzMocTimer); qzMocTimer = null;
+  if(qzState.run.moc && qzState.run.moc.min){
+    qzMocTimer = setInterval(function(){
+      var r = qzState.run;
+      if(!r || !r.moc){ clearInterval(qzMocTimer); qzMocTimer = null; return; }
+      if(r.end){ clearInterval(qzMocTimer); qzMocTimer = null; }
+      qzRender();
+    }, TEST_MODE ? 500 : 10000);
+  }
   render(); window.scrollTo(0, 0);
 }
 /* ===== 中断して、あとから続きから（#63） =====
@@ -1646,6 +1693,19 @@ function qzSubRowHtml(s, i, n){
     '<div class="chips qz-icons">' + QZ_ICONS.map(function(ic){
       return '<button data-act="qz-sub-icon"' + a + ' data-v="' + esc(ic) + '" class="' + ((s.icon || '📘') === ic ? 'on' : '') + '">' + ic + '</button>';
     }).join('') + '</div>' +
+    '<label class="f" style="margin-top:8px">色（時間割と同じ色にできます）</label>' +
+    '<div class="chips qz-colors">' + COLORS.map(function(c){
+      return '<button data-act="qz-sub-color"' + a + ' data-v="' + c.id + '" class="' + (s.color === c.id ? 'on' : '') + '" ' +
+        'style="background:' + c.v + '" aria-label="' + esc(c.name) + '"></button>';
+    }).join('') + '</div>' +
+    '<label class="f" style="margin-top:8px">学期</label>' +
+    '<div class="chips qz-chips">' + [['', 'いつも出す']].concat(termsAll().map(function(tm){ return [tm.id, tm.label]; })).map(function(x){
+      return '<button data-act="qz-sub-term"' + a + ' data-v="' + esc(x[0]) + '" class="' + ((s.term || '') === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</button>';
+    }).join('') + '</div>' +
+    '<label class="f" style="margin-top:8px">国試の分野（まとめて解くときに使います）</label>' +
+    '<div class="chips qz-chips">' + [['', 'なし']].concat(typeof KQ_FIELDS !== 'undefined' ? KQ_FIELDS : []).map(function(x){
+      return '<button data-act="qz-sub-field"' + a + ' data-v="' + esc(x[0]) + '" class="' + ((s.field || '') === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</button>';
+    }).join('') + '</div>' +
     '<div class="pair" style="margin-top:8px"><button class="btn" data-act="qz-sub-save"' + a + '>名前を保存</button>' +
       '<button class="btn ghost" data-act="qz-sub-arch"' + a + ' style="flex:0 0 auto">' + (s.arch ? 'もどす' : 'しまう') + '</button></div>';
   if(qzState.delAsk === s.id){
@@ -1661,7 +1721,12 @@ function qzSubRowHtml(s, i, n){
 function qzSubManageView(){
   var subs = qzSubsAll();
   var n = (typeof termCourses === 'function' ? termCourses() : []).length;
+  var hidTerm = qzSubsAll().filter(function(x){ return !x.arch && !qzTermOk(x); }).length;
   return section('科目', subs.length + '科目',
+    (hidTerm || qzCfg().allTerms
+      ? '<div class="pillrow"><button data-act="qz-terms-all" class="' + (qzCfg().allTerms ? 'on' : '') + '">' +
+        (qzCfg().allTerms ? 'いまの学期だけにする' : 'ほかの学期の' + hidTerm + '科目も出す') + '</button></div>'
+      : '') +
     (subs.length ? subs.map(function(s, i){ return qzSubRowHtml(s, i, subs.length); }).join('')
                  : '<div class="empty">科目がまだありません。</div>') +
     '<p class="note">↑↓ で並べ替えると、ほかの画面でもこの順に出ます。「しまう」と、えらぶところに出なくなります（問題は消えません）。</p>') +
@@ -1673,10 +1738,32 @@ function qzSubManageView(){
 /* ===== 資料の一覧 ===== */
 function qzMatListView(sub){
   var list = qzMats(sub === 'none' ? '' : sub).filter(function(m){ return sub !== 'none' || !m.sub; });
+  var body;
+  if(!list.length){
+    body = '<div class="empty">資料がまだありません。</div><button class="btn" data-act="qz-go" data-tool="qz-make">資料から問題を作る</button>';
+  }else if(list.some(function(m){ return m.no; })){
+    /* 「第◯回」があるものは、回ごとにまとめる（#119） */
+    var by = {}, order = [];
+    list.forEach(function(m){
+      var k = m.no ? '第' + toNum(m.no) + '回' : 'そのほか';
+      if(!by[k]){ by[k] = []; order.push(k); }
+      by[k].push(m);
+    });
+    order.sort(function(a, b){
+      if(a === 'そのほか') return 1;
+      if(b === 'そのほか') return -1;
+      return toNum(a) - toNum(b);
+    });
+    body = order.map(function(k){
+      return '<div class="qz-grp">' + esc(k) + '（' + by[k].length + 'こ・問題 ' +
+        by[k].reduce(function(n, m){ return n + qzQsOfMat(m.id).length; }, 0) + '問）</div>' +
+        by[k].map(qzMatRowHtml).join('');
+    }).join('');
+  }else{
+    body = list.map(qzMatRowHtml).join('');
+  }
   return section('どの科目？', qzSubTitle(sub), qzSubChips('qz-sub', sub, true)) +
-    section('資料', list.length + 'こ',
-      list.length ? list.map(qzMatRowHtml).join('')
-        : '<div class="empty">資料がまだありません。</div><button class="btn" data-act="qz-go" data-tool="qz-make">資料から問題を作る</button>');
+    section('資料', list.length + 'こ', body);
 }
 function qzMatRowHtml(m){
   var a = ' data-id="' + esc(m.id) + '"';
@@ -1684,8 +1771,9 @@ function qzMatRowHtml(m){
   var qn = qzQsOfMat(m.id).length;
   var h = '<div class="row qz-mrow" data-act="qz-mat-open"' + a + ' role="button">' +
     '<span class="qz-fic" aria-hidden="true">' + (m.kind === 'photo' ? '🖼' : m.kind === 'pdf' ? '📄' : m.kind === 'slide' ? '📊' : '📝') + '</span>' +
-    '<div class="grow"><div class="t">' + esc(m.title || '資料') + '</div>' +
-      '<div class="s">' + esc(qzMd(m.at)) + '・' + esc(qzSubName(m.sub)) + '・問題 ' + qn + '問</div></div>' +
+    '<div class="grow"><div class="t">' + (m.no ? '第' + toNum(m.no) + '回　' : '') + esc(m.title || '資料') + '</div>' +
+      '<div class="s">' + esc(qzMd(m.at)) + '・' + esc(qzSubName(m.sub)) + '・問題 ' + qn + '問' +
+      (m.memo ? '・メモあり' : '') + '</div></div>' +
     '<span class="mini">' + (open ? '▾' : '▸') + '</span></div>';
   if(!open) return h;
   h += '<div class="qz-mbody">';
@@ -1694,10 +1782,13 @@ function qzMatRowHtml(m){
       return '<img data-pid="' + esc(pid) + '" alt="資料の写真" data-act="memo-photo-view" data-id="' + esc(pid) + '">';
     }).join('') + '</div>';
   }
+  if(m.memo) h += '<div class="qz-res">📌 メモ：' + esc(m.memo) + '</div>';
   if(m.text) h += '<div class="qz-mtext">' + esc(m.text.slice(0, 1200)) + (m.text.length > 1200 || m.cut ? '…' : '') + '</div>';
   h += '<label class="f" style="margin-top:8px">科目を変える</label>' + qzSubChips('qz-mat-sub', m.sub, false, a);
   h += '<div class="pair" style="margin-top:8px">' +
     (m.text ? '<button class="btn ghost" data-act="qz-mat-more"' + a + '>この資料からもっと作る</button>' : '') +
+    ((m.photos || []).length && typeof kqAnatCreate === 'function'
+      ? '<button class="btn ghost" data-act="qz-mat-anat"' + a + '>図の穴うめにする</button>' : '') +
     '<button class="mini" data-act="qz-mat-delask"' + a + ' style="flex:0 0 auto">消す</button></div>';
   if(qzState.delAsk === m.id){
     h += '<div class="qz-ask"><div class="t">「' + esc(m.title) + '」を消します。この資料から作った' + qn + '問は？</div>' +
@@ -1707,11 +1798,27 @@ function qzMatRowHtml(m){
   }
   return h + '</div>';
 }
+/* ===== 章・単元（#110） ===== */
+function qzUnitsOf(sub){
+  var seen = {}, out = [];
+  qzQs(sub === 'none' ? '' : sub).forEach(function(x){
+    if(x.ch && !seen[x.ch]){ seen[x.ch] = 1; out.push(x.ch); }
+  });
+  return out.sort();
+}
+/* 科目の名前から、章の見本を出す（まだ単元がないとき用） */
+function qzUnitHints(sub){
+  if(typeof qz2UnitsFor !== 'function') return [];
+  var have = {};
+  qzUnitsOf(sub).forEach(function(u){ have[u] = 1; });
+  return qz2UnitsFor(qzSubName(sub)).units.filter(function(u){ return !have[u]; }).slice(0, 8);
+}
 /* ===== 問題の一覧 ===== */
 function qzQFilter(sub){
   var nq = qzNorm(String(qzIn('qz_qfind') || '').trim());
   var list = qzQs(sub === 'none' ? '' : sub).filter(function(x){ return sub !== 'none' || !x.sub; });
-  if(nq) list = list.filter(function(x){ return qzNorm(x.q + (x.c || []).join('') + x.at + x.exp + x.tag).indexOf(nq) >= 0; });
+  if(qzState.unit) list = list.filter(function(x){ return (x.ch || '') === qzState.unit; });
+  if(nq) list = list.filter(function(x){ return qzNorm(x.q + (x.c || []).join('') + x.at + x.exp + x.tag + (x.ch || '')).indexOf(nq) >= 0; });
   return list.sort(function(a, b){ return toNum(b.mt) - toNum(a.mt); });
 }
 function qzQResults(sub){
@@ -1721,9 +1828,17 @@ function qzQResults(sub){
     (list.length > 200 ? '<p class="note">多いので、新しい200問だけ出しています。</p>' : '');
 }
 function qzQListView(sub){
+  var units = qzUnitsOf(sub);
   return section('どの科目？', qzSubTitle(sub), qzSubChips('qz-sub', sub, true)) +
+    (units.length ? section('章・単元', qzState.unit || 'すべて',
+      '<div class="chips qz-chips"><button data-act="qz-unit" data-v="" class="' + (qzState.unit ? '' : 'on') + '">すべて</button>' +
+      units.map(function(u){
+        return '<button data-act="qz-unit" data-v="' + esc(u) + '" class="' + (qzState.unit === u ? 'on' : '') + '">' +
+          esc(u) + '（' + qzQs(sub === 'none' ? '' : sub).filter(function(x){ return x.ch === u; }).length + '）</button>';
+      }).join('') + '</div>' +
+      (qzState.unit ? '<button class="btn ghost" style="margin-top:8px" data-act="qz-unit-drill">この単元だけ解く</button>' : '')) : '') +
     section('問題', qzQFilter(sub).length + '問',
-      '<div class="field"><input type="search" id="qz_qfind" placeholder="問題文・答えでさがす" value="' + esc(qzIn('qz_qfind')) + '"></div>' +
+      '<div class="field"><input type="search" id="qz_qfind" placeholder="問題文・答え・単元でさがす" value="' + esc(qzIn('qz_qfind')) + '"></div>' +
       '<div id="qz_qres">' + qzQResults(sub) + '</div>');
 }
 function qzQRowHtml(x){
@@ -1757,6 +1872,11 @@ function qzQRowHtml(x){
   h += '<div class="field"><label class="f" for="qz_ee_' + esc(id) + '">解説</label>' +
       '<textarea id="qz_ee_' + esc(id) + '" rows="2">' + esc(qzIn('qz_ee_' + id, x.exp || '')) + '</textarea></div>' +
     '<label class="f">科目</label>' + qzSubChips('qz-q-sub', x.sub, false, a) +
+    '<label class="f" style="margin-top:8px">章・単元</label>' +
+    '<div class="chips qz-chips"><button data-act="qz-q-ch"' + a + ' data-v="" class="' + (x.ch ? '' : 'on') + '">なし</button>' +
+      qzUnitsOf(x.sub).concat(qzUnitHints(x.sub)).filter(function(u, k, ar){ return ar.indexOf(u) === k; }).slice(0, 14).map(function(u){
+        return '<button data-act="qz-q-ch"' + a + ' data-v="' + esc(u) + '" class="' + (x.ch === u ? 'on' : '') + '">' + esc(u) + '</button>';
+      }).join('') + '</div>' +
     '<div class="pair" style="margin-top:8px"><button class="btn" data-act="qz-q-save"' + a + '>直したことを保存</button>' +
       '<button class="btn ghost" data-act="qz-q-reset"' + a + ' style="flex:0 0 auto">記録をけす</button></div>' +
     '<div class="qz-src">出典：' + esc(x.src || QZ_SRC_AI) + '</div></div>';
@@ -1846,8 +1966,22 @@ function qzCheck(){
   }else{
     return;
   }
+  if(r.moc){ qzMocAnswer(ok); return; }
   qzGrade(ok);
   render();
+}
+/* 模擬テスト：答えを記録して、すぐ次へ（正解は最後にまとめて出す） */
+function qzMocAnswer(ok){
+  var r = qzState.run, q = qzCurQ();
+  if(!r || !q) return;
+  r.ans = r.ans || {};
+  r.ans[q.id] = ok ? 1 : 0;
+  r.n++;
+  if(ok) r.ok++;
+  else if(r.wrong.indexOf(q.id) < 0) r.wrong.push(q.id);
+  qzLogAnswer(q.id, ok);
+  persist();
+  qzNext();
 }
 /* 計算の答え合わせ（少しの誤差はOK。tol は％） */
 function qzCalcOk(q, typed){
@@ -1928,11 +2062,15 @@ function qzAction(act, t, e){
     return true;
   }
   if(act === 'qz-sub-icon'){ if(qzSubIconSet(id, v)) commit(); return true; }
+  if(act === 'qz-sub-color'){ var sc = qzSub(id); if(sc){ sc.color = v; qzTouch(sc); commit(); } return true; }
+  if(act === 'qz-sub-term'){ var st2 = qzSub(id); if(st2){ st2.term = v; qzTouch(st2); commit(); } return true; }
+  if(act === 'qz-sub-field'){ var sf = qzSub(id); if(sf){ sf.field = v; qzTouch(sf); commit(); } return true; }
   if(act === 'qz-sub-arch'){
     var s2 = qzSub(id);
     if(s2){ s2.arch = s2.arch ? 0 : 1; qzTouch(s2); if(s2.arch && qzState.sub === id) qzState.sub = ''; commit(); toast(s2.arch ? 'しまいました' : 'もどしました'); }
     return true;
   }
+  if(act === 'qz-terms-all'){ qzCfgSet({ allTerms:qzCfg().allTerms ? 0 : 1 }); commit(); return true; }
   if(act === 'qz-sub-delask'){ qzState.delAsk = id; render(); return true; }
   if(act === 'qz-sub-del'){
     var nm3 = qzSubName(id), w = t.dataset.w === '1';
@@ -2038,6 +2176,13 @@ function qzAction(act, t, e){
   if(act === 'qz-mode'){ qzState.drillMode = v; qzState.modePicked = 1; render(); return true; }
   if(act === 'qz-n'){ qzState.drillN = toNum(v) || 10; render(); return true; }
   if(act === 'qz-start'){ qzStart(qzCurSub(), qzState.drillMode, qzState.drillN); return true; }
+  if(act === 'qz-field-drill'){
+    var fp = (typeof qz2FieldPool === 'function') ? qz2FieldPool(v) : [];
+    if(fp.length < 1){ toast('この分野には問題がありません', true); return true; }
+    qzShuffle(fp);
+    qzRunSet(fp.slice(0, Math.max(5, qzState.drillN)).map(function(x){ return x.id; }), '', 'all');
+    return true;
+  }
   if(act === 'qz-today-go'){
     var mode = qzPool('', 'due').length ? 'due' : 'new';
     qzState.sub = ''; qzState.drillMode = mode;
@@ -2087,7 +2232,10 @@ function qzAction(act, t, e){
   if(act === 'qz-resume-drop'){ qzRunDrop(); render(); return true; }
   if(act === 'qz-show'){
     var r2 = qzState.run;
-    if(r2){ r2.typed = String(qzV('qz_ans') || ''); r2.shown = 1; render(); }
+    if(!r2) return true;
+    r2.typed = String(qzV('qz_ans') || '');
+    if(r2.moc){ qzMocAnswer(qzTextMatch(r2.typed, qzCurQ())); return true; }   /* 模擬テストは自動で採点 */
+    r2.shown = 1; render();
     return true;
   }
   if(act === 'qz-grade'){ qzGrade(v === '1'); qzNext(); return true; }
@@ -2127,6 +2275,7 @@ function qzAction(act, t, e){
     toast('この資料から、また問題を作れます');
     return true;
   }
+  if(act === 'qz-mat-anat'){ qzToAnat(id); return true; }
   if(act === 'qz-mat-delask'){ qzState.delAsk = id; render(); return true; }
   if(act === 'qz-mat-del'){
     var m3 = qzMat(id), w3 = t.dataset.w === '1', gone3 = 0;
@@ -2145,6 +2294,19 @@ function qzAction(act, t, e){
   /* ===== 問題の整理 ===== */
   if(act === 'qz-q-edit'){ qzState.qEdit = (qzState.qEdit === id) ? '' : id; render(); return true; }
   if(act === 'qz-q-save'){ qzQSave(id); return true; }
+  if(act === 'qz-unit'){ qzState.unit = v; render(); return true; }
+  if(act === 'qz-unit-drill'){
+    var list = qzQFilter(qzCurSub());
+    if(!list.length){ toast('この単元には問題がありません', true); return true; }
+    qzGo('qz-drill');
+    qzRunSet(qzShuffle(list.map(function(x){ return x.id; })).slice(0, Math.max(5, qzState.drillN)), qzCurSub(), 'all');
+    return true;
+  }
+  if(act === 'qz-q-ch'){
+    var xc = qzItem(id);
+    if(xc){ xc.ch = v; qzTouch(xc); commit(); }
+    return true;
+  }
   if(act === 'qz-q-sub'){
     var x2 = qzItem(id);
     if(x2){ x2.sub = v; qzTouch(x2); commit(); }
@@ -2184,6 +2346,18 @@ function qzOnInput(ev){
 document.addEventListener('input', qzOnInput);
 document.addEventListener('change', qzOnInput);
 
+/* 資料の写真を「解剖図の穴うめ」にする（#31。勉強①の道具につなぐ） */
+async function qzToAnat(matId){
+  var m = qzMat(matId), pid = m && (m.photos || [])[0];
+  if(!pid){ toast('写真のある資料でつかえます', true); return; }
+  if(typeof kqAnatCreate !== 'function'){ toast('「解剖図の穴うめ」が見つかりませんでした', true); return; }
+  var url = null;
+  try{ url = await photoGet(pid); }catch(e){}
+  if(!url){ toast('写真を読めませんでした', true); return; }
+  appId = 'study'; studyTool = 'kq-anat';
+  await kqAnatCreate(url, m.title || '解剖図');
+  toast('名前をかくしたいところをタップすると、穴ができます');
+}
 /* 問題をCSVで書き出す（Excel・ほかのアプリで使えるように） */
 function qzExportCsv(){
   var rows = [['科目', '種類', '問題', '選択肢', '答え', '解説', '出典', '次に出す日']];
@@ -2241,8 +2415,26 @@ kmSettings({ id:'qzset', title:'授業の資料から問題', after:'',
         '<button class="mini" data-act="qz-set-notify">' + (c.notify ? '知らせる → 知らせない' : '知らせない → 知らせる') + '</button></div>' +
       '<div class="pair" style="margin-top:8px"><button class="btn ghost" data-act="qz-export">問題をCSVで書き出す</button>' +
         '<button class="btn ghost" data-act="qz-go" data-tool="qz-lib" style="flex:0 0 auto">科目の整理</button></div>' +
+      (typeof shortUrl === 'function' && typeof gasReady === 'function' && gasReady()
+        ? '<div class="field" style="margin-top:10px"><label class="f">iPhoneの「共有」から資料を送る（ショートカット）</label>' +
+          '<div class="qz-mtext">URL：' + esc(shortUrl('quiz')) + '<br>方法：POST　中身（JSON）：{"kind":"quiz","title":"第3回 呼吸","text":"（共有した文章）"}</div></div>' +
+          '<button class="mini" data-act="copy-text" data-text="' + esc(shortUrl('quiz')) + '">URLをコピー</button>'
+        : '') +
       '<p class="note">作った問題・科目・記録は、ほかの端末にも同期されます。資料の写真も同期されます（PDF・スライドは、取り出した字だけ残します）。</p>';
   } });
+
+/* iPhoneの「共有」から送った文章を、資料として受け取る（#16） */
+kmInbox('quiz', function(it, ymd){
+  var text = String(it.text || '').trim();
+  if(!text) return '';
+  var title = String(it.title || '').trim().slice(0, 60) || ('共有で受け取った資料 ' + qzMd(ymd));
+  var sub = '';
+  qzSubs().forEach(function(s2){ if(!sub && title.indexOf(s2.name) >= 0) sub = s2.id; });
+  qzPush({ id:uid('qzm'), mt:Date.now(), mod:QZ_MOD, type:'mat', sub:sub, title:title, kind:'text',
+           at:isYmd(ymd) ? ymd : today(), no:'', memo:'', sig:qzHash(text.slice(0, 800)), photos:[],
+           text:text.slice(0, QZ_TEXT_KEEP), cut:text.length > QZ_TEXT_KEEP ? 1 : 0, n:0 });
+  return '授業の資料を1つ受け取りました（勉強 › 科目と資料の整理 › 資料）';
+});
 
 /* 通知：夜に、その日の復習を知らせる（今日から7日ぶん。0問の日は出さない） */
 kmJobs(function(add, prefs){
