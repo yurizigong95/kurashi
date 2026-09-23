@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="もんだいメーカー">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2B6C7A">
+<meta name="description" content="授業の写真・スライド・配布資料から、自分だけの問題集を作って解く勉強アプリ">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>もんだいメーカー</title>
+<script>
+/* 読みこめなかったファイルを、あとで知らせるために覚えておく */
+window.__mkMissing = [];
+function mkMiss(el){ window.__mkMissing.push(el.getAttribute('href') || el.getAttribute('src')); }
+</script>
+<style>
+body{margin:0;background:#F3F6F7;color:#20343A;font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#F3F6F7;color:#2B6C7A;font-weight:700}
+#loadfail{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;background:#F3F6F7;font-size:15px;line-height:1.7}
+#loadfail .box{max-width:460px;background:#fff;border-radius:18px;padding:20px 18px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+#loadfail code{font-size:13px;background:#eef3f4;padding:1px 5px;border-radius:6px;word-break:break-all}
+#loadfail button{display:block;width:100%;margin-top:10px;padding:12px;border-radius:999px;border:1px solid #2B6C7A;background:#fff;color:#20343A;font:inherit}
+</style>
+<link rel="stylesheet" href="css/app.css" onerror="mkMiss(this)">
+</head>
+<body>
+
+<div id="splash">
+  <svg width="84" height="84" viewBox="0 0 84 84" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="8" y="10" width="68" height="64" rx="14" fill="#2B6C7A"/>
+    <rect x="18" y="24" width="34" height="6" rx="3" fill="#fff" opacity=".95"/>
+    <rect x="18" y="38" width="48" height="6" rx="3" fill="#fff" opacity=".7"/>
+    <rect x="18" y="52" width="26" height="6" rx="3" fill="#fff" opacity=".7"/>
+    <circle cx="60" cy="56" r="13" fill="#F2B544"/>
+    <path d="M56 51.5a4 4 0 1 1 5 3.8v2.2" stroke="#20343A" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+    <circle cx="61" cy="62" r="1.6" fill="#20343A"/>
+  </svg>
+  <div>もんだいメーカー</div>
+</div>
+
+<header>
+  <h1 id="apptitle">ホーム</h1>
+</header>
+<main id="app"></main>
+<nav id="nav"></nav>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- 読みこむ順番に意味があります（上のファイルの関数を、下のファイルが使います） -->
+<script src="js/core.js" onerror="mkMiss(this)"></script>
+<script src="js/data.js" onerror="mkMiss(this)"></script>
+<script src="js/ai.js" onerror="mkMiss(this)"></script>
+<script src="js/model.js" onerror="mkMiss(this)"></script>
+<script src="js/ui.js" onerror="mkMiss(this)"></script>
+<script src="js/files.js" onerror="mkMiss(this)"></script>
+<script src="js/gen.js" onerror="mkMiss(this)"></script>
+<script src="js/make.js" onerror="mkMiss(this)"></script>
+<script src="js/make-view.js" onerror="mkMiss(this)"></script>
+<script src="js/drill.js" onerror="mkMiss(this)"></script>
+<script src="js/lib.js" onerror="mkMiss(this)"></script>
+<script src="js/home.js" onerror="mkMiss(this)"></script>
+<script src="js/set.js" onerror="mkMiss(this)"></script>
+<script src="js/main.js" onerror="mkMiss(this)"></script>
+<script>
+/* ファイルが足りないときは、まっ白ではなく、直し方を出す */
+(function(){
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+  function check(){
+    var missing = window.__mkMissing.slice();
+    if(window.__MK_OK && !missing.length) return;
+    var sp = document.getElementById('splash');
+    if(sp) sp.style.display = 'none';
+    if(document.getElementById('loadfail')) return;
+    var box = document.createElement('div');
+    box.id = 'loadfail';
+    box.innerHTML = '<div class="box"><h2>アプリを開けませんでした</h2>' +
+      (missing.length ? '<p>次のファイルが見つかりません：<br><code>' + missing.slice(0, 6).map(esc).join('</code><br><code>') + '</code></p>'
+                      : '<p>中身を読みこめませんでした。</p>') +
+      '<p><code>index.html</code> と同じ場所に、<code>css</code> と <code>js</code> のフォルダを置いてください。</p>' +
+      '<button type="button" id="mkReload">もう一度読みこむ</button>' +
+      '<button type="button" id="mkClean">しまってある古いファイルを消して読みこむ</button></div>';
+    document.body.appendChild(box);
+    document.getElementById('mkReload').onclick = function(){ location.reload(); };
+    document.getElementById('mkClean').onclick = function(){
+      var jobs = [];
+      if('serviceWorker' in navigator) jobs.push(navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){ return r.unregister(); })); }));
+      if(window.caches) jobs.push(caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }));
+      Promise.all(jobs).then(function(){ location.reload(); }, function(){ location.reload(); });
+    };
+  }
+  if(document.readyState === 'complete') setTimeout(check, 1200);
+  else window.addEventListener('load', function(){ setTimeout(check, 1200); });
+})();
+</script>
+</body>
+</html>
