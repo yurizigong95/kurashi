@@ -380,7 +380,11 @@ KT.test('全体＋：前の日を自動で評価する（最大7日・自分の�
   /* 3日前は、自分で評価していた */
   A.S.dayReview[d3] = J(A, { grade:'S', point:95, memo:'自分でつけた', ai:'', mt:A.c9AutoMt(d3) + 20 * 3600 * 1000 });
   A.touch('dayReview');
-  /* 2日前：締切の課題2つ（1つ済）・暗記12枚・よく寝た */
+  /* 2日前：締切の課題2つ（1つ済）・暗記12枚・よく寝た
+     ほかのテストが作った課題も同じ日が締切のことがあるので、いまの数をかぞえてから足す
+     （そうしないと、今日の日付によって 1/2 になったり 2/3 になったりする） */
+  var was = A.S.tasks.filter(function(t){ return t && t.due === d2; });
+  var wantTask = (was.filter(function(t){ return t.done; }).length + 1) + '/' + (was.length + 2) + '件';
   A.S.tasks.push(J(A, { id:'tk_c9e1', title:'評価の課題1', subject:'', due:d2, done:1, subs:[], photos:[], mt:Date.now() }));
   A.S.tasks.push(J(A, { id:'tk_c9e2', title:'評価の課題2', subject:'', due:d2, done:0, subs:[], photos:[], mt:Date.now() }));
   A.S.studyLog[d2 + '|' + A.DEV.id] = J(A, { n:12, ok:10, mt:Date.now() }); A.touch('studyLog');
@@ -399,7 +403,8 @@ KT.test('全体＋：前の日を自動で評価する（最大7日・自分の�
   eq(A.S.dayReview[d3].grade, 'S', '自分でつけた評価は上書きしない');
   var r2 = A.S.dayReview[d2];
   ok(r2 && r2.auto === 1 && r2.grade && typeof r2.point === 'number', '自動の印・点数');
-  ok(r2.items.some(function(x){ return x.k === 'task' && /1\/2/.test(x.t); }), '課題（1/2件）：' + JSON.stringify(r2.items));
+  ok(r2.items.some(function(x){ return x.k === 'task' && x.t.indexOf(wantTask) >= 0; }),
+    '課題（' + wantTask + '）：' + JSON.stringify(r2.items));
   ok(r2.items.some(function(x){ return x.k === 'anki' && /12枚/.test(x.t); }), '暗記の枚数');
   ok(r2.items.some(function(x){ return x.k === 'health' && /7時間/.test(x.t); }), '睡眠・歩数');
   ok(r2.items.some(function(x){ return x.k === 'late'; }), '期限切れ');

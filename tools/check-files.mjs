@@ -1,5 +1,6 @@
 // くらしの手帳：ファイルの抜けを調べる（GitHub Actions で動く）
 // index.html と sw.js に書いてあるファイルが、ぜんぶそろっているかを確かめる。
+// いっしょに置いている別のアプリ（study/ game/ all/）も見る。
 import { readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
@@ -9,6 +10,26 @@ for (const m of html.matchAll(/(?:src|href)="((?:js|css)\/[^"?#]+)"/g)) need.add
 const sw = readFileSync('sw.js', 'utf8');
 for (const m of sw.matchAll(/'\.\/([^']+)'/g)) if (m[1] && !m[1].startsWith('__')) need.add(m[1]);
 need.add('sw.js');
+
+// もんだいメーカー（study/）も、同じやり方で調べる
+if (existsSync('study/index.html')) {
+  const h2 = readFileSync('study/index.html', 'utf8');
+  for (const m of h2.matchAll(/(?:src|href)="((?:js|css)\/[^"?#]+)"/g)) need.add('study/' + m[1]);
+  const s2 = readFileSync('study/sw.js', 'utf8');
+  for (const m of s2.matchAll(/'\.\/([^']+)'/g)) {
+    if (m[1] && m[1] !== '' && !m[1].startsWith('__')) need.add('study/' + m[1]);
+  }
+  need.add('study/sw.js');
+  need.add('study/manifest.json');
+  need.delete('study/');
+}
+
+// ぜんぶ入り（all/）は1枚もの。いっしょに置くファイルだけ確かめる
+if (existsSync('all/index.html')) {
+  for (const f of ['all/index.html', 'all/sw.js', 'all/manifest.json', 'all/icon-180.png', 'all/icon-192.png', 'all/icon-512.png']) need.add(f);
+}
+// ゲーム道場（game/）も1枚もの
+if (existsSync('game/index.html')) need.add('game/index.html');
 
 let bad = 0;
 for (const f of [...need].sort()) {
