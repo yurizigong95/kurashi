@@ -3675,9 +3675,9 @@ body.pt-onehand .u2-endbar,body.pt-onehand .u2-waitrow{justify-content:flex-end}
       <!-- online: realtime -->
       <article class="card form" id="liveCard" hidden>
         <h2>リアルタイム対局</h2>
-        <div id="liveOff" class="note" hidden>この画面ではリアルタイム対局は使えません。Claudeのページとして開いたときだけ使えます（同じClaudeアカウントの2台の端末どうし）。離れた友達とは「コードで」を使ってください。</div>
+        <div id="liveOff" class="note" hidden>リアルタイム対局を使うには、この端末で「くらしの手帳」をいちど開いてください（つなぎ先の設定を、そこから借ります）。離れた友達とは「コードで」を使ってください。</div>
         <div id="liveOn">
-          <p class="note" style="margin:0 0 8px">同じClaudeアカウントでログインした2台の端末（あなたのスマホとパソコンなど）で遊べます。相手が指すと自動で盤が動きます。</p>
+          <p class="note" style="margin:0 0 8px">同じ部屋番号を入れた2台の端末（あなたのスマホとパソコンなど）で遊べます。相手が指すと自動で盤が動きます。</p>
           <div class="row">
             <label for="liveName">あなたの名前<input id="liveName" maxlength="12" autocomplete="off" placeholder="あなた"></label>
             <label for="liveColor">あなたの色
@@ -6185,6 +6185,100 @@ async function geminiSample(turns,opt){
   throw gErr('http',lastErr||'つながりませんでした');
 }
 
+/* ---------- リアルタイム対局（2台の端末）のつなぎ先 ----------
+   Claudeのページで開いたときは今までどおり。そうでないときは、くらしの手帳と同じ
+   つなぎ先（Firebase の Firestore）に「部屋」を置いて、2台の端末で同じ盤・同じ場を見る。
+   ・つなぎ先の設定は、この端末の「くらしの手帳」から借りる（このファイルには何も書かない）
+   ・部屋の名前は、くらしの手帳の合言葉ではじめる（手帳のきまりのままで読み書きできる）
+   ・置くのは部屋の中身だけ（名前・手・盤面）。手帳のほかのデータには触らない
+   ・配列は文字にしてしまう。こうすると、入れ子の配列でもそのまま置ける */
+const GCOL='shiharai';
+function gSettings(){ try{ const j=JSON.parse(localStorage.getItem('shiharai:v1')||'null'); return (j&&j.settings)||null; }catch(e){ return null; } }
+function gFbCfg(){
+  const t=String((gSettings()||{}).fbConfig||'').trim(); if(!t) return null;
+  let c=null;
+  try{ c=JSON.parse(t); }catch(e){
+    try{
+      const s=t.slice(t.indexOf('{'),t.lastIndexOf('}')+1)
+        .replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g,'$1"$2":')
+        .replace(/'([^'\\]*)'/g,'"$1"').replace(/,\s*([}\]])/g,'$1');
+      c=JSON.parse(s);
+    }catch(e2){ c=null; }
+  }
+  return (c&&c.projectId)?c:null;
+}
+function gRoomId(){ return String((gSettings()||{}).room||''); }
+function gDocId(path){ return gRoomId()+'__gd_'+String(path).replace(/[^A-Za-z0-9_-]+/g,'_'); }
+function gEnc(v){
+  if(Array.isArray(v)) return {__j:JSON.stringify(v)};
+  if(v&&typeof v==='object'){ const o={}; for(const k in v){ if(v[k]!==undefined) o[k]=gEnc(v[k]); } return o; }
+  return v===undefined?null:v;
+}
+function gDec(v){
+  if(v&&typeof v==='object'&&!Array.isArray(v)){
+    if(typeof v.__j==='string'){ try{ return JSON.parse(v.__j); }catch(e){ return []; } }
+    const o={}; for(const k in v) o[k]=gDec(v[k]); return o;
+  }
+  return v;
+}
+function gDbErr(e){
+  const c=String((e&&e.code)||''), o=new Error((e&&e.message)||'error');
+  o.code=/resource-exhausted|quota/i.test(c)?'quota_exceeded':(/permission|unauthenticated/i.test(c)?'no_permission':(c||'error'));
+  return o;
+}
+/* import() は文字から作る。使えない端末でも、このファイル全体が読めなくならないように */
+const gImport=u=>{ try{ return (new Function('u','return import(u)'))(u); }catch(e){ return Promise.reject(e); } };
+let gFbP=null;
+function gFire(){
+  if(gFbP) return gFbP;
+  gFbP=(async()=>{
+    const cfg=gFbCfg(); if(!cfg) throw new Error('つなぎ先の設定がありません');
+    try{
+      const fa=await gImport('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+      const ff=await gImport('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      const db=ff.getFirestore(fa.initializeApp(cfg,'gamedojo'));
+      return {
+        ref:id=>ff.doc(db,GCOL,id),
+        get:async r=>{ const s=await ff.getDoc(r); return {exists:s.exists(),data:s.data()}; },
+        set:(r,d,merge)=>merge?ff.setDoc(r,d,{merge:true}):ff.setDoc(r,d),
+        sub:(r,n,e)=>ff.onSnapshot(r,s=>n({exists:s.exists(),data:s.data()}),e)
+      };
+    }catch(e){ /* 古い端末では、昔ながらの読みこみ方で */ }
+    const add=src=>new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.async=true; s.onload=res; s.onerror=()=>rej(new Error('SCRIPT_FAIL')); document.head.appendChild(s); });
+    await add('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+    await add('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js');
+    if(!window.firebase) throw new Error('SCRIPT_FAIL');
+    const had=(window.firebase.apps||[]).filter(a=>a.name==='gamedojo')[0];
+    const col=window.firebase.firestore(had||window.firebase.initializeApp(cfg,'gamedojo')).collection(GCOL);
+    return {
+      ref:id=>col.doc(id),
+      get:async r=>{ const s=await r.get(); return {exists:s.exists,data:s.data()}; },
+      set:(r,d,merge)=>merge?r.set(d,{merge:true}):r.set(d),
+      sub:(r,n,e)=>r.onSnapshot(s=>n({exists:s.exists,data:s.data()}),e)
+    };
+  })();
+  return gFbP;
+}
+const gdbNs={ doc(path){
+  const id=gDocId(path);
+  return {
+    async get(){ try{ const f=await gFire(); const s=await f.get(f.ref(id)); return {exists:!!s.exists,data:()=>gDec(s.data||{})}; }catch(e){ throw gDbErr(e); } },
+    async set(d){ try{ const f=await gFire(); await f.set(f.ref(id),gEnc(d||{}),false); }catch(e){ throw gDbErr(e); } },
+    async update(d){ try{ const f=await gFire(); await f.set(f.ref(id),gEnc(d||{}),true); }catch(e){ throw gDbErr(e); } },
+    onSnapshot(next,err){
+      let stop=null, dead=false;
+      (async()=>{
+        try{
+          const f=await gFire();
+          const off=f.sub(f.ref(id),s=>{ if(!dead&&next) next({exists:!!s.exists,data:()=>gDec(s.data||{})}); },e=>{ if(!dead&&err) err(gDbErr(e)); });
+          if(dead){ try{ off(); }catch(e){} } else stop=off;
+        }catch(e){ if(!dead&&err) err(gDbErr(e)); }
+      })();
+      return ()=>{ dead=true; if(stop){ try{ stop(); }catch(e){} stop=null; } };
+    }
+  };
+} };
+
 /* ---------- boot ---------- */
 loadStats(); loadHistory(); loadSeats(); loadPrefs(); buildGuide();
 window.CDH={ gainXP:(n,why)=>{ gainXP(n,why); return takeNotices(); }, stats:()=>stats, saveStats:()=>saveStats(), sfx:k=>sfx(k),
@@ -6197,6 +6291,7 @@ setMode('game');
   try{ sampleFn = use ? await window.claude.use('sample') : null; }catch(e){ sampleFn=null; }
   if(!sampleFn) sampleFn = geminiSample;   /* Claudeのページでないときは Gemini を使う */
   try{ dbNs = use ? await window.claude.use('db') : null; }catch(e){ dbNs=null; }
+  if(!dbNs && gFbCfg() && gRoomId()) dbNs = gdbNs;   /* Claudeのページでないときは、くらしの手帳と同じつなぎ先を使う */
   try{ dlNs = use ? await window.claude.use('downloads') : null; }catch(e){ dlNs=null; }
   $('ai').hidden=!sampleFn;
   if(mode==='live') bootLive();
@@ -12526,7 +12621,7 @@ function renderSetup(){
   if(S.mode==='live'){
     const ok=!!H().db;
     b+=ok?'<div class="row"><label for="arRoomIn">部屋番号（入るとき）<input id="arRoomIn" maxlength="5" autocomplete="off" placeholder="例：K7QP2" style="text-transform:uppercase"></label><button class="btn ghost" type="button" id="arJoin">部屋に入る</button></div>':'';
-    $('arSetupNote').textContent=ok?'同じClaudeアカウントの2台の端末で遊べます。スタートで部屋を作り、もう1台で部屋番号を入れて「部屋に入る」。':'この画面ではリアルタイムは使えません（Claudeのページとして開いたときだけ）。離れた友達とは「コードで」を使ってください。';
+    $('arSetupNote').textContent=ok?'2台の端末で遊べます。スタートで部屋を作り、もう1台で部屋番号を入れて「部屋に入る」。':'リアルタイムを使うには、この端末で「くらしの手帳」をいちど開いてください。離れた友達とは「コードで」を使ってください。';
     $('arStart').textContent='部屋を作る'; $('arStart').disabled=!ok;
   }else{
     $('arStart').textContent=S.mode==='code'?'新しく始める':S.mode==='puzzle'?'問題を出す':'スタート'; $('arStart').disabled=false;
@@ -13888,7 +13983,7 @@ function renderHome(){
   h+='<details class="pt-modehelp"><summary>3つの遊び方のちがい（図）</summary><div class="pt-mhfig">'
     +'<p><b>🏠 同じ端末で</b><br>1台の画面を、みんなで交代して使います。<br><span class="pt-arrowline">あなた <i>→</i> 友達 <i>→</i> あなた <i>→</i> …</span></p>'
     +'<p><b>🔑 コードで</b><br>自分の番がおわると「コード」が出ます。LINEなどで送ってください。<br><span class="pt-arrowline">あなたの番 <i>→</i> コードを送る <i>→</i> 友達が読みこむ <i>→</i> 友達の番</span></p>'
-    +'<p><b>📡 リアルタイム</b><br>同じ部屋番号に入ると、みんなの画面が同時に動きます（同じClaudeアカウントの端末どうし）。<br><span class="pt-arrowline">部屋を作る <i>→</i> 番号を教える <i>→</i> 友達が入る <i>→</i> いっしょにスタート</span></p>'
+    +'<p><b>📡 リアルタイム</b><br>同じ部屋番号に入ると、みんなの画面が同時に動きます（同じ部屋番号を入れた端末どうし）。<br><span class="pt-arrowline">部屋を作る <i>→</i> 番号を教える <i>→</i> 友達が入る <i>→</i> いっしょにスタート</span></p>'
     +'<p><b>💬 スタンプ</b><br>「コードで」と「リアルタイム」では、画面の右下の 💬 から ひとこと おくれます。<br><span class="pt-arrowline">💬をおす <i>→</i> スタンプをえらぶ <i>→</i> 友達の画面に出る</span></p>'
     +'</div></details>';
   if(mode!=='local') h+=joinHtml(mode);
