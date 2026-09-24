@@ -1,6 +1,6 @@
 /* ぜんぶ入り：この入れ物（切りかえバー）だけをしまう。
    中の3つのアプリは、それぞれのアプリ自身がしまう（くらしの手帳・もんだいメーカー）。 */
-var CACHE = 'zenbu-v1';
+var CACHE = 'zenbu-v2';
 var FILES = ['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function(e){
