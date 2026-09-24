@@ -1,0 +1,16 @@
+{
+  "name": "もんだいメーカー",
+  "short_name": "もんだい",
+  "description": "授業の写真・スライド・配布資料から、自分だけの問題集を作って解く勉強アプリ",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F6F7",
+  "theme_color": "#2B6C7A",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

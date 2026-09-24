@@ -986,7 +986,7 @@ function sheetSync_(sheets){
 /* ===================== ショートカットから届く記録 ===================== */
 function inboxAdd_(p){
   var kind = String(p.kind || '');
-  if(['arrive', 'leave', 'pay', 'memo', 'task', 'img', 'health', 'quiz'].indexOf(kind) < 0) return { ok:false, error:'kind がちがいます' };
+  if(['arrive', 'leave', 'pay', 'memo', 'task', 'img', 'health'].indexOf(kind) < 0) return { ok:false, error:'kind がちがいます' };
   /* 写真（Goodnotesのページなど）：ドライブの「受け取り」に置いて、あとでAIが読む */
   if(kind === 'img'){
     var raw = String(p.data || ''), mm = raw.match(/^data:([^;]+);base64,(.*)$/);
@@ -1007,12 +1007,6 @@ function inboxAdd_(p){
     item.card = clip_(p.card, 40);
   }
   if(kind === 'memo') item.text = clip_(p.text, 500);
-  /* 授業の資料（iPhoneの「共有」から送った文章）… アプリで問題にする（#16） */
-  if(kind === 'quiz'){
-    item.text = clip_(p.text, 8000);
-    item.title = clip_(p.title, 60);
-    if(!item.text) return { ok:false, error:'文章がありません' };
-  }
   if(kind === 'task'){
     item.text = clip_(p.text, 200);
     if(!item.text) return { ok:false, error:'課題の名前がありません' };
@@ -1110,40 +1104,6 @@ function next_(){
   var lab = function(x){ return (x.d === now.ymd ? '' : x.d === ymdAdd_(now.ymd, 1) ? '明日 ' : md_(x.d) + ' ') + x.tm + ' ' + x.t; };
   return '次は ' + lab(list[0]) + (list[1] ? '\nそのあと ' + lab(list[1]) : '');
 }
-/* ===================== 授業の問題を出す（#170） =====================
-   アプリの「まとめ」に入れてある問題から出す。AI（Gemini）は使わない。 */
-var QUIZ_NUM_ = ['①', '②', '③', '④', '⑤', '⑥'];
-function quizPool_(){ var s = bigGet_('summary', null); return (s && s.quizAsk) || []; }
-function quizPend_(){ try{ return JSON.parse(props_().getProperty('QUIZ_PEND') || 'null'); }catch(e){ return null; } }
-function quizPendSet_(o){
-  if(o) props_().setProperty('QUIZ_PEND', JSON.stringify(o));
-  else props_().deleteProperty('QUIZ_PEND');
-}
-function askQuizNew_(){
-  var pool = quizPool_();
-  if(!pool.length) return 'まだ問題が届いていません。アプリの「勉強 › 授業の資料から問題」で問題を作ると、ここでも出せます。';
-  var q = pool[Math.floor(Math.random() * pool.length)];
-  quizPendSet_({ id:q.id, a:q.answer || [], exp:q.exp || '', q:q.q, c:q.choices || [], at:Date.now() });
-  var lines = ['📘 ' + (q.subject || '授業の問題'), q.q];
-  (q.choices || []).forEach(function(c, i){ lines.push((QUIZ_NUM_[i] || (i + 1) + '.') + ' ' + c); });
-  lines.push('', '番号で答えてください（わからないときは「こたえ」）。');
-  return lines.join('\n');
-}
-function askQuizAnswer_(pend, t){
-  var right = (pend.a || []).map(function(i){ return Number(i); }).filter(function(i){ return i > 0; });
-  var rightText = right.map(function(i){ return (QUIZ_NUM_[i - 1] || i) + ' ' + ((pend.c || [])[i - 1] || ''); }).join('　');
-  var num = String(t).replace(/[１-５]/g, function(c){ return String(c.charCodeAt(0) - 0xFF10); }).match(/[1-5]/g);
-  quizPendSet_(null);
-  var head;
-  if(!num){
-    head = '正しい答えは ' + rightText + ' です。';
-  }else{
-    var mine = num.map(Number);
-    var ok = mine.length === right.length && right.every(function(i){ return mine.indexOf(i) >= 0; });
-    head = ok ? '⭕️ 正かいです！' : '❌ ざんねん。正しい答えは ' + rightText + ' です。';
-  }
-  return head + (pend.exp ? '\n' + pend.exp : '') + '\n\n「問題」と送ると、次の問題を出します。';
-}
 function askHelp_(){
   var ai = props_().getProperty('GEMINI_KEY') && aiDataMeta_()
     ? ['ふつうのことばで、手帳のことを何でも聞けます（AIが手帳を読んで答えます）。',
@@ -1151,8 +1111,7 @@ function askHelp_(){
     : ['できること（ことばを送ってください）：'];
   return ai.concat(['・明日／今日 … 予定と授業', '・明日の1限 … その時間の授業', '・次 … 次の予定',
     '・課題／今日の課題 … 締切', '・テスト … 今週のテスト', '・バイト … 次のシフト', '・お金 … 今月のお金', '・暗記 … 復習の枚数',
-    '・おせわ … 育てている子のようす', '・来週 … 来週のまとめ', '・問題 … 授業の問題を1問出す（番号で答える）',
-    '・課題：レポート 10/3 … 課題を足す', '・メモ：〇〇 … メモを足す']).join('\n');
+    '・おせわ … 育てている子のようす', '・来週 … 来週のまとめ', '・課題：レポート 10/3 … 課題を足す', '・メモ：〇〇 … メモを足す']).join('\n');
 }
 function askAddTask_(s, opt){
   s = String(s || '').trim();
@@ -1434,12 +1393,6 @@ function ask_(q, opt){
   var mm = /^(?:メモ|めも)\s*[:：]\s*([\s\S]+)$/.exec(raw);
   if(mm){ inboxPush_({ kind:'memo', text:clip_(mm[1].trim(), 500) }, !!opt.locked); return 'メモを預かりました。アプリを開くと入ります。'; }
   if(!t || /^(help|へるぷ|ヘルプ|使い方|つかいかた|できること|なにができる|何ができる|\?)$/.test(t)) return askHelp_();
-  /* 授業の問題（#170）… 出すのも答え合わせも、AIを使わない */
-  var qpend = quizPend_();
-  if(qpend && Date.now() - Number(qpend.at || 0) < 30 * 60000 && /^(こたえ|答え|わからない|わかんない|[1-5１-５]([\s、,][1-5１-５])?)$/.test(t)){
-    return askQuizAnswer_(qpend, t);
-  }
-  if(/^(問題|もんだい|クイズ|くいず|quiz)$/.test(t) || /問題を?(出して|だして|ちょうだい)/.test(t)) return askQuizNew_();
   /* Discordの質問は、まずAIが手帳ぜんぶを読んで答える（AIのカギと手帳の中身が預けてあるときだけ） */
   if(opt.ai){
     try{

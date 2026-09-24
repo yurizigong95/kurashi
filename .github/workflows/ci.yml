@@ -38,8 +38,10 @@ jobs:
         run: |
           python3 -m http.server 8080 --bind 127.0.0.1 > server.log 2>&1 &
           sleep 2
-      - name: テスト
+      - name: テスト（くらしの手帳）
         run: node tools/ci-run.mjs
+      - name: テスト（もんだいメーカー）
+        run: TEST_URL=http://127.0.0.1:8080/study/tests/index.html node tools/ci-run.mjs
       - name: 表示の速さ（Lighthouse）
         continue-on-error: true
         run: |
