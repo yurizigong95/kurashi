@@ -3778,7 +3778,7 @@ body.pt-onehand .u2-endbar,body.pt-onehand .u2-waitrow{justify-content:flex-end}
           <button class="btn" id="btnAsk" type="submit">聞く</button>
           <button class="btn ghost" id="btnStop" type="button" hidden>止める</button>
         </form>
-        <p class="note">AIの返答にはあなたのClaudeの利用枠を使います。盤面の判定・ヒント・練習問題は無料で何度でも使えます。</p>
+        <p class="note">AIの返答には、あなたのGeminiのAPIキー（無料の枠）を使います。はじめて使うときにキーを聞きます。盤面の判定・ヒント・練習問題は無料で何度でも使えます。</p>
       </article>
 
       <details class="card form" id="viewCard">
@@ -6099,6 +6099,92 @@ function buildGuide(){
   $('guideValues').innerHTML='<b>駒の価値のめやす：</b> '+pl('p')+' 1 ／ '+pl('n')+' 3 ／ '+pl('b')+' 3 ／ '+pl('r')+' 5 ／ '+pl('q')+' 9<br>価値の低い駒で高い駒を取れたら得（駒得）。<br><b>キングは取られることはありません。</b>「次に取られる、しかも逃げられない」状態＝チェックメイトで勝負が決まります。キング同士は隣のマスに行けません。';
 }
 
+/* ---------- Gemini（AIのつなぎ先） ----------
+   Claudeのページで開いたときは今までどおり。そうでないとき（ふつうのウェブページ）は
+   GoogleのGemini APIを使う。APIキーはこの端末の中（localStorage）だけに置き、Google以外には送らない。
+   くらしの手帳・もんだいメーカーで入れたキーがあれば、それをそのまま使う。 */
+const GKEY='gd-gemini-key';
+const GMODELS=['gemini-3.6-flash','gemini-2.5-flash','gemini-flash-latest','gemini-2.0-flash'];
+let gAskAt=0;
+function gFromApp(name,pick){ try{ const j=JSON.parse(localStorage.getItem(name)||'null'); return j?String(pick(j)||'').trim():''; }catch(e){ return ''; } }
+function gKey(ask){
+  let k=''; try{ k=String(localStorage.getItem(GKEY)||'').trim(); }catch(e){}
+  if(!k) k=gFromApp('shiharai:v1',j=>(j.settings||{}).geminiKey);   /* くらしの手帳 */
+  if(!k) k=gFromApp('mondai:v1',j=>(j.set||{}).key);                /* もんだいメーカー */
+  if(!k&&ask&&Date.now()-gAskAt>60000){
+    gAskAt=Date.now();
+    const v=window.prompt('AIを使うには、GoogleのGemini APIキーがいります。\n（https://aistudio.google.com/apikey で無料で作れます）\n\nキーを貼りつけて「OK」：','');
+    k=String(v||'').trim();
+    if(k){ try{ localStorage.setItem(GKEY,k); }catch(e){} }
+  }
+  return k;
+}
+function gErr(code,text){ const e=new Error(text||code); e.code=code; e.text=text; return e; }
+function gText(j){
+  const c=((j&&j.candidates)||[])[0]||{}, ps=((c.content||{}).parts)||[];
+  return ps.filter(p=>typeof p.text==='string'&&!p.thought).map(p=>p.text).join('');
+}
+async function geminiSample(turns,opt){
+  opt=opt||{};
+  const key=gKey(true);
+  if(!key) throw gErr('no_key','AIを使うには、GeminiのAPIキーがいります。もう一度ボタンを押すと、入れ直せます。');
+  const contents=[];
+  (turns||[]).forEach(t=>{
+    const c=String((t&&t.content)||''); if(!c) return;
+    contents.push({role:(t&&t.role==='assistant')?'model':'user',parts:[{text:c}]});
+  });
+  const body={contents,generationConfig:{temperature:0.6,maxOutputTokens:2048}};
+  let lastErr='';
+  for(const m of GMODELS){
+    let res;
+    try{
+      res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+m+':streamGenerateContent?alt=sse',
+        {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal:opt.signal});
+    }catch(e){
+      if(e&&e.name==='AbortError') throw gErr('cancelled','');
+      throw gErr('network','ネットにつながりませんでした。');
+    }
+    if(!res.ok){
+      let j=null; try{ j=await res.json(); }catch(e){}
+      lastErr=(j&&j.error&&j.error.message)||('エラー '+res.status);
+      if(res.status===429) throw gErr('rate_limited','');
+      if(res.status===400||res.status===401||res.status===403){
+        try{ localStorage.removeItem(GKEY); }catch(e){}
+        gAskAt=0;
+        throw gErr('bad_key','APIキーが使えませんでした（'+lastErr+'）。もう一度ボタンを押すと、入れ直せます。');
+      }
+      if(/not available|not found|NOT_FOUND|unsupported|deprecated|update your code/i.test(lastErr)) continue;  /* 次のモデルで試す */
+      throw gErr('http',lastErr);
+    }
+    let text='';
+    const rd=res.body&&res.body.getReader?res.body.getReader():null;
+    if(!rd){ let j=null; try{ j=await res.json(); }catch(e){} text=gText(j); }
+    else{
+      const dec=new TextDecoder(); let buf='';
+      for(;;){
+        let r;
+        try{ r=await rd.read(); }
+        catch(e){ if(opt.signal&&opt.signal.aborted) throw gErr('cancelled',text); throw gErr('network','とちゅうで切れました。'); }
+        if(r.done) break;
+        buf+=dec.decode(r.value,{stream:true});
+        let i;
+        while((i=buf.indexOf('\n'))>=0){
+          const line=buf.slice(0,i).trim(); buf=buf.slice(i+1);
+          if(line.indexOf('data:')!==0) continue;
+          const d=line.slice(5).trim();
+          if(!d||d==='[DONE]') continue;
+          let j=null; try{ j=JSON.parse(d); }catch(e){ continue; }
+          const add=gText(j);
+          if(add){ text+=add; if(opt.onText){ try{ opt.onText({text}); }catch(e){} } }
+        }
+      }
+    }
+    if(text) return {text};
+    lastErr=lastErr||'答えが空でした';
+  }
+  throw gErr('http',lastErr||'つながりませんでした');
+}
+
 /* ---------- boot ---------- */
 loadStats(); loadHistory(); loadSeats(); loadPrefs(); buildGuide();
 window.CDH={ gainXP:(n,why)=>{ gainXP(n,why); return takeNotices(); }, stats:()=>stats, saveStats:()=>saveStats(), sfx:k=>sfx(k),
@@ -6109,6 +6195,7 @@ setMode('game');
 (async()=>{
   const use=window.claude&&window.claude.use;
   try{ sampleFn = use ? await window.claude.use('sample') : null; }catch(e){ sampleFn=null; }
+  if(!sampleFn) sampleFn = geminiSample;   /* Claudeのページでないときは Gemini を使う */
   try{ dbNs = use ? await window.claude.use('db') : null; }catch(e){ dbNs=null; }
   try{ dlNs = use ? await window.claude.use('downloads') : null; }catch(e){ dlNs=null; }
   $('ai').hidden=!sampleFn;
@@ -9777,7 +9864,7 @@ function mk(id,name,desc,theme){
     panel(s,v){ if(!v.can) return ''; const u=v.ui||{};
       return '<form class="ar-input" data-a="word" autocomplete="off"><input name="w" value="'+esc(u.draft||'')+'" placeholder="'+(s.need?'「'+esc(s.need)+'」から始まる言葉':'ひらがなで入力')+'" aria-label="言葉" '+(u.checking?'disabled':'')+' lang="ja"><button class="btn" type="submit" '+(u.checking?'disabled':'')+'>'+(u.checking?'たしかめ中…':'言う')+'</button><button class="btn ghost" type="button" data-a="pass" '+(u.checking?'disabled':'')+'>パス（♥−1）</button></form>'
         +(u.err?'<p class="note" style="color:var(--bad);margin:4px 0 0;text-align:center">'+esc(u.err)+'</p>':'')
-        +(v.mode!=='ai'&&H().sample&&s.words.length?'<p style="margin:4px 0 0;text-align:center"><button class="btn ghost sm" type="button" data-a="judge" data-free="1">いまの言葉、本当にある？（Claudeに聞く）</button>'+(u.judge?'<br><span class="note">'+esc(u.judge)+'</span>':'')+'</p>':''); },
+        +(v.mode!=='ai'&&H().sample&&s.words.length?'<p style="margin:4px 0 0;text-align:center"><button class="btn ghost sm" type="button" data-a="judge" data-free="1">いまの言葉、本当にある？（AIに聞く）</button>'+(u.judge?'<br><span class="note">'+esc(u.judge)+'</span>':'')+'</p>':''); },
     status(s,v){ if(!v.playing) return null; if(v.thinking) return 'AIが言葉を考えています…'; if(!v.can) return '相手の番です'; return s.need?'「'+s.need+'」から始まる言葉を入れてね':'言葉を入れてね'; },
     info(s){ return s.log==='pass'?'<p class="note" style="margin:6px 0 0">パスしたので、ハートが1つへりました。</p>':''; },
     click(s,d,v,el){
@@ -9803,7 +9890,7 @@ function mk(id,name,desc,theme){
     if(ok){ if(!v.play({w})) v.setUi({}); } else v.setUi({err:'「'+w+'」は使えないみたい：'+(why||'知られていない言葉かも')+'。別の言葉にしてね（ハートはへりません）',draft:''});
   }
   async function judgeLast(s,v){
-    const w=s.words[s.words.length-1]; v.setUi({judge:'Claudeが「'+w+'」をたしかめています…'});
+    const w=s.words[s.words.length-1]; v.setUi({judge:'AIが「'+w+'」をたしかめています…'});
     try{ const r=await H().sample([{role:'user',content:'「'+w+'」は実在する日本語の名詞ですか？'+(s.theme?'テーマ「'+THEMES[s.theme]+'」に合いますか？':'')+'2文以内で、子どもにもわかるように答えて。'}],{cache:false}); v.setUi({judge:(r&&r.text||'').slice(0,200)}); }catch(e){ v.setUi({judge:'たしかめられませんでした。'}); }
   }
   return G;
@@ -13145,7 +13232,7 @@ function renderAsk(){
   const key=(fp?'f':'a')+(sample?1:0);
   if($('arAskQuick').dataset.k!==key){ $('arAskQuick').dataset.k=key; $('arAskQuick').innerHTML=Q.filter(x=>sample||x[0]!=='tips').map(x=>'<button type="button" data-kind="'+x[0]+'" data-q="'+esc(x[1])+'">'+esc(x[2])+'</button>').join(''); }
   $('arAskForm').hidden=!sample;
-  $('arAskNote').innerHTML=fp?'友達との対戦中は、<b>ルールの質問だけ</b>できます（ヒントはなし）。':sample?'答えにはあなたのClaudeの利用枠を使います。実況・早見表・ナイス判定は無料です。':'「今どうすればいい？」はAIエンジンのおすすめを図で見せます。文章で答えるAIコーチは、Claudeのページとして開いたときだけ使えます。';
+  $('arAskNote').innerHTML=fp?'友達との対戦中は、<b>ルールの質問だけ</b>できます（ヒントはなし）。':sample?'答えには、あなたのGeminiのAPIキーを使います。実況・早見表・ナイス判定は無料です。':'「今どうすればいい？」はAIエンジンのおすすめを図で見せます。文章で答えるAIコーチは、Claudeのページとして開いたときだけ使えます。';
 }
 
 /* ---------- render ---------- */
@@ -34026,7 +34113,7 @@ async function makeBio(C,s,p,btn){ const f=lifeFacts(C,s,p); let d=null; if(btn)
     +'<p class="pp-note">'+(d.by==='claude'?'この自伝はClaudeが書きました。':'かんたん版の自伝です（Claudeのページで開くと、Claudeが書きます）。')+'</p></div>','book'); }
 PT.afterFinish=function(s,C){ if(!C||C.id!=='life') return; const A=document.querySelector('#ptStage .rt2-cmd'); if(!A||A.querySelector('.pt-bio')) return;
   const box=document.createElement('div'); box.className='pt-bio';
-  box.innerHTML='<h4>📖 人生の自伝</h4><p class="rt2-note">'+(sample()?'Claudeが、その人の一生を本人の自伝にします。':'その人の一生を、自伝のようにまとめます。')+'</p><div class="pt-biob">'+s.players.map((pl,p)=>'<button type="button" class="rt2-b" data-bio="'+p+'"><span class="pt-pchip sm" style="background:'+pl.color+'">'+(p+1)+'</span> '+E(pl.name)+'の自伝</button>').join('')+'</div>';
+  box.innerHTML='<h4>📖 人生の自伝</h4><p class="rt2-note">'+(sample()?'AIが、その人の一生を本人の自伝にします。':'その人の一生を、自伝のようにまとめます。')+'</p><div class="pt-biob">'+s.players.map((pl,p)=>'<button type="button" class="rt2-b" data-bio="'+p+'"><span class="pt-pchip sm" style="background:'+pl.color+'">'+(p+1)+'</span> '+E(pl.name)+'の自伝</button>').join('')+'</div>';
   A.appendChild(box); box.querySelectorAll('[data-bio]').forEach(b=>b.onclick=()=>makeBio(C,s,+b.dataset.bio,b)); };
 })();
 
