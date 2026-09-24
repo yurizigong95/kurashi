@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ぜんぶ入り">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" id="tcolor" content="#1E2A32">
+<meta name="description" content="くらしの手帳・もんだいメーカー・ゲーム道場を、1つのアプリでまとめて使う">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>ぜんぶ入り</title>
+<style>
+:root{
+  --bar:#1E2A32; --bar2:#2A3945; --ink:#fff; --dim:rgba(255,255,255,.62);
+  --top:env(safe-area-inset-top,0px);
+}
+*{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--bar);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif; }
+/* 上の切りかえバー */
+#bar{ position:fixed; left:0; right:0; top:0; z-index:5; background:var(--bar); color:var(--ink);
+  padding:calc(var(--top) + 6px) 8px 6px; display:flex; gap:6px; align-items:center;
+  box-shadow:0 1px 0 rgba(255,255,255,.08); transition:background .2s; }
+#tabs{ display:flex; gap:4px; flex:1; background:var(--bar2); border-radius:11px; padding:3px; }
+#tabs button{ flex:1; min-width:0; border:0; background:transparent; color:var(--dim); font:inherit; font-size:13px; font-weight:700;
+  padding:8px 2px; border-radius:9px; cursor:pointer; line-height:1.2; white-space:nowrap; }
+#tabs button[aria-selected="true"]{ background:#fff; color:#1E2A32; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+#out{ flex:0 0 auto; border:0; background:var(--bar2); color:var(--dim); font:inherit; font-size:12px; font-weight:700;
+  padding:9px 10px; border-radius:10px; cursor:pointer; white-space:nowrap; }
+#out:active{ opacity:.6; }
+/* アプリを出すところ */
+#stage{ position:fixed; left:0; right:0; bottom:0; top:calc(var(--top) + 52px); background:#fff; }
+#stage iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:#fff; }
+#stage iframe[hidden]{ display:none; }
+/* よみこみ中・うまく開けないとき */
+#msg{ position:absolute; inset:0; display:none; place-content:center; text-align:center; color:#41505c;
+  background:#fff; font-size:14px; line-height:1.9; padding:24px; }
+#msg.on{ display:grid; }
+#msg a{ color:#2C5A98; font-weight:700; }
+.spin{ width:26px; height:26px; margin:0 auto 10px; border:3px solid #dfe5ea; border-top-color:#2C5A98;
+  border-radius:50%; animation:sp .8s linear infinite; }
+@keyframes sp{ to{ transform:rotate(360deg); } }
+@media (prefers-color-scheme:dark){
+  #stage,#stage iframe,#msg{ background:#12171b; }
+  #msg{ color:#c8d2d9; }
+}
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="tabs" role="tablist"></div>
+  <button id="out" type="button" title="いま見ているアプリを、そのアプリだけで開く">⤢ 1つで開く</button>
+</div>
+<main id="stage"><div id="msg"></div></main>
+<script>
+/* ぜんぶ入り：3つのアプリを1つの画面でまとめて使う。
+   それぞれのアプリはそのまま（保存場所もコードも別）で、行き来だけをここが受けもつ。 */
+(function(){
+  'use strict';
+  var APPS = [
+    { id:'kurashi', name:'くらし',     url:'../index.html',       color:'#EAD0D7' },
+    { id:'study',   name:'もんだい',   url:'../study/index.html', color:'#2B6C7A' },
+    { id:'game',    name:'ゲーム',     url:'../game/index.html',  color:'#1E2A32' }
+  ];
+  var KEY = 'zenbu:tab';
+  var frames = {}, now = '', timer = 0;
+  var tabs = document.getElementById('tabs');
+  var stage = document.getElementById('stage');
+  var msg = document.getElementById('msg');
+  var tcolor = document.getElementById('tcolor');
+
+  function app(id){
+    for(var i = 0; i < APPS.length; i++) if(APPS[i].id === id) return APPS[i];
+    return APPS[0];
+  }
+  function save(id){ try{ localStorage.setItem(KEY, id); }catch(e){} }
+  function load(){ try{ return localStorage.getItem(KEY) || ''; }catch(e){ return ''; } }
+
+  /* よみこみ中の出し方（長く待つときは、直接ひらく道を出す） */
+  function wait(on, a){
+    clearTimeout(timer);
+    msg.className = on ? 'on' : '';
+    if(!on){ msg.innerHTML = ''; return; }
+    msg.innerHTML = '<div><div class="spin"></div>よみこみ中…</div>';
+    timer = setTimeout(function(){
+      msg.innerHTML = '<div><b>うまく開けませんでした</b><br>ネットにつながっているか確かめてください。<br>' +
+        '<a href="' + a.url + '">' + a.name + 'を1つで開く</a></div>';
+    }, 12000);
+  }
+
+  function go(id, push){
+    var a = app(id);
+    if(now === a.id) return;
+    now = a.id;
+    save(a.id);
+    /* バーの色を、そのアプリの色に合わせる */
+    tcolor.setAttribute('content', a.color);
+    var btns = tabs.querySelectorAll('button');
+    for(var i = 0; i < btns.length; i++){
+      btns[i].setAttribute('aria-selected', btns[i].dataset.id === a.id ? 'true' : 'false');
+    }
+    for(var k in frames){ if(frames[k]) frames[k].hidden = (k !== a.id); }
+    if(!frames[a.id]){
+      var f = document.createElement('iframe');
+      f.src = a.url;
+      f.title = a.name;
+      f.allow = 'camera; microphone; geolocation; clipboard-write; fullscreen; autoplay';
+      f.setAttribute('allowfullscreen', '');
+      f.addEventListener('load', function(){ if(now === a.id) wait(false, a); });
+      frames[a.id] = f;
+      stage.insertBefore(f, msg);
+      wait(true, a);
+    }else{
+      wait(false, a);
+    }
+    if(push && location.hash !== '#' + a.id){
+      try{ history.replaceState(null, '', '#' + a.id); }catch(e){ location.hash = a.id; }
+    }
+  }
+
+  /* 切りかえボタンを作る */
+  APPS.forEach(function(a){
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = a.name; b.dataset.id = a.id;
+    b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false');
+    b.addEventListener('click', function(){ go(a.id, true); });
+    tabs.appendChild(b);
+  });
+  /* いま見ているアプリを、そのアプリだけで開く */
+  document.getElementById('out').addEventListener('click', function(){ location.href = app(now).url; });
+  window.addEventListener('hashchange', function(){ go((location.hash || '').replace('#', ''), false); });
+
+  go((location.hash || '').replace('#', '') || load() || 'kurashi', true);
+
+  /* ホーム画面に置いたときのため（オフラインでも開ける） */
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js')['catch'](function(){});
+    });
+  }
+})();
+</script>
+</body>
+</html>

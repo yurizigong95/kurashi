@@ -1,5 +1,5 @@
 /* くらしの手帳：オフライン用・通知の受け取り・前の版にもどす */
-var CACHE = 'kurashi-v15';
+var CACHE = 'kurashi-v16';
 var PREV = 'kurashi-prev';      /* ひとつ前の版のファイル（「前の版にもどす」で使う） */
 var FLAGS = 'kurashi-flags';    /* 前の版を使っているかの印 */
 var FILES = [
@@ -65,11 +65,14 @@ self.addEventListener('fetch', function(e){
   var url = new URL(e.request.url);
   if(url.origin !== location.origin) return;           /* 天気やFirebase・Googleはそのまま */
   if(url.pathname.indexOf('/tests/') >= 0) return;     /* テストのページはしまわない */
+  /* 同じ場所に置いてある別のアプリ（もんだいメーカー・ゲーム道場・ぜんぶ入り）。
+     くらしの手帳の画面を代わりに出したり、「前の版」にもどしたりしてはいけない */
+  var other = /\/(study|game|all)\//.test(url.pathname);
   var isPage = (e.request.mode === 'navigate');
   var fromCache = function(){
     return caches.match(e.request, { ignoreSearch:true }).then(function(r){
       /* ページのときだけ、しまってある index.html で代わりにする（css や js の代わりに HTML を返さない） */
-      return r || (isPage ? caches.match('./index.html') : undefined) || Response.error();
+      return r || (isPage && !other ? caches.match('./index.html') : undefined) || Response.error();
     });
   };
   var network = function(){
@@ -79,6 +82,8 @@ self.addEventListener('fetch', function(e){
       return caches.match(e.request, { ignoreSearch:true }).then(function(r){ return r || res; });
     })['catch'](fromCache);
   };
+  /* 別のアプリは、ふつうにネットから（つながらないときだけ、しまったもの） */
+  if(other){ e.respondWith(network()); return; }
   /* ?latest をつけて開いたら、前の版をやめて最新にもどす */
   if(isPage && url.searchParams.has('latest')){
     usePrev = false;

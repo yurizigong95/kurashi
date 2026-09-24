@@ -3,19 +3,20 @@
 支払い・履修・時間割・予定・バイト・相談をひとつにまとめた、自分用のアプリです。
 GitHub Pages（https://yurizigong95.github.io/kurashi/ ）で動かします。
 
-## もう1つのアプリ：もんだいメーカー（`study/`）
+## 4つのアプリ
 
-授業の資料から問題を作って解く勉強アプリを、**別のアプリ**として `study/` に置いています。
-くらしの手帳とはコードも保存場所も別で、1つで完結します。
+この1つのフォルダから、4つのアプリを公開しています。どれもスマホのホーム画面に置けます。
 
-- 開く： https://yurizigong95.github.io/kurashi/study/
-- くわしくは `study/README.md`
+| アプリ | 場所 | 開く | 中身 |
+|---|---|---|---|
+| くらしの手帳 | `/`（このフォルダ） | https://yurizigong95.github.io/kurashi/ | 支払い・履修・時間割・予定・バイト・相談 |
+| もんだいメーカー | `study/` | https://yurizigong95.github.io/kurashi/study/ | 授業の写真・スライド・配布資料から問題を作って解く勉強アプリ |
+| ゲーム道場 | `game/` | https://yurizigong95.github.io/kurashi/game/ | ひといきつくための小さなゲーム集（58種・HTML1枚） |
+| ぜんぶ入り | `all/` | https://yurizigong95.github.io/kurashi/all/ | 上の3つを、上の切りかえバーで行き来できる1つのアプリ |
 
-## おまけ：ゲーム道場（`game/`）
-
-ひといきつくための小さなゲーム集（58種）を `game/` に置いています。ファイル1つで動きます。
-
-- 開く： https://yurizigong95.github.io/kurashi/game/
+- 3つのアプリはそれぞれ独立していて、コードも保存場所も別です（かたほうを直しても、もう一方は影響を受けません）。
+- 「ぜんぶ入り」は入れ物だけで、中身は本物の3つのアプリをそのまま出しています。保存したものは、どちらから開いても同じです。
+- もんだいメーカーのくわしい説明は `study/README.md`
 
 ## ファイルの中身
 
@@ -54,6 +55,9 @@ GitHub Pages（https://yurizigong95.github.io/kurashi/ ）で動かします。
 | `.github/workflows/ci.yml` | GitHubにアップロードしたときの自動テスト |
 | `tests/` | 自動テスト（本物のデータには触れません） |
 | `sw.js` / `manifest.json` / `icon-*.png` | ホーム画面に置いたときのための設定 |
+| `study/` | もんだいメーカー（別のアプリ。1つで完結） |
+| `game/index.html` | ゲーム道場（HTML1枚のゲーム集） |
+| `all/` | ぜんぶ入り（3つを行き来する入れ物。index.html・sw.js・manifest.json・アイコン） |
 
 `js/` のファイルは、`index.html` に書いた順番で読みこみます。順番は変えないでください。
 

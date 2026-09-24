@@ -1,6 +1,6 @@
 {
-    "build":  "2026-09-21a",
-    "made":  "2026-09-21 19:11",
+    "build":  "2026-09-24a",
+    "made":  "2026-09-24 15:12",
     "files":  [
                   {
                       "path":  "css/app.css",
@@ -121,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "fd0647fe7ffcdd6f"
+                      "sha256":  "ed5679116df7af86"
                   },
                   {
                       "path":  "js/data.js",
@@ -237,7 +237,7 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "5581a93e7e57cd4e"
+                      "sha256":  "839cdd735a65170f"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -249,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "4ca575f1dcc72b7b"
+                      "sha256":  "de7f048bb77ba9f9"
                   }
               ]
 }

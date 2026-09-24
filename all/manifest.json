@@ -1,0 +1,16 @@
+{
+  "name": "ぜんぶ入り（くらし・べんきょう・ゲーム）",
+  "short_name": "ぜんぶ入り",
+  "description": "くらしの手帳・もんだいメーカー・ゲーム道場を、1つのアプリでまとめて使う",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1E2A32",
+  "theme_color": "#1E2A32",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

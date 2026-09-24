@@ -1,5 +1,6 @@
 // くらしの手帳：ファイルの抜けを調べる（GitHub Actions で動く）
 // index.html と sw.js に書いてあるファイルが、ぜんぶそろっているかを確かめる。
+// いっしょに置いている別のアプリ（study/ game/ all/）も見る。
 import { readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
@@ -22,6 +23,13 @@ if (existsSync('study/index.html')) {
   need.add('study/manifest.json');
   need.delete('study/');
 }
+
+// ぜんぶ入り（all/）は1枚もの。いっしょに置くファイルだけ確かめる
+if (existsSync('all/index.html')) {
+  for (const f of ['all/index.html', 'all/sw.js', 'all/manifest.json', 'all/icon-180.png', 'all/icon-192.png', 'all/icon-512.png']) need.add(f);
+}
+// ゲーム道場（game/）も1枚もの
+if (existsSync('game/index.html')) need.add('game/index.html');
 
 let bad = 0;
 for (const f of [...need].sort()) {
