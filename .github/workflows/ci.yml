@@ -42,6 +42,8 @@ jobs:
         run: node tools/ci-run.mjs
       - name: テスト（もんだいメーカー）
         run: TEST_URL=http://127.0.0.1:8080/study/tests/index.html node tools/ci-run.mjs
+      - name: テスト（ぜんぶ入り）
+        run: TEST_URL=http://127.0.0.1:8080/all/index.html node tools/ci-zenbu.mjs
       - name: 表示の速さ（Lighthouse）
         continue-on-error: true
         run: |
