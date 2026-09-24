@@ -11,6 +11,12 @@ GitHub Pages（https://yurizigong95.github.io/kurashi/ ）で動かします。
 - 開く： https://yurizigong95.github.io/kurashi/study/
 - くわしくは `study/README.md`
 
+## おまけ：ゲーム道場（`game/`）
+
+ひといきつくための小さなゲーム集（58種）を `game/` に置いています。ファイル1つで動きます。
+
+- 開く： https://yurizigong95.github.io/kurashi/game/
+
 ## ファイルの中身
 
 | 場所 | 中身 |
