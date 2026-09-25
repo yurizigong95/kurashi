@@ -6106,11 +6106,13 @@ function buildGuide(){
 const GKEY='gd-gemini-key';
 const GMODELS=['gemini-3.6-flash','gemini-2.5-flash','gemini-flash-latest','gemini-2.0-flash'];
 let gAskAt=0;
+const gBad={};   /* 使えなかったキー（くらしの手帳などから借りたキーを、また使わないように） */
 function gFromApp(name,pick){ try{ const j=JSON.parse(localStorage.getItem(name)||'null'); return j?String(pick(j)||'').trim():''; }catch(e){ return ''; } }
 function gKey(ask){
   let k=''; try{ k=String(localStorage.getItem(GKEY)||'').trim(); }catch(e){}
-  if(!k) k=gFromApp('shiharai:v1',j=>(j.settings||{}).geminiKey);   /* くらしの手帳 */
-  if(!k) k=gFromApp('mondai:v1',j=>(j.set||{}).key);                /* もんだいメーカー */
+  if(gBad[k]) k='';
+  if(!k){ k=gFromApp('shiharai:v1',j=>(j.settings||{}).geminiKey); if(gBad[k]) k=''; }   /* くらしの手帳 */
+  if(!k){ k=gFromApp('mondai:v1',j=>(j.set||{}).key); if(gBad[k]) k=''; }                /* もんだいメーカー */
   if(!k&&ask&&Date.now()-gAskAt>60000){
     gAskAt=Date.now();
     const v=window.prompt('AIを使うには、GoogleのGemini APIキーがいります。\n（https://aistudio.google.com/apikey で無料で作れます）\n\nキーを貼りつけて「OK」：','');
@@ -6148,8 +6150,10 @@ async function geminiSample(turns,opt){
       let j=null; try{ j=await res.json(); }catch(e){}
       lastErr=(j&&j.error&&j.error.message)||('エラー '+res.status);
       if(res.status===429) throw gErr('rate_limited','');
-      if(res.status===400||res.status===401||res.status===403){
-        try{ localStorage.removeItem(GKEY); }catch(e){}
+      /* キーがちがうときだけ（400 は、キーのまちがいと分かるときだけ。ほかの 400 でキーを消さない） */
+      if(res.status===401||res.status===403||(res.status===400&&/api[ _]?key/i.test(lastErr))){
+        gBad[key]=1;
+        try{ if(localStorage.getItem(GKEY)===key) localStorage.removeItem(GKEY); }catch(e){}
         gAskAt=0;
         throw gErr('bad_key','APIキーが使えませんでした（'+lastErr+'）。もう一度ボタンを押すと、入れ直せます。');
       }
@@ -6257,6 +6261,8 @@ function gFire(){
       sub:(r,n,e)=>r.onSnapshot(s=>n({exists:s.exists,data:s.data()}),e)
     };
   })();
+  const mine=gFbP;
+  mine.catch(()=>{ if(gFbP===mine) gFbP=null; });   /* 読めなかったら（ネットがないときなど）、次にもう一度ためす */
   return gFbP;
 }
 const gdbNs={ doc(path){
@@ -34219,78 +34225,146 @@ PT.afterFinish=function(s,C){ if(!C||C.id!=='life') return; const A=document.que
 /* ===== ゲーム道場：ほかの端末と、記録をそろえる =====
    ・つなぎ先は、くらしの手帳と同じところ（上の「リアルタイム対局」と同じしくみを使う）
    ・そろえるのは、この端末にたまった記録だけ（XP・成績・対局の記録・名前・設定）
-   ・APIキー（gd-gemini-key）は、ぜったいに送りません
-   ・開いたときに、新しいほうをもらいます。遊んでいるとちゅうで入れかわらないよう、
-     もらったときだけ1回開き直します。 */
+   ・APIキー（gd-gemini-key）と、この端末だけの印（端末の番号・部屋の席・ネット対戦のとちゅう）は送りません
+   ・記録は1つずつ「いつ変わったか」をおぼえて、新しいほうを採ります（2台で別の遊びをしても消えない）
+   ・もらったときは開き直します。遊んでいるとちゅうで入れかわらないよう、開いたときと、
+     1分以上ほかのアプリにいて、もどってきたときだけです
+   ・Claudeのページとして開いたときは、みんなで使う置き場なので、同期しません */
 (function(){
   'use strict';
   var WANT = /^(chess-dojo-|gd-party)/;         /* そろえる記録 */
-  var SKIP = { 'gd-gemini-key':1, 'gd-sync-at':1, 'gd-sync-dev':1 };
-  var MAX = 700 * 1024;                          /* 入れものの大きさ（これをこえたら送らない） */
-  var last = '', timer = null, pushing = false;
+  var SKIP = { 'gd-gemini-key':1, 'gd-party-dev':1, 'chess-dojo-arseats':1, 'chess-dojo-rooms':1 };   /* この端末だけのもの */
+  var KT = 'gd-sync-kt', SEEN = 'gd-sync-seen', DEV = 'gd-sync-dev', RL = 'gd-sync-reload';
+  var MAX = 900 * 1024;                          /* 1つの置き場は1MBまで（バイトで数える） */
+  var KEEP = 60 * 86400000;                      /* 消したしるしは60日のこす */
+  var prev = null, kt = {}, dirty = false, timer = null, pushing = false, hiddenAt = 0;
 
+  function own(o, k){ return Object.prototype.hasOwnProperty.call(o, k); }
   function get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
-  function set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+  function set(k, v){ try{ localStorage.setItem(k, v); return true; }catch(e){ return false; } }
+  function del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+  function parse(s, d){ try{ var v = JSON.parse(s); return (v && typeof v === 'object') ? v : d; }catch(e){ return d; } }
+  function hs(s){ var x = 5381; s = String(s); for(var i = 0; i < s.length; i++) x = ((x << 5) + x + s.charCodeAt(i)) | 0; return (x >>> 0).toString(36) + '.' + s.length; }
+  /* そろえてよい記録か（ネット対戦のとちゅうのセーブは、その端末の席がついているので入れない） */
+  function ok(k, v){
+    if(!k || own(SKIP, k) || !WANT.test(k)) return false;
+    if(v != null && k.indexOf('gd-party-save-') === 0){ var j = parse(v, null); if(j && j.net) return false; }
+    return true;
+  }
   function snap(){
     var out = {};
     try{
       for(var i = 0; i < localStorage.length; i++){
-        var k = localStorage.key(i);
-        if(!k || SKIP[k] || !WANT.test(k)) continue;
-        out[k] = localStorage.getItem(k);
+        var k = localStorage.key(i), v = k ? localStorage.getItem(k) : null;
+        if(v != null && ok(k, v)) out[k] = v;
       }
     }catch(e){}
     return out;
   }
-  function devId(){
-    var v = get('gd-sync-dev');
-    if(!v){ v = Math.random().toString(36).slice(2, 10); set('gd-sync-dev', v); }
-    return v;
-  }
+  function devId(){ var v = get(DEV); if(!v){ v = Math.random().toString(36).slice(2, 10); set(DEV, v); } return v; }
   function ref(){
+    if(window.claude && window.claude.use) return null;          /* Claudeのページ（みんなの置き場）では同期しない */
     var db = window.CDH && window.CDH.db;
     return db ? db.doc('state/all') : null;
   }
-  /* もらった記録を入れて、1回だけ開き直す */
-  function take(d){
-    var obj = null;
-    try{ obj = JSON.parse(d.d || '{}'); }catch(e){ return; }
-    if(!obj || typeof obj !== 'object') return;
-    var changed = false;
-    Object.keys(obj).forEach(function(k){
-      if(SKIP[k] || !WANT.test(k)) return;
-      if(get(k) !== obj[k]){ set(k, obj[k]); changed = true; }
-    });
-    set('gd-sync-at', String(d.at || Date.now()));
-    last = JSON.stringify(snap());
-    if(!changed) return;
-    var once = '';
-    try{ once = sessionStorage.getItem('gd-sync-reload') || ''; }catch(e){}
-    if(once) return;                                  /* 1回だけ */
-    try{ sessionStorage.setItem('gd-sync-reload', '1'); }catch(e){}
-    location.reload();
+  function keep(now){
+    var sh = {}, cut = Date.now() - KEEP;
+    Object.keys(now).forEach(function(k){ sh[k] = hs(now[k]); });
+    Object.keys(kt).forEach(function(k){ if(!own(now, k) && get(k) == null && Number(kt[k]) < cut) delete kt[k]; });
+    set(SEEN, JSON.stringify(sh)); set(KT, JSON.stringify(kt));
   }
+  /* 前に見たときから変わった記録に、時こくをつける */
+  function track(){
+    var now = snap(), t = Date.now(), ch = false, gone = function(k){ return !own(now, k) && get(k) == null; };
+    if(!prev){
+      var sh = parse(get(SEEN), null);
+      if(!sh){                                     /* はじめて：いまある記録は「古いもの」あつかい（あちらを先に入れる） */
+        Object.keys(now).forEach(function(k){ if(kt[k] == null) kt[k] = 0; });
+        ch = true;
+      }else{                                       /* 開いたとき：前に閉じたときの印とくらべる */
+        Object.keys(now).forEach(function(k){ if(sh[k] !== hs(now[k])){ kt[k] = t; ch = dirty = true; } });
+        Object.keys(sh).forEach(function(k){ if(gone(k)){ kt[k] = t; ch = dirty = true; } });
+      }
+    }else{
+      Object.keys(now).forEach(function(k){ if(prev[k] !== now[k]){ kt[k] = t; ch = dirty = true; } });
+      Object.keys(prev).forEach(function(k){ if(gone(k)){ kt[k] = t; ch = dirty = true; } });
+    }
+    prev = now;
+    if(ch) keep(now);
+    return now;
+  }
+  /* 置き場の中身（前の版の置き方も読めるように） */
+  function remoteOf(d){
+    d = d || {};
+    var v = parse(d.d, {}), k = parse(d.kt, null);
+    if(!k){ k = {}; Object.keys(v).forEach(function(x){ k[x] = Number(d.at) || 0; }); }
+    return { v:v, k:k };
+  }
+  /* あちらのほうが新しいものと、こちらのほうが新しいもの */
+  function diff(rem){
+    var now = prev || snap(), got = {}, nk = {}, need = false;
+    Object.keys(rem.k).forEach(function(k){
+      var has = own(rem.v, k), rv = has ? rem.v[k] : null, cur = get(k);
+      if(!ok(k, rv) || (cur != null && !ok(k, cur))) return;
+      var r = Number(rem.k[k]) || 0, l = Number(kt[k]) || 0;
+      var fresh = has && cur == null && kt[k] == null;         /* こちらにまだない記録は、もらう */
+      if(r > l || fresh){
+        nk[k] = r;
+        if(cur !== rv) got[k] = rv;
+      }else if(r < l) need = true;
+    });
+    Object.keys(now).forEach(function(k){ if(!own(rem.k, k)) need = true; });     /* こちらにしかない */
+    return { got:got, kt:nk, need:need };
+  }
+  /* 続けて何回も開き直さない（もしものときの安全のため。15秒あける） */
+  function mayReload(){ var t = 0; try{ t = Number(sessionStorage.getItem(RL) || 0); }catch(e){} return Date.now() - t > 15000; }
+  /* もらう：あちらの新しい記録を入れて、開き直す */
   async function pull(){
     var r = ref(); if(!r) return;
+    track();
     var s = await r.get();
-    if(!s || !s.exists) return;
-    var d = s.data() || {};
-    if(!d.d) return;
-    if(Number(d.at || 0) <= Number(get('gd-sync-at') || 0)) return;   /* もう持っている */
-    if(String(d.dev || '') === devId()) return;                        /* 自分が送ったもの */
-    take(d);
+    if(!s || !s.exists){ dirty = true; return; }
+    var p = diff(remoteOf(s.data()));
+    if(p.need) dirty = true;
+    var ks = Object.keys(p.got);
+    if(!ks.length){ Object.keys(p.kt).forEach(function(k){ kt[k] = p.kt[k]; }); keep(prev); return; }
+    if(!mayReload()) return;                             /* 続けて開き直さない（また、あとで） */
+    ks.forEach(function(k){ if(p.got[k] == null) del(k); else set(k, p.got[k]); });
+    Object.keys(p.kt).forEach(function(k){ kt[k] = p.kt[k]; });
+    prev = snap(); keep(prev);
+    try{ sessionStorage.setItem(RL, String(Date.now())); }catch(e){}
+    location.reload();
   }
+  /* 送る：置き場の中身と合わせて、新しいほうを置く（こちらでまだ入れていない、あちらの新しいものも消さない） */
   async function push(){
     var r = ref(); if(!r || pushing) return;
-    var now = JSON.stringify(snap());
-    if(now === last) return;
-    if(now.length > MAX){ last = now; return; }        /* 大きすぎるときは、そっとあきらめる */
+    track();
+    if(!dirty) return;
     pushing = true;
     try{
-      var at = Date.now();
-      await r.set({ v:1, at:at, dev:devId(), d:now });
-      set('gd-sync-at', String(at));
-      last = now;
+      var s = await r.get(), cur = (s && s.exists) ? (s.data() || {}) : null;
+      var rem = cur ? remoteOf(cur) : { v:{}, k:{} }, now = prev, outV = {}, outK = {}, cut = Date.now() - KEEP;
+      Object.keys(rem.k).forEach(function(k){
+        var has = own(rem.v, k);
+        if(!ok(k, has ? rem.v[k] : null)) return;
+        if(!has && (Number(rem.k[k]) || 0) < cut) return;         /* 古い消したしるしは、そうじ */
+        outK[k] = Number(rem.k[k]) || 0;
+        if(has) outV[k] = rem.v[k];
+      });
+      Object.keys(now).forEach(function(k){
+        var l = Number(kt[k]) || 0;
+        if(!own(outK, k) || l >= outK[k]){ outK[k] = l; outV[k] = now[k]; }
+      });
+      Object.keys(kt).forEach(function(k){
+        if(own(now, k) || get(k) != null || !ok(k, null)) return;   /* こちらで消したもの */
+        var l = Number(kt[k]) || 0;
+        if(l >= cut && (!own(outK, k) || l > outK[k])){ outK[k] = l; delete outV[k]; }
+      });
+      var d = JSON.stringify(outV), kk = JSON.stringify(outK);
+      if(cur && cur.d === d && cur.kt === kk){ dirty = false; return; }       /* もう同じ */
+      if(new Blob([d, kk]).size > MAX){ dirty = false; return; }             /* 大きすぎるときは、そっとあきらめる */
+      await r.set({ v:2, at:Date.now(), dev:devId(), d:d, kt:kk });
+      dirty = false;
     }catch(e){ /* つながらないときは、次のときに */ }
     finally{ pushing = false; }
   }
@@ -34301,11 +34375,11 @@ PT.afterFinish=function(s,C){ if(!C||C.id!=='life') return; const A=document.que
   /* つなぎ先ができるのを、少し待ってからはじめる */
   (function wait(n){
     if(ref()){
-      last = JSON.stringify(snap());
+      kt = parse(get(KT), {}) || {};
       pull().catch(function(){}).then(function(){ loop(); });
       document.addEventListener('visibilitychange', function(){
-        if(document.hidden) push().catch(function(){});
-        else pull().catch(function(){});
+        if(document.hidden){ hiddenAt = Date.now(); push().catch(function(){}); }
+        else if(hiddenAt && Date.now() - hiddenAt >= 60000){ hiddenAt = 0; pull().catch(function(){}); }
       });
       window.addEventListener('pagehide', function(){ push().catch(function(){}); });
       return;

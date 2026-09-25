@@ -56,6 +56,7 @@ async function fresh(){
   W.mk.mat = { no:'', memo:'', at:'', title:'' };
   W.drill.why = {};
   W.lib.tab = 'sub'; W.lib.edit = ''; W.lib.qEdit = ''; W.lib.del = ''; W.lib.matFilter = ''; W.lib.qtype = ''; W.lib.star = 0; W.lib.q = '';
+  if(W.nt){ W.nt = { edit:'', q:'', sub:'', star:0, del:'' }; }
   W.view = { tab:'home', sub:'', unit:'' };
   try{ W.localStorage.removeItem(W.KEY + ':run'); }catch(e){}
   W.saveNow();
@@ -65,7 +66,8 @@ async function fresh(){
   W.__FAKE_UPLOAD = null;
   if(W.syStop) W.syStop();
   W.__FAKE_SYNC = null;
-  if(W.SY){ W.SY.applied = ''; W.SY.at = 0; W.SY.msg = ''; W.SY.busy = 0; W.SY.again = 0; }
+  if(W.SY){ W.SY.applied = ''; W.SY.at = 0; W.SY.msg = ''; W.SY.busy = 0; W.SY.again = 0; W.SY.renderWait = 0; }
+  W.mk.busy = ''; W.mk.warp = null;
   W.render();
   await frames();
 }

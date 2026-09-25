@@ -49,6 +49,13 @@ h3.grp{margin:16px 0 8px; font-size:14px; color:var(--sub)}
   background:var(--amber-bg); color:var(--amber); border-radius:12px;
   padding:10px 12px; font-size:13px; line-height:1.7; margin:0 0 10px;
 }
+/* メモ */
+.card.note{ cursor:pointer; }
+.card.note:active{ opacity:.7; }
+.card.note .nt-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.card.note .nt-star{ color:var(--amber); font-size:14px; }
+.card.note .s{ margin-top:4px; }
+.card.note .s.sub{ color:var(--sub); font-size:12px; }
 /* どれくらい使いそうか（大きさ・トークン・お金） */
 .costbox, .warnbox{
   border-radius:12px; padding:10px 12px; margin:10px 0 0; line-height:1.8;

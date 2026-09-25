@@ -338,7 +338,7 @@ async function loadZip(f){
     /* 大きなPDF・録音・動画は、ほどかずに、そこを切り出してAIに預ける（メモリを使わない） */
     if(!/\.(pptx|docx|txt|md|csv)$/i.test(base) && (e.usize > INLINE_MAX || /\.(mp3|m4a|wav|mp4|mov)$/i.test(base))){
       var bk = /\.pdf$/i.test(base) ? 'pdf' : /\.(mp3|m4a|wav)$/i.test(base) ? 'audio' : /\.(mp4|mov)$/i.test(base) ? 'video' : 'photo';
-      var bm = { pdf:'application/pdf', audio:'audio/mpeg', video:'video/mp4' }[bk] || (/\.png$/i.test(base) ? 'image/png' : 'image/jpeg');
+      var bm = zipMime(base);
       if(e.method === 0){ out.push(fBig(await zipCut(f, e, base, bm), bk)); continue; }
       if(e.usize > ZIP_INFLATE_MAX) continue;                 /* 大きすぎてほどけないものは、とばす */
     }
@@ -356,8 +356,7 @@ async function loadZip(f){
       var kind = /\.pdf$/i.test(base) ? 'pdf'
         : /\.(mp3|m4a|wav)$/i.test(base) ? 'audio'
         : /\.(mp4|mov)$/i.test(base) ? 'video' : 'photo';
-      var mime = { pdf:'application/pdf', audio:'audio/mpeg', video:'video/mp4' }[kind] ||
-        (/\.png$/i.test(base) ? 'image/png' : 'image/jpeg');
+      var mime = zipMime(base);
       if(kind !== 'photo' && kind !== 'pdf') { out.push(fBig(blobFile(bytes, base, mime), kind)); continue; }
       if(bytes.length <= INLINE_MAX) out.push({ name:base, kind:kind, url:bytesToDataUrl(bytes, mime), text:'', size:bytes.length });
       else out.push(fBig(blobFile(bytes, base, mime), kind));
@@ -365,6 +364,21 @@ async function loadZip(f){
   }
   if(!out.length) throw new Error('「' + f.name + '」の中身を読めませんでした');
   return out;
+}
+/* data: の形を、ファイルにもどす（大きすぎて、くっつけて送れないとき用） */
+function dataUrlBlob(url, name){
+  var s = String(url || ''), m = /^data:([^;,]*)((?:;[^;,]*)*),/.exec(s);
+  if(!m) return null;
+  var body = s.slice(m[0].length), bin = /;base64/.test(m[2]) ? atob(body) : decodeURIComponent(body);
+  var out = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return blobFile(out, name || 'file', m[1] || 'application/octet-stream');
+}
+/* ZIP の中の録音・動画・PDF・写真の種類 */
+function zipMime(base){
+  var x = (String(base).match(/\.([a-z0-9]+)$/i) || [])[1] || '';
+  return { pdf:'application/pdf', mp3:'audio/mpeg', m4a:'audio/mp4', wav:'audio/wav', mp4:'video/mp4', mov:'video/quicktime',
+           png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg' }[x.toLowerCase()] || 'application/octet-stream';
 }
 /* バイトの列を、1つのファイルとしてあつかえる形にする */
 function blobFile(bytes, name, mime){

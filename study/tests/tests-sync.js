@@ -137,3 +137,118 @@ test('同期：つなぎ先がないときは、静かに止まる', async funct
   ok(st.text.indexOf('できません') >= 0, '画面にも、そう出る：' + st.text);
   ok(!(await W.syStart()), 'はじまらない');
 });
+
+/* ほんとうの端末と同じやり方で置く（目次の印も、ほんものと同じ計算） */
+async function putRemoteReal(net, payload){
+  var pk = await W.syPack(payload);
+  var parts = W.syCut(pk.s, W.SY_PART);
+  var hs = parts.map(function(p){ return W.hash(p); });
+  for(var i = 0; i < parts.length; i++) await net.set(W.syDoc('p' + i), { d:parts[i], i:i, n:parts.length, h:hs[i], at:Date.now() });
+  var h = W.hash(hs.join(','));
+  await net.set(W.syDoc('idx'), { v:1, h:h, hs:hs, n:parts.length, z:pk.z, at:Date.now(), dev:'ipad', imgs:{} });
+  return h;
+}
+
+test('同期：同じ中身なら、ならび順がちがっても同じ印になる（2台で送り合いにならない）', async function(){
+  var s1 = W.subAdd('成人看護学'), s2 = W.subAdd('母性看護学');
+  addQ(s1.id, { qt:'tf', q:'問題1', c:['○（正しい）', '×（まちがい）'], a:[0] });
+  addQ(s2.id, { qt:'tf', q:'問題2', c:['○（正しい）', '×（まちがい）'], a:[0] });
+  var a = await W.syPack(W.syPayload());
+  W.S.subs.reverse(); W.S.qs.reverse();
+  /* 中のならびも変える（別の端末で読みこむと、ならびが変わることがある） */
+  W.S.qs = W.S.qs.map(function(q){ var o = {}; Object.keys(q).reverse().forEach(function(k){ o[k] = q[k]; }); return o; });
+  var b = await W.syPack(W.syPayload());
+  eq(b.s, a.s, 'ならびがちがっても、同じ字になる');
+});
+
+test('同期：もらった中身がこちらと同じなら、保存も送りなおしもしない', async function(){
+  var net = fakeNet();
+  var s = W.subAdd('成人看護学');
+  addQ(s.id, { qt:'tf', q:'同じ中身', c:['○（正しい）', '×（まちがい）'], a:[0] });
+  W.saveNow();
+  ok(await W.syStart(), 'つながった');
+  await until(function(){ return net.docs[W.syDoc('idx')]; }, 4000, '置かれるのを待つ');
+  /* ほかの端末が、同じ中身をちがうならびで置いた */
+  var p = W.syPayload();
+  p.qs = p.qs.slice().reverse(); p.subs = p.subs.slice().reverse();
+  await putRemoteReal(net, p);
+  await sleep(300);
+  var sets = 0, orig = net.set;
+  net.set = function(id, d){ sets++; return orig(id, d); };
+  var mt = W.S.mt;
+  await W.syPush();
+  eq(sets, 0, '送りなおさない');
+  eq(W.S.mt, mt, '保存もしない');
+  net.set = orig;
+  W.syStop();
+});
+
+test('同期：同じ時こくに直したものは、どちらの端末でも同じほうになる', async function(){
+  var a = { id:'q1', mt:1000, q:'こちらの文' }, b = { id:'q1', mt:1000, q:'あちらの文' };
+  var x = W.syMergeList([a], [b], {})[0], y = W.syMergeList([b], [a], {})[0];
+  eq(x.q, y.q, 'どちらから見ても同じ');
+});
+
+test('同期：置き場がとちゅうでこわれていても、こちらの中身で置きなおす', async function(){
+  var net = fakeNet();
+  var s = W.subAdd('基礎看護学');
+  addQ(s.id, { qt:'tf', q:'こわれても消えない', c:['○（正しい）', '×（まちがい）'], a:[0] });
+  W.saveNow();
+  /* 目次はあるのに、切れはしの印が合わない（書いているとちゅうで止まった） */
+  await net.set(W.syDoc('p0'), { d:'xxxx', i:0, n:1, h:'bad', at:Date.now() });
+  await net.set(W.syDoc('idx'), { v:1, h:'h-broken', hs:['good'], n:1, z:1, at:Date.now(), dev:'ipad', imgs:{} });
+  W.SY.on = 1;
+  ok(await W.syPush(), '送れた');
+  var idx = net.docs[W.syDoc('idx')];
+  ok(idx.h !== 'h-broken', '目次が新しくなった');
+  var got = await W.syUnpack(net.docs[W.syDoc('p0')].d, idx.z);
+  eq(got.qs.length, 1, 'こちらの中身で置きなおした');
+  W.syStop();
+});
+
+test('同期：ほかの端末で直した設定も、端末にのこる', async function(){
+  var net = fakeNet();
+  ok(await W.syStart(), 'つながった');
+  var p = emptyPayload();
+  p.set = { goal:25 }; p.smt = Date.now() + 1000;
+  await putRemote(net, p);
+  await until(function(){ return W.toNum(W.S.set.goal) === 25; }, 4000, '設定が届くのを待つ');
+  var saved = JSON.parse(W.localStorage.getItem(W.KEY));
+  eq(W.toNum(saved.set.goal), 25, '端末にも保存された（開きなおしても、そのまま）');
+  W.syStop();
+});
+
+test('バックアップ：書き出したファイルに、APIキーは入れない', async function(){
+  W.S.set.key = 'AIza-SECRET-KEY-123';
+  var got = null, orig = W.URL.createObjectURL, oclick = W.HTMLAnchorElement.prototype.click;
+  W.URL.createObjectURL = function(b){ got = b; return 'blob:x'; };
+  W.HTMLAnchorElement.prototype.click = function(){};      /* ほんとうには、ダウンロードしない */
+  try{ W.setExport(); }finally{ W.URL.createObjectURL = orig; W.HTMLAnchorElement.prototype.click = oclick; }
+  ok(got, '書き出した');
+  var t = await got.text();
+  ok(t.indexOf('AIza-SECRET-KEY-123') < 0, 'キーは入っていない');
+  ok(t.indexOf('"qs"') >= 0, '中身は入っている');
+  W.S.set.key = '';
+});
+
+test('同期：字を打っているあいだは、描き直さない（キーボードが引っこまない）', async function(){
+  var net = fakeNet();
+  var n = W.noteAdd({ body:'書いているメモ' });
+  W.saveNow();
+  await click('tab', 'note');
+  await click('nt-open', n.id);
+  ok(await W.syStart(), 'つながった');
+  var el = W.document.getElementById('nt_body');
+  el.focus();
+  ok(W.isTyping(), '打っているところ');
+  var p = emptyPayload();
+  p.qs.push({ id:'q_typing', mt:Date.now(), sub:'', qt:'tf', q:'ほかの端末の問題', c:['○（正しい）', '×（まちがい）'], a:[0], lv:2 });
+  await putRemote(net, p);
+  await until(function(){ return W.qGet('q_typing'); }, 4000, '届くのを待つ');
+  await frames();
+  ok(W.document.getElementById('nt_body') === el, '入力らんは、そのまま（描き直していない）');
+  ok(W.SY.renderWait, '打ちおわったら描き直す');
+  el.blur();
+  await until(function(){ return !W.SY.renderWait; }, 3000, '打ちおわったあと描き直すのを待つ');
+  W.syStop();
+});

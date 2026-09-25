@@ -1,12 +1,12 @@
 /* もんだいメーカー：オフラインでも開けるようにする
    ・新しい版を出すときは、CACHE の名前を変えてください（古いものは自動で消えます）。 */
-var CACHE = 'mondai-v3';
+var CACHE = 'mondai-v5';
 var FILES = [
   './', './index.html', './manifest.json',
   './css/app.css',
   './js/core.js', './js/data.js', './js/ai.js', './js/model.js', './js/sync.js', './js/ui.js',
   './js/files.js', './js/gen.js', './js/make.js', './js/make-view.js',
-  './js/drill.js', './js/lib.js', './js/home.js', './js/set.js', './js/main.js',
+  './js/drill.js', './js/note.js', './js/lib.js', './js/home.js', './js/set.js', './js/main.js',
   './icon-180.png', './icon-192.png', './icon-512.png'
 ];
 self.addEventListener('install', function(e){
@@ -14,7 +14,8 @@ self.addEventListener('install', function(e){
 });
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(ks){
-    return Promise.all(ks.map(function(k){ return k === CACHE ? null : caches.delete(k); }));
+    /* 消すのは、このアプリの古い版だけ（同じ場所の、くらしの手帳・ぜんぶ入りのしまったものは消さない） */
+    return Promise.all(ks.map(function(k){ return (k.indexOf('mondai-') === 0 && k !== CACHE) ? caches.delete(k) : null; }));
   }).then(function(){ return self.clients.claim(); }));
 });
 self.addEventListener('fetch', function(e){

@@ -124,7 +124,9 @@ function setStatsPart(){
 }
 /* ===== バックアップ ===== */
 function setExport(){
-  var data = JSON.stringify({ app:'mondai', ver:1, at:new Date().toISOString(), data:S }, null, 0);
+  /* APIキーは書き出さない（ファイルを人にわたしても、キーがもれないように） */
+  var out = Object.assign({}, S, { set:Object.assign({}, S.set, { key:'' }) });
+  var data = JSON.stringify({ app:'mondai', ver:1, at:new Date().toISOString(), data:out }, null, 0);
   try{
     var blob = new Blob([data], { type:'application/json' });
     var a = document.createElement('a');
@@ -177,13 +179,15 @@ function setImport(){
       var d = (j && j.data) ? j.data : j;
       if(!d || !Array.isArray(d.qs)) throw new Error('このアプリのバックアップではないようです');
       if(!ask('いまのデータを、読みこんだ内容に入れかえます。よろしいですか？')) return;
-      ['subs', 'mats', 'qs', 'moc'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
-      ['log', 'day', 'why', 'ui'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
+      ['subs', 'mats', 'qs', 'moc', 'notes'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
+      ['log', 'day', 'why', 'ui', 'del'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
       if(d.set && typeof d.set === 'object'){
         var keep = S.set.key;                       /* キーは、いまの端末のものを残す */
         S.set = Object.assign({}, DEFAULT_SET, d.set);
-        if(!S.set.key) S.set.key = keep;
+        S.set.key = keep || S.set.key || '';      /* この端末にキーがなければ、ファイルのキーを使う */
+        if(typeof syTouchSet === 'function') syTouchSet();   /* 読みこんだ設定を、いちばん新しいものにする */
       }
+      if(typeof nt === 'object'){ nt.edit = ''; nt.del = ''; }
       saveNow();
       toast('読みこみました（問題' + S.qs.length + '問）');
       go('home');
@@ -219,7 +223,8 @@ onAct('st-sync', function(){
   syPush().then(function(okp){ toast(okp ? 'そろえました' : (SY.msg || '合わせられませんでした'), !okp); render(); });
 });
 onAct('st-syncsw', function(){
-  if(SY.on){ syStop(); toast('同期をやめました'); render(); return; }
+  if(SY.on){ syStop(); SY.off = 1; toast('同期をやめました'); render(); return; }
+  SY.off = 0;
   syStart().then(function(okp){ toast(okp ? '同期をはじめました' : (SY.msg || 'つなげませんでした'), !okp); render(); });
 });
 onAct('st-lim', function(){

@@ -22,7 +22,9 @@ var SY = {
   applied:'',      /* さいごに合わせた版の印 */
   unsub:null,      /* 見はりをやめる関数 */
   timer:null,
-  imgBusy:0
+  imgBusy:0,
+  off:0,           /* 自分で「同期をやめる」にした */
+  renderWait:0     /* 字を打ちおわったら、描き直す */
 };
 var SY_COL = 'shiharai';
 var SY_PART = 700 * 1024;        /* 1つの切れはしの大きさ（Firestore は1MBまで） */
@@ -98,6 +100,8 @@ function syFire(){
       sub:function(id, next, err){ return col.doc(id).onSnapshot(function(s){ next(s.exists ? s.data() : null); }, err); }
     };
   })();
+  var mine = syFbP;
+  mine.catch(function(){ if(syFbP === mine) syFbP = null; });   /* 読めなかったら（ネットがないときなど）、次にもう一度ためす */
   return syFbP;
 }
 /* テストのときは、にせのつなぎ先に差しかえられるように */
@@ -114,8 +118,25 @@ function syUnb64(s){
   for(var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+/* いつも同じ字になるように書き出す（中の順番をそろえる）。
+   順番がちがうだけで「ちがう中身」と思うと、2台がずっと送り合ってしまうため。 */
+function syStable(v){
+  if(Array.isArray(v)) return '[' + v.map(function(x){ return syStable(x === undefined ? null : x); }).join(',') + ']';
+  if(v && typeof v === 'object'){
+    return '{' + Object.keys(v).sort().filter(function(k){ return v[k] !== undefined && typeof v[k] !== 'function'; })
+      .map(function(k){ return JSON.stringify(k) + ':' + syStable(v[k]); }).join(',') + '}';
+  }
+  return JSON.stringify(v === undefined ? null : v);
+}
+/* id の順にならべる（端末によって順番が変わらない、ただの文字の大小でくらべる） */
+function syById(list){
+  return (list || []).filter(function(x){ return x && x.id; }).slice().sort(function(a, b){
+    var x = String(a.id), y = String(b.id);
+    return x < y ? -1 : x > y ? 1 : 0;
+  });
+}
 async function syPack(obj){
-  var text = JSON.stringify(obj);
+  var text = syStable(obj);
   if(typeof CompressionStream === 'undefined'){
     return { z:0, s:syB64(new TextEncoder().encode(text)) };
   }
@@ -158,7 +179,8 @@ function syPayload(){
   var set = {};
   SY_SET_KEYS.forEach(function(k){ if(S.set[k] !== undefined) set[k] = S.set[k]; });
   return {
-    v:1, subs:S.subs || [], mats:S.mats || [], qs:S.qs || [], moc:S.moc || [],
+    v:1, subs:syById(S.subs), mats:syById(S.mats), qs:syById(S.qs), moc:syById(S.moc),
+    notes:syById(S.notes).filter(function(n){ return String(n.body || '').trim(); }),   /* 書きはじめる前のからのメモは送らない */
     log:S.log || {}, day:S.day || {}, why:S.why || {}, del:S.del || {},
     set:set, smt:toNum(S.set.smt)
   };
@@ -171,6 +193,8 @@ function syMergeList(mine, theirs, dead){
     if(!x || !x.id) return;
     var a = by[x.id];
     if(!a || toNum(x.mt) > toNum(a.mt)) by[x.id] = x;
+    /* 同じ時こくに直していたら、どの端末でも同じほうを採る（中身の字の大小で決める） */
+    else if(toNum(x.mt) === toNum(a.mt) && syStable(x) > syStable(a)) by[x.id] = x;
   });
   Object.keys(by).forEach(function(id){
     var x = by[id];
@@ -179,9 +203,14 @@ function syMergeList(mine, theirs, dead){
   });
   return out;
 }
+function syMergeSnap(){
+  var set = {};
+  SY_SET_KEYS.forEach(function(k){ set[k] = S.set[k]; });
+  return syStable([syById(S.subs), syById(S.mats), syById(S.qs), syById(S.moc), syById(S.notes), S.log, S.day, S.why, set]);
+}
 function syMerge(rem){
   if(!rem || typeof rem !== 'object') return false;
-  var before = JSON.stringify([S.subs, S.mats, S.qs, S.moc, S.log, S.day, S.why]);
+  var before = syMergeSnap();
   var dead = Object.assign({}, S.del || {});
   Object.keys(rem.del || {}).forEach(function(k){
     if(toNum((rem.del || {})[k]) > toNum(dead[k])) dead[k] = toNum(rem.del[k]);
@@ -193,6 +222,7 @@ function syMerge(rem){
   S.mats = syMergeList(S.mats, rem.mats, dead);
   S.qs = syMergeList(S.qs, rem.qs, dead);
   S.moc = syMergeList(S.moc, rem.moc, dead);
+  S.notes = syMergeList(S.notes, rem.notes, dead);
 
   /* といた記録：といた回数が多いほう（回数はふえるだけ） */
   var log = S.log || {}, rl = rem.log || {};
@@ -224,7 +254,7 @@ function syMerge(rem){
     SY_SET_KEYS.forEach(function(k){ if(rem.set[k] !== undefined) S.set[k] = rem.set[k]; });
     S.set.smt = toNum(rem.smt);
   }
-  return JSON.stringify([S.subs, S.mats, S.qs, S.moc, S.log, S.day, S.why]) !== before;
+  return syMergeSnap() !== before;
 }
 /* 設定を直したときは、時こくを入れておく（どちらが新しいか分かるように） */
 function syTouchSet(){ S.set.smt = Date.now(); syTouch(); }
@@ -242,15 +272,19 @@ async function syPush(){
   try{
     var net = await syNet();
     /* 先に、あちらの新しいぶんを取りこんでから送る（上書きしないように） */
-    var idx = await net.get(syDoc('idx'));
-    if(idx && idx.h && idx.h !== SY.applied) await syApply(net, idx);
+    var idx = await net.get(syDoc('idx')), broken = false;
+    if(idx && idx.h && idx.h !== SY.applied){
+      /* 置き場がこわれていたら（書いているとちゅうで止まったなど）、こちらの中身で置きなおす。
+         ほかの端末は、自分の中身と合わせてから送りなおすので、なくなりません */
+      try{ await syApply(net, idx); }catch(e){ if(!e.broken) throw e; broken = true; }
+    }
 
     var pk = await syPack(syPayload());
     var parts = syCut(pk.s, SY_PART);
     var hs = parts.map(function(p){ return hash(p); });
     var h = hash(hs.join(','));
-    if(idx && idx.h === h){ SY.applied = h; SY.at = Date.now(); return true; }
-    var old = (idx && Array.isArray(idx.hs)) ? idx.hs : [];
+    if(!broken && idx && idx.h === h){ SY.applied = h; SY.at = Date.now(); return true; }
+    var old = (!broken && idx && Array.isArray(idx.hs)) ? idx.hs : [];   /* こわれていたら、ぜんぶ置きなおす */
     for(var i = 0; i < parts.length; i++){
       if(old[i] === hs[i]) continue;                 /* 変わっていない切れはしは、送らない */
       await net.set(syDoc('p' + i), { d:parts[i], i:i, n:parts.length, h:hs[i], at:Date.now() });
@@ -265,7 +299,7 @@ async function syPush(){
   }finally{
     SY.busy = 0;
     if(SY.again){ SY.again = 0; syTouch(); }
-    if(typeof render === 'function' && view.tab === 'set') render();
+    if(view.tab === 'set') syRender();
   }
 }
 /* 写真：まだ置いていないものを置く。置き場所の一覧を返す */
@@ -293,19 +327,23 @@ async function syImgIndex(net, idx){
 async function syApply(net, idx){
   if(!idx || !idx.n) return false;
   var s = '';
+  var hs = Array.isArray(idx.hs) ? idx.hs : [];
   for(var i = 0; i < idx.n; i++){
     var p = await net.get(syDoc('p' + i));
-    if(!p || typeof p.d !== 'string') throw new Error('とちゅうまでしか読めませんでした');
+    /* 切れはしが足りない・ほかの端末が書いているとちゅう（印がちがう） */
+    if(!p || typeof p.d !== 'string' || (hs[i] && p.h && p.h !== hs[i])) throw syBroken();
     s += p.d;
   }
-  var rem = await syUnpack(s, idx.z);
+  var rem = null;
+  try{ rem = await syUnpack(s, idx.z); }catch(e){ throw syBroken(); }
   var changed = syMerge(rem);
   SY.applied = idx.h; SY.at = Date.now();
-  if(changed){ saveNow(); if(typeof render === 'function') render(); }
-  else save();
+  /* 中身が変わったときだけ保存する（変わっていないのに保存すると、また送ってしまう） */
+  if(changed){ saveNow(); syRender(); }
   syImgPull(net, idx).catch(function(){});
   return changed;
 }
+function syBroken(){ var e = new Error('とちゅうまでしか読めませんでした'); e.broken = 1; return e; }
 /* 足りない写真を、あとから取りに行く */
 async function syImgPull(net, idx){
   if(SY.imgBusy) return;
@@ -347,10 +385,15 @@ async function syStart(){
       if(!idx || !idx.h || idx.h === SY.applied) return;
       if(SY.busy){ SY.again = 1; return; }
       SY.busy = 1;
-      syApply(net, idx).catch(function(e){ SY.msg = syErrText(e); }).then(function(){
+      SY.msg = '';
+      syApply(net, idx).catch(function(e){
+        /* 書いているとちゅうだったかもしれない：少し待ってから、もう一度 */
+        if(e && e.broken){ SY.again = 1; return; }
+        SY.msg = syErrText(e);
+      }).then(function(){
         SY.busy = 0;
-        SY.msg = '';
-        if(typeof render === 'function') render();
+        if(SY.again){ SY.again = 0; syTouch(); }
+        if(view.tab === 'set') syRender();
       });
     }, function(e){ SY.msg = syErrText(e); });
     SY.msg = '';
@@ -375,6 +418,37 @@ function syState(){
   if(SY.busy) return { on:1, text:'いま合わせています…', sub:'' };
   if(SY.at) return { on:1, text:'そろっています', sub:'さいごに合わせたのは ' + hhmm(SY.at) };
   return { on:SY.on, text:SY.on ? 'つないでいます…' : '同期はまだです', sub:'' };
+}
+/* 同期のあとの描き直し：字を打っているとちゅうなら、打ちおわる（入力らんから出る）まで待つ。
+   とちゅうで描き直すと、キーボードが引っこんでしまうため。 */
+function syRender(){
+  if(typeof render !== 'function') return;
+  if(typeof isTyping === 'function' && isTyping()){ SY.renderWait = 1; return; }
+  render();
+}
+/* 指でおしているあいだは描き直さない（ボタンが入れかわって、おしたのが消えてしまうため） */
+var syPtr = 0;
+function syRenderAfter(){
+  setTimeout(function(){
+    if(!SY.renderWait) return;
+    if(typeof isTyping === 'function' && isTyping()) return;   /* 次の入力らんに移っただけ */
+    if(syPtr){ syRenderAfter(); return; }
+    SY.renderWait = 0;
+    render();
+  }, 250);
+}
+if(typeof document !== 'undefined'){
+  document.addEventListener('pointerdown', function(){ syPtr = 1; }, true);
+  document.addEventListener('pointerup', function(){ syPtr = 0; }, true);
+  document.addEventListener('pointercancel', function(){ syPtr = 0; }, true);
+  document.addEventListener('focusout', function(){ if(SY.renderWait) syRenderAfter(); });
+}
+/* ネットがもどったら、つなぎなおす・送りなおす（自分で「やめる」にしたときは、つながない） */
+if(typeof window !== 'undefined'){
+  window.addEventListener('online', function(){
+    if(SY.on){ syTouch(); return; }
+    if(!SY.off && syReady()) syStart();
+  });
 }
 function hhmm(t){
   var d = new Date(t);
