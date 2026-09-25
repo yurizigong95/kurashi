@@ -5,7 +5,7 @@
    読みこむ順番：core → data → ai → files → subj → make → drill → lib → main */
 
 var APP_NAME = 'もんだいメーカー';
-var APP_BUILD = '2026-09-25b';
+var APP_BUILD = '2026-09-25c';
 
 /* テストモード：?test=1 か、パソコンの中（localhost）で開いたとき。
    本物の保存にはさわらない（?real=1 で本番あつかい）。 */
@@ -116,7 +116,7 @@ var DEFAULT_SET = {
 };
 var S = null;
 function blankState(){
-  return { ver:1, subs:[], mats:[], qs:[], log:{}, day:{}, moc:[], why:{},
+  return { ver:1, subs:[], mats:[], qs:[], notes:[], log:{}, day:{}, moc:[], why:{},
            del:{}, set:Object.assign({}, DEFAULT_SET), ui:{}, mt:0 };
 }
 function load(){
@@ -126,7 +126,7 @@ function load(){
   if(raw){ try{ d = JSON.parse(raw); }catch(e){ d = null; } }
   S = blankState();
   if(d && typeof d === 'object'){
-    ['subs', 'mats', 'qs', 'moc'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
+    ['subs', 'mats', 'qs', 'moc', 'notes'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
     ['log', 'day', 'why', 'ui', 'del'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
     S.set = Object.assign({}, DEFAULT_SET, (d.set && typeof d.set === 'object') ? d.set : {});
     S.mt = toNum(d.mt);
@@ -327,6 +327,7 @@ var TABS = [
   ['home', '🏠', 'ホーム'],
   ['drill', '✍️', 'とく'],
   ['make', '📸', 'つくる'],
+  ['note', '📝', 'メモ'],
   ['lib', '🗂', '科目'],
   ['set', '⚙️', '設定']
 ];

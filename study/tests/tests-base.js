@@ -1,11 +1,13 @@
 /* 土台：画面・科目・保存・設定 */
 
-test('アプリがひらいて、下のタブが5つ出る', async function(){
+test('アプリがひらいて、下のタブが6つ出る', async function(){
   var navs = $$('#nav .navb');
-  eq(navs.length, 5, 'タブの数');
+  eq(navs.length, 6, 'タブの数');
   ok(has('きょうの勉強') || has('はじめかた'), 'ホームが出ている');
   await click('tab', 'make');
   ok(has('資料をえらぶ'), 'つくるタブ');
+  await click('tab', 'note');
+  ok(has('新しいメモ'), 'メモタブ');
   await click('tab', 'lib');
   ok(has('科目をふやす'), '科目タブ');
   await click('tab', 'set');

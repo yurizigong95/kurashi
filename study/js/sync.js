@@ -158,7 +158,7 @@ function syPayload(){
   var set = {};
   SY_SET_KEYS.forEach(function(k){ if(S.set[k] !== undefined) set[k] = S.set[k]; });
   return {
-    v:1, subs:S.subs || [], mats:S.mats || [], qs:S.qs || [], moc:S.moc || [],
+    v:1, subs:S.subs || [], mats:S.mats || [], qs:S.qs || [], moc:S.moc || [], notes:S.notes || [],
     log:S.log || {}, day:S.day || {}, why:S.why || {}, del:S.del || {},
     set:set, smt:toNum(S.set.smt)
   };
@@ -181,7 +181,7 @@ function syMergeList(mine, theirs, dead){
 }
 function syMerge(rem){
   if(!rem || typeof rem !== 'object') return false;
-  var before = JSON.stringify([S.subs, S.mats, S.qs, S.moc, S.log, S.day, S.why]);
+  var before = JSON.stringify([S.subs, S.mats, S.qs, S.moc, S.notes, S.log, S.day, S.why]);
   var dead = Object.assign({}, S.del || {});
   Object.keys(rem.del || {}).forEach(function(k){
     if(toNum((rem.del || {})[k]) > toNum(dead[k])) dead[k] = toNum(rem.del[k]);
@@ -193,6 +193,7 @@ function syMerge(rem){
   S.mats = syMergeList(S.mats, rem.mats, dead);
   S.qs = syMergeList(S.qs, rem.qs, dead);
   S.moc = syMergeList(S.moc, rem.moc, dead);
+  S.notes = syMergeList(S.notes, rem.notes, dead);
 
   /* といた記録：といた回数が多いほう（回数はふえるだけ） */
   var log = S.log || {}, rl = rem.log || {};
@@ -224,7 +225,7 @@ function syMerge(rem){
     SY_SET_KEYS.forEach(function(k){ if(rem.set[k] !== undefined) S.set[k] = rem.set[k]; });
     S.set.smt = toNum(rem.smt);
   }
-  return JSON.stringify([S.subs, S.mats, S.qs, S.moc, S.log, S.day, S.why]) !== before;
+  return JSON.stringify([S.subs, S.mats, S.qs, S.moc, S.notes, S.log, S.day, S.why]) !== before;
 }
 /* 設定を直したときは、時こくを入れておく（どちらが新しいか分かるように） */
 function syTouchSet(){ S.set.smt = Date.now(); syTouch(); }

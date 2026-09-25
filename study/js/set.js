@@ -177,8 +177,8 @@ function setImport(){
       var d = (j && j.data) ? j.data : j;
       if(!d || !Array.isArray(d.qs)) throw new Error('このアプリのバックアップではないようです');
       if(!ask('いまのデータを、読みこんだ内容に入れかえます。よろしいですか？')) return;
-      ['subs', 'mats', 'qs', 'moc'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
-      ['log', 'day', 'why', 'ui'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
+      ['subs', 'mats', 'qs', 'moc', 'notes'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
+      ['log', 'day', 'why', 'ui', 'del'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
       if(d.set && typeof d.set === 'object'){
         var keep = S.set.key;                       /* キーは、いまの端末のものを残す */
         S.set = Object.assign({}, DEFAULT_SET, d.set);
