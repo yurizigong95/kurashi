@@ -34215,5 +34215,106 @@ PT.afterFinish=function(s,C){ if(!C||C.id!=='life') return; const A=document.que
 </script>
 
 
+<script>
+/* ===== ゲーム道場：ほかの端末と、記録をそろえる =====
+   ・つなぎ先は、くらしの手帳と同じところ（上の「リアルタイム対局」と同じしくみを使う）
+   ・そろえるのは、この端末にたまった記録だけ（XP・成績・対局の記録・名前・設定）
+   ・APIキー（gd-gemini-key）は、ぜったいに送りません
+   ・開いたときに、新しいほうをもらいます。遊んでいるとちゅうで入れかわらないよう、
+     もらったときだけ1回開き直します。 */
+(function(){
+  'use strict';
+  var WANT = /^(chess-dojo-|gd-party)/;         /* そろえる記録 */
+  var SKIP = { 'gd-gemini-key':1, 'gd-sync-at':1, 'gd-sync-dev':1 };
+  var MAX = 700 * 1024;                          /* 入れものの大きさ（これをこえたら送らない） */
+  var last = '', timer = null, pushing = false;
+
+  function get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+  function snap(){
+    var out = {};
+    try{
+      for(var i = 0; i < localStorage.length; i++){
+        var k = localStorage.key(i);
+        if(!k || SKIP[k] || !WANT.test(k)) continue;
+        out[k] = localStorage.getItem(k);
+      }
+    }catch(e){}
+    return out;
+  }
+  function devId(){
+    var v = get('gd-sync-dev');
+    if(!v){ v = Math.random().toString(36).slice(2, 10); set('gd-sync-dev', v); }
+    return v;
+  }
+  function ref(){
+    var db = window.CDH && window.CDH.db;
+    return db ? db.doc('state/all') : null;
+  }
+  /* もらった記録を入れて、1回だけ開き直す */
+  function take(d){
+    var obj = null;
+    try{ obj = JSON.parse(d.d || '{}'); }catch(e){ return; }
+    if(!obj || typeof obj !== 'object') return;
+    var changed = false;
+    Object.keys(obj).forEach(function(k){
+      if(SKIP[k] || !WANT.test(k)) return;
+      if(get(k) !== obj[k]){ set(k, obj[k]); changed = true; }
+    });
+    set('gd-sync-at', String(d.at || Date.now()));
+    last = JSON.stringify(snap());
+    if(!changed) return;
+    var once = '';
+    try{ once = sessionStorage.getItem('gd-sync-reload') || ''; }catch(e){}
+    if(once) return;                                  /* 1回だけ */
+    try{ sessionStorage.setItem('gd-sync-reload', '1'); }catch(e){}
+    location.reload();
+  }
+  async function pull(){
+    var r = ref(); if(!r) return;
+    var s = await r.get();
+    if(!s || !s.exists) return;
+    var d = s.data() || {};
+    if(!d.d) return;
+    if(Number(d.at || 0) <= Number(get('gd-sync-at') || 0)) return;   /* もう持っている */
+    if(String(d.dev || '') === devId()) return;                        /* 自分が送ったもの */
+    take(d);
+  }
+  async function push(){
+    var r = ref(); if(!r || pushing) return;
+    var now = JSON.stringify(snap());
+    if(now === last) return;
+    if(now.length > MAX){ last = now; return; }        /* 大きすぎるときは、そっとあきらめる */
+    pushing = true;
+    try{
+      var at = Date.now();
+      await r.set({ v:1, at:at, dev:devId(), d:now });
+      set('gd-sync-at', String(at));
+      last = now;
+    }catch(e){ /* つながらないときは、次のときに */ }
+    finally{ pushing = false; }
+  }
+  function loop(){
+    clearTimeout(timer);
+    timer = setTimeout(function(){ push().then(loop, loop); }, 8000);
+  }
+  /* つなぎ先ができるのを、少し待ってからはじめる */
+  (function wait(n){
+    if(ref()){
+      last = JSON.stringify(snap());
+      pull().catch(function(){}).then(function(){ loop(); });
+      document.addEventListener('visibilitychange', function(){
+        if(document.hidden) push().catch(function(){});
+        else pull().catch(function(){});
+      });
+      window.addEventListener('pagehide', function(){ push().catch(function(){}); });
+      return;
+    }
+    if(n > 40) return;                                  /* つなぎ先がないときは、なにもしない */
+    setTimeout(function(){ wait(n + 1); }, 250);
+  })(0);
+})();
+</script>
+
 </body>
 </html>
