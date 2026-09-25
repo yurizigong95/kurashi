@@ -63,6 +63,9 @@ async function fresh(){
   upCalls = [];
   W.__FAKE_AI = null;
   W.__FAKE_UPLOAD = null;
+  if(W.syStop) W.syStop();
+  W.__FAKE_SYNC = null;
+  if(W.SY){ W.SY.applied = ''; W.SY.at = 0; W.SY.msg = ''; W.SY.busy = 0; W.SY.again = 0; }
   W.render();
   await frames();
 }

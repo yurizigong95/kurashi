@@ -36,6 +36,19 @@ function setView(){
       'いまの数字は、上の欄で直せます（はじめは1日20回・読む45円／書く375円で入れてあります）。' +
       '<br>ほんとうの請求は、Google AI Studio や Google Cloud の画面でたしかめてください。'));
 
+  var sy = syState();
+  h += section('ほかの端末とそろえる', sy.on ? 'オン' : null,
+    '<div class="s"><b>' + esc(sy.text) + '</b></div>' +
+    (sy.sub ? '<div class="s">' + esc(sy.sub) + '</div>' : '') +
+    (syReady() ? '<div class="pair" style="margin-top:10px">' +
+      btn('いますぐ合わせる', 'st-sync', { cls:'ghost' }) +
+      btn(SY.on ? '同期をやめる' : '同期をはじめる', 'st-syncsw', { cls:'ghost' }) +
+    '</div>' : '') +
+    note('スマホ・iPad・パソコンのどれで直しても、<b>ひとりでにそろいます</b>（科目・資料・問題・といた記録・にが手ノート・資料の写真）。' +
+      '<br>つなぎ先は、くらしの手帳と同じところです。同じ2つのアプリを入れていれば、それだけで動きます。' +
+      '<br><b>APIキーと、使った量の記録は、同期しません</b>（端末ごとのものだからです）。' +
+      '<br>同じものを2台で直したときは、<b>あとから直したほう</b>がのこります。消したものは、ほかの端末でも消えます。'));
+
   h += section('勉強のしかた', null,
     '<label class="f">1日の目標</label>' +
     '<div class="pillrow">' + [5, 10, 20, 30, 50].map(function(n){
@@ -198,21 +211,32 @@ onAct('st-keydel', function(){
   toast('消しました');
   render();
 });
-onAct('st-model', function(d){ S.set.model = d.v; saveNow(); render(); });
+onAct('st-model', function(d){ S.set.model = d.v; syTouchSet(); saveNow(); render(); });
+onAct('st-sync', function(){
+  if(!syReady()){ toast('この端末でいちど「くらしの手帳」を開いてください', true); return; }
+  if(!SY.on){ syStart().then(function(){ render(); }); toast('つないでいます…'); return; }
+  toast('合わせています…');
+  syPush().then(function(okp){ toast(okp ? 'そろえました' : (SY.msg || '合わせられませんでした'), !okp); render(); });
+});
+onAct('st-syncsw', function(){
+  if(SY.on){ syStop(); toast('同期をやめました'); render(); return; }
+  syStart().then(function(okp){ toast(okp ? '同期をはじめました' : (SY.msg || 'つなげませんでした'), !okp); render(); });
+});
 onAct('st-lim', function(){
   var l = aiLim();
   l.rpd = clamp(toNum(elVal('st_rpd')), 0, 10000);
   l.yenIn = clamp(toNum(elVal('st_yin')), 0, 100000);
   l.yenOut = clamp(toNum(elVal('st_yout')), 0, 100000);
   inClear('st_rpd'); inClear('st_yin'); inClear('st_yout');
+  syTouchSet();
   saveNow();
   toast('めやすを保存しました');
   render();
 });
-onAct('st-goal', function(d){ S.set.goal = toNum(d.v); saveNow(); render(); });
-onAct('st-shuffle', function(d){ S.set.shuffle = toNum(d.v); saveNow(); render(); });
-onAct('st-term', function(){ S.set.term = String(elVal('st_term') || '').trim(); saveNow(); toast('学期を入れました'); render(); });
-onAct('st-allterms', function(){ S.set.allTerms = S.set.allTerms ? 0 : 1; saveNow(); render(); });
+onAct('st-goal', function(d){ S.set.goal = toNum(d.v); syTouchSet(); saveNow(); render(); });
+onAct('st-shuffle', function(d){ S.set.shuffle = toNum(d.v); syTouchSet(); saveNow(); render(); });
+onAct('st-term', function(){ S.set.term = String(elVal('st_term') || '').trim(); syTouchSet(); saveNow(); toast('学期を入れました'); render(); });
+onAct('st-allterms', function(){ S.set.allTerms = S.set.allTerms ? 0 : 1; syTouchSet(); saveNow(); render(); });
 onAct('st-export', function(){ setExport(); });
 onAct('st-import', function(){ setImport(); });
 onAct('st-csv', function(){ setCsv(); });

@@ -5,7 +5,7 @@
    読みこむ順番：core → data → ai → files → subj → make → drill → lib → main */
 
 var APP_NAME = 'もんだいメーカー';
-var APP_BUILD = '2026-09-25a';
+var APP_BUILD = '2026-09-25b';
 
 /* テストモード：?test=1 か、パソコンの中（localhost）で開いたとき。
    本物の保存にはさわらない（?real=1 で本番あつかい）。 */
@@ -117,7 +117,7 @@ var DEFAULT_SET = {
 var S = null;
 function blankState(){
   return { ver:1, subs:[], mats:[], qs:[], log:{}, day:{}, moc:[], why:{},
-           set:Object.assign({}, DEFAULT_SET), ui:{}, mt:0 };
+           del:{}, set:Object.assign({}, DEFAULT_SET), ui:{}, mt:0 };
 }
 function load(){
   var raw = null;
@@ -127,7 +127,7 @@ function load(){
   S = blankState();
   if(d && typeof d === 'object'){
     ['subs', 'mats', 'qs', 'moc'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
-    ['log', 'day', 'why', 'ui'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
+    ['log', 'day', 'why', 'ui', 'del'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
     S.set = Object.assign({}, DEFAULT_SET, (d.set && typeof d.set === 'object') ? d.set : {});
     S.mt = toNum(d.mt);
   }
@@ -138,6 +138,7 @@ function save(){
   S.mt = Date.now();
   try{
     localStorage.setItem(KEY, JSON.stringify(S));
+    if(typeof syTouch === 'function') syTouch();     /* ほかの端末にも、少ししてから送る */
     return true;
   }catch(e){
     toast('保存できませんでした（端末の空きが足りないかもしれません）', true);

@@ -137,6 +137,7 @@ function subDel(id, withItems){
     (S.qs || []).forEach(function(q){ if(q.sub === id){ q.sub = ''; q.mt = Date.now(); } });
   }
   S.subs = (S.subs || []).filter(function(x){ return x.id !== id; });
+  if(typeof syDead === 'function') syDead(id);
   if(view.sub === id) view.sub = '';
   saveSoon();
   return n;
@@ -153,6 +154,7 @@ function matDel(id){
   if(!m) return false;
   (m.photos || []).forEach(function(pid){ photoDel(pid); });
   S.mats = (S.mats || []).filter(function(x){ return x.id !== id; });
+  if(typeof syDead === 'function') syDead(id);
   /* 資料につながっていた問題は、資料なしにする（問題は残す） */
   (S.qs || []).forEach(function(q){ if(q.mat === id){ q.mat = ''; q.mt = Date.now(); } });
   saveSoon();
@@ -166,6 +168,7 @@ function qsOf(subId){ return qsAll().filter(function(x){ return !subId || x.sub 
 function qsOfMat(matId){ return qsAll().filter(function(x){ return x.mat === matId; }); }
 function qDel(id){
   S.qs = (S.qs || []).filter(function(x){ return x.id !== id; });
+  if(typeof syDead === 'function') syDead(id);
   if(S.log[id]){ delete S.log[id]; }
   if(S.why[id]){ delete S.why[id]; }
   saveSoon();

@@ -12,6 +12,8 @@ function boot(){
   var sp = document.getElementById('splash');
   if(sp) sp.style.display = 'none';
   window.__MK_OK = 1;
+  /* ほかの端末と自動でそろえる（つなぎ先が用意できているときだけ） */
+  if(typeof syStart === 'function') setTimeout(function(){ syStart(); }, 300);
   /* オフラインでも使えるように（テストのときは入れない） */
   if(!TEST_MODE && 'serviceWorker' in navigator){
     window.addEventListener('load', function(){
