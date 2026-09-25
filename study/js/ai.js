@@ -22,13 +22,103 @@ function aiSavedAdd(n){
   S.set.aiSaved = toNum(S.set.aiSaved) + toNum(n);
   saveSoon();
 }
-/* 文章（と写真）を渡して、JSONで答えてもらう */
+/* ============================== 大きな資料を預ける ==============================
+   何百MBもあるPDF・録音・動画は、そのままくっつけては送れない。
+   いったん Gemini に預けて（少しずつ送る）、その置き場所を見てもらう。
+   ・キーはこの端末の中だけ。ファイルは Google 以外には送らない
+   ・預けたものは、Google側で48時間ほどで消える                                  */
+var UP_CHUNK = 8 * 1024 * 1024;   /* 1回に送る大きさ */
+var AI_BASE = 'https://generativelanguage.googleapis.com';
+function aiFakeUp(){ return (typeof window !== 'undefined' && window.__FAKE_UPLOAD) ? window.__FAKE_UPLOAD : null; }
+function aiWait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+async function aiResErr(res){
+  var j = null;
+  try{ j = await res.json(); }catch(e){}
+  return (j && j.error && j.error.message) ? j.error.message : ('エラー ' + res.status);
+}
+async function aiUpload(file, opt){
+  opt = opt || {};
+  var fake = aiFakeUp();
+  if(fake) return await fake({ name:file.name, size:file.size, type:file.type || '' });
+  var key = aiKey();
+  if(!key) throw new Error('先に「設定」で、GeminiのAPIキーを入れてください');
+  var mime = String(file.type || '') || 'application/octet-stream';
+  /* ① 置き場所をもらう（少しずつ送るやり方） */
+  var url = '', st = null;
+  try{
+    st = await fetch(AI_BASE + '/upload/v1beta/files', {
+      method:'POST',
+      headers:{
+        'x-goog-api-key':key,
+        'X-Goog-Upload-Protocol':'resumable',
+        'X-Goog-Upload-Command':'start',
+        'X-Goog-Upload-Header-Content-Length':String(file.size),
+        'X-Goog-Upload-Header-Content-Type':mime,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({ file:{ display_name:String(file.name || '資料').slice(0, 120) } }),
+      signal:opt.signal
+    });
+  }catch(e){
+    if(e && /abort/i.test(String(e.name || e.message))) throw e;
+    st = null;                                   /* つながらないときは、下の「ひと息で送る」に回す */
+  }
+  if(st && !st.ok) throw new Error(aiErrText(await aiResErr(st)));
+  if(st) url = st.headers.get('x-goog-upload-url') || st.headers.get('X-Goog-Upload-URL') || '';
+  var info = null;
+  if(url){
+    /* ② 少しずつ送る（進みぐあいを出せる） */
+    var sent = 0;
+    while(sent < file.size){
+      var end = Math.min(file.size, sent + UP_CHUNK), last = end >= file.size;
+      var res = await fetch(url, {
+        method:'POST',
+        headers:{ 'X-Goog-Upload-Offset':String(sent), 'X-Goog-Upload-Command':'upload' + (last ? ', finalize' : '') },
+        body:file.slice(sent, end),
+        signal:opt.signal
+      });
+      if(!res.ok) throw new Error(aiErrText(await aiResErr(res)));
+      sent = end;
+      if(opt.onProgress) try{ opt.onProgress(Math.round(sent / Math.max(1, file.size) * 100)); }catch(e){}
+      if(last){ try{ info = await res.json(); }catch(e){} }
+    }
+  }else{
+    /* ②' 送り先を教えてもらえないブラウザでは、ひと息で送る（進みぐあいは出せない） */
+    if(opt.onProgress) try{ opt.onProgress(null); }catch(e){}
+    var r2 = await fetch(AI_BASE + '/upload/v1beta/files', {
+      method:'POST',
+      headers:{ 'x-goog-api-key':key, 'X-Goog-Upload-Protocol':'raw', 'Content-Type':mime },
+      body:file,
+      signal:opt.signal
+    });
+    if(!r2.ok) throw new Error(aiErrText(await aiResErr(r2)));
+    try{ info = await r2.json(); }catch(e){}
+    if(opt.onProgress) try{ opt.onProgress(100); }catch(e){}
+  }
+  var fi = (info && info.file) || {};
+  if(!fi.uri) throw new Error('大きな資料を送れませんでした。もう一度ためしてください。');
+  /* ③ 録音や動画は、あちらの読みこみが終わるまで少し待つ */
+  for(var i = 0; i < 90 && String(fi.state || '') === 'PROCESSING'; i++){
+    await aiWait(2000);
+    var g = await fetch(AI_BASE + '/v1beta/' + fi.name, { headers:{ 'x-goog-api-key':key }, signal:opt.signal });
+    if(!g.ok) break;
+    try{ fi = await g.json(); }catch(e){ break; }
+  }
+  if(String(fi.state || '') === 'FAILED') throw new Error('AIがこの資料を読めませんでした（形がちがうかもしれません）');
+  aiCountAdd();
+  return { uri:fi.uri, mime:fi.mimeType || mime, name:file.name };
+}
+
+/* 文章（と写真・預けた資料）を渡して、JSONで答えてもらう */
 async function aiJson(prompt, images, opt){
   opt = opt || {};
   var parts = [];
   (images || []).forEach(function(dataUrl){
     var m = String(dataUrl).match(/^data:([^;]+);base64,(.*)$/);
     if(m) parts.push({ inline_data:{ mime_type:m[1], data:m[2] } });
+  });
+  (opt.files || []).forEach(function(r){
+    if(r && r.uri) parts.push({ file_data:{ mime_type:r.mime || '', file_uri:r.uri } });
   });
   parts.push({ text:prompt });
   var text = await aiGenerate({ contents:[{ role:'user', parts:parts }], json:true,

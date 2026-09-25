@@ -1,6 +1,6 @@
 /* もんだいメーカー：オフラインでも開けるようにする
    ・新しい版を出すときは、CACHE の名前を変えてください（古いものは自動で消えます）。 */
-var CACHE = 'mondai-v1';
+var CACHE = 'mondai-v2';
 var FILES = [
   './', './index.html', './manifest.json',
   './css/app.css',

@@ -35,6 +35,8 @@ function mkFilePart(){
     '</div>' +
     (mk.busy === 'read' ? '<div class="s wait">読みこんでいます…</div>' : '') +
     mkFileList() +
+    note('えらべるもの：写真・PDF・スライド(.pptx)・Word(.docx)・文章・ZIP・<b>講義の録音・動画</b>。' +
+      '大きいファイル（' + fSizeText(INLINE_MAX) + 'より上）でも大丈夫です。AIにいったん預けてから読んでもらいます（2GBまで）。') +
     '<label class="f" for="mk_paste">文章をはりつける（メモ・先生の配布テキストなど）</label>' +
     '<textarea id="mk_paste" rows="3" placeholder="ここにはりつけると、その字から問題を作ります">' + esc(inVal('mk_paste')) + '</textarea>');
 
@@ -92,9 +94,14 @@ function mkFileList(){
   if(!mk.files.length) return '';
   return '<div class="files">' + mk.files.map(function(f, i){
     var h = '<div class="file">' +
-      (f.url && f.kind === 'photo' ? '<img src="' + esc(f.url) + '" alt="">' : '<div class="ic">' + (f.kind === 'pdf' ? '📕' : f.kind === 'slide' ? '📊' : '📄') + '</div>') +
+      (f.url && f.kind === 'photo' ? '<img src="' + esc(f.url) + '" alt="">' : '<div class="ic">' +
+        (f.kind === 'pdf' ? '📕' : f.kind === 'slide' ? '📊' : f.kind === 'audio' ? '🎧' : f.kind === 'video' ? '🎬' : '📄') + '</div>') +
       '<div class="bd"><b>' + esc(f.name) + '</b>' +
-      '<div class="s">' + esc(fKindName(f.kind)) + (f.text ? '・字' + f.text.length + '文字' : '') + (f.done ? '・手入れずみ' : '') + '</div>' +
+      '<div class="s">' + esc(fKindName(f.kind)) +
+        (f.size ? '・' + fSizeText(f.size) : '') +
+        (f.text ? '・字' + f.text.length + '文字' : '') + (f.done ? '・手入れずみ' : '') + '</div>' +
+      (f.big ? '<div class="s">📡 大きいので、AIに送ってから読んでもらいます（送るあいだ、少し時間がかかります）</div>' : '') +
+      (f.cut ? '<div class="s amber">長い文章なので、はじめの' + fSizeText(TXT_HEAD) + 'ぶんだけ読みました。</div>' : '') +
       (f.warn ? '<div class="s bad">' + f.warn + '</div>' : '') +
       (f.dup ? '<div class="s amber">' + esc(f.dup) + '</div>' : '') +
       (f.kind === 'photo' ? '<div class="minirow">' +

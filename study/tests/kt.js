@@ -5,6 +5,7 @@
 var T = [];
 var W = null;                    /* アプリの window */
 var aiCalls = [];
+var upCalls = [];                /* 大きな資料を預けた回数（にせのアップロード） */
 
 function test(name, fn){ T.push({ name:name, fn:fn }); }
 function ok(cond, msg){ if(!cond) throw new Error(msg || 'ちがいます'); }
@@ -59,7 +60,9 @@ async function fresh(){
   try{ W.localStorage.removeItem(W.KEY + ':run'); }catch(e){}
   W.saveNow();
   aiCalls = [];
+  upCalls = [];
   W.__FAKE_AI = null;
+  W.__FAKE_UPLOAD = null;
   W.render();
   await frames();
 }
@@ -100,6 +103,14 @@ function fakeAI(fn){
   };
 }
 function aiJsonReply(obj){ return { text:JSON.stringify(obj) }; }
+/* にせの「大きな資料を預ける」（本物のアップロードはしない） */
+function fakeUpload(fn){
+  W.__FAKE_UPLOAD = async function(info){
+    upCalls.push(info);
+    var v = fn ? await fn(info, upCalls.length) : null;
+    return v || { uri:'https://example.test/files/' + upCalls.length, mime:info.type || 'application/octet-stream', name:info.name };
+  };
+}
 
 /* ===== 走らせる ===== */
 async function runAll(){
