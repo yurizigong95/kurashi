@@ -136,6 +136,8 @@ function subDel(id, withItems){
     (S.mats || []).forEach(function(m){ if(m.sub === id){ m.sub = ''; m.mt = Date.now(); } });
     (S.qs || []).forEach(function(q){ if(q.sub === id){ q.sub = ''; q.mt = Date.now(); } });
   }
+  /* メモは消さずに、科目なしにする */
+  (S.notes || []).forEach(function(x){ if(x.sub === id){ x.sub = ''; x.mt = Date.now(); } });
   S.subs = (S.subs || []).filter(function(x){ return x.id !== id; });
   if(typeof syDead === 'function') syDead(id);
   if(view.sub === id) view.sub = '';

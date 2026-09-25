@@ -1,5 +1,5 @@
 /* くらしの手帳：オフライン用・通知の受け取り・前の版にもどす */
-var CACHE = 'kurashi-v16';
+var CACHE = 'kurashi-v17';
 var PREV = 'kurashi-prev';      /* ひとつ前の版のファイル（「前の版にもどす」で使う） */
 var FLAGS = 'kurashi-flags';    /* 前の版を使っているかの印 */
 var FILES = [
@@ -47,7 +47,8 @@ self.addEventListener('install', function(e){
 });
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(keys){
-    return Promise.all(keys.filter(function(k){ return k !== CACHE && k !== PREV && k !== FLAGS; }).map(function(k){ return caches['delete'](k); }));
+    /* 消すのは、くらしの手帳の古い版だけ（同じ場所の、もんだいメーカー・ぜんぶ入りのしまったものは消さない） */
+    return Promise.all(keys.filter(function(k){ return k.indexOf('kurashi-') === 0 && k !== CACHE && k !== PREV && k !== FLAGS; }).map(function(k){ return caches['delete'](k); }));
   }).then(function(){ return self.clients.claim(); }));
 });
 self.addEventListener('message', function(e){

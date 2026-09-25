@@ -5,7 +5,7 @@
    読みこむ順番：core → data → ai → files → subj → make → drill → lib → main */
 
 var APP_NAME = 'もんだいメーカー';
-var APP_BUILD = '2026-09-25c';
+var APP_BUILD = '2026-09-25d';
 
 /* テストモード：?test=1 か、パソコンの中（localhost）で開いたとき。
    本物の保存にはさわらない（?real=1 で本番あつかい）。 */
@@ -401,4 +401,7 @@ function bindEvents(){
     if(el.dataset && el.dataset.act) fireAct(el.dataset.act, el, ev);
   });
   window.addEventListener('beforeunload', function(){ if(saveTimer) saveNow(); });
+  /* スマホでは閉じるときに beforeunload が来ないことがあるので、見えなくなったときにも保存する */
+  window.addEventListener('pagehide', function(){ if(saveTimer) saveNow(); });
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden' && saveTimer) saveNow(); });
 }

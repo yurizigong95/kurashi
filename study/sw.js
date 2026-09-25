@@ -1,6 +1,6 @@
 /* もんだいメーカー：オフラインでも開けるようにする
    ・新しい版を出すときは、CACHE の名前を変えてください（古いものは自動で消えます）。 */
-var CACHE = 'mondai-v4';
+var CACHE = 'mondai-v5';
 var FILES = [
   './', './index.html', './manifest.json',
   './css/app.css',
@@ -14,7 +14,8 @@ self.addEventListener('install', function(e){
 });
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(ks){
-    return Promise.all(ks.map(function(k){ return k === CACHE ? null : caches.delete(k); }));
+    /* 消すのは、このアプリの古い版だけ（同じ場所の、くらしの手帳・ぜんぶ入りのしまったものは消さない） */
+    return Promise.all(ks.map(function(k){ return (k.indexOf('mondai-') === 0 && k !== CACHE) ? caches.delete(k) : null; }));
   }).then(function(){ return self.clients.claim(); }));
 });
 self.addEventListener('fetch', function(e){

@@ -363,3 +363,84 @@ test('読めないファイルは、教えてくれる', async function(){
   try{ await W.loadFiles([bad]); }catch(e){ err = e.message; }
   ok(err.indexOf('読めません') >= 0, 'メッセージが出る：' + err);
 });
+
+function partsOf(call){ return ((call && call.contents && call.contents[0]) || {}).parts || []; }
+function textOf(call){ return partsOf(call).map(function(p){ return p.text || ''; }).join('\n'); }
+var ONEQ = { title:'資料', summary:'', questions:[{ type:'tf', q:'心不全では息切れが出る。', answer:'○', why:'資料より' }] };
+
+test('つくる：はりつけた文を直したら、直した文で作る', async function(){
+  W.subAdd('成人看護学');
+  fakeAI(function(){ return aiJsonReply(ONEQ); });
+  await click('tab', 'make');
+  await type('mk_paste', '最初の文。心不全の看護について。安静度を守ることが大切である。');
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 8000, '1回目');
+  W.mk.pv = null; W.render(); await frames();
+  await type('mk_paste', '直した文。糖尿病の看護について。血糖値を毎日はかることが大切である。');
+  await click('mk-run');
+  await until(function(){ return aiCalls.length >= 2 && W.mk.pv; }, 8000, '2回目');
+  ok(textOf(aiCalls[1]).indexOf('直した文') >= 0, '直した文が使われた');
+  ok(textOf(aiCalls[1]).indexOf('最初の文') < 0, '前の文は使わない');
+  eq(W.mk.files.filter(function(f){ return f.paste; }).length, 1, 'はりつけた文は1つだけ');
+});
+
+test('つくる：字の資料があっても、写真やPDFも送る', async function(){
+  W.subAdd('成人看護学');
+  fakeAI(function(){ return aiJsonReply(ONEQ); });
+  await click('tab', 'make');
+  W.mk.files = [{ name:'第2回.pdf', kind:'pdf', url:'data:application/pdf;base64,JVBERi0xLjQK', text:'', size:10 }];
+  await type('mk_paste', '先生のメモ：ここはテストに出す。心不全では息切れが出る。');
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 8000, '問題ができるのを待つ');
+  ok(partsOf(aiCalls[0]).some(function(p){ return p.inline_data && p.inline_data.mime_type === 'application/pdf'; }), 'PDFも送った');
+  ok(textOf(aiCalls[0]).indexOf('ここはテストに出す') >= 0, 'はりつけた文も送った');
+});
+
+test('つくる：くっつけて送る量が多すぎるときは、大きいものから預ける', async function(){
+  W.subAdd('成人看護学');
+  fakeUpload();
+  fakeAI(function(){ return aiJsonReply(ONEQ); });
+  await click('tab', 'make');
+  var big = 'data:application/pdf;base64,' + new Array(11 * 1024 * 1024 / 4 + 1).join('JVBE');
+  var mid = 'data:application/pdf;base64,' + new Array(9 * 1024 * 1024 / 4 + 1).join('JVBE');
+  W.mk.files = [{ name:'小さめ.pdf', kind:'pdf', url:mid, text:'' }, { name:'大きい.pdf', kind:'pdf', url:big, text:'' }];
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 15000, '問題ができるのを待つ');
+  eq(upCalls.length, 1, '1つだけ預けた');
+  eq(upCalls[0].name, '大きい.pdf', '大きいほうを預けた');
+  var ps = partsOf(aiCalls[0]);
+  eq(ps.filter(function(p){ return p.inline_data; }).length, 1, 'もう1つは、くっつけて送った');
+  eq(ps.filter(function(p){ return p.file_data; }).length, 1, '預けたほうは、場所を渡した');
+});
+
+test('つくる：「やめる」のすぐあとに作り直しても、こわれない', async function(){
+  W.subAdd('成人看護学');
+  fakeAI(function(req, n){
+    return new Promise(function(r){
+      setTimeout(function(){
+        r(aiJsonReply({ title:'資料', summary:'', questions:[{ type:'tf', q:(n === 1 ? '前の問題。' : 'あとの問題。'), answer:'○', why:'' }] }));
+      }, n === 1 ? 300 : 700);
+    });
+  });
+  await click('tab', 'make');
+  await type('mk_paste', '心不全の看護について。安静度を守ることが大切である。水分は1日1000mLまで。');
+  await click('mk-run');
+  await until(function(){ return aiCalls.length === 1; }, 4000, '1回目が始まる');
+  W.mkStop();
+  await click('mk-run');
+  await until(function(){ return aiCalls.length === 2; }, 4000, '2回目が始まる');
+  await sleep(450);                           /* 1回目の答えが、あとから届く */
+  eq(W.mk.busy, 'make', '2回目は、まだ作っているとちゅうのまま');
+  ok(!W.mk.pv, '1回目の答えは使わない');
+  ok(W.mk.abort, '2回目の「やめる」は、まだ使える');
+  await until(function(){ return W.mk.pv; }, 4000, '2回目ができる');
+  eq(W.mk.pv.items[0].q, 'あとの問題。', '2回目の問題');
+});
+
+test('ZIP：中の録音・動画の種類を正しくつける', async function(){
+  eq(W.zipMime('第3回.m4a'), 'audio/mp4');
+  eq(W.zipMime('lecture.WAV'), 'audio/wav');
+  eq(W.zipMime('実習.mov'), 'video/quicktime');
+  eq(W.zipMime('講義.mp3'), 'audio/mpeg');
+  eq(W.zipMime('板書.png'), 'image/png');
+});

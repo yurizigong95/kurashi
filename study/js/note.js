@@ -24,13 +24,24 @@ function noteAdd(o){
   saveSoon();
   return n;
 }
+/* 直す。中身が変わったときだけ「直した時こく」を進める
+   （変わっていないのに進めると、ほかの端末で書いたものを古い中身で上書きしてしまうため） */
 function noteSet(id, patch){
   var n = noteGet(id);
   if(!n) return null;
-  Object.keys(patch || {}).forEach(function(k){ n[k] = patch[k]; });
-  n.mt = Date.now();
-  saveSoon();
+  var diff = false;
+  Object.keys(patch || {}).forEach(function(k){
+    if(n[k] !== patch[k]){ n[k] = patch[k]; diff = true; }
+  });
+  if(diff){ n.mt = Math.max(Date.now(), toNum(n.mt) + 1); saveSoon(); }
   return n;
+}
+function noteEmpty(n){ return !String((n && n.body) || '').trim(); }
+/* 書かないまま閉じた「からのメモ」を、そうじする（いま書いているものは残す） */
+function noteSweep(keep){
+  var gone = (S.notes || []).filter(function(n){ return n.id !== keep && noteEmpty(n); });
+  gone.forEach(function(n){ noteDel(n.id); });
+  return gone.length;
 }
 function noteDel(id){
   if(!noteGet(id)) return false;
@@ -52,6 +63,7 @@ function noteBodyRest(n){
 function noteList(){
   var q = String(inVal('nt_q', nt.q) || '').trim().toLowerCase();
   return notesAll().filter(function(n){
+    if(noteEmpty(n) && n.id !== nt.edit) return false;    /* 書かずに閉じたメモは出さない */
     if(nt.sub && n.sub !== nt.sub) return false;
     if(nt.star && !n.star) return false;
     if(!q) return true;
@@ -66,7 +78,7 @@ function noteView(){
   return nt.edit ? noteEditView() : noteListView();
 }
 function noteListView(){
-  var list = noteList(), all = (S.notes || []).length;
+  var list = noteList(), all = (S.notes || []).filter(function(n){ return !noteEmpty(n); }).length;
   var h = section('メモ', all ? all + 'こ' : null,
     btn('＋ 新しいメモ', 'nt-new', { cls:'main' }) +
     '<label class="f" for="nt_q">さがす</label>' +
@@ -100,7 +112,13 @@ function noteListView(){
 }
 function noteEditView(){
   var n = noteGet(nt.edit);
-  if(!n){ nt.edit = ''; return noteListView(); }
+  if(!n){
+    /* 書いているあいだに、ほかの端末で消された */
+    nt.edit = ''; nt.del = '';
+    inClear('nt_body'); inClear('nt_no'); inClear('nt_at');
+    setTimeout(function(){ toast('このメモは、ほかの端末で消されました', true); }, 0);
+    return noteListView();
+  }
   var h = section('メモ', mdText(n.at) || '',
     '<textarea id="nt_body" rows="10" placeholder="ここに書きます。1行目が見出しになります。">' + esc(inVal('nt_body', n.body)) + '</textarea>' +
     '<div class="pair">' +
@@ -136,33 +154,38 @@ function noteEditView(){
 onView('note', noteView);
 
 onAct('nt-new', function(){
+  noteKeep();
+  noteSweep('');
   var n = noteAdd({});
   nt.edit = n.id; nt.del = '';
   inClear('nt_body'); inClear('nt_no'); inClear('nt_at');
-  saveNow(); render();
+  render();
   var el = document.getElementById('nt_body');
   if(el) try{ el.focus(); }catch(e){}
 });
 onAct('nt-open', function(d){
+  if(nt.edit && nt.edit !== d.v) noteKeep();
   nt.edit = d.v; nt.del = '';
   inClear('nt_body'); inClear('nt_no'); inClear('nt_at');
   render();
 });
-onAct('nt-close', function(){ noteSaveNow(); nt.edit = ''; nt.del = ''; render(); });
+onAct('nt-close', function(){ noteDone(); nt.edit = ''; nt.del = ''; render(); });
 onAct('nt-save', function(){
-  if(!noteSaveNow()) return;
-  toast('保存しました');
+  var n = noteDone();
+  toast(n ? '保存しました' : 'からのメモは、のこしませんでした');
   nt.edit = ''; nt.del = '';
   render();
 });
 onAct('nt-estar', function(){
   var n = noteGet(nt.edit);
   if(!n) return;
+  noteKeep();
   noteSet(n.id, { star:n.star ? 0 : 1 });
   saveNow(); render();
 });
 onAct('nt-esub', function(d){
-  if(!nt.edit) return;
+  if(!noteGet(nt.edit)) return;
+  noteKeep();
   noteSet(nt.edit, { sub:d.v || '' });
   if(d.v) S.ui.lastSub = d.v;
   saveNow(); render();
@@ -180,30 +203,69 @@ onAct('nt-sub', function(d){ nt.sub = d.v || ''; render(); });
 onAct('nt-star', function(){ nt.star = nt.star ? 0 : 1; render(); });
 /* メモの文を、そのまま「つくる」に持っていく */
 onAct('nt-make', function(){
-  var n = noteSaveNow(1);
+  var n = noteKeep();
   if(!n) return;
   var body = String(n.body || '').trim();
   if(body.length < 10){ toast('もう少し書いてから、問題にしてみてください', true); return; }
+  if(mk.busy){ toast('「つくる」で、いま作っているとちゅうです。おわってから、もう一度おしてください', true); return; }
+  /* 「つくる」に入れてあるものを、だまって消さない */
+  if(mk.pv && !ask('「つくる」に、まだ科目に入れていない問題があります。すてて、このメモから作りますか？')) return;
+  var had = mk.files.length, paste = String(inVal('mk_paste') || '').trim();
+  if((had || (paste && paste !== body)) &&
+     !ask('「つくる」に入れてある' + (had ? '資料（' + had + 'つ）' : '文章') + 'を外して、このメモの文に入れかえますか？')) return;
   if(n.sub) S.ui.lastSub = n.sub;
+  mk.pv = null; mk.warp = null; mk.mode = 'file';
   mk.files = [];
   mk.mat = { no:String(n.no || ''), memo:'', at:n.at || today(), title:noteTitle(n) };
   INP.mk_paste = body;
   inClear('mk_no'); inClear('mk_at'); inClear('mk_memo');
+  inClear('nt_body'); inClear('nt_no'); inClear('nt_at');
   nt.edit = ''; nt.del = '';
   saveNow();
   go('make');
   toast('メモの文を「つくる」に入れました');
 });
-/* 書いたものを、その場で入れておく */
-function noteSaveNow(quiet){
+
+/* ===== 書いたものを入れておく ===== */
+/* 入力らんの字（画面にあればそれ、なければ打ちかけの字、それもなければ今の中身） */
+function ntField(id, def){
+  var e = document.getElementById(id);
+  if(e) return e.value;
+  return INP[id] != null ? INP[id] : def;
+}
+/* 書きかけを、メモに入れておく（画面はそのまま） */
+function noteKeep(){
   var n = noteGet(nt.edit);
   if(!n) return null;
-  var body = String(elVal('nt_body') != null ? elVal('nt_body') : n.body);
-  var no = String(elVal('nt_no') != null ? elVal('nt_no') : n.no).slice(0, 4);
-  var at = String(elVal('nt_at') != null ? elVal('nt_at') : n.at);
-  noteSet(n.id, { body:body.slice(0, 20000), no:no, at:at || today() });
-  inClear('nt_body'); inClear('nt_no'); inClear('nt_at');
-  saveNow();
-  if(!quiet) return n;
+  var body = String(ntField('nt_body', n.body) || '');
+  var no = String(ntField('nt_no', n.no) || '').slice(0, 4);
+  var at = String(ntField('nt_at', n.at) || '');
+  noteSet(n.id, { body:body.slice(0, 20000), no:no, at:at || n.at || today() });
   return n;
+}
+/* 書きおわり：入れて、からっぽなら消す。のこったメモを返す */
+function noteDone(){
+  var n = noteKeep();
+  inClear('nt_body'); inClear('nt_no'); inClear('nt_at');
+  if(n && noteEmpty(n)){ noteDel(n.id); n = null; }
+  saveNow();
+  return n;
+}
+/* 打っているあいだも、少しずつ保存する（アプリを閉じても、書いたものがのこるように） */
+var ntKeepTimer = null;
+if(typeof document !== 'undefined'){
+  document.addEventListener('input', function(ev){
+    var id = ev.target && ev.target.id;
+    if(id !== 'nt_body' && id !== 'nt_no' && id !== 'nt_at') return;
+    clearTimeout(ntKeepTimer);
+    ntKeepTimer = setTimeout(function(){ ntKeepTimer = null; noteKeep(); }, 800);
+  });
+  var ntFlush = function(){
+    if(!nt.edit) return;
+    clearTimeout(ntKeepTimer); ntKeepTimer = null;
+    noteKeep();
+    if(saveTimer) saveNow();
+  };
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') ntFlush(); });
+  window.addEventListener('pagehide', ntFlush);
 }

@@ -98,3 +98,106 @@ test('メモ：ほかの端末とも、そろう', async function(){
   ok(true, 'ほかの端末のメモが入った');
   W.syStop();
 });
+
+function toastText(){ var t = W.document.getElementById('toast'); return t ? t.textContent : ''; }
+
+test('メモ：保存をおさなくても、書いたものはひとりでにのこる', async function(){
+  await click('tab', 'note');
+  await click('nt-new');
+  var id = W.nt.edit;
+  await type('nt_body', '授業中のメモ\n先生が「ここは出す」と言った');
+  await until(function(){ return (W.noteGet(id) || {}).body === '授業中のメモ\n先生が「ここは出す」と言った'; }, 3000, 'ひとりでに入るのを待つ');
+  await until(function(){ return (W.localStorage.getItem(W.KEY) || '').indexOf('ここは出す') >= 0; }, 3000, '端末に保存されるのを待つ');
+  /* ほかのタブに行って、もどっても、書いたものがある */
+  await click('tab', 'home');
+  await click('tab', 'note');
+  eq(W.document.getElementById('nt_body').value, '授業中のメモ\n先生が「ここは出す」と言った', '書いたものが、そのまま');
+});
+
+test('メモ：何も書かずに閉じたメモは、のこらない', async function(){
+  await click('tab', 'note');
+  await click('nt-new');
+  await click('nt-close');
+  eq(W.S.notes.length, 0, 'からのメモは、のこらない');
+  ok(!has('からのメモ'), '一覧にも出ない');
+  /* 書かずにアプリを閉じた（開きなおすと、一覧から始まる） */
+  await click('nt-new');
+  W.nt.edit = '';
+  await click('tab', 'note');
+  ok(!has('からのメモ'), '書きかけのからのメモは、一覧に出さない');
+  await click('nt-new');
+  eq(W.S.notes.length, 1, 'からのメモは、たまらない');
+  /* からのメモは、ほかの端末にも送らない */
+  eq(W.syPayload().notes.length, 0, '送る中身には入らない');
+});
+
+test('メモ：開いて閉じただけでは、直したことにならない', async function(){
+  var n = await newNote('読むだけのメモ\nここは変えない');
+  var mt = n.mt;
+  await sleep(5);
+  await click('tab', 'note');
+  await click('nt-open', n.id);
+  await click('nt-close');
+  eq(W.noteGet(n.id).mt, mt, '時こくは、そのまま（ほかの端末の新しい中身を上書きしない）');
+  await click('nt-open', n.id);
+  await type('nt_body', '読むだけのメモ\nここを直した');
+  await click('nt-save');
+  ok(W.noteGet(n.id).mt > mt, '直したら、時こくが進む');
+});
+
+test('メモ：書いているメモがほかの端末で消されたら、知らせる', async function(){
+  var n = await newNote('iPadで消すメモ');
+  await click('tab', 'note');
+  await click('nt-open', n.id);
+  /* ほかの端末で消された（同期で入ってきた） */
+  W.S.notes = [];
+  W.render();
+  await frames(); await sleep(10);
+  eq(W.nt.edit, '', '一覧にもどる');
+  ok(toastText().indexOf('ほかの端末で消されました') >= 0, '知らせが出る：' + toastText());
+});
+
+test('メモ：「つくる」に入れてある資料や問題を、だまって消さない', async function(){
+  var n = await newNote('心不全の看護\n安静度を守る。水分は1日1000mLまで。');
+  var origConfirm = W.confirm;
+  try{
+    /* 作っているとちゅうは、入れかえない */
+    W.mk.busy = 'make';
+    await click('tab', 'note');
+    await click('nt-open', n.id);
+    await click('nt-make');
+    eq(W.view.tab, 'note', '作っているとちゅうは、動かない');
+    W.mk.busy = '';
+    /* 資料が入っているときは、たしかめる */
+    W.mk.files = [{ id:'f1', name:'第3回.pdf', kind:'pdf', size:1000 }];
+    var asked = '';
+    W.confirm = function(m){ asked = m; return false; };
+    await click('nt-make');
+    ok(asked.indexOf('資料（1つ）') >= 0, 'たしかめる：' + asked);
+    eq(W.view.tab, 'note', '「いいえ」なら、そのまま');
+    eq(W.mk.files.length, 1, '資料はのこる');
+    /* まだ科目に入れていない問題があるときも、たしかめる */
+    W.mk.files = [];
+    W.mk.pv = { sub:'', title:'前の資料', items:[{ qt:'tf', q:'前の問題' }], files:[] };
+    asked = '';
+    await click('nt-make');
+    ok(asked.indexOf('まだ科目に入れていない問題') >= 0, 'たしかめる：' + asked);
+    ok(W.mk.pv, '「いいえ」なら、下書きはのこる');
+    W.confirm = function(){ return true; };
+    await click('nt-make');
+    eq(W.view.tab, 'make', '「はい」なら、つくるに移る');
+    eq(W.mk.pv, null, '前の下書きは閉じて、メモの文が見える');
+    ok(W.document.getElementById('mk_paste') && W.document.getElementById('mk_paste').value.indexOf('安静度') >= 0, 'メモの文が入っている');
+  }finally{
+    W.confirm = origConfirm;
+    W.mk.busy = '';
+  }
+});
+
+test('メモ：科目を消しても、メモはのこる（科目なしになる）', async function(){
+  var s = W.subAdd('小児看護学');
+  var n = await newNote('小児のバイタル\n脈拍は大人より多い', { sub:s.id });
+  W.subDel(s.id, true);
+  ok(W.noteGet(n.id), 'メモはのこる');
+  eq(W.noteGet(n.id).sub, '', '科目なしになる');
+});

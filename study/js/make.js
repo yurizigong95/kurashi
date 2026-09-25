@@ -264,17 +264,17 @@ function mkAutoN(){
 }
 
 /* ============================== 作る ============================== */
+var mkRunSeq = 0;
 async function mkRun(){
   if(mk.busy) return;
   var subId = mkSubId();
-  if(!mk.files.length && !String(elVal('mk_paste') || '').trim()){
+  /* はりつけた文章も、1つの資料としてあつかう（毎回いまの文に入れかえる。直した文が使われるように） */
+  var paste = String(elVal('mk_paste') || '').trim();
+  mk.files = mk.files.filter(function(f){ return !f.paste; });
+  if(paste) mk.files.push({ name:'はりつけた文章', kind:'text', url:'', text:paste, sig:hash(paste.slice(0, 800)), paste:1 });
+  if(!mk.files.length){
     toast('先に資料をえらぶか、文章をはりつけてください', true);
     return;
-  }
-  /* はりつけた文章も、1つの資料としてあつかう */
-  var paste = String(elVal('mk_paste') || '').trim();
-  if(paste && !mk.files.some(function(f){ return f.name === 'はりつけた文章'; })){
-    mk.files.push({ name:'はりつけた文章', kind:'text', url:'', text:paste, sig:hash(paste.slice(0, 800)) });
   }
   var n = mk.opt.auto ? mkAutoN() : mk.opt.n;
   if(mk.opt.noai){ mkRunNoAi(n); return; }
@@ -294,9 +294,13 @@ async function mkRun(){
     return;
   }
   var text = mkFilesText();
-  /* 字が取り出せた資料は、写真を送らない（送る量がへる＝APIが軽い） */
-  var images = text ? [] : mk.files.filter(function(f){ return f.url; }).map(function(f){ return f.url; });
-  var bigs = mk.files.filter(function(f){ return f.file && !f.ref; });
+  /* 写真・PDF は、ほかに字の資料があっても送る（字を取り出した資料は、字だけ送る＝APIが軽い）。
+     1回にくっつけて送れる量をこえるぶんは、大きいものから「預ける」ほうに回す */
+  var inl = mk.files.filter(function(f){ return f.url && !f.text && !f.ref; });
+  var over = mkOverInline(inl);
+  var images = inl.filter(function(f){ return over.indexOf(f) < 0; }).map(function(f){ return f.url; });
+  var bigs = mk.files.filter(function(f){ return f.file && !f.ref; })
+    .concat(over.map(function(f){ return { name:f.name, src:f, file:dataUrlBlob(f.url, f.name) }; }));
   var s = sub(subId);
   var o = {
     n:n, types:mk.opt.types.slice(), lv:mk.opt.lv, both:mk.opt.both, two:mk.opt.two,
@@ -306,7 +310,9 @@ async function mkRun(){
     units:s ? dUnitsFor(s.name).units : [], text:text,
     av:mk.files.some(function(f){ return f.kind === 'audio' || f.kind === 'video'; }) ? 1 : 0
   };
-  mk.abort = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null, run = ++mkRunSeq;
+  var mine = function(){ return run === mkRunSeq && !(ctl && ctl.signal.aborted); };   /* 「やめる」のあと、別の作るが始まっていない */
+  mk.abort = ctl;
   mk.busy = 'make';
   mk.prog = { now:0, all:n, msg:'資料を読んでいます…' };
   render();
@@ -318,20 +324,22 @@ async function mkRun(){
       mk.prog = { now:0, all:n, msg:'大きな資料を送っています' + no + '… 0%' };
       render();
       var ref = await aiUpload(bf.file, {
-        signal:mk.abort ? mk.abort.signal : null,
+        signal:ctl ? ctl.signal : null,
         onProgress:function(pct){
-          if(!mk.prog) return;
+          if(!mk.prog || !mine()) return;
           mk.prog.msg = pct == null
             ? '大きな資料を送っています' + no + '…（大きいので、少し時間がかかります）'
             : '大きな資料を送っています' + no + '… ' + pct + '%' + (pct >= 100 ? '（AIが読んでいます）' : '');
           render();
         }
       });
-      bf.ref = ref;
+      if(!mine()) return;
+      (bf.src || bf).ref = ref;
       refs.push(ref);
     }
     if(bigs.length){ mk.prog = { now:0, all:n, msg:'資料を読んでいます…' }; render(); }
-    var j = await aiJson(mkPrompt(o), images, { tag:'mk', signal:mk.abort ? mk.abort.signal : null, maxTokens:8192, files:refs });
+    var j = await aiJson(mkPrompt(o), images, { tag:'mk', signal:ctl ? ctl.signal : null, maxTokens:8192, files:refs });
+    if(!mine()) return;
     var items = mkCleanQs(j && j.questions, mk.opt.types, n);
     if(!items.length) throw new Error('問題を作れませんでした。写真が読みにくいか、資料が短いのかもしれません');
     mk.pv = {
@@ -343,22 +351,41 @@ async function mkRun(){
     mk.okBig = '';
     toast(items.length + '問できました');
   }catch(e){
-    if(mk.abort && mk.abort.signal && mk.abort.signal.aborted){
-      toast('とちゅうでやめました');
-    }else{
+    if(ctl && ctl.signal.aborted){
+      /* 「やめる」で止めた（知らせは mkStop が出す） */
+    }else if(run === mkRunSeq){
       mk.pend = { at:Date.now(), msg:e.message };
       toast(e.message, true);
     }
   }finally{
-    mk.busy = ''; mk.prog = null; mk.abort = null;
-    render(); try{ window.scrollTo(0, 0); }catch(e2){}
+    /* 「やめる」のあとに新しく始めたぶんの、じゃまをしない */
+    if(run === mkRunSeq){
+      mk.busy = ''; mk.prog = null; mk.abort = null;
+      render(); try{ window.scrollTo(0, 0); }catch(e2){}
+    }
   }
+}
+/* くっつけて送る量が多すぎるとき、預けるほうに回すもの（大きいものから） */
+var INLINE_TOTAL = 18 * 1024 * 1024;     /* data: の字の数で数える（1回の送信は20MBまで） */
+function mkOverInline(list){
+  var total = 0, out = [];
+  list.forEach(function(f){ total += String(f.url).length; });
+  if(total <= INLINE_TOTAL) return out;
+  list.slice().sort(function(a, b){ return String(b.url).length - String(a.url).length; }).forEach(function(f){
+    if(total <= INLINE_TOTAL) return;
+    total -= String(f.url).length;
+    out.push(f);
+  });
+  return out;
 }
 /* 「それでも作る」を1回だけにするための、いまの資料のしるし */
 function mkEstKey(e){ return mk.files.length + ':' + (e ? e.tok : 0); }
 function mkStop(){
   if(mk.abort) try{ mk.abort.abort(); }catch(e){}
-  mk.busy = ''; mk.prog = null;
+  var was = mk.busy === 'make';
+  mkRunSeq++;                              /* とちゅうの作るは、もう画面をさわらない */
+  mk.busy = ''; mk.prog = null; mk.abort = null;
+  if(was) toast('とちゅうでやめました');
   render();
 }
 /* AIを使わずに、資料の字から作る */

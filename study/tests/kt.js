@@ -66,7 +66,8 @@ async function fresh(){
   W.__FAKE_UPLOAD = null;
   if(W.syStop) W.syStop();
   W.__FAKE_SYNC = null;
-  if(W.SY){ W.SY.applied = ''; W.SY.at = 0; W.SY.msg = ''; W.SY.busy = 0; W.SY.again = 0; }
+  if(W.SY){ W.SY.applied = ''; W.SY.at = 0; W.SY.msg = ''; W.SY.busy = 0; W.SY.again = 0; W.SY.renderWait = 0; }
+  W.mk.busy = ''; W.mk.warp = null;
   W.render();
   await frames();
 }
