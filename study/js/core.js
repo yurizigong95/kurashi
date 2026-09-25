@@ -108,7 +108,11 @@ var DEFAULT_SET = {
   term:'',         /* いまの学期（例：2026前期） */
   allTerms:0,      /* ほかの学期の科目も出す */
   aiCount:0,       /* AIを呼んだ回数（へらせているか見るため） */
-  aiSaved:0        /* AIを使わずに作った問題の数 */
+  aiSaved:0,       /* AIを使わずに作った問題の数 */
+  /* 使ったぶんの記録（きょう・今月）。トークンの数は、Googleが返したそのままの数 */
+  use:{ d:'', req:0, tin:0, tout:0, up:0, m:'', mreq:0, mtin:0, mtout:0, mup:0 },
+  /* 無料のめやすと、お金のめやす（モデルや時期で変わるので、ここで直せる） */
+  lim:{ rpd:20, ctx:1000000, yenIn:45, yenOut:375 }
 };
 var S = null;
 function blankState(){

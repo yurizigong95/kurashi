@@ -278,6 +278,17 @@ async function mkRun(){
   }
   var n = mk.opt.auto ? mkAutoN() : mk.opt.n;
   if(mk.opt.noai){ mkRunNoAi(n); return; }
+  /* 大きすぎる・きょうの無料のめやすを使いきった ときは、一度だけ聞く */
+  var est = estAll(mk.files), lim = aiLim(), used = aiUse();
+  var tooBig = est.tok > toNum(lim.ctx), noLeft = toNum(used.req) >= toNum(lim.rpd);
+  if((tooBig || noLeft) && mk.okBig !== mkEstKey(est)){
+    mk.okBig = mkEstKey(est);
+    toast(tooBig
+      ? '資料が大きいかもしれません（AIが読む量のめやす 約' + aiTokText(est.tok) + 'トークン）。それでも作るなら、もう一度おしてください'
+      : 'きょうは無料のめやす（' + toNum(lim.rpd) + '回）を使いきっています。それでも作るなら、もう一度おしてください', true);
+    render();
+    return;
+  }
   if(!aiReady()){
     toast('先に「設定」で、GeminiのAPIキーを入れてください（「AIを使わずに作る」なら、キーなしでも作れます）', true);
     return;
@@ -329,6 +340,7 @@ async function mkRun(){
       items:items, files:mk.files.slice(), nomat:0
     };
     mk.pend = null;
+    mk.okBig = '';
     toast(items.length + '問できました');
   }catch(e){
     if(mk.abort && mk.abort.signal && mk.abort.signal.aborted){
@@ -342,6 +354,8 @@ async function mkRun(){
     render(); try{ window.scrollTo(0, 0); }catch(e2){}
   }
 }
+/* 「それでも作る」を1回だけにするための、いまの資料のしるし */
+function mkEstKey(e){ return mk.files.length + ':' + (e ? e.tok : 0); }
 function mkStop(){
   if(mk.abort) try{ mk.abort.abort(); }catch(e){}
   mk.busy = ''; mk.prog = null;

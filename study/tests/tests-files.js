@@ -282,6 +282,81 @@ test('送り先を教えてもらえないときは、ひと息で送る', async
   }
 });
 
+/* ===== どれくらい使いそうか（容量・トークン・お金・無料のめやす） ===== */
+
+test('資料をえらぶと、大きさと使う量・お金のめやすが出る', async function(){
+  W.subAdd('成人看護学');
+  await click('tab', 'make');
+  var f = bigFile(30, '第3回 講義.m4a', 'audio/mp4');
+  await W.mkTake([f]);
+  await frames();
+  ok(has('ぜんぶで 30MB'), '大きさが出る');
+  ok(has('トークン'), 'AIが読む量のめやすが出る');
+  ok(has('お金のめやす'), 'お金のめやすが出る');
+  ok(has('きょう'), 'きょう使ったぶんも出る');
+});
+
+test('録音の長さから、使う量を見つもる（1秒32トークン）', async function(){
+  var oneMin = { kind:'audio', size:8 * 1024 * 1024, sec:60 };
+  eq(W.estTokens(oneMin), 60 * 32, '1分の録音');
+  var hour = { kind:'audio', size:60 * 1024 * 1024, sec:3600 };
+  eq(W.estTokens(hour), 3600 * 32, '1時間の録音');
+  ok(W.estTokens({ kind:'video', size:1, sec:60 }) > W.estTokens({ kind:'audio', size:1, sec:60 }), '動画のほうが重い');
+  eq(W.estTokens({ kind:'text', text:'あいうえお' }), 5, '文章は、だいたい文字の数');
+});
+
+test('使ったぶんは、Googleが返した数をそのまま足す', async function(){
+  W.subAdd('成人看護学');
+  var before = W.aiUse();
+  eq(W.toNum(before.req), 0, 'はじめは0回');
+  fakeAI(function(){
+    return { text:JSON.stringify({ title:'資料', summary:'', questions:[
+      { type:'tf', q:'脈拍は60〜100回/分である。', answer:'○', why:'基準値' }
+    ] }), usage:{ promptTokenCount:12000, candidatesTokenCount:800 } };
+  });
+  await click('tab', 'make');
+  await W.mkTake([fileOf([].slice.call(new W.TextEncoder().encode('脈拍は60〜100回/分である')), 'メモ.txt', 'text/plain')]);
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 6000, '問題ができるのを待つ');
+  var u = W.aiUse();
+  eq(u.req, 1, '1回ぶん数える');
+  eq(u.tin, 12000, '読んだ量');
+  eq(u.tout, 800, '書いた量');
+  /* 45円/1M・375円/1M なら、12000*45/1M + 800*375/1M ＝ 0.84円 */
+  ok(Math.abs(W.aiYen(u.tin, u.tout) - 0.84) < 0.001, 'お金のめやす：' + W.aiYen(u.tin, u.tout));
+});
+
+test('無料のめやすを使いきったら、1回とめて聞く', async function(){
+  W.subAdd('成人看護学');
+  var u = W.aiUse();
+  u.req = 20;                                   /* きょう20回つかった（めやすと同じ） */
+  fakeAI(function(){
+    return aiJsonReply({ title:'資料', summary:'', questions:[{ type:'tf', q:'あ。', answer:'○', why:'' }] });
+  });
+  await click('tab', 'make');
+  await W.mkTake([fileOf([].slice.call(new W.TextEncoder().encode('脈拍は60〜100回/分である')), 'メモ.txt', 'text/plain')]);
+  await click('mk-run');
+  await frames();
+  eq(aiCalls.length, 0, 'いきなりは作らない');
+  ok(has('それでも作る'), 'ボタンが「それでも作る」に変わる');
+  await click('mk-run');                        /* もう一度おせば作る */
+  await until(function(){ return W.mk.pv; }, 6000, '2回目は作る');
+  eq(aiCalls.length, 1, '2回目で作った');
+});
+
+test('めやすの数は、設定で直せる', async function(){
+  await click('tab', 'set');
+  await type('st_rpd', '250');
+  await type('st_yin', '30');
+  await type('st_yout', '250');
+  await click('st-lim');
+  var l = W.aiLim();
+  eq(l.rpd, 250, '1日の回数');
+  eq(l.yenIn, 30, '読むほうの値段');
+  eq(l.yenOut, 250, '書くほうの値段');
+  eq(W.document.getElementById('st_rpd').value, '250', '画面の入力らんにも出る');
+});
+
 test('読めないファイルは、教えてくれる', async function(){
   var bad = fileOf([1, 2, 3], 'なぞ.xyz', 'application/octet-stream');
   var err = '';

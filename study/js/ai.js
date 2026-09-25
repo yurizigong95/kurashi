@@ -22,6 +22,54 @@ function aiSavedAdd(n){
   S.set.aiSaved = toNum(S.set.aiSaved) + toNum(n);
   saveSoon();
 }
+/* ============================== 使ったぶんの記録 ==============================
+   Google が返してくる「使ったトークンの数」をそのまま足していく。
+   きょうのぶんと、今月のぶんを覚えておいて、設定タブに出す。          */
+function aiUse(){
+  var u = Object.assign({ d:'', req:0, tin:0, tout:0, up:0, m:'', mreq:0, mtin:0, mtout:0, mup:0 },
+    (S.set && S.set.use) || {});
+  var td = today(), mo = td.slice(0, 7);
+  if(u.d !== td){ u.d = td; u.req = 0; u.tin = 0; u.tout = 0; u.up = 0; }
+  if(u.m !== mo){ u.m = mo; u.mreq = 0; u.mtin = 0; u.mtout = 0; u.mup = 0; }
+  S.set.use = u;
+  return u;
+}
+function aiLim(){
+  var l = Object.assign({ rpd:20, ctx:1000000, yenIn:45, yenOut:375 }, (S.set && S.set.lim) || {});
+  S.set.lim = l;
+  return l;
+}
+/* 1回ぶんの使用量を足す（トークンは Google の数、送った大きさは自分で数える） */
+function aiUseAdd(meta, upBytes){
+  var u = aiUse();
+  var tin = toNum(meta && (meta.promptTokenCount || meta.prompt_token_count));
+  var tout = toNum(meta && (meta.candidatesTokenCount || meta.candidates_token_count)) +
+             toNum(meta && (meta.thoughtsTokenCount || meta.thoughts_token_count));
+  if(meta){ u.req++; u.mreq++; }
+  u.tin += tin; u.mtin += tin;
+  u.tout += tout; u.mtout += tout;
+  u.up += toNum(upBytes); u.mup += toNum(upBytes);
+  saveSoon();
+  return u;
+}
+/* お金のめやす（円）。1Mトークンあたりの値段は、設定で直せる */
+function aiYen(tin, tout){
+  var l = aiLim();
+  return (toNum(tin) * toNum(l.yenIn) + toNum(tout) * toNum(l.yenOut)) / 1000000;
+}
+function aiYenText(yen){
+  yen = Number(yen) || 0;
+  if(yen >= 100) return '約' + Math.round(yen) + '円';
+  if(yen >= 1) return '約' + yen.toFixed(1) + '円';
+  if(yen > 0) return '1円未満';
+  return '0円';
+}
+/* トークンの数を、読みやすい字にする */
+function aiTokText(n){
+  n = Math.round(Number(n) || 0);
+  if(n >= 10000) return (n / 10000).toFixed(n >= 100000 ? 0 : 1) + '万';
+  return String(n);
+}
 /* ============================== 大きな資料を預ける ==============================
    何百MBもあるPDF・録音・動画は、そのままくっつけては送れない。
    いったん Gemini に預けて（少しずつ送る）、その置き場所を見てもらう。
@@ -106,6 +154,7 @@ async function aiUpload(file, opt){
   }
   if(String(fi.state || '') === 'FAILED') throw new Error('AIがこの資料を読めませんでした（形がちがうかもしれません）');
   aiCountAdd();
+  aiUseAdd(null, file.size);
   return { uri:fi.uri, mime:fi.mimeType || mime, name:file.name };
 }
 
@@ -131,6 +180,7 @@ async function aiGenerate(opt){
   var fake = aiFake();
   if(fake){
     var t = await fake(JSON.parse(JSON.stringify({ tag:opt.tag || '', contents:opt.contents || [], json:!!opt.json })));
+    if(t && typeof t === 'object' && t.usage) aiUseAdd(t.usage, 0);
     return (t && typeof t === 'object') ? String(t.text || '') : String(t == null ? '' : t);
   }
   var key = aiKey();
@@ -154,6 +204,7 @@ async function aiGenerate(opt){
     try{ j = await res.json(); }catch(e){}
     if(res.ok && j){
       aiCountAdd();
+      aiUseAdd(j.usageMetadata || j.usage_metadata || null, 0);
       var c = (j.candidates || [])[0] || {};
       var parts = (c.content || {}).parts || [];
       return parts.filter(function(p){ return typeof p.text === 'string' && !p.thought; })

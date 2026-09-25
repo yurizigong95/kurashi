@@ -35,6 +35,7 @@ function mkFilePart(){
     '</div>' +
     (mk.busy === 'read' ? '<div class="s wait">読みこんでいます…</div>' : '') +
     mkFileList() +
+    mkCostPart() +
     note('えらべるもの：写真・PDF・スライド(.pptx)・Word(.docx)・文章・ZIP・<b>講義の録音・動画</b>。' +
       '大きいファイル（' + fSizeText(INLINE_MAX) + 'より上）でも大丈夫です。AIにいったん預けてから読んでもらいます（2GBまで）。') +
     '<label class="f" for="mk_paste">文章をはりつける（メモ・先生の配布テキストなど）</label>' +
@@ -69,7 +70,8 @@ function mkFilePart(){
     '</div>' +
     (mk.more ? mkMorePart() : '<button type="button" class="link" data-act="mk-more">くわしい設定をひらく</button>') +
     '<div class="pair" style="margin-top:12px">' +
-      btn((mk.opt.noai ? '✏️ AIを使わずに作る' : '✨ 問題をつくる'), 'mk-run', { cls:'main' }) +
+      btn((mk.opt.noai ? '✏️ AIを使わずに作る'
+        : (mk.okBig && mk.okBig === mkEstKey(estAll(mk.files)) ? '⚠️ それでも作る' : '✨ 問題をつくる')), 'mk-run', { cls:'main' }) +
       btn(mk.opt.noai ? 'AIを使う' : 'AIなし', 'mk-noai', { cls:'ghost' }) +
     '</div>' +
     (mk.pend ? '<div class="s bad" style="margin-top:8px">できませんでした：' + esc(mk.pend.msg) + '</div>' +
@@ -89,6 +91,28 @@ function mkMorePart(){
       '<button type="button" data-act="mk-two" class="' + (mk.opt.two ? 'on' : '') + '">「2つ選べ」を入れる</button>' +
     '</div>' +
     '<button type="button" class="link" data-act="mk-more">とじる</button>';
+}
+/* どれくらい使いそうか（大きさ・トークン・お金・無料のめやす） */
+function mkCostPart(){
+  if(!mk.files.length) return '';
+  var e = estAll(mk.files), u = aiUse(), l = aiLim();
+  var yen = aiYen(e.tok, 1500);                       /* 答えのぶんも、ざっくり足す */
+  var left = Math.max(0, toNum(l.rpd) - toNum(u.req));
+  var over = [];
+  if(e.tok > toNum(l.ctx)) over.push('この資料は大きすぎて、<b>1回では読みきれない</b>かもしれません（' + aiTokText(l.ctx) + 'トークンまで）。短く切るか、動画なら音声だけにしてみてください。');
+  else if(e.tok > toNum(l.ctx) * 0.6) over.push('かなり大きいので、<b>1回ぶんの上限に近い</b>です（' + aiTokText(l.ctx) + 'トークンまで）。');
+  if(left <= 0) over.push('きょうは、もう<b>無料のめやす（' + toNum(l.rpd) + '回）を使いきって</b>います。明日になるか、有料にしていれば、そのまま使えます。');
+  else if(left <= 3) over.push('きょう作れるのは、<b>のこり' + left + '回くらい</b>です（無料のめやす ' + toNum(l.rpd) + '回）。');
+  var h = '<div class="' + (over.length ? 'warnbox' : 'costbox') + '">' +
+    '<div class="s"><b>ぜんぶで ' + fSizeText(e.size) + '</b>' +
+      (e.up ? '（うち ' + fSizeText(e.up) + ' をAIに送ります）' : '') +
+      '　／　AIが読む量のめやす <b>' + aiTokText(e.tok) + 'トークン</b>' +
+      '　／　お金のめやす <b>' + aiYenText(yen) + '</b></div>' +
+    (over.length ? '<div class="s">⚠️ ' + over.join('<br>⚠️ ') + '</div>' : '') +
+    '<div class="s">きょう ' + toNum(u.req) + '回・' + aiTokText(toNum(u.tin) + toNum(u.tout)) + 'トークン使いました（' + aiYenText(aiYen(u.tin, u.tout)) + '）。' +
+      'めやすの数は「設定」で直せます。</div>' +
+    '</div>';
+  return h;
 }
 function mkFileList(){
   if(!mk.files.length) return '';

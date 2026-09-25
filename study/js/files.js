@@ -34,6 +34,55 @@ function fSizeText(n){
   if(n >= 1024) return Math.round(n / 1024) + 'KB';
   return n + 'B';
 }
+/* ============================== どれくらい使いそうか ==============================
+   AIは「トークン」という単位で数えます。ここでは、それがどれくらいになりそうかを
+   前もって見積もって、画面に出します（あくまで“めやす”です）。
+   ・録音 … 1秒 = 32トークン（Googleの決まり）
+   ・動画 … 1秒 = 300トークン（音も絵も見るので、録音より重い）
+   ・PDF・写真 … 1ページ（1枚）= 260トークンくらい。ページ数は大きさから見積もり
+   ・文章 … 日本語は、だいたい1文字 = 1トークン                                  */
+var TOK_AUDIO_SEC = 32;
+var TOK_VIDEO_SEC = 300;
+var TOK_PAGE = 260;
+var PDF_PAGE_BYTES = 120 * 1024;         /* PDFの1ページぶんの、だいたいの大きさ */
+/* 録音・動画の長さ（秒）を調べる。分からなければ 0 */
+function mediaSeconds(file){
+  return new Promise(function(res){
+    var url = '', el = null, done = function(v){
+      if(url) try{ URL.revokeObjectURL(url); }catch(e){}
+      if(el) try{ el.src = ''; }catch(e){}
+      res(Math.max(0, Math.round(Number(v) || 0)));
+    };
+    try{
+      url = URL.createObjectURL(file);
+      el = document.createElement(/^video\//.test(file.type || '') ? 'video' : 'audio');
+      el.preload = 'metadata';
+      el.onloadedmetadata = function(){ done(isFinite(el.duration) ? el.duration : 0); };
+      el.onerror = function(){ done(0); };
+      el.src = url;
+      setTimeout(function(){ done(el && isFinite(el.duration) ? el.duration : 0); }, 4000);
+    }catch(e){ done(0); }
+  });
+}
+/* 1つの資料が、だいたい何トークンになりそうか */
+function estTokens(f){
+  if(!f) return 0;
+  if(f.kind === 'audio') return Math.round((f.sec || Math.max(1, (f.size || 0) / 16000)) * TOK_AUDIO_SEC);
+  if(f.kind === 'video') return Math.round((f.sec || Math.max(1, (f.size || 0) / 125000)) * TOK_VIDEO_SEC);
+  if(f.kind === 'pdf') return Math.round(Math.max(1, (f.size || 0) / PDF_PAGE_BYTES) * TOK_PAGE);
+  if(f.kind === 'photo') return TOK_PAGE;
+  return Math.min(TEXT_SEND, (f.text || '').length);
+}
+/* えらんだ資料ぜんぶで、どれくらいか */
+function estAll(list){
+  var tok = 0, size = 0, up = 0;
+  (list || []).forEach(function(f){
+    tok += estTokens(f);
+    size += toNum(f.size);
+    if(f.file && !f.ref) up += toNum(f.size);
+  });
+  return { tok:tok, size:size, up:up };
+}
 /* AIに預けてから読んでもらう形（大きなPDF・録音・動画） */
 function fBig(f, kind){
   return { name:f.name, kind:kind, url:'', text:'', file:f, big:1, size:f.size };
@@ -259,7 +308,11 @@ async function loadOne(f, kind){
     if(kind === 'pdf' && f.size <= INLINE_MAX){
       return { name:f.name, kind:'pdf', url:await readAs(f, 'url'), text:'', size:f.size };
     }
-    return fBig(f, kind);
+    var big = fBig(f, kind);
+    if(kind === 'audio' || kind === 'video'){
+      try{ big.sec = await mediaSeconds(f); }catch(e){}
+    }
+    return big;
   }
   if(kind === 'slide'){
     var d = await docText(f);

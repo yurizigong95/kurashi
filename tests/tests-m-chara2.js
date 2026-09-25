@@ -362,7 +362,10 @@ KT.test('キャラ＋：キャラどうしの会話（今日の予定から・�
     ok(d.pair[0] !== d.pair[1], 'ちがう子どうし');
     ok(d.lines.every(function(l){ return l.t && !/[{}]/.test(l.t); }), 'うめこみ忘れがない：' + d.topic);
   });
-  ok(list.some(function(d){ return /^x-/.test(d.topic) && /テスト/.test(d.lines.map(function(l){ return l.t; }).join('')); }), 'テストの話');
+  /* テストの話が出る（どの言い回しになるかは日によって変わるので、話題で見る） */
+  var xs = list.filter(function(d){ return /^x-/.test(d.topic); });
+  ok(xs.length >= 1, 'テストの話：' + list.map(function(d){ return d.topic; }).join(','));
+  ok(xs.every(function(d){ return d.lines.every(function(l){ return l.t && l.t.length >= 2; }); }), 'テストの話の中身がある');
   ok(/^(x-|k-)/.test(list[0].topic), 'いちばん今日らしい話が先：' + list[0].topic);
   /* 今日タブ */
   A.appId = 'today'; A.todayTab = 'today'; A.render();
