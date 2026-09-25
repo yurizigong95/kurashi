@@ -83,6 +83,20 @@ test('計算：ゆるした幅の中なら正解・式が出る', async function
   eq(W.logOf(q.id).miss, 1, 'まちがいの記録');
 });
 
+test('並べかえ：はじめから正しい順に出たときも、正かいになる', async function(){
+  var s = W.subAdd('基礎看護技術');
+  addQ(s.id, { qt:'order', q:'正しい順にならべてください。', c:['手をぬらす', '石けんをとる', '泡立てる', '流す'] });
+  await click('tab', 'drill');
+  await click('dr-mode', 'new');
+  await click('dr-start');
+  /* まぐれで正しい順に出たとき（4つなら24回に1回）と同じ形にする */
+  W.run.shuf = [0, 1, 2, 3]; W.run.order = [];
+  W.render();
+  await frames();
+  await click('dr-check');
+  ok(has('せいかい'), 'さわらなくても、正しい順なら正かい');
+});
+
 test('並べかえ：↑↓でならべて答えあわせ', async function(){
   var s = W.subAdd('基礎看護技術');
   var q = addQ(s.id, { qt:'order', q:'正しい順にならべてください。', c:['手をぬらす', '石けんをとる', '泡立てる', '流す'] });

@@ -69,7 +69,8 @@ function drillCheck(){
   if(kind === 'choice') ok = gradeChoice(q, run.picked);
   else if(kind === 'text') ok = gradeText(q, String(elVal('dr_in') || ''));
   else if(kind === 'calc') ok = gradeCalc(q, String(elVal('dr_in') || ''));
-  else if(kind === 'order') ok = gradeOrder(q, run.order);
+  /* 並べかえは、はじめから正しい順に出ることもある。そのときは、さわっていなくても正かい */
+  else if(kind === 'order') ok = gradeOrder(q, run.order.length ? run.order : viewOrder(q, run));
   else if(kind === 'match') ok = gradeMatch(q, run.picks);
   run.typed = String(elVal('dr_in') || '');
   run.res = ok;

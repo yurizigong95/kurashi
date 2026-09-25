@@ -49,6 +49,14 @@ h3.grp{margin:16px 0 8px; font-size:14px; color:var(--sub)}
   background:var(--amber-bg); color:var(--amber); border-radius:12px;
   padding:10px 12px; font-size:13px; line-height:1.7; margin:0 0 10px;
 }
+/* どれくらい使いそうか（大きさ・トークン・お金） */
+.costbox, .warnbox{
+  border-radius:12px; padding:10px 12px; margin:10px 0 0; line-height:1.8;
+  background:var(--bg); color:var(--sub);
+}
+.warnbox{ background:var(--amber-bg); color:var(--amber); }
+.costbox .s, .warnbox .s{ color:inherit; }
+.costbox b, .warnbox b{ color:inherit; }
 .src{margin-top:8px; font-size:11.5px; color:var(--sub)}
 pre{white-space:pre-wrap; word-break:break-word; font-size:12px; background:var(--bg); padding:10px; border-radius:10px; max-height:240px; overflow:auto}
 details summary{font-size:13px; color:var(--sub); cursor:pointer; margin-top:8px}
@@ -122,6 +130,11 @@ input.big{font-size:18px; padding:14px}
 
 /* ===== 数字のならび ===== */
 .stats{display:flex; gap:8px; margin-top:12px}
+/* 使ったぶんの表 */
+table.use{width:100%; border-collapse:collapse; margin-top:12px; font-size:12px; color:var(--sub)}
+table.use th, table.use td{padding:6px 4px; text-align:right; border-bottom:1px solid var(--line)}
+table.use th:first-child, table.use tr:first-child th{text-align:left; color:var(--sub); font-weight:600}
+table.use td{color:var(--ink); font-variant-numeric:tabular-nums}
 .stat{flex:1; background:var(--bg); border-radius:12px; padding:10px 8px; text-align:center}
 .stat .s{font-size:11.5px}
 .stat .v{font-size:20px; font-weight:700; font-variant-numeric:tabular-nums}

@@ -13,12 +13,28 @@ function setView(){
       'キーは Google AI Studio（aistudio.google.com）の「Get API key」で作れます。' +
       '<br>キーがなくても、「つくる」タブの<b>表から作る（AIなし）</b>と、作った問題をとくのは、ぜんぶ使えます。'));
 
-  h += section('AIをどれだけ使ったか', null,
+  var u = aiUse(), l = aiLim();
+  h += section('AIをどれだけ使ったか', 'きょう ' + toNum(u.req) + '回',
     '<div class="stats">' +
       statBox('AIを呼んだ回数', toNum(S.set.aiCount)) +
       statBox('AIなしで作った問題', toNum(S.set.aiSaved)) +
     '</div>' +
-    note('「AIなしで作った問題」のぶんは、APIをまったく使っていません。'));
+    '<table class="use"><tbody>' +
+      '<tr><th></th><th>回数</th><th>読んだ量</th><th>書いた量</th><th>送った大きさ</th><th>お金のめやす</th></tr>' +
+      '<tr><th>きょう</th><td>' + toNum(u.req) + '回</td><td>' + aiTokText(u.tin) + '</td><td>' + aiTokText(u.tout) + '</td><td>' + fSizeText(u.up) + '</td><td>' + aiYenText(aiYen(u.tin, u.tout)) + '</td></tr>' +
+      '<tr><th>今月</th><td>' + toNum(u.mreq) + '回</td><td>' + aiTokText(u.mtin) + '</td><td>' + aiTokText(u.mtout) + '</td><td>' + fSizeText(u.mup) + '</td><td>' + aiYenText(aiYen(u.mtin, u.mtout)) + '</td></tr>' +
+    '</tbody></table>' +
+    '<label class="f">無料のめやす（1日に作れる回数）</label>' +
+    '<input id="st_rpd" type="number" min="0" max="10000" inputmode="numeric" value="' + esc(inVal('st_rpd', String(toNum(l.rpd)))) + '">' +
+    '<div class="pair">' +
+      '<div><label class="f" for="st_yin">読む1Mトークンの値段（円）</label><input id="st_yin" type="number" min="0" max="100000" inputmode="numeric" value="' + esc(inVal('st_yin', String(toNum(l.yenIn)))) + '"></div>' +
+      '<div><label class="f" for="st_yout">書く1Mトークンの値段（円）</label><input id="st_yout" type="number" min="0" max="100000" inputmode="numeric" value="' + esc(inVal('st_yout', String(toNum(l.yenOut)))) + '"></div>' +
+    '</div>' +
+    btn('めやすを保存', 'st-lim', { cls:'ghost' }) +
+    note('「回数」「読んだ量」「書いた量」は、Googleが返してきた数をそのまま足しています（あてずっぽうではありません）。' +
+      '<br><b>お金と無料のめやすは“めやす”です。</b>無料でどれだけ使えるか・1トークンいくらかは、モデルや時期で変わります。' +
+      'いまの数字は、上の欄で直せます（はじめは1日20回・読む45円／書く375円で入れてあります）。' +
+      '<br>ほんとうの請求は、Google AI Studio や Google Cloud の画面でたしかめてください。'));
 
   h += section('勉強のしかた', null,
     '<label class="f">1日の目標</label>' +
@@ -183,6 +199,16 @@ onAct('st-keydel', function(){
   render();
 });
 onAct('st-model', function(d){ S.set.model = d.v; saveNow(); render(); });
+onAct('st-lim', function(){
+  var l = aiLim();
+  l.rpd = clamp(toNum(elVal('st_rpd')), 0, 10000);
+  l.yenIn = clamp(toNum(elVal('st_yin')), 0, 100000);
+  l.yenOut = clamp(toNum(elVal('st_yout')), 0, 100000);
+  inClear('st_rpd'); inClear('st_yin'); inClear('st_yout');
+  saveNow();
+  toast('めやすを保存しました');
+  render();
+});
 onAct('st-goal', function(d){ S.set.goal = toNum(d.v); saveNow(); render(); });
 onAct('st-shuffle', function(d){ S.set.shuffle = toNum(d.v); saveNow(); render(); });
 onAct('st-term', function(){ S.set.term = String(elVal('st_term') || '').trim(); saveNow(); toast('学期を入れました'); render(); });

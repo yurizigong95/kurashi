@@ -5,23 +5,94 @@
    ・写真の手入れ（明るく・まっすぐ・見開き分け・ぼけ判定）は、すべてこの端末の中で計算する */
 
 var MAX_FILES = 8;                       /* 1回に読みこむ資料の数 */
-var PDF_MAX = 15 * 1024 * 1024;
-var DOC_MAX = 25 * 1024 * 1024;
-var TXT_MAX = 5 * 1024 * 1024;
+var INLINE_MAX = 15 * 1024 * 1024;       /* これより小さいものは、その場でAIにくっつけて送る */
+var UPLOAD_MAX = 2 * 1024 * 1024 * 1024; /* 大きいものは、いったんAIに預けてから読んでもらう（2GBまで） */
+var TXT_HEAD = 4 * 1024 * 1024;          /* 大きな文章のファイルは、はじめの4MBだけ読む */
+var ZIP_INFLATE_MAX = 300 * 1024 * 1024; /* ZIPの中で、ほどける大きさの上限（圧縮なしなら上限なし） */
 var TEXT_KEEP = 8000;                    /* 資料に残しておく字の数 */
 var TEXT_SEND = 24000;                   /* AIに送る字の数 */
 
 function fKindOf(f){
-  var name = String(f && f.name || '');
-  if(/\.zip$/i.test(name) || /zip/i.test(f.type || '')) return 'zip';
+  var name = String(f && f.name || ''), type = String(f && f.type || '');
+  if(/\.zip$/i.test(name) || /zip/i.test(type)) return 'zip';
   if(/\.(pptx|docx)$/i.test(name)) return 'slide';
-  if(/pdf/i.test(f.type || '') || /\.pdf$/i.test(name)) return 'pdf';
-  if(/^image\//.test(f.type || '') || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(name)) return 'photo';
-  if(/^text\//.test(f.type || '') || /\.(txt|md|csv|tsv|json|rtf|html?|vtt|srt)$/i.test(name)) return 'text';
+  if(/pdf/i.test(type) || /\.pdf$/i.test(name)) return 'pdf';
+  if(/^image\//.test(type) || /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(name)) return 'photo';
+  if(/^audio\//.test(type) || /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac|aiff?)$/i.test(name)) return 'audio';
+  if(/^video\//.test(type) || /\.(mp4|m4v|mov|webm|mpe?g|3gp|avi|wmv|mkv)$/i.test(name)) return 'video';
+  if(/^text\//.test(type) || /\.(txt|md|csv|tsv|json|rtf|html?|vtt|srt)$/i.test(name)) return 'text';
   return '';
 }
 function fKindName(kind){
-  return { photo:'写真', pdf:'PDF', slide:'スライド', text:'文章' }[kind] || '資料';
+  return { photo:'写真', pdf:'PDF', slide:'スライド', text:'文章', audio:'録音', video:'動画' }[kind] || '資料';
+}
+/* ファイルの大きさを、読みやすい字にする */
+function fSizeText(n){
+  n = Number(n) || 0;
+  if(n >= 1024 * 1024 * 1024) return (n / 1024 / 1024 / 1024).toFixed(1) + 'GB';
+  if(n >= 1024 * 1024) return Math.round(n / 1024 / 1024) + 'MB';
+  if(n >= 1024) return Math.round(n / 1024) + 'KB';
+  return n + 'B';
+}
+/* ============================== どれくらい使いそうか ==============================
+   AIは「トークン」という単位で数えます。ここでは、それがどれくらいになりそうかを
+   前もって見積もって、画面に出します（あくまで“めやす”です）。
+   ・録音 … 1秒 = 32トークン（Googleの決まり）
+   ・動画 … 1秒 = 300トークン（音も絵も見るので、録音より重い）
+   ・PDF・写真 … 1ページ（1枚）= 260トークンくらい。ページ数は大きさから見積もり
+   ・文章 … 日本語は、だいたい1文字 = 1トークン                                  */
+var TOK_AUDIO_SEC = 32;
+var TOK_VIDEO_SEC = 300;
+var TOK_PAGE = 260;
+var PDF_PAGE_BYTES = 120 * 1024;         /* PDFの1ページぶんの、だいたいの大きさ */
+/* 録音・動画の長さ（秒）を調べる。分からなければ 0 */
+function mediaSeconds(file){
+  return new Promise(function(res){
+    var url = '', el = null, done = function(v){
+      if(url) try{ URL.revokeObjectURL(url); }catch(e){}
+      if(el) try{ el.src = ''; }catch(e){}
+      res(Math.max(0, Math.round(Number(v) || 0)));
+    };
+    try{
+      url = URL.createObjectURL(file);
+      el = document.createElement(/^video\//.test(file.type || '') ? 'video' : 'audio');
+      el.preload = 'metadata';
+      el.onloadedmetadata = function(){ done(isFinite(el.duration) ? el.duration : 0); };
+      el.onerror = function(){ done(0); };
+      el.src = url;
+      setTimeout(function(){ done(el && isFinite(el.duration) ? el.duration : 0); }, 4000);
+    }catch(e){ done(0); }
+  });
+}
+/* 1つの資料が、だいたい何トークンになりそうか */
+function estTokens(f){
+  if(!f) return 0;
+  if(f.kind === 'audio') return Math.round((f.sec || Math.max(1, (f.size || 0) / 16000)) * TOK_AUDIO_SEC);
+  if(f.kind === 'video') return Math.round((f.sec || Math.max(1, (f.size || 0) / 125000)) * TOK_VIDEO_SEC);
+  if(f.kind === 'pdf') return Math.round(Math.max(1, (f.size || 0) / PDF_PAGE_BYTES) * TOK_PAGE);
+  if(f.kind === 'photo') return TOK_PAGE;
+  return Math.min(TEXT_SEND, (f.text || '').length);
+}
+/* えらんだ資料ぜんぶで、どれくらいか */
+function estAll(list){
+  var tok = 0, size = 0, up = 0;
+  (list || []).forEach(function(f){
+    tok += estTokens(f);
+    size += toNum(f.size);
+    if(f.file && !f.ref) up += toNum(f.size);
+  });
+  return { tok:tok, size:size, up:up };
+}
+/* AIに預けてから読んでもらう形（大きなPDF・録音・動画） */
+function fBig(f, kind){
+  return { name:f.name, kind:kind, url:'', text:'', file:f, big:1, size:f.size };
+}
+/* ファイルの一部だけを読む（大きなファイルでも、まるごとメモリに載せない） */
+async function fileBytes(f, start, end){
+  var a = Math.max(0, Math.min(f.size, start)), b = Math.max(a, Math.min(f.size, end));
+  var part = f.slice(a, b);
+  var buf = part.arrayBuffer ? await part.arrayBuffer() : await readAs(part, 'buf');
+  return new Uint8Array(buf);
 }
 /* &amp; などを、もとの字にもどす */
 function unent(s){
@@ -80,6 +151,54 @@ function zipEntries(buf, want){
   }
   return out;
 }
+/* zip の目次（中央ディレクトリ）だけを読む。中身は、あとで必要なところだけ取りに行く。
+   こうすると、何百MBのスライドやZIPでも、メモリをほとんど使わずに開ける。 */
+async function zipList(f){
+  if(f.size < 22) throw new Error('ファイルを開けませんでした（.pptx / .docx / .zip を選んでください）');
+  var tail = await fileBytes(f, f.size - Math.min(f.size, 66000), f.size);
+  var tv = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
+  var eo = -1;
+  for(var i = tail.length - 22; i >= 0; i--){ if(tv.getUint32(i, true) === 0x06054b50){ eo = i; break; } }
+  if(eo < 0) throw new Error('ファイルを開けませんでした（.pptx / .docx / .zip を選んでください）');
+  var count = tv.getUint16(eo + 10, true), cdSize = tv.getUint32(eo + 12, true), cdOff = tv.getUint32(eo + 16, true);
+  if(count === 0xFFFF || cdOff === 0xFFFFFFFF || cdSize === 0xFFFFFFFF){
+    throw new Error('この形のZIPは、まだ読めません（中身をいくつかに分けて入れてみてください）');
+  }
+  var cd = await fileBytes(f, cdOff, cdOff + cdSize);
+  var cv = new DataView(cd.buffer, cd.byteOffset, cd.byteLength);
+  var dec = new TextDecoder('utf-8'), out = [], p = 0;
+  for(var k = 0; k < count && p + 46 <= cd.length; k++){
+    if(cv.getUint32(p, true) !== 0x02014b50) break;
+    var method = cv.getUint16(p + 10, true);
+    var csize = cv.getUint32(p + 20, true);
+    var usize = cv.getUint32(p + 24, true);
+    var nameLen = cv.getUint16(p + 28, true), extLen = cv.getUint16(p + 30, true), cmtLen = cv.getUint16(p + 32, true);
+    var lho = cv.getUint32(p + 42, true);
+    var name = dec.decode(cd.subarray(p + 46, p + 46 + nameLen));
+    p += 46 + nameLen + extLen + cmtLen;
+    if(csize) out.push({ name:name, method:method, csize:csize, usize:usize, lho:lho });
+  }
+  return out;
+}
+/* zip の中の1つが、ファイルのどこにあるか */
+async function zipAt(f, e){
+  var head = await fileBytes(f, e.lho, e.lho + 30);
+  var hv = new DataView(head.buffer, head.byteOffset, head.byteLength);
+  if(head.length < 30 || hv.getUint32(0, true) !== 0x04034b50) throw new Error('中のファイルを読めませんでした');
+  return e.lho + 30 + hv.getUint16(26, true) + hv.getUint16(28, true);
+}
+/* zip の中の1つだけを、その場所だけ読んでほどく */
+async function zipRead(f, e){
+  var start = await zipAt(f, e);
+  return inflateOne(await fileBytes(f, start, start + e.csize), e.method);
+}
+/* 圧縮せずに入っているものは、そこを切り出すだけでよい（メモリを使わない） */
+async function zipCut(f, e, name, mime){
+  var start = await zipAt(f, e);
+  var part = f.slice(start, start + e.csize);
+  try{ return new File([part], name, { type:mime }); }
+  catch(err){ part.name = name; return part; }
+}
 function slideNo(name){ var m = String(name).match(/(\d+)\.xml$/); return m ? Number(m[1]) : 0; }
 /* 太字・下線・色つきの字（先生が大事だと言ったところ）を取り出す */
 function emphFrom(xml, isDoc){
@@ -98,10 +217,30 @@ function emphFrom(xml, isDoc){
   }
   return out;
 }
-/* スライド（.pptx）・Word（.docx）から字を取り出す */
+/* スライド（.pptx）・Word（.docx）から字を取り出す（必要なところだけ読むので、大きくても開ける） */
 async function docText(f){
-  var buf = await readAs(f, 'buf');
-  return docTextBuf(buf, /\.docx$/i.test(f.name), f.name);
+  var isDoc = /\.docx$/i.test(f.name), fname = f.name;
+  var want = isDoc
+    ? function(n){ return n === 'word/document.xml'; }
+    : function(n){ return /^ppt\/(slides\/slide|notesSlides\/notesSlide)\d+\.xml$/.test(n); };
+  var files = (await zipList(f)).filter(function(e){ return want(e.name); });
+  if(!files.length) throw new Error('「' + fname + '」の中に字が見つかりませんでした');
+  files.sort(function(a, b){
+    var na = /notesSlide/.test(a.name) ? 1 : 0, nb = /notesSlide/.test(b.name) ? 1 : 0;
+    return (na - nb) || (slideNo(a.name) - slideNo(b.name)) || a.name.localeCompare(b.name);
+  });
+  var dec = new TextDecoder('utf-8'), emph = [], out = [];
+  for(var i = 0; i < files.length; i++){
+    var xml;
+    try{ xml = dec.decode(await zipRead(f, files[i])); }catch(e){ continue; }
+    var t = isDoc ? ooxText(xml, 'w:p', 'w:t') : ooxText(xml, 'a:p', 'a:t');
+    emphFrom(xml, isDoc).forEach(function(w){ if(emph.indexOf(w) < 0 && emph.length < 30) emph.push(w); });
+    if(!t.trim()) continue;
+    if(isDoc) out.push(t);
+    else out.push((/notesSlide/.test(files[i].name) ? '【ノート ' : '【スライド ') + slideNo(files[i].name) + '】\n' + t);
+  }
+  if(!out.length) throw new Error('「' + fname + '」の中に字が見つかりませんでした');
+  return { text:out.join('\n\n'), emph:emph };
 }
 async function docTextBuf(buf, isDoc, name){
   var fname = name || (isDoc ? 'document.docx' : 'slides.pptx');
@@ -161,49 +300,80 @@ async function loadOne(f, kind){
     }catch(e){}
     return o;
   }
-  if(kind === 'pdf'){
-    if(f.size > PDF_MAX) throw new Error('PDFは15MBまでです（' + f.name + '）');
-    return { name:f.name, kind:'pdf', url:await readAs(f, 'url'), text:'' };
+  if(kind === 'pdf' || kind === 'audio' || kind === 'video'){
+    if(f.size > UPLOAD_MAX){
+      throw new Error(fKindName(kind) + 'は2GBまでです（' + f.name + '：' + fSizeText(f.size) + '）');
+    }
+    /* 小さいPDFは、その場でくっつけて送る。大きいものと、録音・動画は、いったんAIに預ける */
+    if(kind === 'pdf' && f.size <= INLINE_MAX){
+      return { name:f.name, kind:'pdf', url:await readAs(f, 'url'), text:'', size:f.size };
+    }
+    var big = fBig(f, kind);
+    if(kind === 'audio' || kind === 'video'){
+      try{ big.sec = await mediaSeconds(f); }catch(e){}
+    }
+    return big;
   }
   if(kind === 'slide'){
-    if(f.size > DOC_MAX) throw new Error('スライド・Wordは25MBまでです（' + f.name + '）');
     var d = await docText(f);
-    return { name:f.name, kind:'slide', url:'', text:d.text, emph:d.emph || [] };
+    return { name:f.name, kind:'slide', url:'', text:d.text, emph:d.emph || [], size:f.size };
   }
-  if(f.size > TXT_MAX) throw new Error('文章のファイルは5MBまでです（' + f.name + '）');
-  return { name:f.name, kind:'text', url:'', text:String(await readAs(f, 'text') || '') };
+  /* 文章のファイルは、大きければ、はじめのところだけ読む（問題を作るには十分） */
+  var part = f.size > TXT_HEAD ? f.slice(0, TXT_HEAD) : f;
+  var t = String(await readAs(part, 'text') || '');
+  return { name:f.name, kind:'text', url:'', text:t, size:f.size, cut:f.size > TXT_HEAD ? 1 : 0 };
 }
-/* ZIP の中の、読めるものだけを取り出す */
+/* ZIP の中の、読めるものだけを取り出す（大きなZIPでも、中の1つずつだけを読む） */
 async function loadZip(f){
-  if(f.size > DOC_MAX) throw new Error('ZIPは25MBまでです（' + f.name + '）');
-  var buf = await readAs(f, 'buf');
-  var want = function(n){ return !/\/$/.test(n) && !/^__MACOSX/.test(n) && /\.(pptx|docx|txt|md|csv|pdf|jpe?g|png)$/i.test(n); };
-  var entries = zipEntries(buf, want);
+  var want = function(n){
+    return !/\/$/.test(n) && !/^__MACOSX/.test(n) &&
+      /\.(pptx|docx|txt|md|csv|pdf|jpe?g|png|mp3|m4a|wav|mp4|mov)$/i.test(n);
+  };
+  var entries = (await zipList(f)).filter(function(e){ return want(e.name); });
   if(!entries.length) throw new Error('「' + f.name + '」の中に、読めるファイルがありませんでした');
   entries.sort(function(a, b){ return a.name.localeCompare(b.name); });
   var out = [], dec = new TextDecoder('utf-8');
   for(var i = 0; i < entries.length && out.length < MAX_FILES; i++){
     var e = entries[i], base = String(e.name).split('/').pop();
+    /* 大きなPDF・録音・動画は、ほどかずに、そこを切り出してAIに預ける（メモリを使わない） */
+    if(!/\.(pptx|docx|txt|md|csv)$/i.test(base) && (e.usize > INLINE_MAX || /\.(mp3|m4a|wav|mp4|mov)$/i.test(base))){
+      var bk = /\.pdf$/i.test(base) ? 'pdf' : /\.(mp3|m4a|wav)$/i.test(base) ? 'audio' : /\.(mp4|mov)$/i.test(base) ? 'video' : 'photo';
+      var bm = { pdf:'application/pdf', audio:'audio/mpeg', video:'video/mp4' }[bk] || (/\.png$/i.test(base) ? 'image/png' : 'image/jpeg');
+      if(e.method === 0){ out.push(fBig(await zipCut(f, e, base, bm), bk)); continue; }
+      if(e.usize > ZIP_INFLATE_MAX) continue;                 /* 大きすぎてほどけないものは、とばす */
+    }
     var bytes;
-    try{ bytes = await inflateOne(e.data, e.method); }catch(err){ continue; }
+    try{ bytes = await zipRead(f, e); }catch(err){ continue; }
     if(/\.(pptx|docx)$/i.test(base)){
       try{
         var d = await docTextBuf(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), /\.docx$/i.test(base), base);
-        out.push({ name:base, kind:'slide', url:'', text:d.text, emph:d.emph || [] });
+        out.push({ name:base, kind:'slide', url:'', text:d.text, emph:d.emph || [], size:bytes.length });
       }catch(err2){}
     }else if(/\.(txt|md|csv)$/i.test(base)){
-      out.push({ name:base, kind:'text', url:'', text:dec.decode(bytes) });
-    }else if(/\.pdf$/i.test(base)){
-      if(bytes.length <= PDF_MAX) out.push({ name:base, kind:'pdf', url:bytesToDataUrl(bytes, 'application/pdf'), text:'' });
+      out.push({ name:base, kind:'text', url:'', text:dec.decode(bytes).slice(0, TEXT_SEND * 2), size:bytes.length });
     }else{
-      out.push({ name:base, kind:'photo', url:bytesToDataUrl(bytes, /\.png$/i.test(base) ? 'image/png' : 'image/jpeg'), text:'' });
+      /* 大きいものは、中身をそのままファイルにして、AIに預けてから読んでもらう */
+      var kind = /\.pdf$/i.test(base) ? 'pdf'
+        : /\.(mp3|m4a|wav)$/i.test(base) ? 'audio'
+        : /\.(mp4|mov)$/i.test(base) ? 'video' : 'photo';
+      var mime = { pdf:'application/pdf', audio:'audio/mpeg', video:'video/mp4' }[kind] ||
+        (/\.png$/i.test(base) ? 'image/png' : 'image/jpeg');
+      if(kind !== 'photo' && kind !== 'pdf') { out.push(fBig(blobFile(bytes, base, mime), kind)); continue; }
+      if(bytes.length <= INLINE_MAX) out.push({ name:base, kind:kind, url:bytesToDataUrl(bytes, mime), text:'', size:bytes.length });
+      else out.push(fBig(blobFile(bytes, base, mime), kind));
     }
   }
   if(!out.length) throw new Error('「' + f.name + '」の中身を読めませんでした');
   return out;
 }
+/* バイトの列を、1つのファイルとしてあつかえる形にする */
+function blobFile(bytes, name, mime){
+  var buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  try{ return new File([buf], name, { type:mime }); }
+  catch(e){ var b = new Blob([buf], { type:mime }); b.name = name; return b; }
+}
 /* 同じ資料を2回取りこんでいないか */
-function fileSig(f){ return hash((f.text || '').slice(0, 800) || (f.name + '|' + (f.url || '').length)); }
+function fileSig(f){ return hash((f.text || '').slice(0, 800) || (f.name + '|' + (f.size || 0) + '|' + (f.url || '').length)); }
 function dupMark(list){
   var mats = S.mats || [];
   list.forEach(function(f){

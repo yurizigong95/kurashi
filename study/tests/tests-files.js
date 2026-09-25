@@ -141,6 +141,222 @@ test('つくる画面：スライドを読みこむと、第◯回と名前が�
   eq(aiCalls.length, 0, 'AIなし');
 });
 
+/* ===== 大きなファイル ===== */
+/* 中身のない、大きなファイルを作る（メモリは使うが、テストの中だけ） */
+function bigFile(mb, name, type){
+  return new W.File([new W.Uint8Array(mb * 1024 * 1024)], name, { type:type });
+}
+
+test('大きなPDF（20MB）は、AIに預けてから読む', async function(){
+  var got = await W.loadFiles([bigFile(20, '第7回 循環器.pdf', 'application/pdf')]);
+  eq(got.length, 1, '読みこめた');
+  eq(got[0].kind, 'pdf', 'PDFとして');
+  ok(got[0].big, '「預けてから」のしるしがつく');
+  ok(!got[0].url, 'その場では送らない（メモリに載せない）');
+  ok(got[0].file && got[0].file.size === 20 * 1024 * 1024, 'ファイルそのものを持っている');
+});
+
+test('小さいPDF（1MB）は、今までどおりそのまま送る', async function(){
+  var got = await W.loadFiles([bigFile(1, 'ちいさい.pdf', 'application/pdf')]);
+  ok(!got[0].big, '預けない');
+  ok(/^data:application\/pdf/.test(got[0].url || ''), 'その場でくっつけて送る形');
+});
+
+test('講義の録音・動画も読みこめる（大きくても大丈夫）', async function(){
+  var got = await W.loadFiles([bigFile(30, '第3回 講義.m4a', 'audio/mp4')]);
+  eq(got[0].kind, 'audio', '録音として読む');
+  ok(got[0].big, '預けてから読む');
+  var v = await W.loadFiles([bigFile(2, '手技.mp4', 'video/mp4')]);
+  eq(v[0].kind, 'video', '動画として読む');
+  ok(v[0].big, '動画も預けてから読む');
+});
+
+test('長い文章のファイルは、はじめのところだけ読む', async function(){
+  var chunk = new Array(1024).join('あ');                 /* 1023文字 */
+  var parts = [];
+  for(var i = 0; i < 6000; i++) parts.push(chunk);        /* だいたい18MB（日本語3バイト） */
+  var f = new W.File(parts, 'ながい.txt', { type:'text/plain' });
+  ok(f.size > W.TXT_HEAD, 'たしかに大きい：' + W.fSizeText(f.size));
+  var got = await W.loadFiles([f]);
+  ok(got[0].cut, 'はじめだけ読んだしるし');
+  ok(got[0].text.length > 1000, '中身は読めている');
+  ok(got[0].text.length < f.size, 'ぜんぶは読みこんでいない');
+});
+
+test('大きな資料は、AIに預けてから問題を作る', async function(){
+  W.subAdd('成人看護学');
+  fakeUpload();
+  fakeAI(function(){
+    return aiJsonReply({ title:'第3回 講義', summary:'心不全', questions:[
+      { type:'tf', q:'心不全では息切れが出る。', answer:'○', why:'先生の話より' }
+    ] });
+  });
+  await click('tab', 'make');
+  await W.mkTake([bigFile(18, '第3回 講義.m4a', 'audio/mp4')]);
+  await frames();
+  ok(has('大きいので'), '画面でも知らせる');
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 8000, '問題ができるのを待つ');
+  eq(upCalls.length, 1, '預けたのは1回');
+  eq(upCalls[0].name, '第3回 講義.m4a', '預けたファイル');
+  var parts = aiCalls[0].contents[0].parts;
+  ok(parts.some(function(p){ return p.file_data && p.file_data.file_uri; }), '預けた場所をAIに渡す');
+  ok(parts.some(function(p){ return /録音や動画/.test(p.text || ''); }), '録音の読み方も伝える');
+  eq(W.mk.pv.items.length, 1, '問題ができた');
+});
+
+/* 大きな中身（圧縮なし）が1つ入った ZIP を、メモリを使わずに作る */
+function zipWithBig(inner, mb){
+  var enc = new W.TextEncoder(), name = enc.encode(inner);
+  var size = mb * 1024 * 1024;
+  var u16 = function(v){ return [v & 255, (v >> 8) & 255]; };
+  var u32 = function(v){ return [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255]; };
+  var local = new W.Uint8Array([0x50, 0x4b, 0x03, 0x04].concat(u16(20), u16(0), u16(0), u16(0), u16(0), u32(0),
+    u32(size), u32(size), u16(name.length), u16(0), [].slice.call(name)));
+  var cd = new W.Uint8Array([0x50, 0x4b, 0x01, 0x02].concat(u16(20), u16(20), u16(0), u16(0), u16(0), u16(0), u32(0),
+    u32(size), u32(size), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(0), [].slice.call(name)));
+  var off = local.length + size;
+  var eocd = new W.Uint8Array([0x50, 0x4b, 0x05, 0x06].concat(u16(0), u16(0), u16(1), u16(1), u32(cd.length), u32(off), u16(0)));
+  return new W.File([local, new W.Uint8Array(size), cd, eocd], 'shiryou.zip', { type:'application/zip' });
+}
+
+test('ZIPの中の大きな動画は、ほどかずに切り出して預ける', async function(){
+  var got = await W.loadFiles([zipWithBig('第4回/こうぎ.mp4', 20)]);
+  eq(got.length, 1, '中の動画を見つけた');
+  eq(got[0].kind, 'video', '動画として');
+  ok(got[0].big, '預けてから読む');
+  eq(got[0].file.size, 20 * 1024 * 1024, '中身をそのまま切り出した');
+});
+
+test('預けるときの手順（はじめ → 少しずつ送る → 終わり）', async function(){
+  var log = [], realFetch = W.fetch;
+  W.fetch = async function(url, opt){
+    opt = opt || {};
+    var cmd = (opt.headers || {})['X-Goog-Upload-Command'] || '';
+    log.push({ url:String(url), cmd:cmd, off:(opt.headers || {})['X-Goog-Upload-Offset'], size:opt.body && opt.body.size });
+    if(/\/upload\/v1beta\/files$/.test(String(url))){
+      return { ok:true, headers:{ get:function(k){ return /upload-url/i.test(k) ? 'https://up.test/put' : null; } } };
+    }
+    return { ok:true, json:async function(){ return { file:{ name:'files/abc', uri:'https://f.test/abc', mimeType:'audio/mp4', state:'ACTIVE' } }; } };
+  };
+  try{
+    W.S.set.key = 'test-key';
+    var pct = [];
+    var r = await W.aiUpload(bigFile(20, 'こうぎ.m4a', 'audio/mp4'), { onProgress:function(p){ pct.push(p); } });
+    eq(r.uri, 'https://f.test/abc', '置き場所が返る');
+    eq(log[0].cmd, 'start', 'はじめに置き場所をもらう');
+    ok(log.length >= 4, '少しずつ送る（' + (log.length - 1) + '回）');
+    eq(log[1].off, '0', '1回目は先頭から');
+    eq(log[log.length - 1].cmd, 'upload, finalize', '最後に「終わり」を伝える');
+    eq(pct[pct.length - 1], 100, '進みぐあいは100%まで出る');
+  }finally{
+    W.fetch = realFetch;
+    W.S.set.key = '';
+  }
+});
+
+test('送り先を教えてもらえないときは、ひと息で送る', async function(){
+  var log = [], realFetch = W.fetch;
+  W.fetch = async function(url, opt){
+    opt = opt || {};
+    var h = opt.headers || {};
+    log.push({ proto:h['X-Goog-Upload-Protocol'], cmd:h['X-Goog-Upload-Command'], type:h['Content-Type'], body:opt.body && opt.body.size });
+    /* 1回目は、送り先（ヘッダ）を返さないブラウザのふり */
+    if(h['X-Goog-Upload-Command'] === 'start') return { ok:true, headers:{ get:function(){ return null; } } };
+    return { ok:true, json:async function(){ return { file:{ name:'files/z', uri:'https://f.test/z', mimeType:'audio/mp4', state:'ACTIVE' } }; } };
+  };
+  try{
+    W.S.set.key = 'test-key';
+    var pct = [];
+    var r = await W.aiUpload(bigFile(3, 'こうぎ.m4a', 'audio/mp4'), { onProgress:function(p){ pct.push(p); } });
+    eq(r.uri, 'https://f.test/z', '預けられた');
+    eq(log.length, 2, '2回でおわる（聞く → ひと息で送る）');
+    eq(log[1].proto, 'raw', 'ひと息で送るやり方');
+    eq(log[1].type, 'audio/mp4', '中身の種類も伝える');
+    eq(log[1].body, 3 * 1024 * 1024, 'ファイルまるごと');
+    eq(pct[0], null, '進みぐあいは出せないと伝える');
+    eq(pct[pct.length - 1], 100, '終わったら100%');
+  }finally{
+    W.fetch = realFetch;
+    W.S.set.key = '';
+  }
+});
+
+/* ===== どれくらい使いそうか（容量・トークン・お金・無料のめやす） ===== */
+
+test('資料をえらぶと、大きさと使う量・お金のめやすが出る', async function(){
+  W.subAdd('成人看護学');
+  await click('tab', 'make');
+  var f = bigFile(30, '第3回 講義.m4a', 'audio/mp4');
+  await W.mkTake([f]);
+  await frames();
+  ok(has('ぜんぶで 30MB'), '大きさが出る');
+  ok(has('トークン'), 'AIが読む量のめやすが出る');
+  ok(has('お金のめやす'), 'お金のめやすが出る');
+  ok(has('きょう'), 'きょう使ったぶんも出る');
+});
+
+test('録音の長さから、使う量を見つもる（1秒32トークン）', async function(){
+  var oneMin = { kind:'audio', size:8 * 1024 * 1024, sec:60 };
+  eq(W.estTokens(oneMin), 60 * 32, '1分の録音');
+  var hour = { kind:'audio', size:60 * 1024 * 1024, sec:3600 };
+  eq(W.estTokens(hour), 3600 * 32, '1時間の録音');
+  ok(W.estTokens({ kind:'video', size:1, sec:60 }) > W.estTokens({ kind:'audio', size:1, sec:60 }), '動画のほうが重い');
+  eq(W.estTokens({ kind:'text', text:'あいうえお' }), 5, '文章は、だいたい文字の数');
+});
+
+test('使ったぶんは、Googleが返した数をそのまま足す', async function(){
+  W.subAdd('成人看護学');
+  var before = W.aiUse();
+  eq(W.toNum(before.req), 0, 'はじめは0回');
+  fakeAI(function(){
+    return { text:JSON.stringify({ title:'資料', summary:'', questions:[
+      { type:'tf', q:'脈拍は60〜100回/分である。', answer:'○', why:'基準値' }
+    ] }), usage:{ promptTokenCount:12000, candidatesTokenCount:800 } };
+  });
+  await click('tab', 'make');
+  await W.mkTake([fileOf([].slice.call(new W.TextEncoder().encode('脈拍は60〜100回/分である')), 'メモ.txt', 'text/plain')]);
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 6000, '問題ができるのを待つ');
+  var u = W.aiUse();
+  eq(u.req, 1, '1回ぶん数える');
+  eq(u.tin, 12000, '読んだ量');
+  eq(u.tout, 800, '書いた量');
+  /* 45円/1M・375円/1M なら、12000*45/1M + 800*375/1M ＝ 0.84円 */
+  ok(Math.abs(W.aiYen(u.tin, u.tout) - 0.84) < 0.001, 'お金のめやす：' + W.aiYen(u.tin, u.tout));
+});
+
+test('無料のめやすを使いきったら、1回とめて聞く', async function(){
+  W.subAdd('成人看護学');
+  var u = W.aiUse();
+  u.req = 20;                                   /* きょう20回つかった（めやすと同じ） */
+  fakeAI(function(){
+    return aiJsonReply({ title:'資料', summary:'', questions:[{ type:'tf', q:'あ。', answer:'○', why:'' }] });
+  });
+  await click('tab', 'make');
+  await W.mkTake([fileOf([].slice.call(new W.TextEncoder().encode('脈拍は60〜100回/分である')), 'メモ.txt', 'text/plain')]);
+  await click('mk-run');
+  await frames();
+  eq(aiCalls.length, 0, 'いきなりは作らない');
+  ok(has('それでも作る'), 'ボタンが「それでも作る」に変わる');
+  await click('mk-run');                        /* もう一度おせば作る */
+  await until(function(){ return W.mk.pv; }, 6000, '2回目は作る');
+  eq(aiCalls.length, 1, '2回目で作った');
+});
+
+test('めやすの数は、設定で直せる', async function(){
+  await click('tab', 'set');
+  await type('st_rpd', '250');
+  await type('st_yin', '30');
+  await type('st_yout', '250');
+  await click('st-lim');
+  var l = W.aiLim();
+  eq(l.rpd, 250, '1日の回数');
+  eq(l.yenIn, 30, '読むほうの値段');
+  eq(l.yenOut, 250, '書くほうの値段');
+  eq(W.document.getElementById('st_rpd').value, '250', '画面の入力らんにも出る');
+});
+
 test('読めないファイルは、教えてくれる', async function(){
   var bad = fileOf([1, 2, 3], 'なぞ.xyz', 'application/octet-stream');
   var err = '';

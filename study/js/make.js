@@ -19,7 +19,8 @@ function mkPickFiles(){
   inp.accept = ['image/*', '.pdf', 'application/pdf',
     '.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     '.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.txt', '.md', '.csv', 'text/plain', 'text/csv', '.zip', 'application/zip'].join(',');
+    '.txt', '.md', '.csv', 'text/plain', 'text/csv', '.zip', 'application/zip',
+    'audio/*', '.mp3', '.m4a', '.wav', 'video/*', '.mp4', '.mov'].join(',');
   inp.multiple = true;
   inp.onchange = function(){
     var files = Array.prototype.slice.call(inp.files || [], 0, MAX_FILES);
@@ -127,7 +128,8 @@ function mkPrompt(o){
   var lvName = { 1:'基本（授業に出たことばの意味・正常値など）', 2:'ふつう（テストによく出るところ）',
                  3:'応用（理由を考えるもの・まちがえやすいところ）' }[o.lv] || 'ふつう';
   var p = 'あなたは看護学部1年生の授業の資料から、テスト対策の問題を作る先生です。\n' +
-    '渡した資料（授業の写真・スライド・配布資料）を読んで、問題を' + o.n + '問作ってください。\n' +
+    '渡した資料（授業の写真・スライド・配布資料' + (o.av ? '・講義の録音や動画' : '') + '）を読んで、問題を' + o.n + '問作ってください。\n' +
+    (o.av ? '・録音や動画は、先生が話した中身から作る。長いときは、大事なところ（定義・数値・手順・「ここ出す」と言ったところ）を選ぶ。\n' : '') +
     '・問題は次の種類から作る：' + types + '。指定された種類だけを使う。\n' +
     (o.both ? '・むずかしさは、半分を「基本」（lv=1）、半分を「応用」（lv=3）にする。\n' : '・むずかしさ：' + lvName + '\n') +
     '・資料に書いてあることだけから作る。書いていないことは作らない。読めない字は、むりに読まない。\n' +
@@ -254,7 +256,9 @@ function mkHave(subId, n){
 /* 資料の字の量から、ちょうどよい問題数を決める */
 function mkAutoN(){
   var len = mkFilesText().length;
-  var photos = mk.files.filter(function(f){ return f.kind === 'photo' || f.kind === 'pdf'; }).length;
+  var photos = mk.files.filter(function(f){
+    return f.kind === 'photo' || f.kind === 'pdf' || f.kind === 'audio' || f.kind === 'video';
+  }).length;
   var n = len ? clamp(Math.round(len / 350), 5, 20) : clamp(photos * 5, 5, 15);
   return n;
 }
@@ -274,6 +278,17 @@ async function mkRun(){
   }
   var n = mk.opt.auto ? mkAutoN() : mk.opt.n;
   if(mk.opt.noai){ mkRunNoAi(n); return; }
+  /* 大きすぎる・きょうの無料のめやすを使いきった ときは、一度だけ聞く */
+  var est = estAll(mk.files), lim = aiLim(), used = aiUse();
+  var tooBig = est.tok > toNum(lim.ctx), noLeft = toNum(used.req) >= toNum(lim.rpd);
+  if((tooBig || noLeft) && mk.okBig !== mkEstKey(est)){
+    mk.okBig = mkEstKey(est);
+    toast(tooBig
+      ? '資料が大きいかもしれません（AIが読む量のめやす 約' + aiTokText(est.tok) + 'トークン）。それでも作るなら、もう一度おしてください'
+      : 'きょうは無料のめやす（' + toNum(lim.rpd) + '回）を使いきっています。それでも作るなら、もう一度おしてください', true);
+    render();
+    return;
+  }
   if(!aiReady()){
     toast('先に「設定」で、GeminiのAPIキーを入れてください（「AIを使わずに作る」なら、キーなしでも作れます）', true);
     return;
@@ -281,20 +296,42 @@ async function mkRun(){
   var text = mkFilesText();
   /* 字が取り出せた資料は、写真を送らない（送る量がへる＝APIが軽い） */
   var images = text ? [] : mk.files.filter(function(f){ return f.url; }).map(function(f){ return f.url; });
+  var bigs = mk.files.filter(function(f){ return f.file && !f.ref; });
   var s = sub(subId);
   var o = {
     n:n, types:mk.opt.types.slice(), lv:mk.opt.lv, both:mk.opt.both, two:mk.opt.two,
     style:mk.opt.style, kokushi:mk.opt.kokushi, en:mk.opt.en,
     emph:mkEmph(), memo:mk.mat.memo || String(elVal('mk_memo') || ''),
     confuse:dConfuseIn(text).slice(0, 6), have:mkHave(subId, 12),
-    units:s ? dUnitsFor(s.name).units : [], text:text
+    units:s ? dUnitsFor(s.name).units : [], text:text,
+    av:mk.files.some(function(f){ return f.kind === 'audio' || f.kind === 'video'; }) ? 1 : 0
   };
   mk.abort = (typeof AbortController !== 'undefined') ? new AbortController() : null;
   mk.busy = 'make';
   mk.prog = { now:0, all:n, msg:'資料を読んでいます…' };
   render();
   try{
-    var j = await aiJson(mkPrompt(o), images, { tag:'mk', signal:mk.abort ? mk.abort.signal : null, maxTokens:8192 });
+    /* 大きな資料（PDF・録音・動画）は、先にAIに預ける。少しずつ送るので、進みぐあいを出す */
+    var refs = mk.files.filter(function(f){ return f.ref; }).map(function(f){ return f.ref; });
+    for(var bi = 0; bi < bigs.length; bi++){
+      var bf = bigs[bi], no = bigs.length > 1 ? '（' + (bi + 1) + '/' + bigs.length + '）' : '';
+      mk.prog = { now:0, all:n, msg:'大きな資料を送っています' + no + '… 0%' };
+      render();
+      var ref = await aiUpload(bf.file, {
+        signal:mk.abort ? mk.abort.signal : null,
+        onProgress:function(pct){
+          if(!mk.prog) return;
+          mk.prog.msg = pct == null
+            ? '大きな資料を送っています' + no + '…（大きいので、少し時間がかかります）'
+            : '大きな資料を送っています' + no + '… ' + pct + '%' + (pct >= 100 ? '（AIが読んでいます）' : '');
+          render();
+        }
+      });
+      bf.ref = ref;
+      refs.push(ref);
+    }
+    if(bigs.length){ mk.prog = { now:0, all:n, msg:'資料を読んでいます…' }; render(); }
+    var j = await aiJson(mkPrompt(o), images, { tag:'mk', signal:mk.abort ? mk.abort.signal : null, maxTokens:8192, files:refs });
     var items = mkCleanQs(j && j.questions, mk.opt.types, n);
     if(!items.length) throw new Error('問題を作れませんでした。写真が読みにくいか、資料が短いのかもしれません');
     mk.pv = {
@@ -303,6 +340,7 @@ async function mkRun(){
       items:items, files:mk.files.slice(), nomat:0
     };
     mk.pend = null;
+    mk.okBig = '';
     toast(items.length + '問できました');
   }catch(e){
     if(mk.abort && mk.abort.signal && mk.abort.signal.aborted){
@@ -316,6 +354,8 @@ async function mkRun(){
     render(); try{ window.scrollTo(0, 0); }catch(e2){}
   }
 }
+/* 「それでも作る」を1回だけにするための、いまの資料のしるし */
+function mkEstKey(e){ return mk.files.length + ':' + (e ? e.tok : 0); }
 function mkStop(){
   if(mk.abort) try{ mk.abort.abort(); }catch(e){}
   mk.busy = ''; mk.prog = null;
@@ -325,7 +365,7 @@ function mkStop(){
 function mkRunNoAi(n){
   var text = mkFilesText();
   if(!text){
-    toast('字を取り出せる資料（スライド・Word・文章・はりつけ）が必要です。写真だけのときは、AIを使ってください', true);
+    toast('字を取り出せる資料（スライド・Word・文章・はりつけ）が必要です。写真・録音・動画だけのときは、AIを使ってください', true);
     return;
   }
   var cloze = genFromText(text, Math.ceil(n * 0.6), { ch:mk.mat.no ? '第' + mk.mat.no + '回' : '' });
