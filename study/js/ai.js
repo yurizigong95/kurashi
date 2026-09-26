@@ -167,7 +167,10 @@ async function aiJson(prompt, images, opt){
     if(m) parts.push({ inline_data:{ mime_type:m[1], data:m[2] } });
   });
   (opt.files || []).forEach(function(r){
-    if(r && r.uri) parts.push({ file_data:{ mime_type:r.mime || '', file_uri:r.uri } });
+    if(!r || !r.uri) return;
+    var fd = { file_uri:r.uri };                 /* YouTube のリンクは、種類を書かずに渡す */
+    if(r.mime) fd.mime_type = r.mime;
+    parts.push({ file_data:fd });
   });
   parts.push({ text:prompt });
   var text = await aiGenerate({ contents:[{ role:'user', parts:parts }], json:true,
@@ -175,13 +178,16 @@ async function aiJson(prompt, images, opt){
     maxTokens:opt.maxTokens || 8192, tag:opt.tag || '', signal:opt.signal });
   return parseJsonLoose(text);
 }
-async function aiGenerate(opt){
+async function aiGenerate(opt){ return (await aiCall(opt)).text; }
+/* 答えの字と、くわしい情報（リンクを読めたかどうか など）を返す */
+async function aiCall(opt){
   opt = opt || {};
   var fake = aiFake();
   if(fake){
-    var t = await fake(JSON.parse(JSON.stringify({ tag:opt.tag || '', contents:opt.contents || [], json:!!opt.json })));
+    var t = await fake(JSON.parse(JSON.stringify({ tag:opt.tag || '', contents:opt.contents || [], json:!!opt.json, tools:opt.tools || null })));
     if(t && typeof t === 'object' && t.usage) aiUseAdd(t.usage, 0);
-    return (t && typeof t === 'object') ? String(t.text || '') : String(t == null ? '' : t);
+    return { text:(t && typeof t === 'object') ? String(t.text || '') : String(t == null ? '' : t),
+             meta:(t && typeof t === 'object' && t.meta) || null };
   }
   var key = aiKey();
   if(!key) throw new Error('先に「設定」で、GeminiのAPIキーを入れてください');
@@ -190,6 +196,7 @@ async function aiGenerate(opt){
     generationConfig: { temperature: opt.temperature == null ? 0.2 : opt.temperature, maxOutputTokens: opt.maxTokens || 4096 }
   };
   if(opt.json) body.generationConfig.responseMimeType = 'application/json';
+  if(opt.tools) body.tools = opt.tools;             /* リンクを読む（url_context）など */
   var seen = {}, models = [];
   [String(S.set.model || '')].filter(Boolean).concat(AI_FALLBACK).forEach(function(m){ if(!seen[m]){ seen[m] = 1; models.push(m); } });
   var lastErr = '';
@@ -207,8 +214,9 @@ async function aiGenerate(opt){
       aiUseAdd(j.usageMetadata || j.usage_metadata || null, 0);
       var c = (j.candidates || [])[0] || {};
       var parts = (c.content || {}).parts || [];
-      return parts.filter(function(p){ return typeof p.text === 'string' && !p.thought; })
-                  .map(function(p){ return p.text; }).join('');
+      return { text:parts.filter(function(p){ return typeof p.text === 'string' && !p.thought; })
+                  .map(function(p){ return p.text; }).join(''),
+               meta:c.urlContextMetadata || c.url_context_metadata || null };
     }
     lastErr = (j && j.error && j.error.message) ? j.error.message : ('エラー ' + res.status);
     /* そのモデルが無いときだけ、次のモデルを試す */

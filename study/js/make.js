@@ -23,7 +23,7 @@ function mkPickFiles(){
     'audio/*', '.mp3', '.m4a', '.wav', 'video/*', '.mp4', '.mov'].join(',');
   inp.multiple = true;
   inp.onchange = function(){
-    var files = Array.prototype.slice.call(inp.files || [], 0, MAX_FILES);
+    var files = Array.prototype.slice.call(inp.files || []);   /* 多すぎるときは、mkTake が知らせる */
     if(files.length) mkTake(files);
   };
   inp.click();
@@ -51,7 +51,8 @@ async function mkTake(files, quiet){
   mk.busy = 'read'; render();
   try{
     var loaded = await loadFiles(files);
-    mk.files = dupMark(mk.files.concat(loaded)).slice(0, MAX_FILES);
+    var all = dupMark(mk.files.concat(loaded)), over = Math.max(0, all.length - MAX_FILES);
+    mk.files = all.slice(0, MAX_FILES);
     /* 写真をとった日を、資料の日付にする */
     if(!mk.mat.at){
       var withAt = mk.files.filter(function(x){ return x.at; })[0];
@@ -63,7 +64,8 @@ async function mkTake(files, quiet){
       if(m){ mk.mat.no = m[1]; INP.mk_no = m[1]; }
     }
     if(!mk.mat.title && mk.files[0]) mk.mat.title = String(mk.files[0].name).replace(/\.[a-z0-9]+$/i, '').slice(0, 60);
-    if(!quiet) toast(loaded.length + 'つ読みこみました');
+    if(over) toast((loaded.length - over) + 'つ読みこみました。1回に使える資料は' + MAX_FILES + 'こまでなので、' + over + 'つは入れませんでした', true);
+    else if(!quiet) toast(loaded.length + 'つ読みこみました');
   }catch(e){
     toast(e.message, true);
   }finally{
@@ -263,17 +265,75 @@ function mkAutoN(){
   return n;
 }
 
+/* ============================== リンクから ============================== */
+/* リンク（いくつでも）を読んで、資料に入れる。読めなかったリンクを返す */
+async function mkReadLinks(urls){
+  if(mk.busy) return urls;
+  urls = (urls || []).filter(function(u){ return !mk.files.some(function(f){ return f.link === u; }); });
+  var room = MAX_FILES - mk.files.length;
+  if(!urls.length){ toast('新しいリンクがありません'); return []; }
+  if(room <= 0){ toast('1回に使える資料は' + MAX_FILES + 'こまでです', true); return urls; }
+  var skip = urls.slice(room);
+  if(skip.length) toast('1回に使える資料は' + MAX_FILES + 'こまでなので、' + skip.length + 'つは入れませんでした', true);
+  urls = urls.slice(0, room);
+  mk.busy = 'read'; mk.linkMsg = 'リンクを読んでいます…（0/' + urls.length + '）'; render();
+  var got = [], left = [], fail = [];
+  try{
+    for(var i = 0; i < urls.length; i++){
+      mk.linkMsg = 'リンクを読んでいます…（' + (i + 1) + '/' + urls.length + '）'; render();
+      var o = await loadLinkDirect(urls[i]);
+      if(o) got.push(o); else left.push(urls[i]);
+    }
+    if(left.length){
+      if(aiReady()){
+        mk.linkMsg = 'AIにページを読んでもらっています…（' + left.length + 'つ）'; render();
+        try{
+          (await loadLinksAi(left)).forEach(function(o){ if(o.fail) fail.push(o.link); else got.push(o); });
+        }catch(e){
+          toast('リンクを読めませんでした：' + e.message, true);
+          fail = fail.concat(left);
+        }
+      }else{
+        fail = fail.concat(left);
+      }
+    }
+    var order = {};
+    urls.forEach(function(u, k){ order[u] = k; });
+    got.sort(function(a, b){ return order[a.link] - order[b.link]; });
+    mk.files = dupMark(mk.files.concat(got)).slice(0, MAX_FILES);
+    if(!mk.mat.title && got[0] && got[0].kind === 'link') mk.mat.title = got[0].name;
+    if(fail.length){
+      toast((got.length ? got.length + 'つ読めました。' : '') + fail.length + 'つのリンクを読めませんでした' +
+        (aiReady() ? '（ページの文章をコピーして、下にはりつけても作れます）' : '（設定でAPIキーを入れると、AIが読みます）'), true);
+    }else if(got.length){
+      toast(got.length + 'つのリンクを読みました');
+    }
+  }finally{
+    mk.busy = ''; mk.linkMsg = '';
+    render();
+  }
+  return fail.concat(skip);
+}
+
 /* ============================== 作る ============================== */
 var mkRunSeq = 0;
 async function mkRun(){
   if(mk.busy) return;
   var subId = mkSubId();
-  /* はりつけた文章も、1つの資料としてあつかう（毎回いまの文に入れかえる。直した文が使われるように） */
+  /* はりつけたのがリンクだけなら、リンクとして読む */
   var paste = String(elVal('mk_paste') || '').trim();
+  var fromLinks = linkOnly(paste);
+  if(fromLinks){
+    inSet('mk_paste', ''); INP.mk_paste = '';
+    await mkReadLinks(linkList(paste));
+    paste = '';
+    if(mk.busy) return;
+  }
+  /* はりつけた文章も、1つの資料としてあつかう（毎回いまの文に入れかえる。直した文が使われるように） */
   mk.files = mk.files.filter(function(f){ return !f.paste; });
   if(paste) mk.files.push({ name:'はりつけた文章', kind:'text', url:'', text:paste, sig:hash(paste.slice(0, 800)), paste:1 });
   if(!mk.files.length){
-    toast('先に資料をえらぶか、文章をはりつけてください', true);
+    if(!fromLinks) toast('先に資料をえらぶか、文章やリンクをはりつけてください', true);
     return;
   }
   var n = mk.opt.auto ? mkAutoN() : mk.opt.n;
@@ -471,6 +531,7 @@ async function mkAdd(){
       no:String(mk.mat.no || elVal('mk_no') || '').slice(0, 4),
       memo:String(mk.mat.memo || elVal('mk_memo') || '').slice(0, 200),
       sig:(files[0] && files[0].sig) || '',
+      links:files.filter(function(f){ return f.link; }).map(function(f){ return String(f.link).slice(0, 500); }).slice(0, MAX_FILES),
       photos:photos, text:text.slice(0, TEXT_KEEP), cut:text.length > TEXT_KEEP ? 1 : 0,
       summary:pv.summary || '', n:0
     };

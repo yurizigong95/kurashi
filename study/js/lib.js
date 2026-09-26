@@ -123,6 +123,10 @@ function libMatView(){
 function libMatDetail(m){
   var h = '<div class="matbd">';
   if(m.memo) h += '<div class="s">メモ：' + esc(m.memo) + '</div>';
+  var links = (m.links || []).filter(function(u){ return /^https?:\/\//i.test(String(u)); });
+  if(links.length) h += '<div class="s">リンク：' + links.map(function(u){
+    return '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(linkName(u)) + '</a>';
+  }).join('　') + '</div>';
   if(m.summary) h += '<div class="s">' + esc(m.summary) + '</div>';
   if((m.photos || []).length){
     h += '<div class="thumbs">' + m.photos.map(function(pid){

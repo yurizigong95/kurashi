@@ -1,8 +1,10 @@
 /* もんだいメーカー：ほかの端末と、自動でそろえる（同期）
    ============================================================================
    しくみ
-   ・つなぎ先は、くらしの手帳と同じ Firebase（Firestore）。設定はこの端末の
-     「くらしの手帳」から借ります（このファイルにはカギを書きません）。
+   ・つなぎ先は、くらしの手帳と同じ Firebase（Firestore）。くらしの手帳と同じく、アプリに
+     組みこんであるので、どの端末で開いても、何も入れずにそろいます。
+     （Firebase のウェブ用の設定は、ページを開けばだれでも見られる公開の値です。
+       まもりは Firestore のルールでしています）
    ・置き場所の名前は、くらしの手帳の合言葉ではじめます。手帳のきまり（ルール）を
      そのままで読み書きできます。
    ・中身は「まるごと1つ」にまとめて、gzip で小さくしてから、700KBずつに切って置きます。
@@ -11,7 +13,8 @@
    ・同じものを2台で直したときは、「あとから直したほう」を採ります（1つずつ見ます）。
    ・消したものは「消したしるし」を残すので、ほかの端末で生き返りません。
    ・資料の写真も、1枚ずつ置き場所に置いて、足りない端末が取りに行きます。
-   ・APIキーと、使った量の記録は、同期しません（端末ごとのものだから）。       */
+   ・APIキーと、使った量の記録は、同期しません（端末ごとのものだから）。
+   ・上の「同期済み」の表示と、設定の「変更の記録」で、いまのようすが分かります。 */
 
 var SY = {
   on:0,            /* つなげているか */
@@ -24,21 +27,30 @@ var SY = {
   timer:null,
   imgBusy:0,
   off:0,           /* 自分で「同期をやめる」にした */
+  connecting:0,    /* つないでいるとちゅう */
+  pushedAt:0,      /* さいごに送った時こく */
+  pulledAt:0,      /* さいごに受けとった時こく */
+  devs:{},         /* つながっている端末（置き場の目次にのせる） */
   renderWait:0     /* 字を打ちおわったら、描き直す */
 };
 var SY_COL = 'shiharai';
 var SY_PART = 700 * 1024;        /* 1つの切れはしの大きさ（Firestore は1MBまで） */
 var SY_IMG_PART = 700 * 1024;
 var SY_SET_KEYS = ['goal', 'shuffle', 'term', 'allTerms', 'model', 'lim'];   /* 同期する設定（キーと使用量は入れない） */
+/* 組みこみのつなぎ先（くらしの手帳の js/core.js の DEFAULT_ROOM・DEFAULT_FB と同じ） */
+var SY_ROOM = '8b7f4e6et9jhxded';
+var SY_FB = { apiKey:'AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww', authDomain:'kurashi-59562.firebaseapp.com',
+  projectId:'kurashi-59562', storageBucket:'kurashi-59562.firebasestorage.app',
+  messagingSenderId:'203275210981', appId:'1:203275210981:web:327cf32ad4aa6ebc6b040c' };
 
-/* ===== つなぎ先（くらしの手帳から借りる） ===== */
+/* ===== つなぎ先（くらしの手帳で直していれば、それを使う。なければ組みこみのもの） ===== */
 function syApp(){
   try{ var j = JSON.parse(localStorage.getItem('shiharai:v1') || 'null'); return (j && j.settings) || null; }
   catch(e){ return null; }
 }
 function syCfg(){
   var t = String((syApp() || {}).fbConfig || '').trim();
-  if(!t) return null;
+  if(!t) return SY_FB;
   var c = null;
   try{ c = JSON.parse(t); }
   catch(e){
@@ -49,9 +61,9 @@ function syCfg(){
       c = JSON.parse(s);
     }catch(e2){ c = null; }
   }
-  return (c && c.projectId) ? c : null;
+  return (c && c.projectId) ? c : SY_FB;
 }
-function syRoom(){ return String((syApp() || {}).room || ''); }
+function syRoom(){ return String((syApp() || {}).room || '') || SY_ROOM; }
 function syReady(){
   if(typeof window !== 'undefined' && window.__FAKE_SYNC) return true;    /* テストのとき */
   return !TEST_MODE && !!syCfg() && !!syRoom();
@@ -62,6 +74,28 @@ function syDev(){
   try{ v = localStorage.getItem(k) || ''; }catch(e){}
   if(!v){ v = Math.random().toString(36).slice(2, 10); try{ localStorage.setItem(k, v); }catch(e){} }
   return v;
+}
+/* この端末の名前（自分でつけた名前 → くらしの手帳でつけた名前 → 機種から） */
+function syDevName(){
+  var v = '';
+  try{ v = localStorage.getItem('mondai:devname') || ''; }catch(e){}
+  if(v) return v;
+  try{ var d = JSON.parse(localStorage.getItem('shiharai:v1:device') || 'null'); if(d && d.name) return String(d.name).slice(0, 20); }catch(e){}
+  var ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+  if(/iPad/.test(ua) || (/Macintosh/.test(ua) && typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1)) return 'iPad';
+  if(/iPhone/.test(ua)) return 'iPhone';
+  if(/Android/.test(ua)) return /Mobile/.test(ua) ? 'Androidスマホ' : 'Androidタブレット';
+  if(/Macintosh/.test(ua)) return 'Mac';
+  if(/Windows/.test(ua)) return 'パソコン';
+  return '端末';
+}
+function syDevRename(name){
+  name = String(name || '').trim().slice(0, 20);
+  if(!name) return false;
+  try{ localStorage.setItem('mondai:devname', name); }catch(e){}
+  SY.devSent = 0;                                 /* 目次の名前も、すぐ直す */
+  syHello();
+  return true;
 }
 
 /* ===== Firestore（くらしの手帳と同じ読みこみ方） ===== */
@@ -259,11 +293,116 @@ function syMerge(rem){
 /* 設定を直したときは、時こくを入れておく（どちらが新しいか分かるように） */
 function syTouchSet(){ S.set.smt = Date.now(); syTouch(); }
 
+/* ===== 変更の記録（何が変わったか・まだ送っていないもの） ===== */
+var SY_KINDS = [['subs', '科目'], ['mats', '資料'], ['qs', '問題'], ['notes', 'メモ'], ['moc', '模擬テスト']];
+/* 中身の「しるし」：種類ごとに id → 直した時こく。といた記録は id → といた回数 */
+function sySigOf(o){
+  o = o || {};
+  var out = {};
+  SY_KINDS.forEach(function(k){
+    var m = {};
+    (o[k[0]] || []).forEach(function(x){
+      if(!x || !x.id) return;
+      if(k[0] === 'notes' && !String(x.body || '').trim()) return;      /* 書きはじめる前のメモは数えない */
+      m[x.id] = toNum(x.mt);
+    });
+    out[k[0]] = m;
+  });
+  var lg = {};
+  Object.keys(o.log || {}).forEach(function(id){ lg[id] = toNum((o.log[id] || {}).n); });
+  out.log = lg;
+  return out;
+}
+function syDiff(a, b){
+  a = a || {}; b = b || {};
+  var out = {};
+  SY_KINDS.forEach(function(k){
+    var x = a[k[0]] || {}, y = b[k[0]] || {}, add = 0, chg = 0, del = 0;
+    Object.keys(y).forEach(function(id){ if(!(id in x)) add++; else if(x[id] !== y[id]) chg++; });
+    Object.keys(x).forEach(function(id){ if(!(id in y)) del++; });
+    if(add || chg || del) out[k[0]] = { add:add, chg:chg, del:del };
+  });
+  var n = 0, la = a.log || {}, lb = b.log || {};
+  Object.keys(lb).forEach(function(id){ var d = toNum(lb[id]) - toNum(la[id]); if(d > 0) n += d; });
+  if(n) out.log = { n:n };
+  return out;
+}
+/* 「問題 +3・直し2　メモ +1　といた 5問」 */
+function syDiffText(d){
+  var t = [];
+  SY_KINDS.forEach(function(k){
+    var v = (d || {})[k[0]];
+    if(!v) return;
+    var p = [];
+    if(v.add) p.push('+' + v.add);
+    if(v.chg) p.push('直し' + v.chg);
+    if(v.del) p.push('−' + v.del);
+    t.push(k[1] + ' ' + p.join('・'));
+  });
+  if(d && d.log) t.push('といた ' + d.log.n + '問');
+  return t.join('　');
+}
+/* 置き場にあると分かっている中身のしるし（これとくらべて「まだ送っていない変更」を出す） */
+function sySigBase(){
+  if(SY.sig) return SY.sig;
+  try{ SY.sig = JSON.parse(localStorage.getItem(KEY + ':syncsig') || 'null'); }catch(e){ SY.sig = null; }
+  return SY.sig;
+}
+function sySigSave(sig){
+  SY.sig = sig;
+  try{ localStorage.setItem(KEY + ':syncsig', JSON.stringify(sig)); }catch(e){}
+}
+function syPending(){ var b = sySigBase(); return b ? syDiff(b, sySigOf(S)) : null; }
+/* 送った・受けとったの記録（この端末の中だけ。30こまで） */
+function syLogAll(){
+  try{ var a = JSON.parse(localStorage.getItem(KEY + ':synclog') || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; }
+}
+function syLogAdd(dir, who, text){
+  if(!text) return;
+  var a = syLogAll();
+  a.unshift({ t:Date.now(), d:dir, v:String(who || ''), m:String(text) });
+  try{ localStorage.setItem(KEY + ':synclog', JSON.stringify(a.slice(0, 30))); }catch(e){}
+}
+function syCountText(o){
+  o = o || S;
+  var t = SY_KINDS.map(function(k){
+    var n = (o[k[0]] || []).filter(function(x){ return x && x.id && !(k[0] === 'notes' && !String(x.body || '').trim()); }).length;
+    return n ? k[1] + n : '';
+  }).filter(Boolean);
+  return t.length ? t.join('・') : 'まだ何もありません';
+}
+function syDevNameOf(id){
+  if(!id) return 'ほかの端末';
+  if(id === syDev()) return syDevName();
+  var d = (SY.devs || {})[id];
+  return (d && d.name) ? String(d.name) : 'ほかの端末';
+}
+
+/* ===== つながっている端末（名前・さいごに使った時こく・版） ===== */
+async function syHello(force){
+  if(!SY.on) return;
+  try{
+    var net = await syNet();
+    var cur = await net.get(syDoc('devs')) || {};
+    var list = (cur && cur.list && typeof cur.list === 'object') ? cur.list : {};
+    var me = list[syDev()] || {}, name = syDevName(), now = Date.now();
+    /* 古い端末は、そうじ（半年） */
+    Object.keys(list).forEach(function(id){ if(now - toNum((list[id] || {}).at) > 180 * 86400000) delete list[id]; });
+    SY.devs = list;
+    if(!force && me.name === name && me.build === APP_BUILD && now - toNum(me.at) < 6 * 3600000){ syTag(); return; }
+    list[syDev()] = { name:name, at:now, build:APP_BUILD };
+    await net.set(syDoc('devs'), { list:list, at:now });
+    SY.devs = list;
+  }catch(e){ /* 端末の一覧は、なくても同期はできる */ }
+  syTag();
+}
+
 /* ===== 送る ===== */
 function syTouch(){
   if(!SY.on) return;
   clearTimeout(SY.timer);
   SY.timer = setTimeout(function(){ SY.timer = null; syPush(); }, 3000);
+  syTag();
 }
 async function syPush(){
   if(!SY.on) return false;
@@ -279,19 +418,28 @@ async function syPush(){
       try{ await syApply(net, idx); }catch(e){ if(!e.broken) throw e; broken = true; }
     }
 
-    var pk = await syPack(syPayload());
+    var pay = syPayload(), sigNow = sySigOf(pay), base = sySigBase();
+    var pk = await syPack(pay);
     var parts = syCut(pk.s, SY_PART);
     var hs = parts.map(function(p){ return hash(p); });
     var h = hash(hs.join(','));
-    if(!broken && idx && idx.h === h){ SY.applied = h; SY.at = Date.now(); return true; }
+    if(!broken && idx && idx.h === h){
+      SY.applied = h; SY.at = SY.pulledAt = Date.now(); SY.msg = '';
+      sySigSave(sigNow);
+      return true;
+    }
     var old = (!broken && idx && Array.isArray(idx.hs)) ? idx.hs : [];   /* こわれていたら、ぜんぶ置きなおす */
     for(var i = 0; i < parts.length; i++){
       if(old[i] === hs[i]) continue;                 /* 変わっていない切れはしは、送らない */
       await net.set(syDoc('p' + i), { d:parts[i], i:i, n:parts.length, h:hs[i], at:Date.now() });
     }
-    await net.set(syDoc('idx'), { v:1, h:h, hs:hs, n:parts.length, z:pk.z, at:Date.now(), dev:syDev(),
+    await net.set(syDoc('idx'), { v:1, h:h, hs:hs, n:parts.length, z:pk.z, at:Date.now(), dev:syDev(), nm:syDevName(),
       imgs:await syImgIndex(net, idx) });
-    SY.applied = h; SY.at = Date.now(); SY.msg = '';
+    SY.applied = h; SY.at = SY.pushedAt = Date.now(); SY.msg = '';
+    /* 何を送ったか、記録しておく */
+    if(!idx) syLogAdd('out', syDevName(), 'はじめて置き場を作りました' + (syDiffText(syDiff(null, sigNow)) ? '（' + syCountText(pay) + '）' : ''));
+    else syLogAdd('out', syDevName(), syDiffText(syDiff(base || sySigOf(null), sigNow)));
+    sySigSave(sigNow);
     return true;
   }catch(e){
     SY.msg = syErrText(e);
@@ -299,6 +447,7 @@ async function syPush(){
   }finally{
     SY.busy = 0;
     if(SY.again){ SY.again = 0; syTouch(); }
+    syTag();
     if(view.tab === 'set') syRender();
   }
 }
@@ -336,8 +485,12 @@ async function syApply(net, idx){
   }
   var rem = null;
   try{ rem = await syUnpack(s, idx.z); }catch(e){ throw syBroken(); }
+  var before = sySigOf(S);
   var changed = syMerge(rem);
-  SY.applied = idx.h; SY.at = Date.now();
+  SY.applied = idx.h; SY.at = SY.pulledAt = Date.now();
+  if(changed) syLogAdd('in', (idx.nm && idx.dev !== syDev()) ? String(idx.nm).slice(0, 20) : syDevNameOf(idx.dev), syDiffText(syDiff(before, sySigOf(S))));
+  sySigSave(sySigOf(rem));                           /* 置き場にあるのは、いま受けとった中身 */
+  syTag();
   /* 中身が変わったときだけ保存する（変わっていないのに保存すると、また送ってしまう） */
   if(changed){ saveNow(); syRender(); }
   syImgPull(net, idx).catch(function(){});
@@ -378,7 +531,8 @@ function syErrText(e){
 async function syStart(){
   if(SY.on || !syReady()) return false;
   SY.on = 1;
-  SY.msg = 'つないでいます…';
+  SY.msg = '';
+  SY.connecting = 1; syTag();
   try{
     var net = await syNet();
     SY.unsub = net.sub(syDoc('idx'), function(idx){
@@ -397,27 +551,69 @@ async function syStart(){
       });
     }, function(e){ SY.msg = syErrText(e); });
     SY.msg = '';
+    try{ var dv = await net.get(syDoc('devs')); SY.devs = (dv && dv.list && typeof dv.list === 'object') ? dv.list : {}; }catch(e){}
     await syPush();
+    SY.connecting = 0;
+    syHello();
     return true;
   }catch(e){
     SY.on = 0;
     SY.msg = syErrText(e);
     return false;
+  }finally{
+    SY.connecting = 0;
+    syTag();
   }
 }
 function syStop(){
   if(SY.unsub){ try{ SY.unsub(); }catch(e){} SY.unsub = null; }
   clearTimeout(SY.timer); SY.timer = null;
   SY.on = 0;
+  syTag();
 }
-function syState(){
-  if(!syReady()){
-    return { on:0, text:'この端末では、まだ同期できません', sub:'この端末でいちど「くらしの手帳」を開くと、そのつなぎ先を借りて、ひとりでに合わせます。' };
+/* いまのようす（上の表示と、設定で使う）：[しるし, ひとこと, くわしく] */
+function syPhase(){
+  if(!syReady()) return ['test', 'テストモード', '本物のデータにはふれません'];
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return ['off', 'オフライン', 'ネットにつながると、ひとりでに送ります'];
+  if(!SY.on){
+    if(SY.connecting) return ['wait', 'つないでいます…', ''];
+    if(SY.off) return ['off', '同期をやめています', '設定から、また始められます'];
+    return ['ng', 'つながっていません', SY.msg || 'しばらくすると、ひとりでにつなぎなおします'];
   }
-  if(SY.msg) return { on:SY.on, text:'合わせられませんでした', sub:SY.msg };
-  if(SY.busy) return { on:1, text:'いま合わせています…', sub:'' };
-  if(SY.at) return { on:1, text:'そろっています', sub:'さいごに合わせたのは ' + hhmm(SY.at) };
-  return { on:SY.on, text:SY.on ? 'つないでいます…' : '同期はまだです', sub:'' };
+  if(SY.msg) return ['ng', '送れていません', SY.msg];
+  if(SY.connecting || SY.busy || SY.timer) return ['busy', '同期中…', ''];
+  if(!SY.pushedAt && !SY.pulledAt) return ['wait', 'つないでいます…', ''];
+  return ['ok', '同期済み', SY.pushedAt ? '最後に送った：' + hhmm(SY.pushedAt) : '最後に受けとった：' + hhmm(SY.pulledAt)];
+}
+/* 前からの呼び方（{on, text, sub}） */
+function syState(){
+  var p = syPhase();
+  return { on:SY.on, text:p[1], sub:p[2], k:p[0] };
+}
+/* 上の「同期済み」の表示 */
+function syTag(){
+  if(typeof document === 'undefined') return;
+  var el = document.getElementById('synctag');
+  if(!el) return;
+  var p = syPhase();
+  el.className = 'st st-' + p[0];
+  el.setAttribute('data-act', 'sy-go');
+  el.title = p[2] || p[1];
+  el.textContent = p[1];
+}
+/* 「◯分前」 */
+function syAgo(t){
+  t = toNum(t);
+  if(!t) return '—';
+  var d = Math.max(0, Date.now() - t), m = Math.floor(d / 60000);
+  if(m < 1) return 'たった今';
+  if(m < 60) return m + '分前';
+  var h = Math.floor(m / 60);
+  if(h < 24) return h + '時間前';
+  var dd = Math.floor(h / 24);
+  if(dd < 30) return dd + '日前';
+  var x = new Date(t);
+  return (x.getMonth() + 1) + '/' + x.getDate();
 }
 /* 同期のあとの描き直し：字を打っているとちゅうなら、打ちおわる（入力らんから出る）まで待つ。
    とちゅうで描き直すと、キーボードが引っこんでしまうため。 */
@@ -446,9 +642,15 @@ if(typeof document !== 'undefined'){
 /* ネットがもどったら、つなぎなおす・送りなおす（自分で「やめる」にしたときは、つながない） */
 if(typeof window !== 'undefined'){
   window.addEventListener('online', function(){
-    if(SY.on){ syTouch(); return; }
+    syTag();
+    if(SY.on){ SY.msg = ''; syTouch(); return; }
     if(!SY.off && syReady()) syStart();
   });
+  window.addEventListener('offline', syTag);
+  /* つながっていないときは、1分ごとにつなぎなおしてみる */
+  setInterval(function(){
+    if(!SY.on && !SY.off && !SY.connecting && syReady() && !(typeof navigator !== 'undefined' && navigator.onLine === false)) syStart();
+  }, 60000);
 }
 function hhmm(t){
   var d = new Date(t);

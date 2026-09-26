@@ -28,16 +28,23 @@ function mkFilePart(){
   var h = '';
   h += section('資料をえらぶ', mk.files.length ? mk.files.length + 'つ' : null,
     warnBox(WARN_PRIVACY) +
-    '<div class="pair3">' +
+    '<div class="grid2">' +
       btn('📷 写真をとる', 'mk-shot', { cls:'ghost' }) +
       btn('🔁 つづけてとる', 'mk-loop', { cls:'ghost' }) +
-      btn('📁 ファイル', 'mk-pick', { cls:'ghost' }) +
+      btn('🖼 アルバムから', 'mk-photos', { cls:'ghost' }) +
+      btn('📁 ファイルから', 'mk-pick', { cls:'ghost' }) +
     '</div>' +
-    (mk.busy === 'read' ? '<div class="s wait">読みこんでいます…</div>' : '') +
+    '<div class="s" style="margin-top:6px">アルバム・ファイル・リンクは、<b>いくつでもまとめて</b>えらべます（あわせて' + MAX_FILES + 'こまで）。</div>' +
+    '<label class="f" for="mk_links">🔗 リンクから（ウェブのページ・PDF・YouTube）</label>' +
+    '<textarea id="mk_links" rows="2" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" ' +
+      'placeholder="https://… を1行に1つ。いくつでもまとめて入れられます">' + esc(inVal('mk_links')) + '</textarea>' +
+    btn('🔗 リンクを読む', 'mk-links', { cls:'ghost', dis:!!mk.busy }) +
+    (mk.busy === 'read' ? '<div class="s wait">' + esc(mk.linkMsg || '読みこんでいます…') + '</div>' : '') +
     mkFileList() +
     mkCostPart() +
-    note('えらべるもの：写真・PDF・スライド(.pptx)・Word(.docx)・文章・ZIP・<b>講義の録音・動画</b>。' +
-      '大きいファイル（' + fSizeText(INLINE_MAX) + 'より上）でも大丈夫です。AIにいったん預けてから読んでもらいます（2GBまで）。') +
+    note('えらべるもの：写真・PDF・スライド(.pptx)・Word(.docx)・文章・ZIP・<b>講義の録音・動画</b>・<b>リンク</b>。' +
+      '大きいファイル（' + fSizeText(INLINE_MAX) + 'より上）でも大丈夫です。AIにいったん預けてから読んでもらいます（2GBまで）。' +
+      '<br>リンクは、読めるページはそのまま読みます。読めないページは、AIが開いて読みます（APIキーが必要）。') +
     '<label class="f" for="mk_paste">文章をはりつける（メモ・先生の配布テキストなど）</label>' +
     '<textarea id="mk_paste" rows="3" placeholder="ここにはりつけると、その字から問題を作ります">' + esc(inVal('mk_paste')) + '</textarea>');
 
@@ -119,9 +126,12 @@ function mkFileList(){
   return '<div class="files">' + mk.files.map(function(f, i){
     var h = '<div class="file">' +
       (f.url && f.kind === 'photo' ? '<img src="' + esc(f.url) + '" alt="">' : '<div class="ic">' +
-        (f.kind === 'pdf' ? '📕' : f.kind === 'slide' ? '📊' : f.kind === 'audio' ? '🎧' : f.kind === 'video' ? '🎬' : '📄') + '</div>') +
+        (f.yt ? '▶️' : f.kind === 'link' ? '🔗' : f.kind === 'pdf' ? '📕' : f.kind === 'slide' ? '📊' : f.kind === 'audio' ? '🎧' : f.kind === 'video' ? '🎬' : '📄') + '</div>') +
       '<div class="bd"><b>' + esc(f.name) + '</b>' +
-      '<div class="s">' + esc(fKindName(f.kind)) +
+      (f.link ? '<div class="s link">' + esc(linkName(f.link)) + '</div>' : '') +
+      (f.yt ? '<div class="s">YouTube は、AIが動画を見て作ります（長さが分からないので、10分として数えています）</div>' : '') +
+      (f.ai ? '<div class="s">AIがページを開いて読みました</div>' : '') +
+      '<div class="s">' + esc(f.yt ? 'YouTube' : fKindName(f.kind)) +
         (f.size ? '・' + fSizeText(f.size) : '') +
         (f.text ? '・字' + f.text.length + '文字' : '') + (f.done ? '・手入れずみ' : '') + '</div>' +
       (f.big ? '<div class="s">📡 大きいので、AIに送ってから読んでもらいます（送るあいだ、少し時間がかかります）</div>' : '') +
@@ -243,6 +253,22 @@ onView('make', mkView);
 onAct('mk-mode', function(d){ mk.mode = d.v; render(); });
 onAct('mk-sub', function(d){ view.sub = d.v; render(); });
 onAct('mk-pick', function(){ mkPickFiles(); });
+/* 写真を、アルバムからまとめてえらぶ */
+onAct('mk-photos', function(){
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+  inp.onchange = function(){ if((inp.files || []).length) mkTake(Array.prototype.slice.call(inp.files)); };
+  inp.click();
+});
+onAct('mk-links', async function(){
+  var text = String(elVal('mk_links') || '');
+  var urls = linkList(text);
+  if(!urls.length){ toast('https:// ではじまるリンクを入れてください', true); return; }
+  var left = await mkReadLinks(urls);
+  inSet('mk_links', left.join('\n'));      /* 読めなかったものだけ、のこす */
+  INP.mk_links = left.join('\n');
+  render();
+});
 onAct('mk-shot', function(){
   var inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'image/*';
