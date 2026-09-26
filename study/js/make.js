@@ -277,31 +277,32 @@ async function mkReadLinks(urls){
     return !mk.files.some(function(f){ return f.link === u || (yt && f.yt && linkYouTube(f.link) === yt); });
   });
   var room = MAX_FILES - mk.files.length;
+  mk.linkFails = [];
   if(!urls.length){ toast('新しいリンクがありません'); return []; }
   if(room <= 0){ toast('1回に使える資料は' + MAX_FILES + 'こまでです', true); return urls; }
   var skip = urls.slice(room);
   if(skip.length) toast('1回に使える資料は' + MAX_FILES + 'こまでなので、' + skip.length + 'つは入れませんでした', true);
   urls = urls.slice(0, room);
   mk.busy = 'read'; mk.linkMsg = 'リンクを読んでいます…（0/' + urls.length + '）'; render();
-  var got = [], left = [], fail = [], aiErr = '';
+  var got = [], left = [], fails = [];
   try{
+    /* ① この端末から、そのまま読む */
     for(var i = 0; i < urls.length; i++){
       mk.linkMsg = 'リンクを読んでいます…（' + (i + 1) + '/' + urls.length + '）'; render();
       var o = null;
       try{ o = await loadLinkDirect(urls[i]); }catch(e){ o = null; }      /* 1つ読めなくても、ほかは続ける */
       if(o) got.push(o); else left.push(urls[i]);
     }
+    /* ② 読めなかったものは、AIがページを開いて読む */
     if(left.length){
       if(aiReady()){
-        mk.linkMsg = 'AIにページを読んでもらっています…（' + left.length + 'つ）'; render();
-        try{
-          (await loadLinksAi(left)).forEach(function(o){ if(o.fail) fail.push(o.link); else got.push(o); });
-        }catch(e){
-          aiErr = e.message;
-          fail = fail.concat(left);
-        }
+        var res = await loadLinksAi(left, { onStep:function(k, n){ mk.linkMsg = 'AIがページを開いて読んでいます…（' + (k + 1) + '/' + n + '）'; render(); } });
+        res.forEach(function(o){
+          if(!o.fail){ got.push(o); return; }
+          fails.push({ u:o.link, why:(!o.err && linkNeedsLogin(o.link)) ? 'ログインが必要なページは読めません' : o.why });
+        });
       }else{
-        fail = fail.concat(left);
+        left.forEach(function(u){ fails.push({ u:u, why:'このページはAIでないと読めません（設定か、くらしの手帳でAPIキーを入れてください）' }); });
       }
     }
     var order = {};
@@ -309,10 +310,9 @@ async function mkReadLinks(urls){
     got.sort(function(a, b){ return order[a.link] - order[b.link]; });
     mk.files = dupMark(mk.files.concat(got)).slice(0, MAX_FILES);
     if(!mk.mat.title && got[0] && got[0].kind === 'link') mk.mat.title = got[0].name;
-    if(fail.length){
-      toast((got.length ? got.length + 'つ読めました。' : '') + fail.length + 'つのリンクを読めませんでした' +
-        (aiErr ? '：' + aiErr
-          : aiReady() ? '（ページの文章をコピーして、下にはりつけても作れます）' : '（設定でAPIキーを入れると、AIが読みます）'), true);
+    mk.linkFails = fails;
+    if(fails.length){
+      toast((got.length ? got.length + 'つ読めました。' : '') + fails.length + 'つのリンクを読めませんでした：' + fails[0].why, true);
     }else if(got.length){
       toast(got.length + 'つのリンクを読みました');
     }
@@ -320,7 +320,20 @@ async function mkReadLinks(urls){
     mk.busy = ''; mk.linkMsg = '';
     render();
   }
-  return fail.concat(skip);
+  return fails.map(function(f){ return f.u; }).concat(skip);
+}
+/* 入れてあるリンク（リンクの欄・はりつけの欄）を読む。「問題をつくる」をおしたときにも使う */
+async function mkReadPending(){
+  var box = String(elVal('mk_links') || ''), paste = String(elVal('mk_paste') || '').trim();
+  var urls = linkList(box), fromPaste = linkMostly(paste);
+  if(fromPaste){ urls = urls.concat(linkList(paste).filter(function(u){ return urls.indexOf(u) < 0; })); }
+  urls = urls.filter(function(u){ return !mk.files.some(function(f){ return f.link === u; }); });
+  if(!urls.length) return { read:0 };
+  if(fromPaste){ inSet('mk_paste', ''); INP.mk_paste = ''; }
+  var left = await mkReadLinks(urls);
+  inSet('mk_links', left.join('\n')); INP.mk_links = left.join('\n');   /* 読めなかったものだけ、リンクの欄にのこす */
+  render();
+  return { read:urls.length, left:left.length, fromPaste:fromPaste };
 }
 
 /* ============================== 作る ============================== */
@@ -328,16 +341,12 @@ var mkRunSeq = 0;
 async function mkRun(){
   if(mk.busy) return;
   var subId = mkSubId();
-  /* はりつけたのがリンクだけなら、リンクとして読む */
+  /* リンクの欄に入れたまま（「リンクを読む」をおさずに）作るときも、先に読む。
+     はりつけの欄が、リンクだけ・「題＋リンク」（スマホの共有）のときも、リンクとして読む */
+  var pend = await mkReadPending();
+  var fromLinks = pend.read > 0;
+  if(mk.busy) return;
   var paste = String(elVal('mk_paste') || '').trim();
-  var fromLinks = linkOnly(paste);
-  if(fromLinks){
-    inSet('mk_paste', ''); INP.mk_paste = '';
-    var left = await mkReadLinks(linkList(paste));
-    if(left.length){ inSet('mk_links', left.join('\n')); INP.mk_links = left.join('\n'); render(); }   /* 読めなかったものは、リンクの欄にのこす */
-    paste = '';
-    if(mk.busy) return;
-  }
   /* はりつけた文章も、1つの資料としてあつかう（毎回いまの文に入れかえる。直した文が使われるように） */
   mk.files = mk.files.filter(function(f){ return !f.paste; });
   if(paste) mk.files.push({ name:'はりつけた文章', kind:'text', url:'', text:paste, sig:hash(paste.slice(0, 800)), paste:1 });
@@ -556,6 +565,7 @@ async function mkAdd(){
   if(subId){ S.ui.lastSub = subId; }
   mk.pv = null;
   mk.files = [];
+  mk.linkFails = [];
   mk.mat = { no:'', memo:'', at:'', title:'' };
   inClear('mk_');
   saveNow();
