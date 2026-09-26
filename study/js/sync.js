@@ -424,7 +424,7 @@ async function syPush(){
     var hs = parts.map(function(p){ return hash(p); });
     var h = hash(hs.join(','));
     if(!broken && idx && idx.h === h){
-      SY.applied = h; SY.at = SY.pulledAt = Date.now(); SY.msg = '';
+      SY.applied = h; SY.at = Date.now(); SY.msg = '';      /* 置き場と同じだった（送りも受けとりもしていない） */
       sySigSave(sigNow);
       return true;
     }
@@ -547,9 +547,10 @@ async function syStart(){
       }).then(function(){
         SY.busy = 0;
         if(SY.again){ SY.again = 0; syTouch(); }
+        syTag();
         if(view.tab === 'set') syRender();
       });
-    }, function(e){ SY.msg = syErrText(e); });
+    }, function(e){ SY.msg = syErrText(e); syTag(); });
     SY.msg = '';
     try{ var dv = await net.get(syDoc('devs')); SY.devs = (dv && dv.list && typeof dv.list === 'object') ? dv.list : {}; }catch(e){}
     await syPush();
@@ -574,16 +575,16 @@ function syStop(){
 /* いまのようす（上の表示と、設定で使う）：[しるし, ひとこと, くわしく] */
 function syPhase(){
   if(!syReady()) return ['test', 'テストモード', '本物のデータにはふれません'];
+  if(!SY.on && SY.off) return ['off', '同期をやめています', '設定から、また始められます'];
   if(typeof navigator !== 'undefined' && navigator.onLine === false) return ['off', 'オフライン', 'ネットにつながると、ひとりでに送ります'];
   if(!SY.on){
     if(SY.connecting) return ['wait', 'つないでいます…', ''];
-    if(SY.off) return ['off', '同期をやめています', '設定から、また始められます'];
     return ['ng', 'つながっていません', SY.msg || 'しばらくすると、ひとりでにつなぎなおします'];
   }
   if(SY.msg) return ['ng', '送れていません', SY.msg];
   if(SY.connecting || SY.busy || SY.timer) return ['busy', '同期中…', ''];
-  if(!SY.pushedAt && !SY.pulledAt) return ['wait', 'つないでいます…', ''];
-  return ['ok', '同期済み', SY.pushedAt ? '最後に送った：' + hhmm(SY.pushedAt) : '最後に受けとった：' + hhmm(SY.pulledAt)];
+  if(!SY.at) return ['wait', 'つないでいます…', ''];
+  return ['ok', '同期済み', '最後にたしかめた：' + hhmm(SY.at)];
 }
 /* 前からの呼び方（{on, text, sub}） */
 function syState(){

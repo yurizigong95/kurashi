@@ -158,3 +158,60 @@ test('APIキー：くらしの手帳に入れたキーを、自動で使う', as
     W.S.set.key = '';
   }
 });
+
+test('リンク：アドレスの読みとり（かっこ・大文字・同じ動画）', async function(){
+  var got = W.linkList('ショックは https://en.wikipedia.org/wiki/Shock_(circulatory) を見る。' +
+    '（参考：https://example.com/a）\nHttps://Example.com/B。\nhttps://youtu.be/abcDEF12345 と https://www.youtube.com/watch?v=abcDEF12345');
+  eq(got[0], 'https://en.wikipedia.org/wiki/Shock_(circulatory)', 'かっこで終わるアドレスも切らない');
+  eq(got[1], 'https://example.com/a', '日本語のかっこの中のアドレス');
+  eq(got[2], 'https://Example.com/B', 'スマホで「Https」になっても読む');
+  eq(got.length, 4, '同じ動画は1つだけ：' + got.join(' '));
+  ok(W.linkOnly('Https://example.com/x'), '大文字でも、リンクだけと分かる');
+});
+
+test('リンク：1つ読めなくても、ほかは読む。AIのエラーも知らせる', async function(){
+  W.__FAKE_FETCH = async function(u){
+    if(/broken/.test(u)) return { kind:'photo', blob:new W.Blob(['これは写真ではない'], { type:'image/heic' }) };
+    if(/ok-page/.test(u)) return { kind:'html', text:'<html><head><title>読めるページ</title></head><body><main><p>' + new Array(20).join('心不全の看護では、体重を毎日はかる。') + '</p></main></body></html>' };
+    throw new Error('CORS');
+  };
+  fakeAI(function(){ throw new Error('APIキーが正しくないようです。設定で入れ直してください。'); });
+  try{
+    await click('tab', 'make');
+    await type('mk_links', 'https://example.com/broken.heic\nhttps://example.com/ok-page\nhttps://example.com/blocked');
+    await click('mk-links');
+    await until(function(){ return !W.mk.busy && W.mk.files.length === 1; }, 8000, '読みおわるのを待つ');
+    eq(W.mk.files[0].name, '読めるページ', '読めるページは入る');
+    ok(toastText().indexOf('APIキーが正しくない') >= 0, 'AIのエラーを知らせる：' + toastText());
+    var box = W.document.getElementById('mk_links').value;
+    ok(box.indexOf('broken.heic') >= 0 && box.indexOf('blocked') >= 0 && box.indexOf('ok-page') < 0, '読めなかったものだけ欄にのこる：' + box);
+  }finally{ W.__FAKE_FETCH = null; }
+});
+
+test('リンク：はりつけ欄のリンクが読めなかったら、リンクの欄にのこす', async function(){
+  W.subAdd('成人看護学');
+  W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
+  fakeAI(function(){ return { text:'### 1\n（読めませんでした）', meta:{ urlMetadata:[{ retrievedUrl:'https://example.com/nope', urlRetrievalStatus:'URL_RETRIEVAL_STATUS_ERROR' }] } }; });
+  try{
+    await click('tab', 'make');
+    await type('mk_paste', 'https://example.com/nope');
+    await click('mk-run');
+    await until(function(){ return !W.mk.busy; }, 6000, 'おわるのを待つ');
+    await frames();
+    eq(W.document.getElementById('mk_links').value, 'https://example.com/nope', 'リンクの欄にのこる');
+    ok(!W.mk.pv, '何も読めていないので、問題は作らない');
+  }finally{ W.__FAKE_FETCH = null; }
+});
+
+test('まとめてえらぶ：入りきらないぶんは、読む前に外す（重くならない）', async function(){
+  var n = 0, orig = W.loadFiles;
+  W.loadFiles = function(list){ n = list.length; return orig(list); };
+  try{
+    var list = [];
+    for(var i = 0; i < 30; i++) list.push(new W.File(['第' + (i + 1) + '回の資料。心不全の看護について学ぶ。'], 'm' + i + '.txt', { type:'text/plain' }));
+    await W.mkTake(list);
+    eq(n, 20, '読んだのは20こだけ');
+    eq(W.mk.files.length, 20, '20こ入った');
+    ok(toastText().indexOf('10つは入れませんでした') >= 0, '入れなかった数を知らせる：' + toastText());
+  }finally{ W.loadFiles = orig; }
+});

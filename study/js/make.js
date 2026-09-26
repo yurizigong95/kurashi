@@ -50,8 +50,11 @@ async function mkTake(files, quiet){
   if(mk.busy) return;
   mk.busy = 'read'; render();
   try{
-    var loaded = await loadFiles(files);
-    var all = dupMark(mk.files.concat(loaded)), over = Math.max(0, all.length - MAX_FILES);
+    /* 入りきらないぶんは、読む前に外す（たくさんえらんでも、重くならないように） */
+    var room = Math.max(0, MAX_FILES - mk.files.length), over = Math.max(0, files.length - room);
+    var loaded = await loadFiles(files.slice(0, room));
+    var all = dupMark(mk.files.concat(loaded));
+    over += Math.max(0, all.length - MAX_FILES);                 /* ZIP の中身で、こえたとき */
     mk.files = all.slice(0, MAX_FILES);
     /* 写真をとった日を、資料の日付にする */
     if(!mk.mat.at){
@@ -64,7 +67,7 @@ async function mkTake(files, quiet){
       if(m){ mk.mat.no = m[1]; INP.mk_no = m[1]; }
     }
     if(!mk.mat.title && mk.files[0]) mk.mat.title = String(mk.files[0].name).replace(/\.[a-z0-9]+$/i, '').slice(0, 60);
-    if(over) toast((loaded.length - over) + 'つ読みこみました。1回に使える資料は' + MAX_FILES + 'こまでなので、' + over + 'つは入れませんでした', true);
+    if(over) toast(Math.max(0, loaded.length - Math.max(0, all.length - MAX_FILES)) + 'つ読みこみました。1回に使える資料は' + MAX_FILES + 'こまでなので、' + over + 'つは入れませんでした', true);
     else if(!quiet) toast(loaded.length + 'つ読みこみました');
   }catch(e){
     toast(e.message, true);
@@ -269,7 +272,10 @@ function mkAutoN(){
 /* リンク（いくつでも）を読んで、資料に入れる。読めなかったリンクを返す */
 async function mkReadLinks(urls){
   if(mk.busy) return urls;
-  urls = (urls || []).filter(function(u){ return !mk.files.some(function(f){ return f.link === u; }); });
+  urls = (urls || []).filter(function(u){
+    var yt = linkYouTube(u);
+    return !mk.files.some(function(f){ return f.link === u || (yt && f.yt && linkYouTube(f.link) === yt); });
+  });
   var room = MAX_FILES - mk.files.length;
   if(!urls.length){ toast('新しいリンクがありません'); return []; }
   if(room <= 0){ toast('1回に使える資料は' + MAX_FILES + 'こまでです', true); return urls; }
@@ -277,11 +283,12 @@ async function mkReadLinks(urls){
   if(skip.length) toast('1回に使える資料は' + MAX_FILES + 'こまでなので、' + skip.length + 'つは入れませんでした', true);
   urls = urls.slice(0, room);
   mk.busy = 'read'; mk.linkMsg = 'リンクを読んでいます…（0/' + urls.length + '）'; render();
-  var got = [], left = [], fail = [];
+  var got = [], left = [], fail = [], aiErr = '';
   try{
     for(var i = 0; i < urls.length; i++){
       mk.linkMsg = 'リンクを読んでいます…（' + (i + 1) + '/' + urls.length + '）'; render();
-      var o = await loadLinkDirect(urls[i]);
+      var o = null;
+      try{ o = await loadLinkDirect(urls[i]); }catch(e){ o = null; }      /* 1つ読めなくても、ほかは続ける */
       if(o) got.push(o); else left.push(urls[i]);
     }
     if(left.length){
@@ -290,7 +297,7 @@ async function mkReadLinks(urls){
         try{
           (await loadLinksAi(left)).forEach(function(o){ if(o.fail) fail.push(o.link); else got.push(o); });
         }catch(e){
-          toast('リンクを読めませんでした：' + e.message, true);
+          aiErr = e.message;
           fail = fail.concat(left);
         }
       }else{
@@ -304,7 +311,8 @@ async function mkReadLinks(urls){
     if(!mk.mat.title && got[0] && got[0].kind === 'link') mk.mat.title = got[0].name;
     if(fail.length){
       toast((got.length ? got.length + 'つ読めました。' : '') + fail.length + 'つのリンクを読めませんでした' +
-        (aiReady() ? '（ページの文章をコピーして、下にはりつけても作れます）' : '（設定でAPIキーを入れると、AIが読みます）'), true);
+        (aiErr ? '：' + aiErr
+          : aiReady() ? '（ページの文章をコピーして、下にはりつけても作れます）' : '（設定でAPIキーを入れると、AIが読みます）'), true);
     }else if(got.length){
       toast(got.length + 'つのリンクを読みました');
     }
@@ -325,7 +333,8 @@ async function mkRun(){
   var fromLinks = linkOnly(paste);
   if(fromLinks){
     inSet('mk_paste', ''); INP.mk_paste = '';
-    await mkReadLinks(linkList(paste));
+    var left = await mkReadLinks(linkList(paste));
+    if(left.length){ inSet('mk_links', left.join('\n')); INP.mk_links = left.join('\n'); render(); }   /* 読めなかったものは、リンクの欄にのこす */
     paste = '';
     if(mk.busy) return;
   }
