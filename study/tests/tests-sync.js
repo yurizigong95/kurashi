@@ -130,12 +130,25 @@ test('同期：資料の写真も、受けわたしできる', async function(){
   W.syStop();
 });
 
-test('同期：つなぎ先がないときは、静かに止まる', async function(){
+test('同期：テストのときは、本物にはつながない', async function(){
   W.__FAKE_SYNC = null;
   eq(W.syReady(), false, 'テストのときは、本物にはつながない');
   var st = W.syState();
-  ok(st.text.indexOf('できません') >= 0, '画面にも、そう出る：' + st.text);
+  ok(st.text.indexOf('テストモード') >= 0, '画面にも、そう出る：' + st.text);
   ok(!(await W.syStart()), 'はじまらない');
+  eq(W.document.getElementById('synctag').textContent, 'テストモード', '上の表示も「テストモード」');
+});
+
+test('同期：組みこみのつなぎ先があるので、くらしの手帳を開いていない端末でもつながる', async function(){
+  var saved = W.localStorage.getItem('shiharai:v1');
+  W.localStorage.removeItem('shiharai:v1');
+  try{
+    ok(W.syCfg() && W.syCfg().projectId === 'kurashi-59562', 'つなぎ先がある');
+    eq(W.syRoom(), '8b7f4e6et9jhxded', '合言葉も、くらしの手帳と同じ');
+    ok(W.syDoc('idx').indexOf('8b7f4e6et9jhxded__mondai_') === 0, '置き場の名前も、手帳のきまりに合う');
+  }finally{
+    if(saved != null) W.localStorage.setItem('shiharai:v1', saved);
+  }
 });
 
 /* ほんとうの端末と同じやり方で置く（目次の印も、ほんものと同じ計算） */

@@ -4,7 +4,7 @@
    ・ZIP … 大学のポータルからまとめて落としたものを、中身ごとに読む
    ・写真の手入れ（明るく・まっすぐ・見開き分け・ぼけ判定）は、すべてこの端末の中で計算する */
 
-var MAX_FILES = 8;                       /* 1回に読みこむ資料の数 */
+var MAX_FILES = 20;                      /* 1回に読みこむ資料の数（写真・ファイル・リンクをあわせて） */
 var INLINE_MAX = 15 * 1024 * 1024;       /* これより小さいものは、その場でAIにくっつけて送る */
 var UPLOAD_MAX = 2 * 1024 * 1024 * 1024; /* 大きいものは、いったんAIに預けてから読んでもらう（2GBまで） */
 var TXT_HEAD = 4 * 1024 * 1024;          /* 大きな文章のファイルは、はじめの4MBだけ読む */
@@ -24,7 +24,7 @@ function fKindOf(f){
   return '';
 }
 function fKindName(kind){
-  return { photo:'写真', pdf:'PDF', slide:'スライド', text:'文章', audio:'録音', video:'動画' }[kind] || '資料';
+  return { photo:'写真', pdf:'PDF', slide:'スライド', text:'文章', audio:'録音', video:'動画', link:'ウェブのページ' }[kind] || '資料';
 }
 /* ファイルの大きさを、読みやすい字にする */
 function fSizeText(n){
@@ -68,7 +68,7 @@ function mediaSeconds(file){
 function estTokens(f){
   if(!f) return 0;
   if(f.kind === 'audio') return Math.round((f.sec || Math.max(1, (f.size || 0) / 16000)) * TOK_AUDIO_SEC);
-  if(f.kind === 'video') return Math.round((f.sec || Math.max(1, (f.size || 0) / 125000)) * TOK_VIDEO_SEC);
+  if(f.kind === 'video') return Math.round((f.sec || (f.yt ? 600 : Math.max(1, (f.size || 0) / 125000))) * TOK_VIDEO_SEC);   /* YouTube は長さが分からないので10分として */
   if(f.kind === 'pdf') return Math.round(Math.max(1, (f.size || 0) / PDF_PAGE_BYTES) * TOK_PAGE);
   if(f.kind === 'photo') return TOK_PAGE;
   return Math.min(TEXT_SEND, (f.text || '').length);
@@ -550,6 +550,167 @@ function exifWalk(v, tiff, ifd, le, depth){
       if(m) out = m[1] + '-' + m[2] + '-' + m[3];
       if(tag === 0x9003 && out) return out;
     }
+  }
+  return out;
+}
+
+/* ============================== リンク（ウェブのページ・PDF・YouTube） ==============================
+   ① まず、この端末からそのまま読んでみる（読めたら、AIは使わない）
+   ② 読めないページ（ほとんどのサイトは、ほかのサイトから読まれるのを止めています）は、
+      Gemini に「このリンクを読んで」とたのむ（url_context）
+   ③ YouTube は、そのまま Gemini に渡す（Gemini が動画を見て作ります） */
+function linkList(text){
+  var out = [], ids = {};
+  String(text || '').replace(/https?:\/\/[^\s<>"'「」『』（）、。]+/gi, function(u){
+    /* うしろの句読点は外す。「)」は、かっこの数が合わないときだけ外す（Wikipedia の「…_(circulatory)」など） */
+    for(var k = 0; k < 5; k++){
+      var t = u.replace(/[.,;:!?）\]」』】]+$/, '');
+      if(/\)$/.test(t) && (t.match(/\(/g) || []).length < (t.match(/\)/g) || []).length) t = t.slice(0, -1);
+      if(t === u) break;
+      u = t;
+    }
+    u = u.replace(/^https?/i, function(x){ return x.toLowerCase(); });      /* スマホで「Https」になっても読む */
+    var yt = linkYouTube(u);                                             /* 同じ動画は1つだけ */
+    if(yt){ if(ids[yt]) return u; ids[yt] = 1; }
+    if(u.length > 12 && out.indexOf(u) < 0) out.push(u);
+    return u;
+  });
+  return out;
+}
+/* はりつけた字が、リンクだけか */
+function linkOnly(text){
+  var t = String(text || '').trim();
+  return !!t && linkList(t).length > 0 && !t.replace(/https?:\/\/\S+/gi, '').replace(/[\s、,]+/g, '');
+}
+function linkYouTube(u){
+  var m = /^https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/.exec(String(u || ''));
+  return m ? m[1] : '';
+}
+function linkName(u){
+  try{
+    var x = new URL(u), p = decodeURIComponent(x.pathname).replace(/\/$/, '');
+    return x.hostname.replace(/^www\./, '') + (p ? p.slice(0, 40) : '');
+  }catch(e){ return String(u).slice(0, 50); }
+}
+/* ページの字を、段落のくぎりを残して取り出す */
+function htmlText(html){
+  var doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+  var og = doc.querySelector('meta[property="og:title"]');
+  var title = String((og && og.getAttribute('content')) || doc.title || '').trim();
+  ['script', 'style', 'noscript', 'nav', 'header', 'footer', 'aside', 'form', 'iframe', 'svg', 'button', 'template'].forEach(function(sel){
+    Array.prototype.forEach.call(doc.querySelectorAll(sel), function(e){ e.remove(); });
+  });
+  var root = doc.querySelector('article') || doc.querySelector('main') || doc.body;
+  var out = [];
+  (function walk(n){
+    if(!n) return;
+    if(n.nodeType === 3){ out.push(n.nodeValue); return; }
+    if(n.nodeType !== 1) return;
+    var tag = n.tagName.toLowerCase();
+    if(tag === 'br'){ out.push('\n'); return; }
+    var block = /^(p|div|ul|ol|h[1-6]|tr|table|section|article|blockquote|pre|dd|dt|dl|figcaption|figure|main)$/.test(tag);
+    if(tag === 'li') out.push('\n・'); else if(block) out.push('\n');
+    for(var c = n.firstChild; c; c = c.nextSibling) walk(c);
+    if(tag === 'td' || tag === 'th') out.push('　'); else if(block) out.push('\n');
+  })(root);
+  var text = out.join('').replace(/[ \t ]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  return { title:title.slice(0, 80), text:text };
+}
+/* この端末から、そのまま読む（8秒まで） */
+async function linkFetch(u){
+  if(typeof window !== 'undefined' && window.__FAKE_FETCH) return await window.__FAKE_FETCH(u);
+  var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var tm = setTimeout(function(){ if(ctl) ctl.abort(); }, 8000);
+  try{
+    var res = await fetch(u, { mode:'cors', credentials:'omit', redirect:'follow', signal:ctl ? ctl.signal : undefined });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var type = String(res.headers.get('content-type') || '').toLowerCase();
+    var len = toNum(res.headers.get('content-length'));
+    if(len > UPLOAD_MAX) throw new Error('大きすぎます');
+    var path = String(u).replace(/[?#].*$/, ''), bin = !type || /octet-stream|binary/.test(type);
+    /* 種類は、まず届いたものの種類で決める（アドレスの .pdf は、種類が書いていないときだけ見る） */
+    if(/pdf/.test(type) || (bin && /\.pdf$/i.test(path))) return { kind:'pdf', blob:await res.blob(), mime:'application/pdf' };
+    if(/^image\//.test(type)) return { kind:'photo', blob:await res.blob() };
+    if(/^(audio|video)\//.test(type)) return { kind:type.slice(0, 5) === 'audio' ? 'audio' : 'video', blob:await res.blob() };
+    if(/officedocument/.test(type) || (bin && /\.(pptx|docx)$/i.test(path))) return { kind:'slide', blob:await res.blob(), ext:/presentation|\.pptx$/i.test(type + path) ? '.pptx' : '.docx' };
+    if(!/^text\/|html|xml|json/.test(type)) throw new Error('読めない種類です');   /* ZIP・バイナリなどは、AIにまかせる */
+    /* 字の読み方（Shift_JIS のページなども、字化けしないように） */
+    var buf = await res.arrayBuffer(), cs = (/charset=["']?([\w-]+)/.exec(type) || [])[1] || '';
+    if(!cs){
+      var head = new TextDecoder('ascii').decode(new Uint8Array(buf.slice(0, 4096)));
+      cs = (/<meta[^>]+charset=["']?([\w-]+)/i.exec(head) || [])[1] || 'utf-8';
+    }
+    var t = '';
+    try{ t = new TextDecoder(cs.toLowerCase()).decode(buf); }catch(e){ t = new TextDecoder('utf-8').decode(buf); }
+    if(/html|xml/.test(type) || /^\s*</.test(t)) return { kind:'html', text:t };
+    return { kind:'text', text:t };
+  }finally{ clearTimeout(tm); }
+}
+/* 1つのリンクを、この端末だけで読む。読めなければ null（あとでAIにたのむ） */
+async function loadLinkDirect(u){
+  var yt = linkYouTube(u);
+  if(yt){
+    return { name:'YouTube（' + yt + '）', kind:'video', url:'', text:'', link:u, yt:1,
+             ref:{ uri:'https://www.youtube.com/watch?v=' + yt, mime:'', name:'YouTube' } };
+  }
+  var got = null;
+  try{ got = await linkFetch(u); }catch(e){ got = null; }
+  if(!got) return null;
+  if(got.kind === 'html' || got.kind === 'text'){
+    var t = got.kind === 'html' ? htmlText(got.text) : { title:'', text:String(got.text || '').trim() };
+    if(t.text.length < 60) return null;                 /* 字がほとんどない（動きで出すページなど）は、AIにたのむ */
+    return { name:t.title || linkName(u), kind:'link', url:'', text:t.text.slice(0, TEXT_SEND * 2), link:u,
+             size:t.text.length, sig:hash(t.text.slice(0, 800)) };
+  }
+  /* PDF・写真・録音・動画は、ファイルと同じように読む */
+  var base = (linkName(u).split('/').pop() || 'link').slice(0, 60);
+  var ext = got.ext || { pdf:'.pdf', photo:'.jpg', audio:'.mp3', video:'.mp4' }[got.kind] || '';
+  var fname = /\.[a-z0-9]{2,4}$/i.test(base) ? base : base + ext, file = null, mime = got.mime || got.blob.type || '';
+  try{ file = new File([got.blob], fname, { type:mime }); }
+  catch(e){ file = got.blob.slice(0, got.blob.size, mime); file.name = fname; }
+  var o = await loadOne(file, got.kind);
+  o.link = u;
+  return o;
+}
+/* 読めなかったリンクを、Gemini に読んでもらう（5つずつ） */
+async function loadLinksAi(urls, opt){
+  opt = opt || {};
+  var out = [];
+  for(var i = 0; i < urls.length; i += 5){
+    var part = urls.slice(i, i + 5);
+    var prompt = '次のウェブページを開いて、それぞれの本文を、看護学生の授業の資料として使えるように書き出してください。\n' +
+      '・ページに書いてあることだけを書く。広告・メニュー・関連記事・コメントは入れない。\n' +
+      '・まとめすぎない。定義・数値・手順・大事なことばは、そのまま残す（1ページ4000字まで）。\n' +
+      '・開けなかったページは、本文に「（読めませんでした）」とだけ書く。\n' +
+      '・次の形だけで答える（前後に何も書かない）：\n### 1\nタイトル：（ページの題）\n（本文）\n### 2\n…\n\n' +
+      part.map(function(u, k){ return (k + 1) + '. ' + u; }).join('\n');
+    var r = await aiCall({ contents:[{ role:'user', parts:[{ text:prompt }] }], tools:[{ url_context:{} }],
+      tag:'link', temperature:0.1, maxTokens:Math.min(60000, 7000 * part.length), signal:opt.signal });
+    /* ほんとうにページを開けたか（開けていないのに書いたものは、作り話かもしれないので使わない） */
+    var bad = {}, good = {}, nGood = 0, norm = function(x){
+      return String(x || '').replace(/#.*$/, '').replace(/^http:/i, 'https:').replace(/\/+$/, '').toLowerCase();
+    };
+    var metas = (r.meta && (r.meta.urlMetadata || r.meta.url_metadata)) || [];
+    metas.forEach(function(m){
+      var st = String(m.urlRetrievalStatus || m.url_retrieval_status || '');
+      var ru = norm(m.retrievedUrl || m.retrieved_url);
+      if(/SUCCESS/.test(st)){ good[ru] = 1; nGood++; } else bad[ru] = 1;
+    });
+    var blocks = {}, cur = 0;
+    String(r.text || '').split('\n').forEach(function(line){
+      var m = /^\s*#{2,4}\s*(\d+)\s*$/.exec(line);
+      if(m){ cur = toNum(m[1]); blocks[cur] = []; return; }
+      if(cur) blocks[cur].push(line);
+    });
+    part.forEach(function(u, k){
+      var lines = blocks[k + 1] || [], title = '';
+      if(lines.length && /^\s*タイトル[:：]/.test(lines[0])) title = lines.shift().replace(/^\s*タイトル[:：]\s*/, '').trim();
+      var body = lines.join('\n').trim();
+      var nu = norm(u), opened = good[nu] || (!bad[nu] && nGood > 0);   /* 転送されて、ちがうアドレスで開いたときも */
+      if(!opened || body.length < 10 || /読めませんでした/.test(body.slice(0, 30))){ out.push({ link:u, fail:1 }); return; }
+      out.push({ name:(title || linkName(u)).slice(0, 80), kind:'link', url:'', text:body.slice(0, TEXT_SEND * 2), link:u,
+                 size:body.length, ai:1, sig:hash(body.slice(0, 800)) });
+    });
   }
   return out;
 }

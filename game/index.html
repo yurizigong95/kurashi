@@ -6198,8 +6198,13 @@ async function geminiSample(turns,opt){
    ・配列は文字にしてしまう。こうすると、入れ子の配列でもそのまま置ける */
 const GCOL='shiharai';
 function gSettings(){ try{ const j=JSON.parse(localStorage.getItem('shiharai:v1')||'null'); return (j&&j.settings)||null; }catch(e){ return null; } }
+/* くらしの手帳と同じ、組みこみのつなぎ先（どの端末で開いても、何も入れずにつながる）。
+   パソコンの中で試しているとき（localhost・ファイル）は、本物にはつながない */
+const G_LOCAL=/^(localhost|127\.|\[::1\]|0\.0\.0\.0)/.test(location.hostname)||location.protocol==='file:';
+const G_ROOM=G_LOCAL?'':'8b7f4e6et9jhxded';
+const G_FB=G_LOCAL?'':'{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
 function gFbCfg(){
-  const t=String((gSettings()||{}).fbConfig||'').trim(); if(!t) return null;
+  const t=String((gSettings()||{}).fbConfig||'').trim()||G_FB; if(!t) return null;
   let c=null;
   try{ c=JSON.parse(t); }catch(e){
     try{
@@ -6211,7 +6216,7 @@ function gFbCfg(){
   }
   return (c&&c.projectId)?c:null;
 }
-function gRoomId(){ return String((gSettings()||{}).room||''); }
+function gRoomId(){ return String((gSettings()||{}).room||'')||G_ROOM; }
 function gDocId(path){ return gRoomId()+'__gd_'+String(path).replace(/[^A-Za-z0-9_-]+/g,'_'); }
 function gEnc(v){
   if(Array.isArray(v)) return {__j:JSON.stringify(v)};

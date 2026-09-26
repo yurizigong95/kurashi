@@ -64,9 +64,15 @@ async function fresh(){
   upCalls = [];
   W.__FAKE_AI = null;
   W.__FAKE_UPLOAD = null;
+  W.__FAKE_FETCH = null;
+  W.mk.linkMsg = '';
   if(W.syStop) W.syStop();
   W.__FAKE_SYNC = null;
-  if(W.SY){ W.SY.applied = ''; W.SY.at = 0; W.SY.msg = ''; W.SY.busy = 0; W.SY.again = 0; W.SY.renderWait = 0; }
+  if(W.SY){
+    W.SY.applied = ''; W.SY.at = 0; W.SY.msg = ''; W.SY.busy = 0; W.SY.again = 0; W.SY.renderWait = 0;
+    W.SY.pushedAt = 0; W.SY.pulledAt = 0; W.SY.sig = null; W.SY.devs = {}; W.SY.devAt = 0; W.SY.off = 0; W.SY.connecting = 0;
+  }
+  try{ W.localStorage.removeItem(W.KEY + ':syncsig'); W.localStorage.removeItem(W.KEY + ':synclog'); W.localStorage.removeItem('mondai:devname'); }catch(e){}
   W.mk.busy = ''; W.mk.warp = null;
   W.render();
   await frames();

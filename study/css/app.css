@@ -28,7 +28,42 @@ header{
   padding:calc(10px + env(safe-area-inset-top)) 16px 8px;
   border-bottom:1px solid var(--line);
 }
+header{display:flex; align-items:center; gap:10px}
 header h1{margin:0; font-size:19px; letter-spacing:.02em}
+
+/* ===== 同期のようす（上の表示・設定） ===== */
+#synctag{margin-left:auto; display:inline-flex; align-items:center; gap:6px; max-width:52%;
+  font-family:inherit; font-size:12px; font-weight:600; line-height:1.2; color:var(--sub); background:var(--card); border:1px solid var(--line);
+  border-radius:999px; padding:5px 10px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#synctag:empty{display:none}
+#synctag::before, .syst .dot, .syrow .dot{content:""; width:8px; height:8px; border-radius:50%; background:var(--sub); flex:none}
+#synctag.st-ok::before, .syst.st-ok .dot{background:var(--ok)}
+#synctag.st-busy::before, .syst.st-busy .dot{background:var(--acc); animation:stpulse 1s ease-in-out infinite}
+#synctag.st-wait::before, .syst.st-wait .dot{background:var(--acc)}
+#synctag.st-ng{color:var(--ng); border-color:var(--ng)}
+#synctag.st-ng::before, .syst.st-ng .dot{background:var(--ng)}
+#synctag.st-test{color:var(--main)}
+@keyframes stpulse{0%,100%{opacity:1} 50%{opacity:.3}}
+@media (prefers-reduced-motion: reduce){ #synctag.st-busy::before, .syst.st-busy .dot{animation:none} }
+.syst{display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:12px; background:var(--main-l); margin:0 0 8px}
+.syst .dot{margin-top:7px}
+.syst.st-ng{background:var(--amber-bg)}
+.kv{display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px}
+.kv span{color:var(--sub)}
+.kv b{text-align:right; font-weight:600; overflow-wrap:anywhere}
+.sylist{border:1px solid var(--line); border-radius:12px; overflow:hidden}
+.syrow{display:flex; align-items:flex-start; gap:10px; padding:9px 12px; border-top:1px solid var(--line)}
+.syrow:first-child{border-top:0}
+.syrow .dot{margin-top:7px; background:var(--ok)}
+.syrow .dot.me{background:var(--main)}
+.syrow .bd{flex:1; min-width:0}
+.syrow .bd b{font-size:14px}
+.syrow .bd b.bad{color:var(--ng); font-size:12px}
+.syrow .tagme{margin-left:6px; font-size:11px; padding:1px 7px; border-radius:999px; background:var(--main-l); color:var(--main-d)}
+.syrow .ar{width:22px; text-align:center; font-size:14px; line-height:1.6}
+.syrow .ar.in{color:var(--main)}
+.syrow .ar.out{color:var(--ok)}
+.syrow .when{flex:none; white-space:nowrap}
 main{padding:12px 16px 20px; max-width:720px; margin:0 auto}
 
 /* ===== カード ===== */
@@ -82,6 +117,8 @@ details summary{font-size:13px; color:var(--sub); cursor:pointer; margin-top:8px
 .btn + .btn{margin-top:8px}
 .pair{display:flex; gap:8px; align-items:stretch}
 .pair > *{flex:1; margin-top:0 !important}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.grid2 > .btn{margin-top:0 !important; font-size:14px; padding:12px 6px}
 .pair3{display:flex; gap:8px}
 .pair3 > *{flex:1; margin-top:0 !important; font-size:14px; padding:12px 6px}
 button.link{

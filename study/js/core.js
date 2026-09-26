@@ -5,7 +5,7 @@
    読みこむ順番：core → data → ai → files → subj → make → drill → lib → main */
 
 var APP_NAME = 'もんだいメーカー';
-var APP_BUILD = '2026-09-25d';
+var APP_BUILD = '2026-09-26a';
 
 /* テストモード：?test=1 か、パソコンの中（localhost）で開いたとき。
    本物の保存にはさわらない（?real=1 で本番あつかい）。 */
@@ -368,6 +368,7 @@ function render(){
     ttl.textContent = cur ? cur[2] : APP_NAME;
   }
   photoFill();
+  if(typeof syTag === 'function') syTag();     /* 上の「同期済み」の表示 */
   /* 入力中だった字をもどす */
   Object.keys(INP).forEach(function(id){
     var e = document.getElementById(id);
