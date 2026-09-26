@@ -1,10 +1,10 @@
 {
-    "build":  "2026-09-24a",
+    "build":  "2026-09-26a",
     "made":  "2026-09-24 15:12",
     "files":  [
                   {
                       "path":  "css/app.css",
-                      "sha256":  "6eac034b8827cb23"
+                      "sha256":  "15d24b6b26097086"
                   },
                   {
                       "path":  "css/m-anki2.css",
@@ -109,7 +109,7 @@
                   },
                   {
                       "path":  "js/chat.js",
-                      "sha256":  "21b4fe09e3b32138"
+                      "sha256":  "c665efd21124fd8c"
                   },
                   {
                       "path":  "js/common.js",
@@ -121,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "ed5679116df7af86"
+                      "sha256":  "4fbe520f71eeb28c"
                   },
                   {
                       "path":  "js/data.js",
@@ -233,11 +233,11 @@
                   },
                   {
                       "path":  "js/todo.js",
-                      "sha256":  "41e2cebcfed82530"
+                      "sha256":  "fbf3afb121a41dfd"
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "839cdd735a65170f"
+                      "sha256":  "8ee2489a74154036"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -249,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "31602c5546207f57"
+                      "sha256":  "49f4672731f2c684"
                   }
               ]
 }

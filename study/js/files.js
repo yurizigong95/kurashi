@@ -582,6 +582,14 @@ function linkOnly(text){
   var t = String(text || '').trim();
   return !!t && linkList(t).length > 0 && !t.replace(/https?:\/\/\S+/gi, '').replace(/[\s、,]+/g, '');
 }
+/* リンクとして読むべきか：リンクだけ、または「ページの題＋リンク」（スマホの「共有」でコピーした形）。
+   長い文章の中に参考のリンクがあるだけのときは、文章としてあつかう */
+function linkMostly(text){
+  var t = String(text || '').trim();
+  if(!linkList(t).length) return false;
+  var rest = t.replace(/https?:\/\/\S+/gi, '').replace(/[\s、,]+/g, '');
+  return rest.length <= 120;
+}
 function linkYouTube(u){
   var m = /^https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/.exec(String(u || ''));
   return m ? m[1] : '';
@@ -672,45 +680,79 @@ async function loadLinkDirect(u){
   o.link = u;
   return o;
 }
-/* 読めなかったリンクを、Gemini に読んでもらう（5つずつ） */
+/* Google ドキュメント・スライド・スプレッドシート・ドライブのリンクは、中身を取り出せる形のアドレスにする
+   （「リンクを知っている全員」が見られるようにしてあるものだけ読めます） */
+function linkExportUrl(u){
+  var s = String(u || ''), m;
+  if((m = /docs\.google\.com\/document\/(?:u\/\d+\/)?d\/([\w-]{10,})/.exec(s))) return 'https://docs.google.com/document/d/' + m[1] + '/export?format=txt';
+  if((m = /docs\.google\.com\/presentation\/(?:u\/\d+\/)?d\/([\w-]{10,})/.exec(s))) return 'https://docs.google.com/presentation/d/' + m[1] + '/export/pdf';
+  if((m = /docs\.google\.com\/spreadsheets\/(?:u\/\d+\/)?d\/([\w-]{10,})/.exec(s))) return 'https://docs.google.com/spreadsheets/d/' + m[1] + '/export?format=csv';
+  if((m = /drive\.google\.com\/(?:file\/(?:u\/\d+\/)?d\/|open\?(?:[^#]*&)?id=|uc\?(?:[^#]*&)?id=)([\w-]{10,})/.exec(s))) return 'https://drive.google.com/uc?export=download&id=' + m[1];
+  return '';
+}
+/* ログインが要るページ（学校のシステム・クラスルームなど）は、だれにも読めない */
+function linkNeedsLogin(u){
+  return /classroom\.google\.com|mail\.google\.com|manaba|moodle|webclass|blackboard|canvas\.|teams\.microsoft|sharepoint\.com|onedrive\.live|login|signin|sso\./i.test(String(u || ''));
+}
+/* AIの答えから、題と本文を取り出す（書き方が少しちがっても読めるように） */
+function linkAiText(text){
+  var t = String(text || '').replace(/^\s*```[a-z]*\s*\n?/i, '').replace(/\n?```\s*$/, '').trim();
+  var lines = t.split('\n'), title = '';
+  /* はじめの数行から「タイトル：…」を見つける（「**タイトル**：」「# タイトル:」なども） */
+  for(var i = 0; i < Math.min(4, lines.length); i++){
+    var m = /^\s*(?:#+\s*)?(?:\*\*)?\s*(?:タイトル|題名|題|title)\s*(?:\*\*)?\s*[:：]\s*(?:\*\*)?(.+?)(?:\*\*)?\s*$/i.exec(lines[i]);
+    if(m){ title = m[1].trim(); lines.splice(i, 1); break; }
+  }
+  var body = lines.join('\n').replace(/^\s*(?:本文|内容)\s*[:：]\s*/, '').trim();
+  return { title:title, body:body };
+}
+/* 読めなかったわけ（url_context の結果から） */
+function linkWhy(st){
+  st = String(st || '');
+  if(/PAYWALL/.test(st)) return '有料・ログインが必要なページのようです';
+  if(/UNSAFE/.test(st)) return '安全でないと判断されたページです';
+  if(/ERROR|UNSPECIFIED/.test(st)) return 'ページを開けませんでした（見られない設定・ログインが必要・サイトが断っている など）';
+  return 'ページを開けませんでした';
+}
+/* 読めなかったリンクを、Gemini に1つずつ開いて読んでもらう（url_context）。
+   1つずつにするのは、答えの書き方がくずれても、ほかのリンクをまきこまないため。
+   返すもの：読めた資料、または { link, fail:1, why } */
 async function loadLinksAi(urls, opt){
   opt = opt || {};
   var out = [];
-  for(var i = 0; i < urls.length; i += 5){
-    var part = urls.slice(i, i + 5);
-    var prompt = '次のウェブページを開いて、それぞれの本文を、看護学生の授業の資料として使えるように書き出してください。\n' +
+  for(var i = 0; i < urls.length; i++){
+    var u = urls[i], target = linkExportUrl(u) || u;
+    if(opt.onStep) try{ opt.onStep(i, urls.length); }catch(e0){}
+    var prompt = 'URL: ' + target + '\n\n' +
+      'このURLのページを開いて、本文を、看護学生の授業の資料として使えるように書き出してください。\n' +
       '・ページに書いてあることだけを書く。広告・メニュー・関連記事・コメントは入れない。\n' +
-      '・まとめすぎない。定義・数値・手順・大事なことばは、そのまま残す（1ページ4000字まで）。\n' +
-      '・開けなかったページは、本文に「（読めませんでした）」とだけ書く。\n' +
-      '・次の形だけで答える（前後に何も書かない）：\n### 1\nタイトル：（ページの題）\n（本文）\n### 2\n…\n\n' +
-      part.map(function(u, k){ return (k + 1) + '. ' + u; }).join('\n');
-    var r = await aiCall({ contents:[{ role:'user', parts:[{ text:prompt }] }], tools:[{ url_context:{} }],
-      tag:'link', temperature:0.1, maxTokens:Math.min(60000, 7000 * part.length), signal:opt.signal });
+      '・まとめすぎない。定義・数値・手順・大事なことばは、そのまま残す（6000字まで）。\n' +
+      '・1行目は「タイトル：（ページの題）」、2行目から本文。前おきやあいさつは書かない。\n' +
+      '・ページを開けなかったときは、作らずに「読めませんでした：（わけ）」とだけ書く。';
+    var r = null;
+    try{
+      r = await aiCall({ contents:[{ role:'user', parts:[{ text:prompt }] }], tools:[{ url_context:{} }],
+        tag:'link', temperature:0.1, maxTokens:16000, signal:opt.signal });
+    }catch(e){
+      if(opt.signal && opt.signal.aborted) throw e;
+      out.push({ link:u, fail:1, why:String((e && e.message) || e).slice(0, 120), err:1 });
+      continue;
+    }
     /* ほんとうにページを開けたか（開けていないのに書いたものは、作り話かもしれないので使わない） */
-    var bad = {}, good = {}, nGood = 0, norm = function(x){
-      return String(x || '').replace(/#.*$/, '').replace(/^http:/i, 'https:').replace(/\/+$/, '').toLowerCase();
-    };
-    var metas = (r.meta && (r.meta.urlMetadata || r.meta.url_metadata)) || [];
+    var metas = (r.meta && (r.meta.urlMetadata || r.meta.url_metadata)) || [], okN = 0, ngSt = '';
     metas.forEach(function(m){
       var st = String(m.urlRetrievalStatus || m.url_retrieval_status || '');
-      var ru = norm(m.retrievedUrl || m.retrieved_url);
-      if(/SUCCESS/.test(st)){ good[ru] = 1; nGood++; } else bad[ru] = 1;
+      if(/SUCCESS/.test(st)) okN++; else if(!ngSt) ngSt = st || 'ERROR';
     });
-    var blocks = {}, cur = 0;
-    String(r.text || '').split('\n').forEach(function(line){
-      var m = /^\s*#{2,4}\s*(\d+)\s*$/.exec(line);
-      if(m){ cur = toNum(m[1]); blocks[cur] = []; return; }
-      if(cur) blocks[cur].push(line);
-    });
-    part.forEach(function(u, k){
-      var lines = blocks[k + 1] || [], title = '';
-      if(lines.length && /^\s*タイトル[:：]/.test(lines[0])) title = lines.shift().replace(/^\s*タイトル[:：]\s*/, '').trim();
-      var body = lines.join('\n').trim();
-      var nu = norm(u), opened = good[nu] || (!bad[nu] && nGood > 0);   /* 転送されて、ちがうアドレスで開いたときも */
-      if(!opened || body.length < 10 || /読めませんでした/.test(body.slice(0, 30))){ out.push({ link:u, fail:1 }); return; }
-      out.push({ name:(title || linkName(u)).slice(0, 80), kind:'link', url:'', text:body.slice(0, TEXT_SEND * 2), link:u,
-                 size:body.length, ai:1, sig:hash(body.slice(0, 800)) });
-    });
+    var got = linkAiText(r.text), head = got.body.slice(0, 40);
+    if(/^[（(]?\s*読めません/.test(got.body) || (!got.body && /読めません/.test(got.title))){
+      out.push({ link:u, fail:1, why:(got.body.replace(/^[（(]?\s*読めませんでした[）)]?\s*[:：]?\s*/, '').slice(0, 80) || linkWhy(ngSt)) });
+      continue;
+    }
+    if(metas.length && !okN){ out.push({ link:u, fail:1, why:linkWhy(ngSt) }); continue; }
+    if(got.body.length < 15){ out.push({ link:u, fail:1, why:'ページから字をほとんど取り出せませんでした' }); continue; }
+    out.push({ name:(got.title || linkName(u)).slice(0, 80), kind:'link', url:'', text:got.body.slice(0, TEXT_SEND * 2), link:u,
+               size:got.body.length, ai:1, unsure:metas.length ? 0 : 1, sig:hash(got.body.slice(0, 800)) });
   }
   return out;
 }

@@ -39,6 +39,9 @@ function mkFilePart(){
     '<textarea id="mk_links" rows="2" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" ' +
       'placeholder="https://… を1行に1つ。いくつでもまとめて入れられます">' + esc(inVal('mk_links')) + '</textarea>' +
     btn('🔗 リンクを読む', 'mk-links', { cls:'ghost', dis:!!mk.busy }) +
+    ((mk.linkFails || []).length ? '<div class="warnbox" style="margin-top:8px"><div class="s"><b>読めなかったリンク</b></div>' +
+      mk.linkFails.map(function(f){ return '<div class="s">・' + esc(linkName(f.u)) + '：' + esc(f.why) + '</div>'; }).join('') +
+      '<div class="s">ページを開いて文章をコピーし、下の「文章をはりつける」に入れても作れます。PDFなら保存して「ファイルから」でも入れられます。</div></div>' : '') +
     (mk.busy === 'read' ? '<div class="s wait">' + esc(mk.linkMsg || '読みこんでいます…') + '</div>' : '') +
     mkFileList() +
     mkCostPart() +
@@ -130,7 +133,7 @@ function mkFileList(){
       '<div class="bd"><b>' + esc(f.name) + '</b>' +
       (f.link ? '<div class="s link">' + esc(linkName(f.link)) + '</div>' : '') +
       (f.yt ? '<div class="s">YouTube は、AIが動画を見て作ります（長さが分からないので、10分として数えています）</div>' : '') +
-      (f.ai ? '<div class="s">AIがページを開いて読みました</div>' : '') +
+      (f.ai ? '<div class="s">' + (f.unsure ? '⚠️ AIが読みました（ページを開けたか確かめられなかったので、中身をたしかめてください）' : 'AIがページを開いて読みました') + '</div>' : '') +
       '<div class="s">' + esc(f.yt ? 'YouTube' : fKindName(f.kind)) +
         (f.size ? '・' + fSizeText(f.size) : '') +
         (f.text ? '・字' + f.text.length + '文字' : '') + (f.done ? '・手入れずみ' : '') + '</div>' +
@@ -261,13 +264,10 @@ onAct('mk-photos', function(){
   inp.click();
 });
 onAct('mk-links', async function(){
-  var text = String(elVal('mk_links') || '');
-  var urls = linkList(text);
-  if(!urls.length){ toast('https:// ではじまるリンクを入れてください', true); return; }
-  var left = await mkReadLinks(urls);
-  inSet('mk_links', left.join('\n'));      /* 読めなかったものだけ、のこす */
-  INP.mk_links = left.join('\n');
-  render();
+  if(!linkList(String(elVal('mk_links') || '')).length && !linkMostly(String(elVal('mk_paste') || ''))){
+    toast('https:// ではじまるリンクを入れてください', true); return;
+  }
+  await mkReadPending();
 });
 onAct('mk-shot', function(){
   var inp = document.createElement('input');

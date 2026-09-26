@@ -65,7 +65,7 @@ async function fresh(){
   W.__FAKE_AI = null;
   W.__FAKE_UPLOAD = null;
   W.__FAKE_FETCH = null;
-  W.mk.linkMsg = '';
+  W.mk.linkMsg = ''; W.mk.linkFails = [];
   if(W.syStop) W.syStop();
   W.__FAKE_SYNC = null;
   if(W.SY){

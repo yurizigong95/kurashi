@@ -260,7 +260,8 @@ function chatContext(){
   /* メモ */
   var nt = (S.notes||[]).slice(0, 12).map(function(n){
     var ck = (n.checks||[]).map(function(c){ return (c.done?'済:':'')+c.text; }).join('／');
-    return '・' + (n.pinned?'【ピン】':'') + (n.title||'（無題）') +
+    var nk = (typeof noteKindOf === 'function') ? noteKindOf(n) : null;
+    return '・' + (n.pinned?'【ピン】':'') + (nk?'【'+nk.name+'】':'') + (n.title||'（無題）') +
       (n.body?'：'+n.body.slice(0,80):'') + (ck?' やること:'+ck:'') +
       ((n.photos||[]).length?' 写真'+n.photos.length+'枚':'');
   });

@@ -18,28 +18,106 @@ test('リンク：読めるページは、AIを使わずにそのまま読む', 
   ok(has('ウェブのページ'), '画面にも出る');
 });
 
-test('リンク：読めないページは、AIが開いて読む（いくつでもまとめて）', async function(){
+/* AIに渡したURL（1つずつ読む） */
+function askedUrl(req){ var m = /URL:\s*(\S+)/.exec(textOf(req)); return m ? m[1] : ''; }
+
+test('リンク：読めないページは、AIが1つずつ開いて読む（いくつでもまとめて入れられる）', async function(){
   W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
   var urls = ['https://example.com/heart', 'https://example.org/lung', 'https://example.net/ng'];
   fakeAI(function(req){
-    return { text:'### 1\nタイトル：心不全\n心不全では息切れやむくみが出る。体重を毎日はかる。水分制限を守る。\n' +
-                  '### 2\nタイトル：肺炎\n肺炎では発熱とせきが出る。SpO2を見る。痰の色と量を記録する。\n' +
-                  '### 3\n（読めませんでした）',
-             meta:{ urlMetadata:[{ retrievedUrl:urls[0], urlRetrievalStatus:'URL_RETRIEVAL_STATUS_SUCCESS' },
-                                 { retrievedUrl:urls[1], urlRetrievalStatus:'URL_RETRIEVAL_STATUS_SUCCESS' },
-                                 { retrievedUrl:urls[2], urlRetrievalStatus:'URL_RETRIEVAL_STATUS_ERROR' }] } };
+    var u = askedUrl(req);
+    if(/heart/.test(u)) return { text:'タイトル：心不全\n心不全では息切れやむくみが出る。体重を毎日はかる。水分制限を守る。', meta:{ urlMetadata:[{ retrievedUrl:u, urlRetrievalStatus:'URL_RETRIEVAL_STATUS_SUCCESS' }] } };
+    if(/lung/.test(u)) return { text:'タイトル：肺炎\n肺炎では発熱とせきが出る。SpO2を見る。痰の色と量を記録する。', meta:{ urlMetadata:[{ retrievedUrl:u, urlRetrievalStatus:'URL_RETRIEVAL_STATUS_SUCCESS' }] } };
+    return { text:'読めませんでした：ページが見つかりません', meta:{ urlMetadata:[{ retrievedUrl:u, urlRetrievalStatus:'URL_RETRIEVAL_STATUS_ERROR' }] } };
   });
   try{
     await click('tab', 'make');
     await type('mk_links', urls.join('\n') + '\nhttps://youtu.be/abcDEF12345');
     await click('mk-links');
     await until(function(){ return W.mk.files.length >= 3 && !W.mk.busy; }, 8000, '読みおわるのを待つ');
-    eq(aiCalls.length, 1, 'AIへは1回でまとめてたのむ');
+    eq(aiCalls.length, 3, 'AIには1つずつたのむ（YouTube はそのまま渡すので、たのまない）');
     ok(aiCalls[0].tools && aiCalls[0].tools[0] && 'url_context' in aiCalls[0].tools[0], 'リンクを読む道具を使う');
     eq(W.mk.files.map(function(f){ return f.name; }).join('／'), '心不全／肺炎／YouTube（abcDEF12345）', '読めたものが、入れた順に入る');
     ok(W.mk.files[0].text.indexOf('水分制限') >= 0, 'AIが読んだ本文');
     eq(W.document.getElementById('mk_links').value, urls[2], '読めなかったリンクだけ欄にのこる');
+    ok(has('読めなかったリンク') && has('ページが見つかりません'), '読めなかったわけも出る');
   }finally{ W.__FAKE_FETCH = null; }
+});
+
+test('リンク：AIの答えの書き方が少しちがっても読める', async function(){
+  W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
+  fakeAI(function(req){
+    var u = askedUrl(req);
+    if(/a1/.test(u)) return { text:'```\n**タイトル**：褥瘡の予防\n\n体位変換は2時間ごと。栄養状態をととのえる。皮膚を毎日観察する。\n```', meta:{ urlMetadata:[{ retrievedUrl:u + '/', urlRetrievalStatus:'URL_RETRIEVAL_STATUS_SUCCESS' }] } };
+    return { text:'# タイトル: 転倒予防\n本文：ベッドの高さを低くする。ナースコールを手の届く場所に置く。足元を明るくする。' };
+  });
+  try{
+    await click('tab', 'make');
+    await type('mk_links', 'https://example.com/a1\nhttps://example.com/a2');
+    await click('mk-links');
+    await until(function(){ return W.mk.files.length === 2 && !W.mk.busy; }, 8000, '読みおわるのを待つ');
+    eq(W.mk.files[0].name, '褥瘡の予防', '「**タイトル**：」でも題を読む');
+    ok(W.mk.files[0].text.indexOf('体位変換') === 0, '本文だけ取り出す');
+    eq(W.mk.files[1].name, '転倒予防', '「# タイトル:」でも読む');
+    ok(W.mk.files[1].unsure, 'ページを開けたか分からないときは、しるしをつける');
+    ok(has('中身をたしかめてください'), '画面でも知らせる');
+  }finally{ W.__FAKE_FETCH = null; }
+});
+
+test('リンク：読めなかったわけを知らせる（有料・ログインが必要）', async function(){
+  W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
+  fakeAI(function(req){
+    var u = askedUrl(req);
+    return { text:'読めませんでした', meta:{ urlMetadata:[{ retrievedUrl:u, urlRetrievalStatus:/paper/.test(u) ? 'URL_RETRIEVAL_STATUS_PAYWALL' : 'URL_RETRIEVAL_STATUS_ERROR' }] } };
+  });
+  try{
+    await click('tab', 'make');
+    await type('mk_links', 'https://news.example.com/paper\nhttps://classroom.google.com/c/abc123');
+    await click('mk-links');
+    await until(function(){ return !W.mk.busy && W.mk.linkFails.length === 2; }, 8000, '読みおわるのを待つ');
+    ok(/有料・ログイン/.test(W.mk.linkFails[0].why), '有料のページ：' + W.mk.linkFails[0].why);
+    ok(/ログインが必要/.test(W.mk.linkFails[1].why), 'ログインが必要なページ：' + W.mk.linkFails[1].why);
+  }finally{ W.__FAKE_FETCH = null; }
+});
+
+test('リンク：Google ドキュメント・スライド・ドライブは、中身を取り出せるアドレスで読む', async function(){
+  eq(W.linkExportUrl('https://docs.google.com/document/d/1AbCdEfGhIjK/edit?usp=sharing'), 'https://docs.google.com/document/d/1AbCdEfGhIjK/export?format=txt');
+  eq(W.linkExportUrl('https://docs.google.com/presentation/d/1AbCdEfGhIjK/edit#slide=id.p'), 'https://docs.google.com/presentation/d/1AbCdEfGhIjK/export/pdf');
+  eq(W.linkExportUrl('https://docs.google.com/spreadsheets/d/1AbCdEfGhIjK/edit'), 'https://docs.google.com/spreadsheets/d/1AbCdEfGhIjK/export?format=csv');
+  eq(W.linkExportUrl('https://drive.google.com/file/d/1AbCdEfGhIjK/view?usp=drive_link'), 'https://drive.google.com/uc?export=download&id=1AbCdEfGhIjK');
+  eq(W.linkExportUrl('https://example.com/x'), '', 'ふつうのページはそのまま');
+  W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
+  fakeAI(function(req){ return { text:'タイトル：講義資料\n循環器の看護。心不全・心筋梗塞・不整脈の観察ポイント。', meta:{ urlMetadata:[{ retrievedUrl:askedUrl(req), urlRetrievalStatus:'URL_RETRIEVAL_STATUS_SUCCESS' }] } }; });
+  try{
+    await click('tab', 'make');
+    await type('mk_links', 'https://docs.google.com/presentation/d/1AbCdEfGhIjK/edit');
+    await click('mk-links');
+    await until(function(){ return W.mk.files.length === 1 && !W.mk.busy; }, 8000, '読みおわるのを待つ');
+    eq(askedUrl(aiCalls[0]), 'https://docs.google.com/presentation/d/1AbCdEfGhIjK/export/pdf', 'AIには中身のアドレスを渡す');
+    eq(W.mk.files[0].link, 'https://docs.google.com/presentation/d/1AbCdEfGhIjK/edit', '資料には、もとのリンクをのこす');
+  }finally{ W.__FAKE_FETCH = null; }
+});
+
+test('リンク：「リンクを読む」をおさずに「問題をつくる」をおしても、リンクを読んで作る', async function(){
+  W.subAdd('成人看護学');
+  await click('tab', 'make');
+  await click('mk-noai');
+  await type('mk_links', pageUrl());
+  await click('mk-run');
+  await until(function(){ return W.mk.pv && W.mk.pv.items.length; }, 8000, '問題ができるのを待つ');
+  ok(W.mk.files.some(function(f){ return f.link === pageUrl(); }), 'リンクの欄のページを読んだ');
+});
+
+test('リンク：スマホの「共有」でコピーした「題＋リンク」をはりつけても、リンクとして読む', async function(){
+  W.subAdd('成人看護学');
+  await click('tab', 'make');
+  await click('mk-noai');
+  await type('mk_paste', '心不全の看護のポイント | 看護ラボ\n' + pageUrl());
+  await click('mk-run');
+  await until(function(){ return W.mk.pv && W.mk.pv.items.length; }, 8000, '問題ができるのを待つ');
+  ok(W.mk.files.some(function(f){ return f.link === pageUrl(); }), 'リンクとして読んだ');
+  ok(!W.mk.files.some(function(f){ return f.paste; }), '題だけの字は、文章としては使わない');
+  ok(!W.linkMostly('この授業では、心不全の看護について学ぶ。参考：https://example.com/a ' + new Array(30).join('長い説明の文章です。')), '長い文章の中のリンクは、文章としてあつかう');
 });
 
 test('リンク：YouTube はそのままAIに渡して、問題を作る', async function(){
@@ -191,7 +269,7 @@ test('リンク：1つ読めなくても、ほかは読む。AIのエラーも�
 test('リンク：はりつけ欄のリンクが読めなかったら、リンクの欄にのこす', async function(){
   W.subAdd('成人看護学');
   W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
-  fakeAI(function(){ return { text:'### 1\n（読めませんでした）', meta:{ urlMetadata:[{ retrievedUrl:'https://example.com/nope', urlRetrievalStatus:'URL_RETRIEVAL_STATUS_ERROR' }] } }; });
+  fakeAI(function(){ return { text:'読めませんでした：ページが見つかりません', meta:{ urlMetadata:[{ retrievedUrl:'https://example.com/nope', urlRetrievalStatus:'URL_RETRIEVAL_STATUS_ERROR' }] } }; });
   try{
     await click('tab', 'make');
     await type('mk_paste', 'https://example.com/nope');

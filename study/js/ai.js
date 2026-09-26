@@ -234,7 +234,8 @@ async function aiCall(opt){
     lastErr = (j && j.error && j.error.message) ? j.error.message : ('エラー ' + res.status);
     /* そのモデルが無いとき・道具（リンクを読む など）が使えないモデルのときは、次のモデルを試す
        （リンクを読むときは、道具なしでやり直さない。読まずに作り話をしてしまうため） */
-    var toolNg = body.tools && /tool|url_context|not supported|unsupported/i.test(lastErr);
+    var toolNg = body.tools && (/tool|url_context|not supported|unsupported/i.test(lastErr) ||
+      (res.status === 400 && !/API key|API_KEY/i.test(lastErr)));          /* 道具つきで断られたら、キーの問題でなければ次のモデルで */
     if(!toolNg && !/not available|not found|NOT_FOUND|unsupported|deprecated|update your code/i.test(lastErr)) break;
     if(S.set.model === models[i]){ S.set.model = ''; saveSoon(); }
   }

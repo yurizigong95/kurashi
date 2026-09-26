@@ -1447,3 +1447,18 @@ body[data-theme="dark"] .studycard{background:rgba(255,255,255,.06)}
   .pair{flex-wrap:wrap}
   .pair>button.btn{white-space:normal; line-height:1.25}
 }
+
+/* メモの種類（最重要・重要・自分で足した種類） */
+.nkind{display:inline-block; font-size:.72em; font-weight:700; color:#fff; background:var(--kc,#8A8A96); border-radius:999px;
+  padding:1px 8px; margin-right:6px; vertical-align:2px; letter-spacing:.02em}
+.ncard.haskind{border-left:4px solid var(--kc,#8A8A96)}
+.kdot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:0}
+.kdot.big{width:18px; height:18px; flex:none; margin:0}
+.nkrow .ghostpill{background:transparent; border-style:dashed}
+.nkedit{padding:10px 0; border-bottom:1px solid var(--rule)}
+.nkline{display:flex; gap:6px; align-items:center}
+.nkline input{flex:1; min-width:0; margin:0}
+.nkline .mini{flex:none}
+.kcolors{display:flex; gap:7px; align-items:center; margin-top:8px; flex-wrap:wrap}
+.kc{width:28px; height:28px; border-radius:50%; border:2px solid transparent; padding:0; cursor:pointer}
+.kc.on{border-color:var(--ink); box-shadow:inset 0 0 0 2px var(--paper)}

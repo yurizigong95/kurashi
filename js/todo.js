@@ -71,71 +71,185 @@ function viewTodo(){
 }
 
 /* ============================== メモ ============================== */
-var noteQ = '', noteView = '';
+var noteQ = '', noteView = '', noteKindF = '', noteKindEdit = 0;
+/* 前の版や、ほかの機能から入ったメモでも開けるように、形をそろえる */
+function noteArr(v){ return Array.isArray(v) ? v : []; }
+function noteStr(v){ return v == null ? '' : String(v); }
+
+/* ===== メモの種類（はじめは「最重要」「重要」。追加・名前・色・ならび・削除ができる） =====
+   種類の一覧は S.ui.noteKinds（ほかの端末ともそろう）。メモには n.kind に種類の id を入れる。 */
+var NOTE_KINDS_DEF = [{ id:'top', name:'最重要', color:'#D93A2F' }, { id:'imp', name:'重要', color:'#E0892B' }];
+var NOTE_KIND_COLORS = ['#D93A2F', '#E0892B', '#C9A227', '#3FA36B', '#2F8FD9', '#6B4FA0', '#C2549A', '#8A8A96'];
+function noteKinds(){
+  var k = (S.ui && Array.isArray(S.ui.noteKinds)) ? S.ui.noteKinds : NOTE_KINDS_DEF;
+  return k.filter(function(x){ return x && x.id && noteStr(x.name).trim(); });
+}
+function noteKindsSet(list){ S.ui = S.ui || {}; S.ui.noteKinds = list; touch('ui'); }
+function noteKindOf(n){
+  var id = n && n.kind;
+  return id ? (noteKinds().filter(function(k){ return k.id === id; })[0] || null) : null;
+}
+/* 上に出す順（最重要 → 重要 → そのほか） */
+function noteRank(n){ var k = noteKindOf(n); return !k ? 0 : k.id === 'top' ? 2 : k.id === 'imp' ? 1 : 0; }
+function noteKindTag(k){
+  return k ? '<span class="nkind" style="--kc:' + esc(k.color || '#8A8A96') + '">' + esc(k.name) + '</span>' : '';
+}
+
 function noteRow(n){
-  var checks = n.checks || [], dn = checks.filter(function(c){ return c.done; }).length;
-  return '<div class="ncard'+(n.pinned?' pin':'')+(n.conflict?' conflict':'')+'" data-act="note-open" data-id="'+n.id+'" role="button" tabindex="0">'+
-    '<div class="ct">'+(n.pinned?'📌 ':'')+(n.conflict?'⚠ ':'')+esc(n.title||'（無題）')+'</div>'+
-    (n.body ? '<div class="cm nbody">'+esc(n.body).slice(0,120)+(n.body.length>120?'…':'')+'</div>' : '')+
-    '<div class="s2" style="margin-top:4px">'+
-      (n.link ? '<span class="b cat">'+esc(n.link.type==='course'?n.link.id:'予定')+'</span> ' : '')+
-      (checks.length ? '<span class="b cr">☑ '+dn+'/'+checks.length+'</span> ' : '')+
-      ((n.photos||[]).length ? '<span class="b cr">📷 '+(n.photos||[]).length+'</span> ' : '')+
-      '更新 '+new Date(n.mt||0).toLocaleDateString('ja-JP')+'</div></div>';
+  var checks = noteArr(n.checks), dn = checks.filter(function(c){ return c && c.done; }).length;
+  var body = noteStr(n.body), k = noteKindOf(n), photos = noteArr(n.photos);
+  return '<div class="ncard' + (n.pinned ? ' pin' : '') + (n.conflict ? ' conflict' : '') + (k ? ' haskind' : '') + '"' +
+      (k ? ' style="--kc:' + esc(k.color || '#8A8A96') + '"' : '') + ' data-act="note-open" data-id="' + esc(n.id) + '" role="button" tabindex="0">' +
+    '<div class="ct">' + noteKindTag(k) + (n.pinned ? '📌 ' : '') + (n.conflict ? '⚠ ' : '') + esc(noteStr(n.title) || '（無題）') + '</div>' +
+    (body ? '<div class="cm nbody">' + esc(body.slice(0, 120)) + (body.length > 120 ? '…' : '') + '</div>' : '') +
+    '<div class="s2" style="margin-top:4px">' +
+      (n.link ? '<span class="b cat">' + esc(n.link.type === 'course' ? n.link.id : '予定') + '</span> ' : '') +
+      (checks.length ? '<span class="b cr">☑ ' + dn + '/' + checks.length + '</span> ' : '') +
+      (photos.length ? '<span class="b cr">📷 ' + photos.length + '</span> ' : '') +
+      '更新 ' + new Date(n.mt || 0).toLocaleDateString('ja-JP') + '</div></div>';
 }
 function viewNotes(){
-  if(noteView){ var cur = S.notes.filter(function(n){ return n.id===noteView; })[0]; if(cur) return noteDetail(cur); noteView=''; }
-  var q = norm(noteQ.trim());
+  if(noteKindEdit) return noteKindView();
+  if(noteView){ var cur = S.notes.filter(function(n){ return n.id === noteView; })[0]; if(cur) return noteDetail(cur); noteView = ''; }
+  var q = norm(noteQ.trim()), kinds = noteKinds();
+  if(noteKindF && noteKindF !== '-' && !kinds.some(function(k){ return k.id === noteKindF; })) noteKindF = '';
   var list = S.notes.filter(function(n){
+    if(noteKindF === '-' && noteKindOf(n)) return false;
+    if(noteKindF && noteKindF !== '-' && (noteKindOf(n) || {}).id !== noteKindF) return false;
     if(!q) return true;
-    return norm((n.title||'')+' '+(n.body||'')+' '+(n.checks||[]).map(function(c){return c.text;}).join(' ')).indexOf(q)>=0;
-  }).sort(function(a,b){ return (b.pinned?1:0)-(a.pinned?1:0) || (b.mt||0)-(a.mt||0); });
-  return '<section><div class="head"><h2>メモ</h2><span>'+S.notes.length+'件</span></div>'+
-    '<input type="search" id="note_q" placeholder="メモを探す" value="'+esc(noteQ)+'" style="margin-bottom:10px">'+
-    '<button class="btn" data-act="note-new" style="margin-bottom:12px">新しいメモ</button>'+
-    (list.length ? list.map(noteRow).join('') : '<div class="box"><div class="empty">'+ART.empty+'<div style="margin-top:8px">メモはまだありません。</div></div></div>')+
+    var k = noteKindOf(n);
+    return norm(noteStr(n.title) + ' ' + noteStr(n.body) + ' ' + (k ? k.name : '') + ' ' + noteArr(n.checks).map(function(c){ return c && c.text; }).join(' ')).indexOf(q) >= 0;
+  }).sort(function(a, b){ return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || noteRank(b) - noteRank(a) || (b.mt || 0) - (a.mt || 0); });
+  var cnt = function(id){ return S.notes.filter(function(n){ return id === '-' ? !noteKindOf(n) : (noteKindOf(n) || {}).id === id; }).length; };
+  var chips = '<div class="pillrow nkrow">' +
+    '<button data-act="note-kind-f" data-v="" class="' + (!noteKindF ? 'on' : '') + '">ぜんぶ</button>' +
+    kinds.map(function(k){
+      return '<button data-act="note-kind-f" data-v="' + esc(k.id) + '" class="' + (noteKindF === k.id ? 'on' : '') + '">' +
+        '<span class="kdot" style="background:' + esc(k.color || '#8A8A96') + '"></span>' + esc(k.name) + ' ' + cnt(k.id) + '</button>';
+    }).join('') +
+    '<button data-act="note-kind-f" data-v="-" class="' + (noteKindF === '-' ? 'on' : '') + '">種類なし</button>' +
+    '<button data-act="note-kind-edit" class="ghostpill">✎ 種類を編集</button></div>';
+  return '<section><div class="head"><h2>メモ</h2><span>' + S.notes.length + '件</span></div>' +
+    '<input type="search" id="note_q" placeholder="メモを探す" value="' + esc(noteQ) + '" style="margin-bottom:10px">' +
+    chips +
+    '<button class="btn" data-act="note-new" style="margin-bottom:12px">新しいメモ' +
+      (noteKindF && noteKindF !== '-' && noteKindOf({ kind:noteKindF }) ? '（' + esc(noteKindOf({ kind:noteKindF }).name) + '）' : '') + '</button>' +
+    (list.length ? list.map(noteRow).join('') : '<div class="box"><div class="empty">' + ART.empty + '<div style="margin-top:8px">' +
+      (S.notes.length ? 'この種類のメモはありません。' : 'メモはまだありません。') + '</div></div></div>') +
     '</section>';
 }
 function noteDetail(n){
-  var checks = n.checks || [];
-  var photos = (n.photos||[]).map(function(id){
-
-    if(!src) return '';
-    return '<div class="mphoto"><img data-pid="'+id+'" alt="写真" data-act="memo-photo-view" data-id="'+id+'">'+
-      '<button class="mini" data-act="note-photo-del" data-id="'+n.id+'" data-pid="'+id+'">×</button></div>';
+  var checks = noteArr(n.checks), kinds = noteKinds(), kid = (noteKindOf(n) || {}).id || '';
+  /* 写真は、しまってある場所（IndexedDB）から、あとで入れる（photoFill） */
+  var photos = noteArr(n.photos).filter(Boolean).map(function(id){
+    return '<div class="mphoto"><img data-pid="' + esc(id) + '" alt="写真" data-act="memo-photo-view" data-id="' + esc(id) + '">' +
+      '<button class="mini" data-act="note-photo-del" data-id="' + esc(n.id) + '" data-pid="' + esc(id) + '">×</button></div>';
   }).join('');
   var courses = termCourses();
-  return '<button class="mini" data-act="note-back" style="margin-bottom:10px">‹ メモ一覧</button>'+
-    '<div class="box">'+
-    '<div class="field"><input id="nt_title" value="'+esc(n.title||'')+'" placeholder="タイトル" style="font-weight:700;font-size:1.05em"></div>'+
-    '<div class="field"><textarea id="nt_body" style="min-height:140px;font-size:.92em" placeholder="ここに書く">'+esc(n.body||'')+'</textarea></div>'+
-    '<label class="f">チェックリスト</label>'+
-    (checks.length ? '<div class="subs" style="margin-bottom:8px">'+checks.map(function(c,i){
-      return '<label class="sub"><input type="checkbox" data-act="note-check" data-id="'+n.id+'" data-i="'+i+'"'+(c.done?' checked':'')+'>'+
-        '<span'+(c.done?' style="text-decoration:line-through;color:var(--sub)"':'')+'>'+esc(c.text)+'</span>'+
-        '<button class="mini" data-act="note-check-del" data-id="'+n.id+'" data-i="'+i+'" style="margin-left:auto">×</button></label>';
-    }).join('')+'</div>' : '')+
-    '<div class="pair" style="margin-bottom:11px"><input id="nt_check" placeholder="項目を追加">'+
-      '<button class="btn ghost" style="flex:0 0 auto" data-act="note-check-add" data-id="'+n.id+'">追加</button></div>'+
-    '<label class="f">紐づけ</label>'+
-    '<select id="nt_link" style="margin-bottom:11px"><option value="">なし</option>'+
-      courses.map(function(c){ return '<option value="course:'+esc(c.name)+'"'+(n.link&&n.link.type==='course'&&n.link.id===c.name?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('')+
-    '</select>'+
-    (photos ? '<div class="mphotos" style="margin-bottom:10px">'+photos+'</div>' : '')+
-    '<div class="pair">'+
-      '<button class="btn" data-act="note-save" data-id="'+n.id+'">保存</button>'+
-      '<button class="btn ghost" data-act="note-photo" data-id="'+n.id+'">写真</button>'+
-      '<button class="btn ghost" data-act="note-pin" data-id="'+n.id+'" style="flex:0 0 auto">'+(n.pinned?'📌 解除':'📌')+'</button>'+
-      '<button class="btn ghost" data-act="share-note" data-id="'+n.id+'" style="flex:0 0 auto">共有</button></div>'+
-    '<button class="btn ghost" style="margin-top:8px;color:var(--rakuten)" data-act="note-del" data-id="'+n.id+'">このメモを削除</button>'+
-    '<p class="note">作成 '+new Date(n.ct||n.mt||0).toLocaleString('ja-JP')+'　更新 '+new Date(n.mt||0).toLocaleString('ja-JP')+'</p>'+
+  return '<button class="mini" data-act="note-back" style="margin-bottom:10px">‹ メモ一覧</button>' +
+    '<div class="box">' +
+    '<div class="field"><input id="nt_title" value="' + esc(noteStr(n.title)) + '" placeholder="タイトル" style="font-weight:700;font-size:1.05em"></div>' +
+    '<label class="f">種類</label>' +
+    '<div class="pillrow nkrow">' +
+      '<button data-act="note-kind" data-id="' + esc(n.id) + '" data-v="" class="' + (!kid ? 'on' : '') + '">なし</button>' +
+      kinds.map(function(k){
+        return '<button data-act="note-kind" data-id="' + esc(n.id) + '" data-v="' + esc(k.id) + '" class="' + (kid === k.id ? 'on' : '') + '">' +
+          '<span class="kdot" style="background:' + esc(k.color || '#8A8A96') + '"></span>' + esc(k.name) + '</button>';
+      }).join('') +
+      '<button data-act="note-kind-edit" class="ghostpill">✎ 編集</button>' +
+    '</div>' +
+    '<div class="field"><textarea id="nt_body" style="min-height:140px;font-size:.92em" placeholder="ここに書く">' + esc(noteStr(n.body)) + '</textarea></div>' +
+    '<label class="f">チェックリスト</label>' +
+    (checks.length ? '<div class="subs" style="margin-bottom:8px">' + checks.map(function(c, i){
+      c = c || {};
+      return '<label class="sub"><input type="checkbox" data-act="note-check" data-id="' + esc(n.id) + '" data-i="' + i + '"' + (c.done ? ' checked' : '') + '>' +
+        '<span' + (c.done ? ' style="text-decoration:line-through;color:var(--sub)"' : '') + '>' + esc(noteStr(c.text)) + '</span>' +
+        '<button class="mini" data-act="note-check-del" data-id="' + esc(n.id) + '" data-i="' + i + '" style="margin-left:auto">×</button></label>';
+    }).join('') + '</div>' : '') +
+    '<div class="pair" style="margin-bottom:11px"><input id="nt_check" placeholder="項目を追加">' +
+      '<button class="btn ghost" style="flex:0 0 auto" data-act="note-check-add" data-id="' + esc(n.id) + '">追加</button></div>' +
+    '<label class="f">紐づけ</label>' +
+    '<select id="nt_link" style="margin-bottom:11px"><option value="">なし</option>' +
+      courses.map(function(c){ return '<option value="course:' + esc(c.name) + '"' + (n.link && n.link.type === 'course' && n.link.id === c.name ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') +
+      /* 授業以外（予定など）に紐づいたメモも、紐づけを消さないように */
+      (n.link && !(n.link.type === 'course' && courses.some(function(c){ return c.name === n.link.id; }))
+        ? '<option value="' + esc(n.link.type + ':' + n.link.id) + '" selected>' + esc(n.link.type === 'course' ? n.link.id : '予定') + '</option>' : '') +
+    '</select>' +
+    (photos ? '<div class="mphotos" style="margin-bottom:10px">' + photos + '</div>' : '') +
+    '<div class="pair">' +
+      '<button class="btn" data-act="note-save" data-id="' + esc(n.id) + '">保存</button>' +
+      '<button class="btn ghost" data-act="note-photo" data-id="' + esc(n.id) + '">写真</button>' +
+      '<button class="btn ghost" data-act="note-pin" data-id="' + esc(n.id) + '" style="flex:0 0 auto">' + (n.pinned ? '📌 解除' : '📌') + '</button>' +
+      '<button class="btn ghost" data-act="share-note" data-id="' + esc(n.id) + '" style="flex:0 0 auto">共有</button></div>' +
+    '<button class="btn ghost" style="margin-top:8px;color:var(--rakuten)" data-act="note-del" data-id="' + esc(n.id) + '">このメモを削除</button>' +
+    '<p class="note">作成 ' + new Date(n.ct || n.mt || 0).toLocaleString('ja-JP') + '　更新 ' + new Date(n.mt || 0).toLocaleString('ja-JP') + '</p>' +
     '</div>';
 }
-function noteOf(id){ return S.notes.filter(function(n){ return n.id===id; })[0]; }
+/* 種類の編集 */
+function noteKindView(){
+  var kinds = noteKinds();
+  var rows = kinds.map(function(k, i){
+    var used = S.notes.filter(function(n){ return n.kind === k.id; }).length;
+    return '<div class="nkedit">' +
+      '<div class="nkline">' +
+        '<span class="kdot big" style="background:' + esc(k.color || '#8A8A96') + '"></span>' +
+        '<input id="nk_name_' + i + '" value="' + esc(k.name) + '" maxlength="12" aria-label="種類の名前">' +
+        '<button class="mini" data-act="note-kind-move" data-i="' + i + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="上へ">↑</button>' +
+        '<button class="mini" data-act="note-kind-move" data-i="' + i + '" data-d="1"' + (i === kinds.length - 1 ? ' disabled' : '') + ' aria-label="下へ">↓</button>' +
+        '<button class="mini" data-act="note-kind-del" data-i="' + i + '" aria-label="消す">🗑</button>' +
+      '</div>' +
+      '<div class="kcolors">' + NOTE_KIND_COLORS.map(function(c){
+        return '<button class="kc' + (c === k.color ? ' on' : '') + '" style="background:' + c + '" data-act="note-kind-color" data-i="' + i + '" data-c="' + c + '" aria-label="この色"></button>';
+      }).join('') + '<span class="s" style="margin-left:6px">' + used + '件</span></div>' +
+    '</div>';
+  }).join('');
+  return '<button class="mini" data-act="note-kind-done" style="margin-bottom:10px">‹ もどる</button>' +
+    '<section><div class="head"><h2>メモの種類</h2><span>' + kinds.length + 'つ</span></div>' +
+    '<div class="box">' + (rows || '<div class="empty">種類はまだありません。</div>') +
+      '<label class="f" style="margin-top:12px">種類を追加</label>' +
+      '<div class="pair"><input id="nk_new" maxlength="12" placeholder="例：テスト・実習・バイト">' +
+        '<button class="btn ghost" style="flex:0 0 auto" data-act="note-kind-add">追加</button></div>' +
+      '<button class="btn" data-act="note-kind-save" style="margin-top:12px">名前を保存</button>' +
+      '<p class="note">「最重要」と「重要」のメモは、一覧の上に出ます。種類を消しても、メモは消えません（種類なしになります）。種類はほかの端末ともそろいます。</p>' +
+    '</div></section>';
+}
+/* 編集中の名前を読みとって、種類の一覧を返す（書きかけを消さないように） */
+function noteKindsFromForm(){
+  return noteKinds().map(function(k, i){
+    var el = document.getElementById('nk_name_' + i), nm = el ? el.value.trim().slice(0, 12) : k.name;
+    return { id:k.id, name:nm || k.name, color:k.color || '#8A8A96' };
+  });
+}
+function noteOf(id){ return S.notes.filter(function(n){ return n.id === id; })[0]; }
 function readNoteForm(n){
-  var t=document.getElementById('nt_title'), b=document.getElementById('nt_body'), l=document.getElementById('nt_link');
+  var t = document.getElementById('nt_title'), b = document.getElementById('nt_body'), l = document.getElementById('nt_link');
   if(t) n.title = t.value; if(b) n.body = b.value;
-  if(l){ var v=l.value; n.link = v ? { type:v.split(':')[0], id:v.slice(v.indexOf(':')+1) } : null; }
+  if(l){ var v = l.value; n.link = v ? { type:v.split(':')[0], id:v.slice(v.indexOf(':') + 1) } : null; }
+}
+/* 何も書いていないメモか（一覧にもどったとき、そうじする） */
+function noteEmpty(n){
+  return !noteStr(n.title).trim() && !noteStr(n.body).trim() && !noteArr(n.checks).length && !noteArr(n.photos).length;
+}
+/* 書いているあいだも、この端末には少しずつ保存する（タブを変えたり、アプリを閉じても消えない）。
+   ほかの端末へは、打つたびには送らない（書きこみの回数の上限に当たらないように）。
+   一覧にもどったとき・アプリから出たとき・1分ごとの見まわりで送る。 */
+var noteKeepT = null;
+function noteKeep(send){
+  var cur = noteView ? noteOf(noteView) : null;
+  if(!cur || !document.getElementById('nt_body')) return;
+  var bt = cur.title, bb = cur.body;
+  readNoteForm(cur);
+  if(cur.title !== bt || cur.body !== bb){ cur.mt = Date.now(); persist(); if(send) pushRemote(true); }
+}
+if(typeof document !== 'undefined'){
+  document.addEventListener('input', function(e){
+    var id = e.target && e.target.id;
+    if(id !== 'nt_title' && id !== 'nt_body') return;
+    clearTimeout(noteKeepT);
+    noteKeepT = setTimeout(function(){ noteKeep(false); }, 800);
+  });
+  document.addEventListener('visibilitychange', function(){ if(document.hidden){ clearTimeout(noteKeepT); noteKeep(true); } });
+  window.addEventListener('pagehide', function(){ clearTimeout(noteKeepT); noteKeep(true); });
 }
 
 function todoAction(act, t){
@@ -167,10 +281,57 @@ function todoAction(act, t){
   if(act==='note-new'){
     var n = { id:uid('nt'), title:'', body:'', pinned:0, checks:[], photos:[], link:null, ct:Date.now(), mt:Date.now() };
     if(t.dataset.linkType) n.link = { type:t.dataset.linkType, id:t.dataset.linkId };
-    S.notes.push(n); noteView = n.id; appId='notes'; commit(); window.scrollTo(0,0); return true;
+    if(noteKindF && noteKindF !== '-' && noteKindOf({ kind:noteKindF })) n.kind = noteKindF;   /* しぼっている種類で作る */
+    S.notes.push(n); noteView = n.id; noteKindEdit = 0; appId='notes'; commit(); window.scrollTo(0,0); return true;
   }
-  if(act==='note-open'){ noteView = t.dataset.id; appId='notes'; render(); window.scrollTo(0,0); return true; }
-  if(act==='note-back'){ var cur=noteOf(noteView); if(cur){ readNoteForm(cur); cur.mt=Date.now(); persist(); pushRemote(); } noteView=''; render(); return true; }
+  if(act==='note-open'){ noteView = t.dataset.id; noteKindEdit = 0; appId='notes'; render(); window.scrollTo(0,0); return true; }
+  if(act==='note-back'){
+    clearTimeout(noteKeepT);
+    var cur=noteOf(noteView);
+    if(cur){
+      var bt=cur.title, bb=cur.body, bl=JSON.stringify(cur.link||null);
+      readNoteForm(cur);
+      if(noteEmpty(cur)){ removeItem('notes', cur.id); persist(); pushRemote(); }                 /* 何も書かずにもどったメモは、のこさない */
+      else if(cur.title!==bt || cur.body!==bb || JSON.stringify(cur.link||null)!==bl){ cur.mt=Date.now(); persist(); pushRemote(); }   /* 見ただけなら、直した時刻は変えない */
+    }
+    noteView=''; render(); return true;
+  }
+  if(act==='note-kind'){
+    var nk=noteOf(t.dataset.id); if(!nk) return true;
+    readNoteForm(nk); nk.kind = t.dataset.v || ''; nk.mt=Date.now(); commit(); return true;
+  }
+  if(act==='note-kind-f'){ noteKindF = t.dataset.v || ''; render(); return true; }
+  if(act==='note-kind-edit'){ clearTimeout(noteKeepT); if(noteView) noteKeep(true); noteKindEdit = 1; render(); window.scrollTo(0,0); return true; }
+  if(act==='note-kind-done'){ noteKindEdit = 0; render(); return true; }
+  if(act==='note-kind-save'){ noteKindsSet(noteKindsFromForm()); toast('種類を保存しました'); commit(); return true; }
+  if(act==='note-kind-add'){
+    var nm = val('nk_new').trim().slice(0, 12);
+    if(!nm){ toast('種類の名前を入れてください', true); return true; }
+    var ks = noteKindsFromForm();
+    if(ks.some(function(k){ return k.name === nm; })){ toast('「'+nm+'」は、もうあります', true); return true; }
+    ks.push({ id:uid('nk'), name:nm, color:NOTE_KIND_COLORS[(ks.length + 3) % NOTE_KIND_COLORS.length] });
+    noteKindsSet(ks); toast('「'+nm+'」を追加しました'); commit(); return true;
+  }
+  if(act==='note-kind-color'){
+    var kc = noteKindsFromForm(), ic = toNum(t.dataset.i);
+    if(kc[ic]){ kc[ic].color = t.dataset.c; noteKindsSet(kc); commit(); }
+    return true;
+  }
+  if(act==='note-kind-move'){
+    var km = noteKindsFromForm(), im = toNum(t.dataset.i), jm = im + toNum(t.dataset.d);
+    if(km[im] && km[jm]){ var tmp = km[im]; km[im] = km[jm]; km[jm] = tmp; noteKindsSet(km); commit(); }
+    return true;
+  }
+  if(act==='note-kind-del'){
+    var kd = noteKindsFromForm(), idl = toNum(t.dataset.i), gone = kd[idl];
+    if(!gone) return true;
+    var usedN = S.notes.filter(function(x){ return x.kind === gone.id; }).length;
+    if(!confirm('種類「'+gone.name+'」を消しますか？' + (usedN ? '\n（この種類の'+usedN+'件のメモは、消えずに「種類なし」になります）' : ''))) return true;
+    S.notes.forEach(function(x){ if(x.kind === gone.id){ x.kind = ''; x.mt = Date.now(); } });
+    kd.splice(idl, 1); noteKindsSet(kd);
+    if(noteKindF === gone.id) noteKindF = '';
+    toast('消しました'); commit(); return true;
+  }
   if(act==='note-save'){ var n1=noteOf(t.dataset.id); if(!n1) return true; readNoteForm(n1); n1.mt=Date.now(); toast('保存しました'); commit(); return true; }
   if(act==='note-pin'){ var n2=noteOf(t.dataset.id); if(!n2) return true; readNoteForm(n2); n2.pinned=n2.pinned?0:1; n2.mt=Date.now(); commit(); return true; }
   if(act==='note-del'){ removeWithUndo('notes', t.dataset.id, 'メモを削除しました'); noteView=''; commit(); return true; }
