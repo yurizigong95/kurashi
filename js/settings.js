@@ -451,6 +451,7 @@ function settingsAction(act, t){
       (arr||[]).forEach(function(o){ (o.photos||[]).forEach(function(pid){ used[pid]=1; }); });
     });
     Object.keys(S.memos||{}).forEach(function(k){ ((S.memos[k]||{}).photos||[]).forEach(function(pid){ used[pid]=1; }); });
+    Object.keys(S.syllabus||{}).forEach(function(k){ ((S.syllabus[k]||{}).files||[]).forEach(function(f){ if(f && f.pid) used[f.pid]=1; }); });   /* 保存したシラバスの写真・PDF */
     if(typeof charaPhotoIds === 'function') charaPhotoIds().forEach(function(pid){ used[pid]=1; });   /* 自分で作ったキャラの画像は残す */
     photoKeys().then(function(ks){
       var kill = ks.filter(function(id5){ return !used[id5]; });
