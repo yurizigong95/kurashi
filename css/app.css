@@ -1462,3 +1462,59 @@ body[data-theme="dark"] .studycard{background:rgba(255,255,255,.06)}
 .kcolors{display:flex; gap:7px; align-items:center; margin-top:8px; flex-wrap:wrap}
 .kc{width:28px; height:28px; border-radius:50%; border:2px solid transparent; padding:0; cursor:pointer}
 .kc.on{border-color:var(--ink); box-shadow:inset 0 0 0 2px var(--paper)}
+
+/* 授業の画面：出欠（スマホで場所をとらないように、まとめた形） */
+.attc{border-radius:14px; padding:9px 12px 10px; background:var(--okbg); color:var(--ok)}
+.attc.attc-a{background:var(--warnbg); color:var(--warn)}
+.attc.attc-r,.attc.attc-ng{background:var(--rakutenbg); color:var(--rakuten)}
+.attc-top{display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px}
+.attc-top b{font-size:.95em; font-weight:700}
+.attc-sub{font-size:.74em; color:var(--sub)}
+.attc-bar{height:5px; border-radius:999px; background:rgba(255,255,255,.55); margin-top:7px; overflow:hidden}
+body[data-theme="dark"] .attc-bar{background:rgba(255,255,255,.12)}
+.attc-bar i{display:block; height:100%; border-radius:inherit; background:currentColor; min-width:0}
+.attc-today{display:flex; align-items:center; gap:6px; margin-top:9px}
+.attc-lb{font-size:.74em; color:var(--sub); flex:none; margin-right:2px}
+.attc-b{flex:1; min-width:0; padding:8px 4px; border-radius:12px; border:1px solid var(--edge); background:var(--glass2);
+  font:inherit; font-size:.82em; font-weight:700; color:var(--sub); cursor:pointer}
+.attc-b.on{color:#fff; border-color:transparent}
+.attc-b.attc-p.on{background:var(--ok)}
+.attc-b.attc-a.on{background:var(--rakuten)}
+.attc-b.attc-l.on{background:var(--warn)}
+.attc-more{display:block; width:100%; margin-top:8px; padding:5px 0; border:0; background:none; font:inherit; font-size:.76em;
+  color:var(--sub); text-align:left; cursor:pointer}
+.attc-box{margin-top:4px; padding-top:8px; border-top:1px solid var(--rule)}
+.attc-row{display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap}
+.attc-row>div{flex:1 1 120px; min-width:0}
+.attc-row select{flex:0 0 auto; width:auto}
+.attc-row .btn{flex:0 0 auto; width:auto; padding:10px 14px}
+.attc-log{display:flex; flex-wrap:wrap; gap:5px; margin:10px 0 2px}
+.attc-chip{padding:3px 9px; border-radius:999px; border:0; font:inherit; font-size:.74em; cursor:pointer; background:var(--okbg); color:var(--ok)}
+.attc-chip.attc-a{background:var(--rakutenbg); color:var(--rakuten)}
+.attc-chip.attc-l{background:var(--warnbg); color:var(--warn)}
+.attc-chip span{opacity:.6; margin-left:2px}
+
+/* 授業の画面：シラバス（保存した写真・PDF） */
+.syl-imgs{margin:0 0 4px}
+.syl-pdf{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--rule)}
+.syl-pdf .t{display:block; word-break:break-all}
+.syl-pdf .mini{flex:none}
+.syl-ic{font-size:1.3em; flex:none}
+a.mini.pwait{opacity:.6; pointer-events:none}
+
+/* 授業の画面：評価の割合（項目の名前と％を自分で決める） */
+.evlist{margin-bottom:8px}
+.evline{display:flex; align-items:center; gap:6px; padding:4px 0}
+.evline input{margin:0; padding:8px 11px; min-width:0}
+.evline input:not(.evpct){flex:1}
+.evline .evpct{flex:0 0 64px; width:64px; text-align:right}
+.evline .mini{flex:none}
+.evdot{width:10px; height:10px; border-radius:50%; flex:none}
+.evunit{font-size:.82em; color:var(--sub); flex:none}
+.evpre{margin:6px 0 8px}
+.evpre button{padding:5px 11px}
+.evbar{display:flex; height:10px; border-radius:999px; overflow:hidden; gap:2px; margin:6px 0 4px}
+.evbar i{display:block; min-width:3px}
+.evtot{font-size:.8em; font-weight:700}
+.evtot.evok{color:var(--ok)}
+.evtot.evng{color:var(--warn)}

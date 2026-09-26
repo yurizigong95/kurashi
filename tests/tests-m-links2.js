@@ -192,7 +192,8 @@ async function loadGas(opt){
     PropertiesService:{ getScriptProperties:function(){ return P; } },
     LockService:{ getScriptLock:function(){ return { waitLock:function(){}, tryLock:function(){ return true; }, releaseLock:function(){} }; } },
     ContentService:{ MimeType:{ JSON:'json', TEXT:'text', ICAL:'ical' }, createTextOutput:function(s){ return { s:s, setMimeType:function(m){ this.m = m; return this; } }; } },
-    Utilities:{ formatDate:function(d){ return new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10); } },
+    Utilities:{ formatDate:function(d){ return new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10); },
+      base64Encode:function(a){ var s = ''; for(var i = 0; i < a.length; i++) s += String.fromCharCode(a[i] & 255); return btoa(s); } },
     Session:{ getEffectiveUser:function(){ return { getEmail:function(){ return 'me@example.com'; } }; } },
     DriveApp:opt.drive || {},
     ScriptApp:{ getProjectTriggers:function(){ return triggers; }, getOAuthToken:function(){ return 'oauth'; },
@@ -251,7 +252,7 @@ KT.test('連携＋：橋わたしv4（Siri・次の予定・リマインダー�
   var G = await loadGas({ now:NOW, fetch:fetchFn, drive:drive });
   var ping = G.post({ action:'ping' });
   eq(ping.ver, 3, '版は3のまま（アプリの本体のテストが3を見ている）');
-  eq(ping.api, 5, '窓口の版は5');
+  eq(ping.api, 6, '窓口の版は6（Goodnotesのノートを、もんだいメーカーに渡す）');
   eq(ping.dcBot, null, 'ボットはまだ');
   /* アプリのまとめ */
   var l2 = { v:1, day:TD,
@@ -981,5 +982,46 @@ KT.test('連携＋：Discordの質問に、AIが手帳の中身をぜんぶ読�
   /* チャンネルを選び直すと、持ち主を決め直せる */
   ok(G.post({ action:'dcBotUse', channel:CH }).ok, 'チャンネルを選び直す');
   ok(!JSON.parse(G.props.DC_BOT).owner, '持ち主がいったん空になる');
+});
+KT.test('連携＋：Goodnotesのノート（ドライブの自動バックアップのPDF）を、もんだいメーカーに渡す（gnList・gnGet）', async function(){
+  var iter = function(a){ var i = 0; return { hasNext:function(){ return i < a.length; }, next:function(){ return a[i++]; } }; };
+  var mkFolder = function(id, subs){ return { getId:function(){ return id; }, getUrl:function(){ return 'https://drive.google.com/drive/folders/' + id; }, getFolders:function(){ return iter(subs || []); } }; };
+  var sub = mkFolder('fo-sub'), root = mkFolder('fo-gn', [sub]), other = mkFolder('fo-other');
+  var pdf = '%PDF-1.4 ' + new Array(300).join('page ') + '%%EOF', bytes = [];
+  for(var i = 0; i < pdf.length; i++) bytes.push(pdf.charCodeAt(i) > 127 ? pdf.charCodeAt(i) - 256 : pdf.charCodeAt(i));   /* Apps Script のバイトは -128〜127 */
+  var mkFile = function(id, name, parent, mime){ return { getId:function(){ return id; }, getName:function(){ return name; }, getSize:function(){ return bytes.length; },
+    getMimeType:function(){ return mime || 'application/pdf'; }, getLastUpdated:function(){ return new Date(1790000000000 + id.length); },
+    getParents:function(){ return iter([parent]); }, getBlob:function(){ return { getBytes:function(){ return bytes.slice(); } }; } }; };
+  var files = [mkFile('n1', '成人看護学 第5回.pdf', sub), mkFile('n22', '解剖生理.pdf', root), mkFile('secret', '家計簿.pdf', other)];
+  var queries = [];
+  var drive = {
+    getFoldersByName:function(n){ return iter(n === 'GoodNotes' ? [root] : []); },
+    searchFiles:function(q){
+      queries.push(q);
+      return iter(files.filter(function(f){
+        var p = f.getParents().next().getId(), t = /title contains '([^']*)'/.exec(q);
+        return q.indexOf("'" + p + "' in parents") >= 0 && (!t || f.getName().indexOf(t[1]) >= 0);
+      }));
+    },
+    getFileById:function(id){ var f = files.filter(function(x){ return x.getId() === id; })[0]; if(!f) throw new Error('none'); return f; }
+  };
+  var G = await loadGas({ now:Date.now(), fetch:function(){ return res(200, {}); }, drive:drive });
+  var L = G.post({ action:'gnList' });
+  ok(L.ok && L.items.length === 2, 'Goodnotesのフォルダの中のPDFだけ：' + JSON.stringify(L.items.map(function(x){ return x.name; })));
+  ok(!L.items.some(function(x){ return x.id === 'secret'; }), 'ほかのフォルダのファイルは出さない');
+  ok(/mimeType = 'application\/pdf'/.test(queries[0]) && /trashed = false/.test(queries[0]), 'PDFだけ・ゴミ箱のものはのぞく');
+  eq(G.post({ action:'gnList', q:"解剖' or '1'='1" }).items.length, 0, 'さがすことばの記号で、検索がこわれない');
+  eq(G.post({ action:'gnList', q:'解剖' }).items.length, 1, '名前でさがせる');
+  var got = '', at = 0;
+  for(var k = 0; k < 20; k++){
+    var r = G.post({ action:'gnGet', id:'n1', at:at, len:500 });
+    ok(r.ok, '受けとれる：' + r.error);
+    got += atob(r.data); at += r.n;
+    if(at >= r.size) break;
+  }
+  eq(got, pdf, '少しずつ受けとって、もとのPDFにもどる（' + (k + 1) + '回）');
+  var ng = G.post({ action:'gnGet', id:'secret', at:0, len:100 });
+  ok(!ng.ok && /Goodnotesのフォルダ/.test(ng.error), 'フォルダの外のファイルは渡さない');
+  ok(!G.post({ action:'gnGet', id:'nope' }).ok, 'ないノート');
 });
 })();

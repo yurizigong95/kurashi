@@ -277,10 +277,12 @@ function cpGpaSave(){
 }
 
 /* ============================== 25 成績の見込み ============================== */
+/* 前の形（4つの欄）で入れていた点は、同じ名前の項目にそのまま引きつぐ */
+var CP_EVAL_LEGACY = { 'exam:テスト':'exam', 'report:レポート':'rep', 'attend:出席・平常点':'att', 'other:そのほか':'other' };
 function cpEvalItems(name){
   var sy = S.syllabus[name] || {};
   if(Array.isArray(sy.items) && sy.items.length){
-    return sy.items.map(function(x){ return { key:(x.kind || 'other') + ':' + x.name, name:x.name, pct:cpNum(x.pct), kind:x.kind || 'other' }; })
+    return sy.items.map(function(x){ var k = (x.kind || 'other') + ':' + x.name; return { key:k, legacy:CP_EVAL_LEGACY[k] || '', name:x.name, pct:cpNum(x.pct), kind:x.kind || 'other' }; })
       .filter(function(x){ return x.pct > 0; });
   }
   return [['exam', 'テスト', 'exam'], ['rep', 'レポート', 'report'], ['att', '出席・平常点', 'attend'], ['other', 'そのほか', 'other']]
@@ -301,6 +303,7 @@ function cpForecast(name){
     if(it.kind === 'attend' && at.rate != null) auto = at.rate;
     if(it.kind === 'quiz' && quizAvg != null) auto = quizAvg;
     var man = rec.v[it.key];
+    if(!has(man) && it.legacy) man = rec.v[it.legacy];
     var s = has(man) ? clamp(man) : auto;
     return Object.assign({}, it, { score:s, auto:auto, src:has(man) ? 'manual' : (auto != null ? 'auto' : '') });
   });
@@ -325,11 +328,12 @@ function cpForecast(name){
 function cpForecastSection(name){
   var f = cpForecast(name);
   if(!f.items.length){
-    return section('成績の見込み', null, '<div class="empty" style="padding:6px 0">上の「シラバス・評価」に成績の付け方（テスト◯%・レポート◯%…）を入れると、見込みが出せます。シラバスの写真から読むこともできます。</div>');
+    return section('成績の見込み', null, '<div class="empty" style="padding:6px 0">上の「評価の割合」に成績の付け方（期末試験◯%・レポート◯%…）を入れると、見込みが出せます。保存したシラバスから、AIで読むこともできます。</div>');
   }
   var rec = cpScoreRec(name), qz = cpQuizzes(name);
   var h = '<div class="cp-fc">' + f.items.map(function(it, i){
     var man = rec.v[it.key];
+    if((man === undefined || man === null || man === '') && it.legacy) man = rec.v[it.legacy];
     return '<div class="row"><div class="grow"><div class="t">' + esc(it.name) + '<span class="b cr" style="margin-left:6px">' + it.pct + '%</span></div>' +
       '<div class="s">' + (it.src === 'auto' ? (it.kind === 'attend' ? '出席の記録から ' + it.auto + '点' : '小テストの平均 ' + it.auto + '点') + '（自分で入れると、そちらを使います）'
         : it.kind === 'exam' ? 'まだなら空のまま' : '100点満点で') + '</div></div>' +
@@ -367,7 +371,7 @@ function cpScoreSave(name){
     var n = parseFloat(s); if(isNaN(n) || n < 0 || n > 100){ bad = true; return undefined; }
     return n;
   };
-  f.items.forEach(function(it, i){ var x = read('cpsc_' + i); if(x === undefined) x = rec.v[it.key]; if(x !== '' && x != null) v[it.key] = x; });
+  f.items.forEach(function(it, i){ var x = read('cpsc_' + i); if(x === undefined) x = rec.v[it.key]; if((x === undefined || x === null) && it.legacy) x = rec.v[it.legacy]; if(x !== '' && x != null) v[it.key] = x; });
   cpQuizzes(name).forEach(function(x){ var s = read('cpq_' + x.id); if(s === undefined) s = rec.q[x.id]; if(s !== '' && s != null) q[x.id] = s; });
   if(bad){ toast('点は0〜100の数字で入れてください', true); return; }
   cpDataSet('score:' + name, { v:v, q:q });
@@ -1185,19 +1189,6 @@ kmAction(function(act, t){
   if(act.indexOf('cp-') !== 0) return false;
   var d = t.dataset || {};
   switch(act){
-    case 'cp-syl-files':
-      if(!aiReady()){ toast('先に設定タブでGemini APIキーを登録してください', true); return true; }
-      cpPickFiles(function(urls, names){
-        sylAi = { name:d.name, busy:false, result:null, err:'', files:urls, fileNames:names };
-        syllabusRead(d.name, { files:urls });
-      });
-      return true;
-    case 'cp-syl-url':
-      var u = val('sy_url').trim();
-      if(!u){ toast('上の「シラバスのURL」にページのURLを入れてください', true); return true; }
-      syllabusRead(d.name, { url:u });
-      return true;
-    case 'cp-syl-clear': sylAi.files = []; sylAi.fileNames = []; render(); return true;
     case 'cp-shift-month': shiftOcr.month = d.v || ''; shiftOcr.list = null; shiftOcr.err = ''; render(); return true;
     case 'cp-gpa-save': cpGpaSave(); return true;
     case 'cp-score-save': cpScoreSave(d.name); return true;
@@ -1325,7 +1316,7 @@ kmCheck(function(){
   var out = [];
   termCourses().forEach(function(c){
     var sy = S.syllabus[c.name] || {};
-    var tot = toNum(sy.exam) + toNum(sy.rep) + toNum(sy.att) + toNum(sy.other);
+    var tot = (typeof syllabusItems === 'function' ? syllabusItems(sy) : []).reduce(function(a, x){ return a + toNum(x.pct); }, 0);
     if(tot && tot !== 100) out.push({ level:'warn', msg:c.name + 'の成績の割合の合計が' + tot + '%です（シラバスをたしかめてください）' });
   });
   var u = cpGpa().unknown;

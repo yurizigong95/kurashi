@@ -240,12 +240,9 @@ function chatContext(){
   var syl = termCourses().map(function(c){
     var y2 = S.syllabus[c.name];
     if(!y2) return '';
-    var parts = [];
-    if(toNum(y2.exam)) parts.push('試験'+y2.exam+'%');
-    if(toNum(y2.rep)) parts.push('レポート'+y2.rep+'%');
-    if(toNum(y2.att)) parts.push('出席'+y2.att+'%');
-    if(toNum(y2.other)) parts.push('その他'+y2.other+'%');
-    return parts.length ? ('・' + c.name + '：' + parts.join('、')) : '';
+    var parts = (typeof syllabusItems === 'function' ? syllabusItems(y2) : []).filter(function(x){ return toNum(x.pct) > 0; })
+      .map(function(x){ return x.name + toNum(x.pct) + '%'; });
+    return parts.length ? ('・' + c.name + '：' + parts.join('、') + (y2.memo ? '（' + String(y2.memo).slice(0, 80) + '）' : '')) : '';
   }).filter(Boolean);
   if(syl.length) L.push('【成績の付き方】\n' + syl.join('\n'));
 

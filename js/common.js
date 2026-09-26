@@ -205,8 +205,32 @@ async function photoMigrate(){
   }
   return moved;
 }
+/* data: の形を、ファイル（Blob）にもどす */
+function dataUrlToBlob(u){
+  var m = /^data:([^;,]*)(;base64)?,/.exec(String(u || ''));
+  if(!m) return null;
+  var body = String(u).slice(m[0].length);
+  var bin = m[2] ? atob(body) : decodeURIComponent(body), out = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return new Blob([out], { type:m[1] || 'application/octet-stream' });
+}
+/* <a data-pidlink="写真のid"> に、ひらけるリンクを入れる（保存したシラバスのPDFなど） */
+function pidLinkFill(){
+  var els = document.querySelectorAll('a[data-pidlink]');
+  Array.prototype.forEach.call(els, function(a){
+    if(a.dataset.done || a.dataset.wait) return;
+    a.dataset.wait = '1';
+    photoGet(a.dataset.pidlink).then(function(src){
+      delete a.dataset.wait;
+      if(!src){ a.classList.add('pwait'); a.removeAttribute('href'); a.textContent = 'まだ届いていません'; return; }
+      try{ var b = dataUrlToBlob(src); a.href = b ? URL.createObjectURL(b) : src; }catch(e){ a.href = src; }
+      a.dataset.done = '1';
+    });
+  });
+}
 /* 画面に貼りつけたあと、あとから写真をはめこむ */
 function photoFill(){
+  pidLinkFill();
   var els = document.querySelectorAll('img[data-pid]');
   Array.prototype.forEach.call(els, function(el){
     var id = el.dataset.pid;

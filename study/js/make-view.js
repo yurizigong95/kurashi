@@ -33,6 +33,7 @@ function mkFilePart(){
       btn('🔁 つづけてとる', 'mk-loop', { cls:'ghost' }) +
       btn('🖼 アルバムから', 'mk-photos', { cls:'ghost' }) +
       btn('📁 ファイルから', 'mk-pick', { cls:'ghost' }) +
+      btn('📓 Goodnotesのノートから', 'gn-open', { cls:'ghost wide' }) +
     '</div>' +
     '<div class="s" style="margin-top:6px">アルバム・ファイル・リンクは、<b>いくつでもまとめて</b>えらべます（あわせて' + MAX_FILES + 'こまで）。</div>' +
     '<label class="f" for="mk_links">🔗 リンクから（ウェブのページ・PDF・YouTube）</label>' +
@@ -50,6 +51,8 @@ function mkFilePart(){
       '<br>リンクは、読めるページはそのまま読みます。読めないページは、AIが開いて読みます（APIキーが必要）。') +
     '<label class="f" for="mk_paste">文章をはりつける（メモ・先生の配布テキストなど）</label>' +
     '<textarea id="mk_paste" rows="3" autocapitalize="off" placeholder="ここにはりつけると、その字から問題を作ります（リンクだけでもOK）">' + esc(inVal('mk_paste')) + '</textarea>');
+
+  h += (typeof gnPart === 'function') ? gnPart() : '';
 
   h += section('資料の情報', null,
     '<div class="pair">' +
