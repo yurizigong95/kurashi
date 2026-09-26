@@ -1,11 +1,11 @@
 /* もんだいメーカー：オフラインでも開けるようにする
    ・新しい版を出すときは、CACHE の名前を変えてください（古いものは自動で消えます）。 */
-var CACHE = 'mondai-v7';
+var CACHE = 'mondai-v8';
 var FILES = [
   './', './index.html', './manifest.json',
   './css/app.css',
   './js/core.js', './js/data.js', './js/ai.js', './js/model.js', './js/sync.js', './js/ui.js',
-  './js/files.js', './js/gen.js', './js/make.js', './js/make-view.js',
+  './js/files.js', './js/gen.js', './js/make.js', './js/make-view.js', './js/goodnotes.js',
   './js/drill.js', './js/note.js', './js/lib.js', './js/home.js', './js/set.js', './js/main.js',
   './icon-180.png', './icon-192.png', './icon-512.png'
 ];

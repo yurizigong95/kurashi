@@ -14,6 +14,7 @@
  *  ・Siri・Apple Watch・リマインダーのショートカットに答える（明日の1限・次の予定・まだの課題）
  *  ・Discordのボット（チャンネルに書いたことに答える・日曜の夜に来週のまとめ）
  *  ・Goodnotesの手書きノートを、ドライブの全文検索でさがす
+ *  ・Goodnotesのノート（ドライブの自動バックアップのPDF）を、もんだいメーカーに渡して問題にする
  * 下の TOKEN（合言葉）を知っている人だけが使えます。
  */
 var TOKEN = 'ここに合言葉';
@@ -26,8 +27,9 @@ var KEEP_BACKUPS = 12;          // バックアップは新しい12個だけ残�
 var BATCH = 40;                 // 1回に直す予定の数（時間切れを防ぐ）
 var TZ = 'Asia/Tokyo';
 var VER = 3;
-var API = 5;                    // 窓口の版。4 … 手書きノートの検索・Discordボット・Siri/Apple Watch/リマインダーの窓口・ウィジェットの色
+var API = 6;                    // 窓口の版。4 … 手書きノートの検索・Discordボット・Siri/Apple Watch/リマインダーの窓口・ウィジェットの色
 // 5 … 手帳の中身をAIが読んで答える（aiDataPut）
+// 6 … Goodnotesのノート（ドライブの自動バックアップのPDF）の一覧と中身を、もんだいメーカーに渡す（gnList・gnGet）
 var INBOX_FOLDER_NAME = '受け取り';            // ショートカットで送った写真（バックアップのフォルダの中）
 var LECTURE_FOLDER_NAME = 'くらしの手帳 講義資料'; // ここに入れたPDF・写真から暗記カードを作る
 var SHEET_NAME = 'くらしの手帳 記録';
@@ -80,6 +82,8 @@ function doPost(e){
       case 'sheetSync':     return out_(sheetSync_(req.sheets || {}));
       case 'scanNow':       return out_(scanNow_(req.what));
       case 'gnSearch':      return out_(gnSearch_(req.q));
+      case 'gnList':        return out_(gnList_(req.q));
+      case 'gnGet':         return out_(gnGet_(req.id, req.at, req.len));
       case 'aiDataPut':     return out_(aiDataPut_(req.data));
       case 'dcBotSet':      return out_(dcBotSet_(req.bot));
       case 'dcBotChannels': return out_(dcBotChannels_());
@@ -1599,6 +1603,61 @@ function gnSearch_(q){
   }
   out.sort(function(a, b){ return b.updated - a.updated; });
   return { ok:true, items:out, folder:root.getUrl(), words:words };
+}
+
+/* ===================== Goodnotesのノートを、もんだいメーカーに渡す =====================
+   Goodnotesの自動バックアップ（Googleドライブ・PDF）のフォルダの中だけを見る（ほかのファイルは渡さない）。 */
+function gnFolderIds_(){
+  var name = feat_().gnFolder || 'GoodNotes';
+  var fo = DriveApp.getFoldersByName(name);
+  if(!fo.hasNext()) return { name:name, root:null, ids:[] };
+  var root = fo.next(), ids = [];
+  var walk = function(folder, depth){
+    if(ids.length >= 60) return;
+    ids.push(folder.getId());
+    if(depth >= 4) return;
+    var sub = folder.getFolders();
+    while(sub.hasNext() && ids.length < 60) walk(sub.next(), depth + 1);
+  };
+  walk(root, 0);
+  return { name:name, root:root, ids:ids };
+}
+function gnList_(q){
+  var f = gnFolderIds_();
+  if(!f.root) return { ok:true, items:[], none:'「' + f.name + '」フォルダが見つかりません', folderName:f.name };
+  var parents = '(' + f.ids.map(function(id){ return "'" + id + "' in parents"; }).join(' or ') + ')';
+  var word = clip_(String(q || '').replace(/[\\'"]/g, ' ').trim(), 40);
+  var query = parents + " and trashed = false and mimeType = 'application/pdf'" + (word ? " and title contains '" + word + "'" : '');
+  var it = DriveApp.searchFiles(query), out = [];
+  while(it.hasNext() && out.length < 200){
+    var file = it.next();
+    out.push({ id:file.getId(), name:clip_(file.getName(), 120), size:file.getSize(), updated:file.getLastUpdated().getTime() });
+  }
+  out.sort(function(a, b){ return b.updated - a.updated; });
+  /* PDFがないとき：バックアップの形式がPDFでないかもしれない */
+  var other = 0;
+  if(!out.length){
+    var it2 = DriveApp.searchFiles(parents + ' and trashed = false');
+    while(it2.hasNext() && other < 5){ it2.next(); other++; }
+  }
+  return { ok:true, items:out.slice(0, 80), folder:f.root.getUrl(), folderName:f.name, other:other };
+}
+/* PDFの中身を、少しずつ（base64で）渡す。at … 何バイト目から、len … 何バイト（5MBまで） */
+function gnGet_(id, at, len){
+  var f = gnFolderIds_();
+  if(!f.root) return { ok:false, error:'「' + f.name + '」フォルダが見つかりません' };
+  var file;
+  try{ file = DriveApp.getFileById(String(id || '')); }catch(e){ return { ok:false, error:'ノートが見つかりません' }; }
+  var inside = false, ps = file.getParents();
+  while(ps.hasNext()){ if(f.ids.indexOf(ps.next().getId()) >= 0){ inside = true; break; } }
+  if(!inside) return { ok:false, error:'Goodnotesのフォルダの中のノートだけ渡せます' };
+  var size = file.getSize();
+  if(size > 200 * 1024 * 1024) return { ok:false, error:'ノートが大きすぎます（200MBまで）' };
+  var from = Math.max(0, Number(at) || 0), n = Math.min(5 * 1024 * 1024, Math.max(1, Number(len) || 4 * 1024 * 1024));
+  var bytes = file.getBlob().getBytes();
+  var part = bytes.slice(from, Math.min(bytes.length, from + n));
+  return { ok:true, name:clip_(file.getName(), 120), size:bytes.length, at:from, n:part.length,
+           mime:String(file.getMimeType() || 'application/pdf'), data:Utilities.base64Encode(part) };
 }
 
 /* ===================== Google ToDoリスト ===================== */

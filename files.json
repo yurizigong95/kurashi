@@ -1,5 +1,5 @@
 {
-    "build":  "2026-09-26a",
+    "build":  "2026-09-26b",
     "made":  "2026-09-24 15:12",
     "files":  [
                   {
@@ -52,7 +52,7 @@
                   },
                   {
                       "path":  "gas/Code.gs",
-                      "sha256":  "d7b9eb638e8fd258"
+                      "sha256":  "559851f12e6eb7d0"
                   },
                   {
                       "path":  "icon-180.png"
@@ -121,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "4fbe520f71eeb28c"
+                      "sha256":  "8445963445c41c4c"
                   },
                   {
                       "path":  "js/data.js",
@@ -133,7 +133,7 @@
                   },
                   {
                       "path":  "js/gasplus.js",
-                      "sha256":  "fb996a4b212bfcba"
+                      "sha256":  "27dcc34945e8f54d"
                   },
                   {
                       "path":  "js/google.js",
@@ -237,7 +237,7 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "8ee2489a74154036"
+                      "sha256":  "2f5f6c44ed0b9a1b"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -249,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "49f4672731f2c684"
+                      "sha256":  "20e0947c34c7822e"
                   }
               ]
 }

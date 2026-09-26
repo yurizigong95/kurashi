@@ -272,6 +272,13 @@ function mkAutoN(){
 /* リンク（いくつでも）を読んで、資料に入れる。読めなかったリンクを返す */
 async function mkReadLinks(urls){
   if(mk.busy) return urls;
+  /* Goodnotesの共有リンクは、中身をリンクから読めないので、ドライブの自動バックアップからえらんでもらう */
+  var gns = (urls || []).filter(function(u){ return typeof gnIsLink === 'function' && gnIsLink(u); });
+  if(gns.length){
+    urls = urls.filter(function(u){ return gns.indexOf(u) < 0; });
+    gnOpen(gns[0]);
+    if(!urls.length){ toast('Goodnotesのノートは、下の一覧からえらんでください'); return []; }
+  }
   urls = (urls || []).filter(function(u){
     var yt = linkYouTube(u);
     return !mk.files.some(function(f){ return f.link === u || (yt && f.yt && linkYouTube(f.link) === yt); });
@@ -330,10 +337,11 @@ async function mkReadPending(){
   urls = urls.filter(function(u){ return !mk.files.some(function(f){ return f.link === u; }); });
   if(!urls.length) return { read:0 };
   if(fromPaste){ inSet('mk_paste', ''); INP.mk_paste = ''; }
+  var gnN = urls.filter(function(u){ return typeof gnIsLink === 'function' && gnIsLink(u); }).length;
   var left = await mkReadLinks(urls);
   inSet('mk_links', left.join('\n')); INP.mk_links = left.join('\n');   /* 読めなかったものだけ、リンクの欄にのこす */
   render();
-  return { read:urls.length, left:left.length, fromPaste:fromPaste };
+  return { read:urls.length, left:left.length, fromPaste:fromPaste, gn:gnN };
 }
 
 /* ============================== 作る ============================== */
@@ -346,6 +354,7 @@ async function mkRun(){
   var pend = await mkReadPending();
   var fromLinks = pend.read > 0;
   if(mk.busy) return;
+  if(pend.gn && !mk.files.length) return;                   /* Goodnotesのノートを、えらんでもらってから作る */
   var paste = String(elVal('mk_paste') || '').trim();
   /* はりつけた文章も、1つの資料としてあつかう（毎回いまの文に入れかえる。直した文が使われるように） */
   mk.files = mk.files.filter(function(f){ return !f.paste; });

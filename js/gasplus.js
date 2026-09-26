@@ -192,9 +192,10 @@ function gasPlusSettings(){
       'Gmailを読む許可とスプレッドシートの許可が新しく聞かれます。</span></div>';
     return h;
   }
-  if(toNum(GAS.api) < 4){
-    h += '<div class="bn amber" style="margin-top:12px"><span class="ic">!</span><span>橋わたしの新しい版があります（窓口の版 4。いまは ' + (toNum(GAS.api) || 3) + '）。' +
-      '貼り直すと、手書きノートの検索・Discordのボット・Siri／Apple Watch・リマインダー・ウィジェットの色が使えます。' +
+  if(toNum(GAS.api) < 6){
+    h += '<div class="bn amber" style="margin-top:12px"><span class="ic">!</span><span>橋わたしの新しい版があります（窓口の版 6。いまは ' + (toNum(GAS.api) || 3) + '）。' +
+      '貼り直すと、' + (toNum(GAS.api) < 4 ? '手書きノートの検索・Discordのボット・Siri／Apple Watch・リマインダー・ウィジェットの色・' : '') +
+      '<b>もんだいメーカーで、Goodnotesのノート（ドライブの自動バックアップ）から問題を作る</b>のが使えます。' +
       '上の「プログラムをコピー」で貼り直して、「デプロイを管理」→ ✏️ →「新バージョン」→「デプロイ」。</span></div>';
   }
   var f = gfeat();
