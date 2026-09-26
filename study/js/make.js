@@ -350,7 +350,7 @@ async function mkRun(){
     return;
   }
   if(!aiReady()){
-    toast('先に「設定」で、GeminiのAPIキーを入れてください（「AIを使わずに作る」なら、キーなしでも作れます）', true);
+    toast('先に「設定」か、くらしの手帳の設定で、GeminiのAPIキーを入れてください（「AIを使わずに作る」なら、キーなしでも作れます）', true);
     return;
   }
   var text = mkFilesText();

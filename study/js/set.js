@@ -2,14 +2,20 @@
 
 function setView(){
   var h = '';
-  var key = aiKey();
-  h += section('AI（Gemini）のキー', key ? '入っています' : 'まだです',
-    '<label class="f" for="st_key">APIキー</label>' +
-    '<input id="st_key" type="password" autocomplete="off" placeholder="' + (key ? '●●●●●●（入っています）' : 'AIza… ではじまる文字') + '" value="">' +
-    '<div class="pair">' + btn('入れる', 'st-key', { cls:'main' }) + btn('消す', 'st-keydel', { cls:'ghost', dis:!key }) + '</div>' +
+  var from = aiKeyFrom(), kk = aiKeyKurashi();
+  h += section('AI（Gemini）のキー', from === 'own' ? '入っています' : from === 'kurashi' ? 'くらしの手帳と同じ' : 'まだです',
+    (from === 'kurashi'
+      ? '<div class="syst st-ok"><span class="dot"></span><div><b>くらしの手帳のキーを、自動で使っています</b>' +
+          '<div class="s">くらしの手帳（設定 › AIそうだん）で入れたキーです。ここで入れなくても大丈夫です。</div></div></div>'
+      : from === 'own' && kk && kk !== aiKeyOwn()
+        ? '<div class="s">くらしの手帳にも、別のキーが入っています。<button type="button" class="link" data-act="st-keydel">くらしの手帳のキーにする</button></div>'
+        : from === '' ? '<div class="s">くらしの手帳の「設定 › AIそうだん」でキーを入れると、ここでも<b>自動で</b>使います。</div>' : '') +
+    '<label class="f" for="st_key">' + (from === 'kurashi' ? '別のキーを使うときだけ' : 'APIキー') + '</label>' +
+    '<input id="st_key" type="password" autocomplete="off" placeholder="' + (from === 'own' ? '●●●●●●（入っています）' : 'AQ.… か AIza… ではじまる文字') + '" value="">' +
+    '<div class="pair">' + btn('入れる', 'st-key', { cls:'main' }) + btn('消す', 'st-keydel', { cls:'ghost', dis:from !== 'own' }) + '</div>' +
     '<label class="f">かしこさ</label>' +
     chips(AI_MODELS.map(function(m){ return [m[0], m[1]]; }), S.set.model || '', 'st-model') +
-    note('キーは<b>この端末の中だけ</b>に保存します（どこにも送りません）。' +
+    note('キーは<b>この端末の中だけ</b>に保存します（Google 以外には送りません・ほかの端末とも同期しません）。' +
       'キーは Google AI Studio（aistudio.google.com）の「Get API key」で作れます。' +
       '<br>キーがなくても、「つくる」タブの<b>表から作る（AIなし）</b>と、作った問題をとくのは、ぜんぶ使えます。'));
 
@@ -253,10 +259,11 @@ onAct('st-key', function(){
   render();
 });
 onAct('st-keydel', function(){
-  if(!ask('APIキーを消しますか？')) return;
+  var kk = aiKeyKurashi();
+  if(!ask(kk ? 'ここで入れたキーを消して、くらしの手帳のキーを使いますか？' : 'APIキーを消しますか？')) return;
   S.set.key = '';
   saveNow();
-  toast('消しました');
+  toast(kk ? 'くらしの手帳のキーを使います' : '消しました');
   render();
 });
 onAct('st-model', function(d){ S.set.model = d.v; syTouchSet(); saveNow(); render(); });

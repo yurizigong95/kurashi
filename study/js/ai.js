@@ -1,5 +1,7 @@
 /* もんだいメーカー：AI（Gemini）とのやりとり
-   ・APIキーは、この端末の中（localStorage）だけに保存する。どこにも送らない。
+   ・APIキーは、この端末の中（localStorage）だけに保存する。Google 以外には送らない。
+   ・ここでキーを入れていなければ、くらしの手帳に入れたキーを、そのまま自動で使う
+     （同じ端末の中で読むだけ。キーはどこにも写さない・同期しない）。
    ・テストのときは window.__FAKE_AI に差しかえる（本物は呼ばない）。
    ・使った回数を数えて、設定タブに出す（へらせているかが分かるように）。 */
 
@@ -11,7 +13,18 @@ var AI_MODELS = [
 ];
 var AI_FALLBACK = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash'];
 
-function aiKey(){ return String((S.set && S.set.key) || '').trim(); }
+/* くらしの手帳（設定 › AIそうだん）に入れた Gemini のキー */
+function aiKeyKurashi(){
+  try{
+    var j = JSON.parse(localStorage.getItem('shiharai:v1') || 'null');
+    return String((j && j.settings && j.settings.geminiKey) || '').trim();
+  }catch(e){ return ''; }
+}
+function aiKeyOwn(){ return String((S.set && S.set.key) || '').trim(); }
+/* 使うキー：ここで入れたキー → なければ、くらしの手帳のキー */
+function aiKey(){ return aiKeyOwn() || aiKeyKurashi(); }
+/* どこのキーを使っているか（'own'・'kurashi'・''） */
+function aiKeyFrom(){ return aiKeyOwn() ? 'own' : aiKeyKurashi() ? 'kurashi' : ''; }
 function aiFake(){ return (typeof window !== 'undefined' && window.__FAKE_AI) ? window.__FAKE_AI : null; }
 function aiReady(){ return aiFake() ? true : !!aiKey(); }
 function aiCountAdd(n){
@@ -219,15 +232,21 @@ async function aiCall(opt){
                meta:c.urlContextMetadata || c.url_context_metadata || null };
     }
     lastErr = (j && j.error && j.error.message) ? j.error.message : ('エラー ' + res.status);
-    /* そのモデルが無いときだけ、次のモデルを試す */
-    if(!/not available|not found|NOT_FOUND|unsupported|deprecated|update your code/i.test(lastErr)) break;
+    /* そのモデルが無いとき・道具（リンクを読む など）が使えないモデルのときは、次のモデルを試す
+       （リンクを読むときは、道具なしでやり直さない。読まずに作り話をしてしまうため） */
+    var toolNg = body.tools && /tool|url_context|not supported|unsupported/i.test(lastErr);
+    if(!toolNg && !/not available|not found|NOT_FOUND|unsupported|deprecated|update your code/i.test(lastErr)) break;
     if(S.set.model === models[i]){ S.set.model = ''; saveSoon(); }
   }
   throw new Error(aiErrText(lastErr || 'つながりませんでした'));
 }
 function aiErrText(msg){
   msg = String(msg || '');
-  if(/API key not valid|API_KEY_INVALID|401|invalid_api_key|PERMISSION_DENIED/i.test(msg)) return 'APIキーが正しくないようです。設定で入れ直してください。';
+  if(/API key not valid|API_KEY_INVALID|401|invalid_api_key|PERMISSION_DENIED/i.test(msg)){
+    return aiKeyFrom() === 'kurashi'
+      ? 'くらしの手帳のAPIキーが使えないようです。くらしの手帳の設定で入れ直すか、この「設定」で別のキーを入れてください。'
+      : 'APIキーが正しくないようです。設定で入れ直してください。';
+  }
   if(/quota|RESOURCE_EXHAUSTED|429/i.test(msg)) return '今日の無料ぶんを使い切ったかもしれません。時間をおくか、「AIを使わずに作る」を試してください。';
   if(/abort/i.test(msg)) return 'とちゅうでやめました';
   return msg.slice(0, 160);

@@ -131,3 +131,30 @@ test('同期のようす：つながっている端末・まだ送っていな�
   ok(has('iPad'), '端末の一覧に、iPad');
   W.syStop();
 });
+
+test('APIキー：くらしの手帳に入れたキーを、自動で使う', async function(){
+  var saved = W.localStorage.getItem('shiharai:v1'), oc = W.confirm;
+  try{
+    W.localStorage.setItem('shiharai:v1', JSON.stringify({ settings:{ geminiKey:'AQ.kurashi-test-key' } }));
+    W.S.set.key = '';
+    eq(W.aiKey(), 'AQ.kurashi-test-key', 'くらしの手帳のキーを使う');
+    eq(W.aiKeyFrom(), 'kurashi', 'どこのキーか分かる');
+    ok(W.aiReady(), 'AIが使える');
+    await click('tab', 'set');
+    ok(has('くらしの手帳のキーを、自動で使っています'), '設定にも出る');
+    /* ここで別のキーを入れたら、そちらを使う */
+    await type('st_key', 'AIza-own-key');
+    await click('st-key');
+    eq(W.aiKey(), 'AIza-own-key', 'ここで入れたキーを使う');
+    ok(has('くらしの手帳にも、別のキーが入っています'), '別のキーがあることを知らせる');
+    W.confirm = function(){ return true; };
+    await click('st-keydel');
+    eq(W.aiKey(), 'AQ.kurashi-test-key', '消すと、くらしの手帳のキーにもどる');
+    /* キーは同期にも、バックアップにも入れない */
+    ok(JSON.stringify(W.syPayload()).indexOf('kurashi-test-key') < 0, '同期に入らない');
+  }finally{
+    W.confirm = oc;
+    if(saved == null) W.localStorage.removeItem('shiharai:v1'); else W.localStorage.setItem('shiharai:v1', saved);
+    W.S.set.key = '';
+  }
+});

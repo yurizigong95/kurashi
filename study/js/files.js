@@ -666,11 +666,15 @@ async function loadLinksAi(urls, opt){
       part.map(function(u, k){ return (k + 1) + '. ' + u; }).join('\n');
     var r = await aiCall({ contents:[{ role:'user', parts:[{ text:prompt }] }], tools:[{ url_context:{} }],
       tag:'link', temperature:0.1, maxTokens:Math.min(60000, 7000 * part.length), signal:opt.signal });
-    var bad = {};
-    ((r.meta && (r.meta.urlMetadata || r.meta.url_metadata)) || []).forEach(function(m){
+    /* ほんとうにページを開けたか（開けていないのに書いたものは、作り話かもしれないので使わない） */
+    var bad = {}, good = {}, nGood = 0, norm = function(x){
+      return String(x || '').replace(/#.*$/, '').replace(/^http:/i, 'https:').replace(/\/+$/, '').toLowerCase();
+    };
+    var metas = (r.meta && (r.meta.urlMetadata || r.meta.url_metadata)) || [];
+    metas.forEach(function(m){
       var st = String(m.urlRetrievalStatus || m.url_retrieval_status || '');
-      var ru = String(m.retrievedUrl || m.retrieved_url || '');
-      if(st && !/SUCCESS/.test(st)) bad[ru] = 1;
+      var ru = norm(m.retrievedUrl || m.retrieved_url);
+      if(/SUCCESS/.test(st)){ good[ru] = 1; nGood++; } else bad[ru] = 1;
     });
     var blocks = {}, cur = 0;
     String(r.text || '').split('\n').forEach(function(line){
@@ -682,7 +686,8 @@ async function loadLinksAi(urls, opt){
       var lines = blocks[k + 1] || [], title = '';
       if(lines.length && /^\s*タイトル[:：]/.test(lines[0])) title = lines.shift().replace(/^\s*タイトル[:：]\s*/, '').trim();
       var body = lines.join('\n').trim();
-      if(bad[u] || body.length < 10 || /^[（(]?読めませんでした[）)]?$/.test(body)){ out.push({ link:u, fail:1 }); return; }
+      var nu = norm(u), opened = good[nu] || (!bad[nu] && nGood > 0);   /* 転送されて、ちがうアドレスで開いたときも */
+      if(!opened || body.length < 10 || /読めませんでした/.test(body.slice(0, 30))){ out.push({ link:u, fail:1 }); return; }
       out.push({ name:(title || linkName(u)).slice(0, 80), kind:'link', url:'', text:body.slice(0, TEXT_SEND * 2), link:u,
                  size:body.length, ai:1, sig:hash(body.slice(0, 800)) });
     });
