@@ -76,6 +76,8 @@ async function device(opt) {
   say(await page.evaluate(() => window.CDH.sample.name === 'geminiSample'), 'AIは Gemini につながっている');
   say(await page.evaluate(() => window.CDH.db === null), 'パソコンの中で、手帳の設定もなければ、本物の Firebase にはつながない');
   say(await page.evaluate(() => document.getElementById('ghKairo').hidden), '手帳のない端末では「カイロ名作棚」を出さない');
+  const kairo = await page.$eval('#ghKairo', (a) => a.href);
+  say(kairo === 'https://kairo-tana-c13rdtbw.netlify.app/', 'カイロ名作棚の行き先は、持ち主の Netlify の名作棚：' + kairo);
 
   const r = await page.evaluate(async () => {
     const seen = [];

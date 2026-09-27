@@ -116,6 +116,13 @@ rep("  try{ const u=use ? await window.claude.use('user') : null; if(u&&await u.
     "  try{ const u=use ? await window.claude.use('user') : null; if(u&&await u.isOwner()&&$('ghKairo')) $('ghKairo').hidden=false; }catch(e){}\n"
     "  if(!use && gSettings() && $('ghKairo')) $('ghKairo').hidden=false;   /* くらしの手帳を使っている端末（持ち主の端末）だけ */\n")
 
+# カイロ名作棚のボタンの行き先：持ち主の Netlify にある名作棚（kairo-tana-c13rdtbw。2026-09-27 に開けることを確認）
+KAIRO = 'https://kairo-tana-c13rdtbw.netlify.app/'
+km = re.findall(r'<a class="gh-kairo" id="ghKairo" hidden href="([^"]*)"', t)
+if len(km) != 1:
+    sys.exit('カイロ名作棚のボタンが見つかりません')
+t = t.replace('<a class="gh-kairo" id="ghKairo" hidden href="%s"' % km[0], '<a class="gh-kairo" id="ghKairo" hidden href="%s"' % KAIRO)
+
 # ---- 4. 記録の同期（いちばん下） ----
 rep('</body>\n</html>', sync + '\n</body>\n</html>')
 
