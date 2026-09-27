@@ -473,3 +473,36 @@ KT.test('総点検：何もしていないのに手帳を送り直さない・�
   }
 });
 })();
+
+/* 予定に入れた写真（詳細のシート・入力欄をあとから描き直したとき・この端末にないとき） */
+(function(){
+'use strict';
+var ok = KT.ok, eq = KT.eq, J = KT.J;
+KT.test('予定の写真：詳細で見られる・入力欄を描き直しても消えない・届いていない写真は知らせる', async function(){
+  var A = KT.frames().A, doc = A.document, td = A.today();
+  var c = doc.createElement('canvas'); c.width = 40; c.height = 30;
+  var g = c.getContext('2d'); g.fillStyle = '#c44'; g.fillRect(0, 0, 40, 30);
+  var du = c.toDataURL('image/jpeg');
+  await A.photoPut('ph_evdt1', du);
+  A.S.events.push(J(A, { id:'ev_ph_dt1', date:td, dateEnd:'', title:'写真つきの予定', subject:'', time:'', kind:'other', memo:'', photos:['ph_evdt1', 'ph_evdt_none'], rid:'', mt:Date.now() }));
+  A.appId = 'cal'; A.render();
+  var src = A.normItems().filter(function(x){ return x.id === 'ev_ph_dt1'; })[0].src;
+  A.openDetail(src, 'ev_ph_dt1');
+  await KT.until(function(){ var im = doc.querySelector('#detail img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '詳細の写真が出る');
+  await KT.until(function(){ return doc.querySelector('#detail .pmiss'); }, 4000, 'この端末にない写真は、届いていないと出す');
+  ok(!doc.querySelector('#detail img[data-pid="ph_evdt_none"]'), 'こわれた写真の印は出さない');
+  /* 押すと大きく見られる */
+  doc.querySelector('#detail img[data-pid="ph_evdt1"]').click();
+  await KT.until(function(){ var v = doc.getElementById('viewer'); return v.classList.contains('on') && /^data:image\//.test(v.querySelector('img').getAttribute('src') || ''); }, 4000, '大きく見る');
+  doc.getElementById('viewer').classList.remove('on');
+  A.closeDetail();
+  /* 予定を直す画面：入力欄だけ描き直しても、写真は出たまま */
+  A.evDraft = J(A, { date:td, title:'写真のテスト', kind:'other', time:'', memo:'', rep:0, subject:'', photos:['ph_evdt1'], pri:1, how:'', how2:'', url:'', realEnd:'' });
+  A.calTab = 'add'; A.appId = 'cal'; A.render();
+  await KT.until(function(){ var im = doc.querySelector('#evform img[data-pid="ph_evdt1"]'); return im && im.getAttribute('src'); }, 4000, '入力欄の写真');
+  A.redrawForm();
+  await KT.until(function(){ var im = doc.querySelector('#evform img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '描き直しても写真が出る');
+  A.evDraft = null; A.calTab = 'cal'; A.removeItem('events', 'ev_ph_dt1'); A.photoDel('ph_evdt1'); A.appId = 'today'; A.commit();
+  await KT.settle([A, KT.frames().B]);
+});
+})();
