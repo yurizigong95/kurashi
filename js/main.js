@@ -2,7 +2,10 @@
 /* ============================== 画面の切り替え ============================== */
 function APPS_VISIBLE(){
   var names = {}; TAB_DEFS.forEach(function(t){ names[t[0]] = t[1]; });
-  return (S.ui.tabs||[]).filter(function(t){ return t[1] || t[0]==='set'; }).map(function(t){ return [t[0], names[t[0]]||t[0]]; });
+  var vis = (S.ui.tabs||[]).filter(function(t){ return t[1]; });
+  /* ぜんぶかくれてしまったときは、設定だけは出す */
+  if(!vis.length) vis = (S.ui.tabs||[]).filter(function(t){ return t[0]==='set'; });
+  return vis.map(function(t){ return [t[0], names[t[0]]||t[0]]; });
 }
 var MONEY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ'],['stmt','明細'],['in','収支'],['work','バイト']];
 var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
@@ -41,6 +44,8 @@ function renderInner(){
     /* 何もしない（タブには出ないが、画面は授業のまま） */
   }else if(c9TempApp && appId === c9TempApp){
     /* 検索などから、タブに出していない画面を一時的に開いている */
+  }else if(appId === 'set'){
+    /* 設定は、タブに出していなくても開ける（上の右はしの ⚙ から） */
   }else if(!APPS.some(function(a){ return a[0]===appId; })){
     appId = APPS[0] ? APPS[0][0] : 'today';
     courseTemp = false;
@@ -114,6 +119,7 @@ function renderInner(){
   titleEl.innerHTML = esc(TITLES[appId] || '') + (typeof charaMini === 'function' ? charaMini() : '') + '<span id="synctag"></span>' +
     (typeof c9SearchBtn === 'function' ? c9SearchBtn() : '') +
     '<button id="addbtn" type="button" data-act="go-add" title="予定を追加する" aria-label="予定を追加する"><span>＋</span><em>追加</em></button>' +
+    (APPS.some(function(a){ return a[0]==='set'; }) ? '' : '<button id="setbtn" type="button" data-act="go-set" class="'+(appId==='set'?'on':'')+'" title="設定" aria-label="設定">⚙</button>') +
     '<button id="revbtn" data-act="go-review" title="今日の評価をみる">'+
       (function(){
         var r = (S.dayReview||{})[today()];
@@ -349,6 +355,11 @@ document.querySelector('header').addEventListener('click', function(e){
     /* どの画面からでも、今日の日付で予定の追加画面を開く（書きかけがあればそのまま） */
     if(calEdit || !evDraft){ calEdit = null; evDraft = newDraft(today()); }
     appId = 'cal'; calTab = 'add'; courseView = ''; closeDetail();
+    render(); window.scrollTo(0, 0);
+    return;
+  }
+  if(act === 'go-set'){
+    appId = 'set'; courseView = ''; closeDetail();
     render(); window.scrollTo(0, 0);
     return;
   }

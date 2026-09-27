@@ -124,7 +124,7 @@ KT.test('全体＋：文字の大きさを5段階と「システムに合わせ�
   A.appId = 'today'; A.todayTab = 'today'; A.render();
 });
 
-KT.test('全体＋：ホーム画面に出すもの・並び・タブを1つの画面で変えられて（ドラッグ・見本つき）、はじめの並びにもどせる', async function(){
+KT.test('全体＋：タブ（設定も）・中のタブ（どのタブも）・画面の並びを1つの画面で変えられて（ドラッグ・見本つき）、はじめの並びにもどせる', async function(){
   var fr = KT.frames(), A = fr.A, B = fr.B, doc = A.document;
   KT.freshWrites([A, B]);
   A.S.ui.setOpen = A.S.ui.setOpen || {}; A.S.ui.setOpen.c9home = 1;
@@ -161,12 +161,32 @@ KT.test('全体＋：ホーム画面に出すもの・並び・タブを1つの�
   list('tab').querySelector('[data-act="c9-home-tg"][data-id="news"]').click();
   ok(A.S.ui.tabs.filter(function(t){ return t[0] === 'news'; })[0][1], 'お知らせのタブを出す');
   ok(doc.querySelector('#apps [data-app="news"]'), '上のタブに出る');
-  ok(!list('tab').querySelector('[data-act="c9-home-tg"][data-id="set"]'), '設定のタブはいつも出す');
+  /* 設定のタブも出さないにできる（上の右はしに ⚙ が出て、そこから開ける） */
+  ok(!doc.getElementById('setbtn'), '設定のタブがあるあいだは ⚙ を出さない');
+  list('tab').querySelector('[data-act="c9-home-tg"][data-id="set"]').click();
+  ok(!doc.querySelector('#apps [data-app="set"]'), '設定のタブを出さない');
+  eq(A.appId, 'set', 'かくしても、設定の画面のまま');
+  A.appId = 'today'; A.todayTab = 'today'; A.render();
+  ok(doc.getElementById('setbtn'), '上に ⚙ が出る');
+  doc.getElementById('setbtn').click();
+  eq(A.appId, 'set', '⚙ で設定を開ける');
+  list('tab').querySelector('[data-act="c9-home-tg"][data-id="set"]').click();
+  ok(doc.querySelector('#apps [data-app="set"]') && !doc.getElementById('setbtn'), '設定のタブをまた出す');
   list('tab').querySelector('[data-act="c9-home-mv"][data-id="tt"][data-d="-1"]').click();
   eq(A.S.ui.tabs[0][0], 'tt', 'タブの並べかえ');
   /* 今日タブの中のタブ */
   list('sub').querySelector('[data-act="c9-home-tg"][data-id="week"]').click();
   ok(!A.subVisible('today').some(function(t){ return t[0] === 'week'; }), '今週をかくす');
+  /* ほかのタブの中のタブ（予定）も、同じところで */
+  doc.querySelector('[data-act="c9-sub-app"][data-v="cal"]').click();
+  eq(list('sub').dataset.pg, 'cal', '予定の中のタブ');
+  list('sub').querySelector('[data-act="c9-home-mv"][data-id="add"][data-d="-1"]').click();
+  list('sub').querySelector('[data-act="c9-home-tg"][data-id="health"]').click();
+  eq(A.subVisible('cal').map(function(t){ return t[0]; }).join(','), 'cal,week,add,kind', '予定の中のタブの並び・かくす');
+  /* 授業の詳細の並びも、同じところで */
+  doc.querySelector('[data-act="c9-home-pg"][data-v="coursedt"]').click();
+  ok(list('page').dataset.pg === 'coursedt' && list('page').querySelector('.c9hrow[data-id="syllabus"]'), '授業の詳細の項目');
+  doc.querySelector('[data-act="c9-home-pg"][data-v="today"]').click();
   await KT.settle([A, B]);
   await KT.until(function(){ return B.pageOrder('today')[0] === 'memo'; }, 15000, '相手にも届く（並び）');
   await KT.until(function(){ return B.pageHidden('today', 'weather'); }, 15000, '相手にも届く（出さない）');
@@ -176,6 +196,7 @@ KT.test('全体＋：ホーム画面に出すもの・並び・タブを1つの�
   ok(!A.pageHidden('today', 'weather') && A.pageOrder('today')[0] === 'c9yday', '今日の枠がもどった');
   ok(!A.S.ui.tabs.filter(function(t){ return t[0] === 'news'; })[0][1] && A.S.ui.tabs[0][0] === 'today', 'タブももどった');
   ok(A.subVisible('today').some(function(t){ return t[0] === 'week'; }), '中のタブももどった');
+  eq(A.subVisible('cal').map(function(t){ return t[0]; }).join(','), 'cal,week,kind,add,health', 'ほかのタブの中のタブももどった');
   var ub = doc.getElementById('undoBtn');
   ok(ub, '「取り消す」が出る');
   ub.click();
@@ -601,7 +622,9 @@ KT.test('全体＋：検索・点検・ホーム画面・きのうの評価は�
   A.c9Q = 'かんご'; A.c9TempApp = 'c9search'; A.appId = 'c9search'; A.render();
   A.c9Q = 'せってい'; A.render();
   A.appId = 'set';
-  A.C9_HOME_PAGES.forEach(function(p){ A.c9HomePg = p[0]; A.render(); });
+  A.C9_PAGES.forEach(function(p){ A.c9HomePg = p[0]; A.render(); });
+  A.C9_SUB_APPS.forEach(function(p){ A.c9SubApp = p[0]; A.render(); });
+  A.c9SubApp = 'today';
   ['today', 'tomo', 'week', 'life'].forEach(function(t){ A.appId = 'today'; A.todayTab = t; A.render(); });
   A.aiSectionData('settings', {}); A.aiSectionData('reviews', {}); A.aiSectionData('more', {}); A.aiOverview();
   A.c9CheckRun();

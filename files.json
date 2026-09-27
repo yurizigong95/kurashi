@@ -1,10 +1,10 @@
 {
-    "build":  "2026-09-27b",
-    "made":  "2026-09-27 02:36",
+    "build":  "2026-09-27c",
+    "made":  "2026-09-27 03:24",
     "files":  [
                   {
                       "path":  "css/app.css",
-                      "sha256":  "257f9347f695da60"
+                      "sha256":  "0692ee4fd13dbc38"
                   },
                   {
                       "path":  "css/m-anki2.css",
@@ -121,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "ee84155be954d6ad"
+                      "sha256":  "0bba6d08b54502cd"
                   },
                   {
                       "path":  "js/data.js",
@@ -153,7 +153,7 @@
                   },
                   {
                       "path":  "js/main.js",
-                      "sha256":  "1b05503be2dd76c4"
+                      "sha256":  "c7bf480f5be7a3ad"
                   },
                   {
                       "path":  "js/m-anki2.js",
@@ -161,7 +161,7 @@
                   },
                   {
                       "path":  "js/m-campus.js",
-                      "sha256":  "86c389cddf82f90d"
+                      "sha256":  "495d384740b623cd"
                   },
                   {
                       "path":  "js/m-chara2.js",
@@ -169,7 +169,7 @@
                   },
                   {
                       "path":  "js/m-core2.js",
-                      "sha256":  "5ddf4cd5716b51dd"
+                      "sha256":  "b6f327b5a8f274b1"
                   },
                   {
                       "path":  "js/m-kokushi.js",
@@ -217,7 +217,7 @@
                   },
                   {
                       "path":  "js/settings.js",
-                      "sha256":  "33ea8f1fa69f539b"
+                      "sha256":  "6d5083f3b1e4e8d5"
                   },
                   {
                       "path":  "js/sync.js",
@@ -225,7 +225,7 @@
                   },
                   {
                       "path":  "js/timetable.js",
-                      "sha256":  "185d73a1021d0134"
+                      "sha256":  "717bc3c32d214221"
                   },
                   {
                       "path":  "js/today.js",
@@ -237,7 +237,7 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "245d58383a4c7742"
+                      "sha256":  "94e8de466845a8db"
                   },
                   {
                       "path":  "js/wx-plus.js",
@@ -249,7 +249,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "f4f3f794791f36e7"
+                      "sha256":  "d255ce47b7aba66f"
                   }
               ]
 }

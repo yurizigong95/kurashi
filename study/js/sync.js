@@ -36,7 +36,7 @@ var SY = {
 var SY_COL = 'shiharai';
 var SY_PART = 700 * 1024;        /* 1つの切れはしの大きさ（Firestore は1MBまで） */
 var SY_IMG_PART = 700 * 1024;
-var SY_SET_KEYS = ['goal', 'shuffle', 'term', 'allTerms', 'model', 'lim'];   /* 同期する設定（キーと使用量は入れない） */
+var SY_SET_KEYS = ['goal', 'shuffle', 'term', 'allTerms', 'model', 'lim', 'tabs'];   /* 同期する設定（キーと使用量は入れない） */
 /* 組みこみのつなぎ先（くらしの手帳の js/core.js の DEFAULT_ROOM・DEFAULT_FB と同じ） */
 var SY_ROOM = '8b7f4e6et9jhxded';
 var SY_FB = { apiKey:'AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww', authDomain:'kurashi-59562.firebaseapp.com',

@@ -31,7 +31,30 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--b
 #tabs button[aria-selected="true"]{ background:#fff; color:#1E2A32; box-shadow:0 1px 3px rgba(0,0,0,.25); }
 #out{ flex:0 0 auto; border:0; background:var(--bar2); color:var(--dim); font:inherit; font-size:12px; font-weight:700;
   padding:9px 10px; border-radius:10px; cursor:pointer; white-space:nowrap; }
-#out:active{ opacity:.6; }
+#out:active,#edit:active{ opacity:.6; }
+#edit{ flex:0 0 auto; border:0; background:var(--bar2); color:var(--dim); font:inherit; font-size:15px; font-weight:700;
+  width:38px; padding:7px 0; border-radius:10px; cursor:pointer; }
+#edit[aria-expanded="true"]{ background:#fff; color:#1E2A32; }
+/* タブの並び・表示を決めるところ */
+#pane{ position:fixed; left:8px; right:8px; top:calc(var(--top) + 56px); z-index:6; display:none; background:#fff; color:#1E2A32;
+  border-radius:14px; padding:12px 12px 10px; box-shadow:0 10px 30px rgba(0,0,0,.3); max-width:420px; margin:0 auto; font-size:14px; }
+#pane.on{ display:block; }
+#pane .ph{ font-weight:800; margin-bottom:4px; }
+#pane .pn{ font-size:12px; color:#5b6873; line-height:1.6; margin:0 0 8px; }
+#pane .pr{ display:flex; align-items:center; gap:6px; padding:7px 0; border-top:1px solid #e6ebef; }
+#pane .pr.off .pt{ color:#9aa5ad; text-decoration:line-through; }
+#pane .pt{ flex:1; font-weight:700; }
+#pane button{ font:inherit; font-size:13px; border:1px solid #cfd8de; background:#f5f7f9; color:#1E2A32; border-radius:9px; padding:6px 10px; cursor:pointer; }
+#pane button:disabled{ opacity:.35; cursor:default; }
+#pane button.on{ background:#2C5A98; border-color:#2C5A98; color:#fff; }
+#pane .pf{ display:flex; gap:8px; margin-top:10px; }
+#pane .pf button{ flex:1; padding:9px 10px; }
+@media (prefers-color-scheme:dark){
+  #pane{ background:#1f2a31; color:#e8eef2; }
+  #pane .pn{ color:#9fb0bb; }
+  #pane .pr{ border-top-color:#33424c; }
+  #pane button{ background:#2a3945; border-color:#3a4a55; color:#e8eef2; }
+}
 /* アプリを出すところ */
 #stage{ position:fixed; left:0; right:0; bottom:0; top:calc(var(--top) + 52px); background:#fff; }
 #stage iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:#fff; }
@@ -53,8 +76,10 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--b
 <body>
 <div id="bar">
   <div id="tabs" role="tablist"></div>
+  <button id="edit" type="button" title="タブの並び・表示" aria-label="タブの並び・表示" aria-expanded="false" aria-controls="pane">⇅</button>
   <button id="out" type="button" title="いま見ているアプリを、そのアプリだけで開く">⤢ 1つで開く</button>
 </div>
+<div id="pane" role="dialog" aria-label="タブの並び・表示"></div>
 <main id="stage"><div id="msg"></div></main>
 <script>
 /* ぜんぶ入り：3つのアプリを1つの画面でまとめて使う。
@@ -67,6 +92,7 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--b
     { id:'game',    name:'ゲーム',     url:'../game/index.html',  color:'#1E2A32' }
   ];
   var KEY = 'zenbu:tab';
+  var KEY_ORDER = 'zenbu:tabs';      /* タブの並びと、出す・出さない（[{ id, on }]） */
   var frames = {}, now = '', timer = 0;
   var tabs = document.getElementById('tabs');
   var stage = document.getElementById('stage');
@@ -122,19 +148,81 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--b
     }
   }
 
+  /* タブの並び・出す／出さない（この端末に覚えておく） */
+  function order(){
+    var list = [];
+    try{ list = JSON.parse(localStorage.getItem(KEY_ORDER) || '[]'); }catch(e){ list = []; }
+    if(!Array.isArray(list)) list = [];
+    list = list.filter(function(x, i){
+      return x && APPS.some(function(a){ return a.id === x.id; }) && list.findIndex(function(y){ return y && y.id === x.id; }) === i;
+    }).map(function(x){ return { id:x.id, on:x.on !== false }; });
+    APPS.forEach(function(a){ if(!list.some(function(x){ return x.id === a.id; })) list.push({ id:a.id, on:true }); });
+    if(!list.some(function(x){ return x.on; })) list[0].on = true;
+    return list;
+  }
+  function saveOrder(list){ try{ localStorage.setItem(KEY_ORDER, JSON.stringify(list)); }catch(e){} }
+  function visible(){ return order().filter(function(x){ return x.on; }).map(function(x){ return x.id; }); }
+
   /* 切りかえボタンを作る */
-  APPS.forEach(function(a){
-    var b = document.createElement('button');
-    b.type = 'button'; b.textContent = a.name; b.dataset.id = a.id;
-    b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false');
-    b.addEventListener('click', function(){ go(a.id, true); });
-    tabs.appendChild(b);
+  function buildTabs(){
+    tabs.innerHTML = '';
+    visible().forEach(function(id){
+      var a = app(id);
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = a.name; b.dataset.id = a.id;
+      b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', now === a.id ? 'true' : 'false');
+      b.addEventListener('click', function(){ go(a.id, true); });
+      tabs.appendChild(b);
+    });
+  }
+  buildTabs();
+
+  /* ⇅：タブの並び・出す／出さない */
+  var pane = document.getElementById('pane'), edit = document.getElementById('edit');
+  function drawPane(){
+    var list = order(), onN = list.filter(function(x){ return x.on; }).length;
+    pane.innerHTML = '<div class="ph">タブの並び・表示</div>' +
+      '<p class="pn">↑↓ で並びを変えて、「出す／出さない」で上のタブに出すかを決めます（この端末で覚えます）。</p>' +
+      list.map(function(x, i){
+        var a = app(x.id);
+        return '<div class="pr' + (x.on ? '' : ' off') + '"><span class="pt">' + a.name + '</span>' +
+          '<button type="button" data-z="up" data-id="' + a.id + '"' + (i === 0 ? ' disabled' : '') + ' aria-label="' + a.name + 'を上へ">↑</button>' +
+          '<button type="button" data-z="down" data-id="' + a.id + '"' + (i === list.length - 1 ? ' disabled' : '') + ' aria-label="' + a.name + 'を下へ">↓</button>' +
+          '<button type="button" data-z="tg" data-id="' + a.id + '" class="' + (x.on ? 'on' : '') + '"' + (x.on && onN <= 1 ? ' disabled' : '') +
+            ' aria-pressed="' + (x.on ? 'true' : 'false') + '">' + (x.on ? '出す' : '出さない') + '</button></div>';
+      }).join('') +
+      '<div class="pf"><button type="button" data-z="reset">はじめにもどす</button><button type="button" data-z="close" class="on">できた</button></div>';
+  }
+  function openPane(on){
+    pane.className = on ? 'on' : '';
+    edit.setAttribute('aria-expanded', on ? 'true' : 'false');
+    if(on) drawPane();
+  }
+  edit.addEventListener('click', function(){ openPane(!pane.classList.contains('on')); });
+  pane.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-z]'); if(!b || b.disabled) return;
+    var z = b.dataset.z, list = order(), i = list.findIndex(function(x){ return x.id === b.dataset.id; });
+    if(z === 'close'){ openPane(false); return; }
+    if(z === 'reset'){ try{ localStorage.removeItem(KEY_ORDER); }catch(err){} }
+    else if(z === 'up' && i > 0){ var t = list[i - 1]; list[i - 1] = list[i]; list[i] = t; saveOrder(list); }
+    else if(z === 'down' && i >= 0 && i < list.length - 1){ var t2 = list[i + 1]; list[i + 1] = list[i]; list[i] = t2; saveOrder(list); }
+    else if(z === 'tg' && i >= 0){
+      if(list[i].on && list.filter(function(x){ return x.on; }).length <= 1) return;
+      list[i].on = !list[i].on; saveOrder(list);
+    }
+    buildTabs();
+    /* いま見ているアプリをかくしたら、出ているうちの最初へ */
+    var vis = visible();
+    if(vis.indexOf(now) < 0) go(vis[0], true);
+    drawPane();
   });
   /* いま見ているアプリを、そのアプリだけで開く */
   document.getElementById('out').addEventListener('click', function(){ location.href = app(now).url; });
   window.addEventListener('hashchange', function(){ go((location.hash || '').replace('#', ''), false); });
 
-  go((location.hash || '').replace('#', '') || load() || 'kurashi', true);
+  var first = (location.hash || '').replace('#', '') || load();
+  if(visible().indexOf(first) < 0) first = visible()[0];
+  go(first || 'kurashi', true);
 
   /* ホーム画面に置いたときのため（オフラインでも開ける） */
   if('serviceWorker' in navigator){
