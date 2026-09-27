@@ -424,6 +424,15 @@ function timeLabelOf(x){
   if(x.span) return '終日（'+ymdLabel(x.date)+'〜'+ymdLabel(x.end)+'）';
   return x.time ? x.time+' 〜' : '終日';
 }
+/* 予定・課題に入れた写真を、一覧に小さく出す（押すと大きく見られる。4枚目からは数だけ） */
+function evThumbs(photos){
+  photos = (photos || []).filter(Boolean);
+  if(!photos.length) return '';
+  var more = photos.length - 3;
+  return '<span class="evthumbs">' + photos.slice(0, 3).map(function(pid){
+    return '<span class="mphoto evth"><img data-pid="' + esc(pid) + '" alt="写真" data-act="memo-photo-view" data-id="' + esc(pid) + '"></span>';
+  }).join('') + (more > 0 ? '<span class="evmore">+' + more + '</span>' : '') + '</span>';
+}
 function itemRow(x, withButtons, withDate){
   var isTask = (x.src === 'task');
   var isTest = (x.src==='quiz' || x.src==='exam' || x.src==='kousa');
@@ -442,7 +451,7 @@ function itemRow(x, withButtons, withDate){
       '<span class="s">'+esc(dateTxt)+esc(timeLabelOf(x))+
         (withDate ? '・'+esc(isTest ? (x.sub||kindOf(x.src).name) : kindOf(x.src).name)
                   : (x.sub?'・'+esc(x.sub):''))+
-        (showProg?'・'+esc(progLabel(x.id)):'')+((x.photos||[]).length?'　📷'+x.photos.length:'')+'</span></span>'+
+        (showProg?'・'+esc(progLabel(x.id)):'')+'</span>'+evThumbs(x.photos)+'</span>'+
     (x.edit ? '<span class="s2">›</span>' : '')+'</div>';
 }
 function monthGrid(){

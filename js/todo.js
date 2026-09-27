@@ -23,7 +23,8 @@ function taskRow(t){
         '<span class="s">'+(toNum(t.pri)===2?'❗ ':'')+(t.subject?esc(t.subject)+'・':'')+(isYmd(t.due)?ymdLabel(t.due):'期限なし')+(t.time?' '+esc(t.time)+'まで':'')+
           (subs.length?'・小項目 '+doneSubs+'/'+subs.length:'')+
           (taskMinutes(t.id)?'・'+taskMinutes(t.id)+'分やった':'')+
-          (t.how?'・'+({form:'Googleフォーム',classroom:'クラスルーム',other:(t.how2||'ほか')})[t.how]:'')+'</span></span>'+
+          (t.how?'・'+({form:'Googleフォーム',classroom:'クラスルーム',other:(t.how2||'ほか')})[t.how]:'')+'</span>'+
+        (typeof evThumbs === 'function' ? evThumbs(t.photos) : '')+'</span>'+
       (!t.done && n!==null ? '<span class="due '+dueClass(n)+'">'+dueText(n)+'</span>' : '')+
     '</div>'+
     (subs.length && !t.done ? '<div class="subs">'+subs.map(function(x,i){
