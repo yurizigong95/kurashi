@@ -1559,3 +1559,13 @@ html.sylview-on, html.sylview-on body{overflow:hidden}
 body[data-theme="dark"] #setbtn{background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.22)}
 .c9pages button{font-size:.72em}
 .coursesort .c9hlist{margin-bottom:4px}
+
+/* メモにつけたファイル（PDF・Word など） */
+.nfiles{margin:0 0 10px}
+.nfile{display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--rule)}
+.nfile .nfile-open{display:flex; align-items:center; gap:8px; flex:1; min-width:0; padding:4px 0; border:0; background:none; font:inherit; color:inherit; text-align:left; cursor:pointer}
+.nfile .ic{font-size:1.3em; flex:none}
+.nfile .t{display:block; word-break:break-all; color:var(--ink)}
+.nfile .mini{flex:none}
+#sylview .sv-file{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--edge); border-radius:12px; padding:10px 12px}
+#sylview .sv-file .s2{flex:1}

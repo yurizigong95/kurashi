@@ -552,27 +552,41 @@ function sylViewClose(){
   document.documentElement.classList.remove('sylview-on');
 }
 function sylViewOpen(name, focusPid){
-  sylViewClose();
   var sy = S.syllabus[name] || {};
-  var files = syllabusFiles(sy), text = String(sy.text || '').trim();
+  var more = syllabusMore(sy);
+  docViewOpen({ label:'シラバス', title:name, text:String(sy.text || '').trim(), textCap:'文章', files:syllabusFiles(sy), focus:focusPid,
+    extra:(sy.url ? '<div class="sv-blk"><div class="sv-cap">前に入れたリンク</div><a class="mini" href="' + esc(sy.url) + '" target="_blank" rel="noopener">シラバスのページをひらく</a></div>' : '') + more,
+    empty:!sy.url && !more });
+  sylView.name = name;
+}
+/* 文章・写真・PDF・そのほかのファイルを、1つの画面でアプリの中に出す（シラバス・メモの添付で使う）
+   opt … { label, title, text, textCap, files:[{ pid, name, kind:'photo'|'pdf'|'file', size }], extra, empty, focus } */
+function docViewOpen(opt){
+  sylViewClose();
+  opt = opt || {};
+  var files = (opt.files || []).filter(function(f){ return f && f.pid; }), text = String(opt.text || '').trim();
   var el = document.createElement('div');
   el.id = 'sylview';
-  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', name + 'のシラバス');
-  el.innerHTML = '<div class="sv-hd"><div class="grow"><div class="s2">シラバス</div><div class="sv-ttl">' + esc(name) + '</div></div>' +
+  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', String(opt.title || '') + (opt.label ? 'の' + opt.label : ''));
+  el.innerHTML = '<div class="sv-hd"><div class="grow"><div class="s2">' + esc(opt.label || '') + '</div><div class="sv-ttl">' + esc(opt.title || '') + '</div></div>' +
       '<button type="button" class="mini sv-close" data-sv="close">とじる</button></div>' +
     '<div class="sv-bd">' +
-      (text ? '<div class="sv-blk"><div class="sv-cap">文章</div><div class="sv-text">' + esc(text) + '</div></div>' : '') +
+      (text ? '<div class="sv-blk"><div class="sv-cap">' + esc(opt.textCap || '文章') + '</div><div class="sv-text">' + esc(text) + '</div></div>' : '') +
       files.map(function(f){
         if(f.kind === 'pdf'){
-          return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📄 ' + esc(f.name || 'シラバス.pdf') + '</div>' +
+          return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📄 ' + esc(f.name || 'PDF') + '</div>' +
             '<div class="sv-pdf" data-pdf="' + esc(f.pid) + '"><div class="s2">ひらいています…</div></div></div>';
         }
-        return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📷 ' + esc(f.name || 'シラバスの写真') + '</div>' +
-          '<img class="sv-img" data-pid="' + esc(f.pid) + '" data-miss="1" alt="' + esc(f.name || 'シラバスの写真') + '" data-sv="zoom"></div>';
+        if(f.kind === 'file'){
+          return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📎 ' + esc(f.name || 'ファイル') + '</div>' +
+            '<div class="sv-file"><span class="s2">' + esc(fileKindText(f)) + '</span>' +
+            '<a class="mini" data-pidlink="' + esc(f.pid) + '" download="' + esc(f.name || 'file') + '" target="_blank" rel="noopener">ひらく</a></div></div>';
+        }
+        return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📷 ' + esc(f.name || '写真') + '</div>' +
+          '<img class="sv-img" data-pid="' + esc(f.pid) + '" data-miss="1" alt="' + esc(f.name || '写真') + '" data-sv="zoom"></div>';
       }).join('') +
-      (sy.url ? '<div class="sv-blk"><div class="sv-cap">前に入れたリンク</div><a class="mini" href="' + esc(sy.url) + '" target="_blank" rel="noopener">シラバスのページをひらく</a></div>' : '') +
-      syllabusMore(sy) +
-      (!text && !files.length && !sy.url && !syllabusMore(sy) ? '<div class="empty">まだ何も保存していません。</div>' : '') +
+      (opt.extra || '') +
+      (!text && !files.length && opt.empty !== false ? '<div class="empty">まだ何も保存していません。</div>' : '') +
     '</div>';
   el.addEventListener('click', function(e){
     var b = e.target.closest('[data-sv]');
@@ -585,14 +599,22 @@ function sylViewOpen(name, focusPid){
   });
   document.body.appendChild(el);
   document.documentElement.classList.add('sylview-on');
-  sylView.el = el; sylView.name = name;
+  sylView.el = el; sylView.name = '';
   if(typeof photoFill === 'function') photoFill();
   /* PDF はページを絵にして出す */
   Array.prototype.forEach.call(el.querySelectorAll('.sv-pdf'), function(box){ pdfShowInto(box, box.dataset.pdf); });
+  var focusPid = String(opt.focus || '');
   if(focusPid){
     var at = el.querySelector('.sv-blk[data-pid="' + focusPid.replace(/"/g, '') + '"]');
     if(at) setTimeout(function(){ try{ at.scrollIntoView({ block:'start' }); }catch(err){} }, 60);
   }
+}
+/* ファイルの種類と大きさ（Word・Excel など） */
+function fileKindText(f){
+  var nm = String((f && f.name) || ''), ext = (/\.([A-Za-z0-9]{1,5})$/.exec(nm) || [])[1] || '';
+  var kinds = { doc:'Word', docx:'Word', xls:'Excel', xlsx:'Excel', ppt:'PowerPoint', pptx:'PowerPoint', txt:'テキスト', csv:'CSV', key:'Keynote', pages:'Pages', numbers:'Numbers', zip:'ZIP' };
+  var k = kinds[ext.toLowerCase()] || (ext ? ext.toUpperCase() : 'ファイル');
+  return k + (f && f.size ? '・' + Math.max(1, Math.round(f.size / 1024)) + 'KB' : '');
 }
 /* PDF を1ページずつ絵にする（道具は lib/pdfjs にある。読めないときは、そのまま埋めこむ） */
 var pdfjsLoading = null;

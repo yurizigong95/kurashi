@@ -363,7 +363,8 @@ function settingsAction(act, t){
   }
   if(act==='photo-list'){
     photoKeys().then(function(ks){
-      window.__photoList = ks.filter(function(k9){ return String(k9).indexOf('chimg_') !== 0; });
+      var notPhoto = attachFilePids();                     /* PDFなどのファイルは、写真の一覧に出さない */
+      window.__photoList = ks.filter(function(k9){ return String(k9).indexOf('chimg_') !== 0 && !notPhoto[k9]; });
       photoOpen = true; render();
     });
     return true;
@@ -405,7 +406,7 @@ function settingsAction(act, t){
         if(mm && (mm.photos||[]).length) mm.photos = mm.photos.filter(function(x){ return ids.indexOf(x) < 0; });
       });
       photoPick = {};
-      photoKeys().then(function(ks){ window.__photoList = ks.filter(function(k9){ return String(k9).indexOf('chimg_') !== 0; }); photoUsage().then(function(u){ window.__photoQuota = u; toast(ids.length+'枚を消しました'); commit(); }); });
+      photoKeys().then(function(ks){ var notPhoto2 = attachFilePids(); window.__photoList = ks.filter(function(k9){ return String(k9).indexOf('chimg_') !== 0 && !notPhoto2[k9]; }); photoUsage().then(function(u){ window.__photoQuota = u; toast(ids.length+'枚を消しました'); commit(); }); });
     });
     return true;
   }
@@ -448,7 +449,10 @@ function settingsAction(act, t){
     /* どこからも使われていない写真を消す */
     var used = {};
     [S.events,S.tasks,S.exams,S.shifts,S.notes].forEach(function(arr){
-      (arr||[]).forEach(function(o){ (o.photos||[]).forEach(function(pid){ used[pid]=1; }); });
+      (arr||[]).forEach(function(o){
+        (o.photos||[]).forEach(function(pid){ used[pid]=1; });
+        (o.files||[]).forEach(function(f){ if(f && f.pid) used[f.pid]=1; });     /* メモにつけたPDFなどのファイル */
+      });
     });
     Object.keys(S.memos||{}).forEach(function(k){ ((S.memos[k]||{}).photos||[]).forEach(function(pid){ used[pid]=1; }); });
     Object.keys(S.syllabus||{}).forEach(function(k){ ((S.syllabus[k]||{}).files||[]).forEach(function(f){ if(f && f.pid) used[f.pid]=1; }); });   /* 保存したシラバスの写真・PDF */
@@ -851,6 +855,13 @@ function storageBox(){
     '<p class="note">写真の大きさは、この端末に入っている写真を1枚ずつ数えた本当の合計です。写真と文字は、どちらも同期されます（設定 › 端末どうしの同期）。</p>');
 }
 /* 写真をえらんで消す */
+/* 写真ではないもの（メモのファイル・シラバスのPDF）の id */
+function attachFilePids(){
+  var o = {};
+  (S.notes || []).forEach(function(n){ ((n && n.files) || []).forEach(function(f){ if(f && f.pid) o[f.pid] = 1; }); });
+  Object.keys(S.syllabus || {}).forEach(function(k){ ((S.syllabus[k] || {}).files || []).forEach(function(f){ if(f && f.pid && f.kind === 'pdf') o[f.pid] = 1; }); });
+  return o;
+}
 function photoPicker(){
   var list = window.__photoList || [];
   if(!list.length) return section('写真をえらんで消す', null, '<div class="empty">写真がありません。</div>');
