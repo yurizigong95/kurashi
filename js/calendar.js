@@ -175,7 +175,7 @@ function evForm(){ return '<div id="evform">'+evFormBody()+'</div>'; }
 /* 入力欄だけ描き直す（画面が飛ばない） */
 function redrawForm(){
   var fm = document.getElementById('evform');
-  if(fm){ var y=window.scrollY; fm.innerHTML = evFormBody(); window.scrollTo(0,y); if(typeof twInit==='function') twInit(); }
+  if(fm){ var y=window.scrollY; fm.innerHTML = evFormBody(); window.scrollTo(0,y); if(typeof twInit==='function') twInit(); if(typeof photoFill==='function') photoFill(); }
   else render();
 }
 /* 時刻は数字で入力（時・分を直接打つ） */
@@ -759,9 +759,9 @@ function openDetail(src, id){
   if(!x) return;
   var f = findOne(src, id); var o = f ? f.obj : {};
   var k = kindOf(src);
+  /* 写真は、シートを出したあとで photoFill() が中身を入れる（この端末になければ同期から取ってくる） */
   var photos = (x.photos||[]).map(function(pid){
-    var src2=null;
-    return '<img data-pid="'+pid+'" alt="写真" data-act="memo-photo-view" data-id="'+pid+'" style="width:100%;border-radius:12px;margin-top:8px">';
+    return '<img class="dtphoto" data-pid="'+esc(pid)+'" data-miss="1" alt="写真" data-act="memo-photo-view" data-id="'+esc(pid)+'">';
   }).join('');
   var body = '<div class="dt-head" style="background:'+itemColor(x)+';color:'+itemFg(x)+'">'+
       '<div class="s2" style="color:inherit;opacity:.85">'+esc(k.name)+(x.sub&&src!=='task'?'':'')+'</div>'+
@@ -791,6 +791,7 @@ function openDetail(src, id){
   sh.querySelector('.sheet-bd').innerHTML = body;
   document.getElementById('veil').classList.add('on');
   sh.classList.add('on');
+  if(typeof photoFill === 'function') photoFill();
 }
 function closeDetail(){
   var sh = document.getElementById('detail');
@@ -917,7 +918,7 @@ function calAction(act, t){
     readEvForm();
     evDraft.photos = (evDraft.photos||[]).filter(function(x){ return x!==t.dataset.pid; });
     var fm2 = document.getElementById('evform');
-    if(fm2){ var y2=window.scrollY; fm2.innerHTML = evFormBody(); window.scrollTo(0,y2); } else render();
+    if(fm2){ var y2=window.scrollY; fm2.innerHTML = evFormBody(); window.scrollTo(0,y2); if(typeof photoFill==='function') photoFill(); } else render();
     return true;
   }
   if(act==='ev-open'){ openDetail(t.dataset.src, t.dataset.id); return true; }
@@ -1006,7 +1007,7 @@ function calAction(act, t){
   if(act==='memo-photo-view'){
     var src = null;
     photoGet(t.dataset.id).then(function(s2){
-      if(!s2) return;
+      if(!s2){ toast('この写真は、まだこの端末に届いていません（写真を入れた端末で、くらしの手帳を開くと送られます）', true); return; }
       var v = document.getElementById('viewer');
       if(v){ v.querySelector('img').src = s2; v.classList.add('on'); }
     });

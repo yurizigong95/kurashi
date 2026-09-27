@@ -243,6 +243,14 @@ function photoFill(){
       /* 同期の準備がまだなら、あとでもう一度さがす */
       var later = (typeof syncState !== 'undefined') && (syncState.connecting || (syncState.on && !photoCloud.index));
       if(later){ el.classList.add('pwait'); return; }
+      /* 予定の詳細など：消さずに「届いていない」と出す */
+      if(el.hasAttribute('data-miss')){
+        var note = document.createElement('div');
+        note.className = 'pmiss';
+        note.textContent = '📷 写真がこの端末にまだ届いていません（写真を入れた端末で、くらしの手帳を開くと送られます）';
+        if(el.parentNode) el.parentNode.replaceChild(note, el);
+        return;
+      }
       el.closest('.mphoto') && el.closest('.mphoto').remove();
     });
   });
