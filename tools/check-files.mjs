@@ -28,8 +28,21 @@ if (existsSync('study/index.html')) {
 if (existsSync('all/index.html')) {
   for (const f of ['all/index.html', 'all/sw.js', 'all/manifest.json', 'all/icon-180.png', 'all/icon-192.png', 'all/icon-512.png']) need.add(f);
 }
-// ゲーム道場（game/）も1枚もの
-if (existsSync('game/index.html')) need.add('game/index.html');
+// ゲーム道場（game/）：HTML1枚と、3Dの素材（assets3d/）
+if (existsSync('game/index.html')) {
+  need.add('game/index.html');
+  const g = readFileSync('game/index.html', 'utf8');
+  // 3Dの模型：ゲームが読みこむ一覧（STAGES）から
+  const st = g.match(/const STAGES=\{board:\[([^\]]*)\],deco:\[([^\]]*)\]\}/);
+  if (st) for (const n of (st[1] + ',' + st[2]).match(/[a-z0-9-]+/g) || []) need.add('game/assets3d/' + n + '.gltf.json');
+  else need.add('game/assets3d/（3Dの模型の一覧 STAGES が見つかりません）');
+  // 地面の細かい模様（ground-<名前>-c/c512/n/n512/h512.jpg）と、名前で書いてある素材
+  for (const m of g.matchAll(/\['(grass|sand|rock|soil|snow|dune)','uD[A-Z]'\]/g)) {
+    for (const f of ['c', 'c512', 'n', 'n512', 'h512']) need.add(`game/assets3d/ground-${m[1]}-${f}.jpg`);
+  }
+  for (const m of g.matchAll(/'(assets3d\/[^'"]+\.(?:png|jpg|json))'/g)) need.add('game/' + m[1]);
+  need.add('game/assets3d/CREDITS.md');
+}
 
 let bad = 0;
 for (const f of [...need].sort()) {
