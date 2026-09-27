@@ -393,3 +393,14 @@ nav{
 .tabrow .tg.on{background:var(--main); border-color:var(--main); color:#fff}
 header .setgo{margin-left:6px; border:1px solid var(--line); background:var(--card); border-radius:10px; font:inherit; font-size:16px; padding:3px 8px; cursor:pointer}
 header .setgo[hidden]{display:none}
+
+/* Goodnotesのノート：並べ方・フォルダごと */
+.gnsort{margin-top:8px}
+.gnhint{margin:4px 0 0; font-size:12px}
+.gngrp + .gngrp{border-top:1px solid var(--line)}
+.gnfold{display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:9px 12px; border:0; background:var(--main-l);
+  color:var(--ink); font:inherit; font-size:13.5px; font-weight:700; cursor:pointer; position:sticky; top:0; z-index:1}
+.gnfold .tw{flex:none; width:14px; color:var(--sub)}
+.gnfold .fn{flex:1; min-width:0; overflow-wrap:anywhere}
+.gnfold .fc{flex:none; font-size:12px; font-weight:400; color:var(--sub)}
+.gngrp .gnrow{border-top:1px solid var(--line)}

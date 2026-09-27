@@ -66,7 +66,7 @@ async function fresh(){
   W.__FAKE_UPLOAD = null;
   W.__FAKE_FETCH = null;
   W.__FAKE_GAS = null;
-  if(W.gn){ W.gn = { open:0, busy:'', msg:'', items:null, err:'', why:'', folder:'', q:'', pick:{}, from:'' }; }
+  if(W.gn){ W.gn = { open:0, busy:'', msg:'', items:null, err:'', why:'', folder:'', q:'', pick:{}, from:'', sort:'', closed:{} }; }
   W.mk.linkMsg = ''; W.mk.linkFails = [];
   if(W.syStop) W.syStop();
   W.__FAKE_SYNC = null;

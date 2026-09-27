@@ -16,6 +16,7 @@ function fakeGas(opt){
         { id:'g1', name:'成人看護学 第5回.pdf', size:bytes.length, updated:Date.now() - 3600000 },
         { id:'g2', name:'解剖生理 まとめ.pdf', size:bytes.length, updated:Date.now() - 86400000 }
       ];
+      if(opt.many) items = opt.many;
       if(req.q) items = items.filter(function(x){ return x.name.indexOf(req.q) >= 0; });
       return { ok:true, items:items, folderName:'GoodNotes', other:0 };
     }
@@ -98,4 +99,57 @@ test('Goodnotes：「問題をつくる」をおしても、ノートをえら�
   await until(function(){ return W.gn.open && W.gn.items && !W.gn.busy; }, 4000, '一覧が出る');
   ok(!W.mk.pv, 'まだ作らない');
   eq(aiCalls.length, 0, 'AIは使っていない');
+});
+
+test('Goodnotes：フォルダごと・名前順（第2回→第10回）・新しい順／えらんでも一覧の場所が動かない／前の橋わたしなら貼り直しを案内', async function(){
+  var now = Date.now(), many = [];
+  for(var i = 1; i <= 24; i++) many.push({ id:'a' + i, name:'解剖生理学 第' + i + '回.pdf', size:1000, updated:now - i * 60000, path:'1年後期 / 解剖生理学' });
+  many.push({ id:'b1', name:'成人看護学 第2回.pdf', size:1000, updated:now - 10, path:'1年後期 / 成人看護学' });
+  many.push({ id:'b2', name:'成人看護学 第10回.pdf', size:1000, updated:now - 5, path:'1年後期 / 成人看護学' });
+  many.push({ id:'c1', name:'メモ帳.pdf', size:1000, updated:now - 1, path:'' });
+  fakeGas({ many:many });
+  await click('tab', 'make');
+  await click('gn-open');
+  await until(function(){ return W.gn.items && !W.gn.busy; }, 4000, '一覧');
+  var folders = function(){ return $$('.gnfold .fn').map(function(e){ return e.textContent.replace('📁 ', ''); }); };
+  var names = function(){ return $$('.gnrow b').map(function(e){ return e.textContent; }); };
+  ok(actEl('gn-sort', 'folder') && actEl('gn-sort', 'folder').classList.contains('on'), 'はじめはフォルダごと');
+  eq(folders().join('|'), '1年後期 / 解剖生理学|1年後期 / 成人看護学|GoodNotes（いちばん上）', 'フォルダは名前順・いちばん上は最後');
+  var nm = names();
+  eq(nm.slice(0, 3).join(','), '解剖生理学 第1回,解剖生理学 第2回,解剖生理学 第3回', 'フォルダの中は名前順（数字の大きさで）');
+  ok(nm.indexOf('成人看護学 第2回') < nm.indexOf('成人看護学 第10回'), '第2回 → 第10回');
+  /* たたむ */
+  await click('gn-fold', '1年後期 / 解剖生理学');
+  ok(names().indexOf('解剖生理学 第1回') < 0 && /24冊/.test($('.gnfold').textContent), 'たたむと冊数だけ');
+  await click('gn-fold', '1年後期 / 解剖生理学');
+  /* 下のほうをえらんでも、一覧の見ていた場所から動かない */
+  var list = $('.gnlist');
+  ok(list.scrollHeight > list.clientHeight + 100, '一覧はスクロールできる');
+  list.scrollTop = list.scrollHeight;
+  var top0 = list.scrollTop;
+  ok(top0 > 100, '下までスクロール：' + top0);
+  var row = $('.gnrow[data-v="b2"]');
+  row.click(); await frames();
+  ok(W.gn.pick.b2, 'えらべた');
+  eq($('.gnlist').scrollTop, top0, 'えらんでも一覧の場所はそのまま');
+  ok(/1えらんだ/.test($$('.gnfold')[1].textContent), 'フォルダの見出しに、えらんだ数');
+  /* 名前順・新しい順 */
+  await click('gn-sort', 'name');
+  ok(!$('.gnfold'), '名前順はフォルダでまとめない');
+  eq(names()[0], 'メモ帳', '名前順');
+  await click('gn-sort', 'new');
+  eq(names().slice(0, 3).join(','), 'メモ帳,成人看護学 第10回,成人看護学 第2回', '新しい順');
+  ok(W.gn.pick.b2, '並べかえても、えらんだものはそのまま');
+  ok(!has('貼り直して'), '新しい橋わたしなら、貼り直しの案内は出さない');
+});
+
+test('Goodnotes：前の橋わたし（フォルダがわからない）なら名前順で出して、貼り直しを案内', async function(){
+  fakeGas();
+  await click('tab', 'make');
+  await click('gn-open');
+  await until(function(){ return W.gn.items && !W.gn.busy; }, 4000, '一覧');
+  ok(!actEl('gn-sort', 'folder'), 'フォルダごとは出さない');
+  ok(actEl('gn-sort', 'name').classList.contains('on'), 'はじめは名前順');
+  eq($$('.gnrow b').map(function(e){ return e.textContent; }).join(','), '解剖生理 まとめ,成人看護学 第5回', '名前順');
+  ok(has('フォルダごとにまとめるには') && has('貼り直して'), '貼り直しを案内');
 });

@@ -985,14 +985,14 @@ KT.test('連携＋：Discordの質問に、AIが手帳の中身をぜんぶ読�
 });
 KT.test('連携＋：Goodnotesのノート（ドライブの自動バックアップのPDF）を、もんだいメーカーに渡す（gnList・gnGet）', async function(){
   var iter = function(a){ var i = 0; return { hasNext:function(){ return i < a.length; }, next:function(){ return a[i++]; } }; };
-  var mkFolder = function(id, subs){ return { getId:function(){ return id; }, getUrl:function(){ return 'https://drive.google.com/drive/folders/' + id; }, getFolders:function(){ return iter(subs || []); } }; };
-  var sub = mkFolder('fo-sub'), root = mkFolder('fo-gn', [sub]), other = mkFolder('fo-other');
+  var mkFolder = function(id, subs, name){ return { getId:function(){ return id; }, getName:function(){ return name || id; }, getUrl:function(){ return 'https://drive.google.com/drive/folders/' + id; }, getFolders:function(){ return iter(subs || []); } }; };
+  var sub2 = mkFolder('fo-sub2', [], '解剖生理学'), sub = mkFolder('fo-sub', [sub2], '1年後期'), root = mkFolder('fo-gn', [sub], 'GoodNotes'), other = mkFolder('fo-other');
   var pdf = '%PDF-1.4 ' + new Array(300).join('page ') + '%%EOF', bytes = [];
   for(var i = 0; i < pdf.length; i++) bytes.push(pdf.charCodeAt(i) > 127 ? pdf.charCodeAt(i) - 256 : pdf.charCodeAt(i));   /* Apps Script のバイトは -128〜127 */
   var mkFile = function(id, name, parent, mime){ return { getId:function(){ return id; }, getName:function(){ return name; }, getSize:function(){ return bytes.length; },
     getMimeType:function(){ return mime || 'application/pdf'; }, getLastUpdated:function(){ return new Date(1790000000000 + id.length); },
     getParents:function(){ return iter([parent]); }, getBlob:function(){ return { getBytes:function(){ return bytes.slice(); } }; } }; };
-  var files = [mkFile('n1', '成人看護学 第5回.pdf', sub), mkFile('n22', '解剖生理.pdf', root), mkFile('secret', '家計簿.pdf', other)];
+  var files = [mkFile('n1', '成人看護学 第5回.pdf', sub), mkFile('n22', '解剖生理.pdf', root), mkFile('n333', '骨と筋肉.pdf', sub2), mkFile('secret', '家計簿.pdf', other)];
   var queries = [];
   var drive = {
     getFoldersByName:function(n){ return iter(n === 'GoodNotes' ? [root] : []); },
@@ -1007,7 +1007,10 @@ KT.test('連携＋：Goodnotesのノート（ドライブの自動バックア�
   };
   var G = await loadGas({ now:Date.now(), fetch:function(){ return res(200, {}); }, drive:drive });
   var L = G.post({ action:'gnList' });
-  ok(L.ok && L.items.length === 2, 'Goodnotesのフォルダの中のPDFだけ：' + JSON.stringify(L.items.map(function(x){ return x.name; })));
+  ok(L.ok && L.items.length === 3, 'Goodnotesのフォルダの中のPDFだけ：' + JSON.stringify(L.items.map(function(x){ return x.name; })));
+  var pathOf = function(id){ return L.items.filter(function(x){ return x.id === id; })[0].path; };
+  eq([pathOf('n22'), pathOf('n1'), pathOf('n333')].join('|'), '|1年後期|1年後期 / 解剖生理学', 'どのフォルダのノートか（Goodnotesの中の場所）');
+  eq(L.paths, 1, 'フォルダがわかる版の印');
   ok(!L.items.some(function(x){ return x.id === 'secret'; }), 'ほかのフォルダのファイルは出さない');
   ok(/mimeType = 'application\/pdf'/.test(queries[0]) && /trashed = false/.test(queries[0]), 'PDFだけ・ゴミ箱のものはのぞく');
   eq(G.post({ action:'gnList', q:"解剖' or '1'='1" }).items.length, 0, 'さがすことばの記号で、検索がこわれない');
