@@ -478,14 +478,17 @@ KT.test('総点検：何もしていないのに手帳を送り直さない・�
 (function(){
 'use strict';
 var ok = KT.ok, eq = KT.eq, J = KT.J;
-KT.test('予定の写真：詳細で見られる・入力欄を描き直しても消えない・届いていない写真は知らせる', async function(){
+KT.test('予定の写真：一覧に小さく出る・詳細で見られる・入力欄を描き直しても消えない・届いていない写真は知らせる・相手の端末でも見られる', async function(){
   var A = KT.frames().A, doc = A.document, td = A.today();
   var c = doc.createElement('canvas'); c.width = 40; c.height = 30;
   var g = c.getContext('2d'); g.fillStyle = '#c44'; g.fillRect(0, 0, 40, 30);
   var du = c.toDataURL('image/jpeg');
   await A.photoPut('ph_evdt1', du);
   A.S.events.push(J(A, { id:'ev_ph_dt1', date:td, dateEnd:'', title:'写真つきの予定', subject:'', time:'', kind:'other', memo:'', photos:['ph_evdt1', 'ph_evdt_none'], rid:'', mt:Date.now() }));
-  A.appId = 'cal'; A.render();
+  A.appId = 'cal'; A.calTab = 'cal'; A.calSel = td; A.render();
+  /* 一覧にも小さく出る（届いていない写真は出さない） */
+  await KT.until(function(){ var im = doc.querySelector('#app .evth img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '一覧に写真が小さく出る');
+  await KT.until(function(){ return !doc.querySelector('#app .evth img[data-pid="ph_evdt_none"]'); }, 4000, '届いていない写真は一覧に出さない');
   var src = A.normItems().filter(function(x){ return x.id === 'ev_ph_dt1'; })[0].src;
   A.openDetail(src, 'ev_ph_dt1');
   await KT.until(function(){ var im = doc.querySelector('#detail img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '詳細の写真が出る');
@@ -502,7 +505,14 @@ KT.test('予定の写真：詳細で見られる・入力欄を描き直して�
   await KT.until(function(){ var im = doc.querySelector('#evform img[data-pid="ph_evdt1"]'); return im && im.getAttribute('src'); }, 4000, '入力欄の写真');
   A.redrawForm();
   await KT.until(function(){ var im = doc.querySelector('#evform img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '描き直しても写真が出る');
-  A.evDraft = null; A.calTab = 'cal'; A.removeItem('events', 'ev_ph_dt1'); A.photoDel('ph_evdt1'); A.appId = 'today'; A.commit();
-  await KT.settle([A, KT.frames().B]);
+  A.evDraft = null; A.calTab = 'cal'; A.appId = 'today'; A.commit();
+  /* 相手の端末でも、一覧で見られる（写真は同期から取ってくる） */
+  var B = KT.frames().B;
+  await KT.settle([A, B]);
+  B.appId = 'cal'; B.calTab = 'cal'; B.calSel = td; B.render();
+  await KT.until(function(){ var im = B.document.querySelector('#app .evth img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 15000, '相手の一覧にも写真が出る');
+  B.appId = 'today'; B.render();
+  A.removeItem('events', 'ev_ph_dt1'); A.photoDel('ph_evdt1'); A.commit();
+  await KT.settle([A, B]);
 });
 })();

@@ -1523,3 +1523,8 @@ a.mini.pwait{opacity:.6; pointer-events:none}
 .dtphoto{display:block; width:100%; min-height:60px; border-radius:12px; margin-top:8px; background:rgba(255,255,255,.35); cursor:zoom-in}
 .dtphoto.pwait{opacity:.35}
 .pmiss{margin-top:8px; padding:10px 12px; border-radius:12px; background:var(--warnbg); color:var(--warn); font-size:.8em; line-height:1.5}
+/* 予定・課題の一覧に出す写真（小さく。押すと大きく見られる） */
+.evthumbs{display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap}
+.mphoto.evth{width:48px; height:48px; flex:none; cursor:zoom-in}
+.mphoto.evth img{border-radius:8px}
+.evmore{font-size:.74em; color:var(--sub); padding:0 4px}
