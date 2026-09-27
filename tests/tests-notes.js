@@ -173,6 +173,7 @@ KT.test('メモ：授業の画面から作ったり開いたりしたメモは�
 
 KT.test('メモ：「ファイル」に保存したPDF・Word なども、写真といっしょにつけられて、アプリの中で見られる', async function(){
   var A = KT.frames().A, doc = A.document, now = Date.now();
+  KT.freshWrites([A, KT.frames().B]);
   A.S.notes.push(J(A, { id:'nt_att', title:'資料つきメモ', body:'', pinned:0, checks:[], photos:[], link:null, ct:now, mt:now }));
   openNotes(A);
   act(A, '[data-act="note-open"][data-id="nt_att"]');
