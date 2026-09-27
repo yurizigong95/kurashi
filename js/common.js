@@ -239,7 +239,12 @@ function photoFill(){
     el.dataset.wait = '1';
     photoGet(id).then(function(src){
       delete el.dataset.wait;
-      if(src){ el.src = src; el.dataset.done = '1'; return; }
+      if(src){
+        el.src = src; el.dataset.done = '1';
+        var shown = el.closest('.mphoto');
+        if(shown && shown.dataset.gone){ shown.style.display = ''; delete shown.dataset.gone; }
+        return;
+      }
       /* 同期の準備がまだなら、あとでもう一度さがす */
       var later = (typeof syncState !== 'undefined') && (syncState.connecting || (syncState.on && !photoCloud.index));
       if(later){ el.classList.add('pwait'); return; }
@@ -251,7 +256,9 @@ function photoFill(){
         if(el.parentNode) el.parentNode.replaceChild(note, el);
         return;
       }
-      el.closest('.mphoto') && el.closest('.mphoto').remove();
+      /* まだ届いていないだけのこともあるので、消さずにかくす。写真の目次が変わったら（onPhotoIdx）、もう一度さがして出す */
+      var box = el.closest('.mphoto');
+      if(box){ box.style.display = 'none'; box.dataset.gone = '1'; }
     });
   });
 }

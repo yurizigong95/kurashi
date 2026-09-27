@@ -480,6 +480,7 @@ KT.test('総点検：何もしていないのに手帳を送り直さない・�
 var ok = KT.ok, eq = KT.eq, J = KT.J;
 KT.test('予定の写真：一覧に小さく出る・詳細で見られる・入力欄を描き直しても消えない・届いていない写真は知らせる・相手の端末でも見られる', async function(){
   var A = KT.frames().A, doc = A.document, td = A.today();
+  KT.freshWrites([A, KT.frames().B]);
   var c = doc.createElement('canvas'); c.width = 40; c.height = 30;
   var g = c.getContext('2d'); g.fillStyle = '#c44'; g.fillRect(0, 0, 40, 30);
   var du = c.toDataURL('image/jpeg');
@@ -488,7 +489,7 @@ KT.test('予定の写真：一覧に小さく出る・詳細で見られる・�
   A.appId = 'cal'; A.calTab = 'cal'; A.calSel = td; A.render();
   /* 一覧にも小さく出る（届いていない写真は出さない） */
   await KT.until(function(){ var im = doc.querySelector('#app .evth img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '一覧に写真が小さく出る');
-  await KT.until(function(){ return !doc.querySelector('#app .evth img[data-pid="ph_evdt_none"]'); }, 4000, '届いていない写真は一覧に出さない');
+  await KT.until(function(){ var im = doc.querySelector('#app .evth img[data-pid="ph_evdt_none"]'); return !im || im.closest('.mphoto').style.display === 'none'; }, 4000, '届いていない写真は一覧に出さない');
   var src = A.normItems().filter(function(x){ return x.id === 'ev_ph_dt1'; })[0].src;
   A.openDetail(src, 'ev_ph_dt1');
   await KT.until(function(){ var im = doc.querySelector('#detail img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '詳細の写真が出る');
@@ -513,6 +514,34 @@ KT.test('予定の写真：一覧に小さく出る・詳細で見られる・�
   await KT.until(function(){ var im = B.document.querySelector('#app .evth img[data-pid="ph_evdt1"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 15000, '相手の一覧にも写真が出る');
   B.appId = 'today'; B.render();
   A.removeItem('events', 'ev_ph_dt1'); A.photoDel('ph_evdt1'); A.commit();
+  await KT.settle([A, B]);
+});
+})();
+
+/* 相手の端末が、写真が届く前に一覧を出していても、届いたら出る（前は消えたままだった） */
+(function(){
+'use strict';
+var ok = KT.ok, J = KT.J;
+KT.test('予定の写真：相手の端末で写真が届く前に一覧を出していても、届いたら（描き直さなくても）出る', async function(){
+  var A = KT.frames().A, B = KT.frames().B, td = A.today();
+  KT.freshWrites([A, B]);                                       /* 書きこみすぎ防止の数えを、はじめから */
+  await KT.settle([A, B]);
+  var c = A.document.createElement('canvas'); c.width = 30; c.height = 20; c.getContext('2d').fillRect(0, 0, 30, 20);
+  A.photoCloud.busy = true;                                   /* 写真を送るのを、いったん止める */
+  try{
+    await A.photoPut('ph_race1', c.toDataURL('image/jpeg'));
+    A.S.events.push(J(A, { id:'ev_race1', date:td, dateEnd:'', title:'写真あとから', subject:'', time:'', kind:'other', memo:'', photos:['ph_race1'], rid:'', mt:Date.now() }));
+    A.commit();
+    await KT.until(function(){ return B.S.events.some(function(e){ return e.id === 'ev_race1'; }); }, 15000, '予定が相手に届く');
+    B.appId = 'cal'; B.calTab = 'cal'; B.calSel = td; B.render();
+    await KT.until(function(){ var im = B.document.querySelector('#app .evth img[data-pid="ph_race1"]'); return im && im.closest('.mphoto').style.display === 'none'; }, 5000, 'まだ届いていないので、かくれている');
+  }finally{
+    A.photoCloud.busy = false;
+  }
+  A.photoCloudQueue('ph_race1');                                /* 写真を送る */
+  await KT.until(function(){ var im = B.document.querySelector('#app .evth img[data-pid="ph_race1"]'); return im && /^data:image\//.test(im.getAttribute('src') || '') && im.closest('.mphoto').style.display !== 'none'; }, 20000, '届いたら出る');
+  B.appId = 'today'; B.render();
+  A.removeItem('events', 'ev_race1'); A.photoDel('ph_race1'); A.commit();
   await KT.settle([A, B]);
 });
 })();

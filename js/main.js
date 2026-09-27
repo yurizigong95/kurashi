@@ -164,7 +164,9 @@ window.addEventListener('resize', movePills);
 /* ============================== イベント ============================== */
 document.getElementById('apps').addEventListener('click', function(e){
   var b = e.target.closest('button[data-app]'); if(!b) return;
-  appId = b.dataset.app; notice = null; closePicker(); render(); window.scrollTo(0,0);
+  appId = b.dataset.app; notice = null; closePicker();
+  if(typeof noteFrom !== 'undefined') noteFrom = null;     /* タブで動いたら、メモの「もどる先」は忘れる */
+  render(); window.scrollTo(0,0);
 });
 document.getElementById('nav').addEventListener('click', function(e){
   var b = e.target.closest('button[data-tab]'); if(!b) return;

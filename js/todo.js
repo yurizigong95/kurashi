@@ -73,6 +73,46 @@ function viewTodo(){
 
 /* ============================== メモ ============================== */
 var noteQ = '', noteView = '', noteKindF = '', noteKindEdit = 0;
+/* メモをひらく前にいた画面（授業の画面などからメモを作ったとき、もどる先） */
+var noteFrom = null;
+function noteFromHere(){
+  if(appId === 'notes') return null;
+  return { app:appId, courseView:courseView, courseFrom:(typeof courseFrom !== 'undefined' ? courseFrom : ''), courseTemp:(typeof courseTemp !== 'undefined' ? courseTemp : false),
+    todayTab:todayTab, calTab:calTab, payTab:payTab, todoTab:todoTab, temp:(typeof c9TempApp !== 'undefined' ? c9TempApp : ''), y:window.scrollY || 0 };
+}
+function noteFromName(f){
+  if(!f) return '';
+  if(f.app === 'course' && f.courseView) return f.courseView;
+  return (typeof TITLES !== 'undefined' && TITLES[f.app]) || 'もとの画面';
+}
+/* メモの画面をひらく（メモのタブをかくしていても、ひらけるように） */
+function noteGo(id){
+  noteFrom = noteFromHere();
+  noteView = id; noteKindEdit = 0; appId = 'notes';
+  if(typeof c9TempApp !== 'undefined') c9TempApp = APPS_VISIBLE().some(function(a){ return a[0] === 'notes'; }) ? '' : 'notes';
+}
+/* もとの画面にもどる。もどれたら true */
+function noteBackToFrom(){
+  var f = noteFrom;
+  noteFrom = null;
+  if(!f) return false;
+  noteView = '';
+  appId = f.app; courseView = f.courseView || '';
+  if(typeof courseFrom !== 'undefined') courseFrom = f.courseFrom || '';
+  if(typeof courseTemp !== 'undefined') courseTemp = !!f.courseTemp;
+  todayTab = f.todayTab || todayTab; calTab = f.calTab || calTab; payTab = f.payTab || payTab; todoTab = f.todoTab || todoTab;
+  if(typeof c9TempApp !== 'undefined') c9TempApp = f.temp || '';
+  render();
+  var y = f.y || 0;
+  setTimeout(function(){ try{ window.scrollTo(0, y); }catch(e){} }, 0);
+  return true;
+}
+/* メモにつけたファイル（PDF・Word など。写真は photos） */
+var NOTE_FILE_MAX = 15 * 1024 * 1024;
+function noteFiles(n){ return noteArr(n && n.files).filter(function(f){ return f && f.pid; }); }
+function noteDocFiles(n){
+  return noteArr(n.photos).filter(Boolean).map(function(pid, i){ return { pid:pid, name:'写真' + (i + 1), kind:'photo' }; }).concat(noteFiles(n));
+}
 /* 前の版や、ほかの機能から入ったメモでも開けるように、形をそろえる */
 function noteArr(v){ return Array.isArray(v) ? v : []; }
 function noteStr(v){ return v == null ? '' : String(v); }
@@ -98,7 +138,7 @@ function noteKindTag(k){
 
 function noteRow(n){
   var checks = noteArr(n.checks), dn = checks.filter(function(c){ return c && c.done; }).length;
-  var body = noteStr(n.body), k = noteKindOf(n), photos = noteArr(n.photos);
+  var body = noteStr(n.body), k = noteKindOf(n), photos = noteArr(n.photos), files = noteFiles(n);
   return '<div class="ncard' + (n.pinned ? ' pin' : '') + (n.conflict ? ' conflict' : '') + (k ? ' haskind' : '') + '"' +
       (k ? ' style="--kc:' + esc(k.color || '#8A8A96') + '"' : '') + ' data-act="note-open" data-id="' + esc(n.id) + '" role="button" tabindex="0">' +
     '<div class="ct">' + noteKindTag(k) + (n.pinned ? '📌 ' : '') + (n.conflict ? '⚠ ' : '') + esc(noteStr(n.title) || '（無題）') + '</div>' +
@@ -107,6 +147,7 @@ function noteRow(n){
       (n.link ? '<span class="b cat">' + esc(n.link.type === 'course' ? n.link.id : '予定') + '</span> ' : '') +
       (checks.length ? '<span class="b cr">☑ ' + dn + '/' + checks.length + '</span> ' : '') +
       (photos.length ? '<span class="b cr">📷 ' + photos.length + '</span> ' : '') +
+      (files.length ? '<span class="b cr">📎 ' + files.length + '</span> ' : '') +
       '更新 ' + new Date(n.mt || 0).toLocaleDateString('ja-JP') + '</div></div>';
 }
 function viewNotes(){
@@ -146,8 +187,16 @@ function noteDetail(n){
     return '<div class="mphoto"><img data-pid="' + esc(id) + '" alt="写真" data-act="memo-photo-view" data-id="' + esc(id) + '">' +
       '<button class="mini" data-act="note-photo-del" data-id="' + esc(n.id) + '" data-pid="' + esc(id) + '">×</button></div>';
   }).join('');
+  var files = noteFiles(n).map(function(f){
+    var ic = f.kind === 'pdf' ? '📄' : '📎';
+    return '<div class="nfile"><button type="button" class="nfile-open" data-act="note-file-view" data-id="' + esc(n.id) + '" data-pid="' + esc(f.pid) + '">' +
+        '<span class="ic" aria-hidden="true">' + ic + '</span><span class="grow"><span class="t">' + esc(f.name || 'ファイル') + '</span>' +
+        '<span class="s2">' + esc(typeof fileKindText === 'function' ? fileKindText(f) : '') + '・押すと見られます</span></span></button>' +
+      '<button class="mini" data-act="note-file-del" data-id="' + esc(n.id) + '" data-pid="' + esc(f.pid) + '" aria-label="消す">×</button></div>';
+  }).join('');
   var courses = termCourses();
-  return '<button class="mini" data-act="note-back" style="margin-bottom:10px">‹ メモ一覧</button>' +
+  var back = noteFrom ? '‹ ' + noteFromName(noteFrom) + 'にもどる' : '‹ メモ一覧';
+  return '<button class="mini" data-act="note-back" style="margin-bottom:10px">' + esc(back) + '</button>' +
     '<div class="box">' +
     '<div class="field"><input id="nt_title" value="' + esc(noteStr(n.title)) + '" placeholder="タイトル" style="font-weight:700;font-size:1.05em"></div>' +
     '<label class="f">種類</label>' +
@@ -177,9 +226,10 @@ function noteDetail(n){
         ? '<option value="' + esc(n.link.type + ':' + n.link.id) + '" selected>' + esc(n.link.type === 'course' ? n.link.id : '予定') + '</option>' : '') +
     '</select>' +
     (photos ? '<div class="mphotos" style="margin-bottom:10px">' + photos + '</div>' : '') +
+    (files ? '<div class="nfiles">' + files + '</div>' : '') +
     '<div class="pair">' +
       '<button class="btn" data-act="note-save" data-id="' + esc(n.id) + '">保存</button>' +
-      '<button class="btn ghost" data-act="note-photo" data-id="' + esc(n.id) + '">写真</button>' +
+      '<button class="btn ghost" data-act="note-attach" data-id="' + esc(n.id) + '">📎 写真・ファイル</button>' +
       '<button class="btn ghost" data-act="note-pin" data-id="' + esc(n.id) + '" style="flex:0 0 auto">' + (n.pinned ? '📌 解除' : '📌') + '</button>' +
       '<button class="btn ghost" data-act="share-note" data-id="' + esc(n.id) + '" style="flex:0 0 auto">共有</button></div>' +
     '<button class="btn ghost" style="margin-top:8px;color:var(--rakuten)" data-act="note-del" data-id="' + esc(n.id) + '">このメモを削除</button>' +
@@ -283,9 +333,9 @@ function todoAction(act, t){
     var n = { id:uid('nt'), title:'', body:'', pinned:0, checks:[], photos:[], link:null, ct:Date.now(), mt:Date.now() };
     if(t.dataset.linkType) n.link = { type:t.dataset.linkType, id:t.dataset.linkId };
     if(noteKindF && noteKindF !== '-' && noteKindOf({ kind:noteKindF })) n.kind = noteKindF;   /* しぼっている種類で作る */
-    S.notes.push(n); noteView = n.id; noteKindEdit = 0; appId='notes'; commit(); window.scrollTo(0,0); return true;
+    S.notes.push(n); noteGo(n.id); commit(); window.scrollTo(0,0); return true;
   }
-  if(act==='note-open'){ noteView = t.dataset.id; noteKindEdit = 0; appId='notes'; render(); window.scrollTo(0,0); return true; }
+  if(act==='note-open'){ noteGo(t.dataset.id); render(); window.scrollTo(0,0); return true; }
   if(act==='note-back'){
     clearTimeout(noteKeepT);
     var cur=noteOf(noteView);
@@ -295,6 +345,7 @@ function todoAction(act, t){
       if(noteEmpty(cur)){ removeItem('notes', cur.id); persist(); pushRemote(); }                 /* 何も書かずにもどったメモは、のこさない */
       else if(cur.title!==bt || cur.body!==bb || JSON.stringify(cur.link||null)!==bl){ cur.mt=Date.now(); persist(); pushRemote(); }   /* 見ただけなら、直した時刻は変えない */
     }
+    if(noteBackToFrom()) return true;              /* 授業の画面などから来たときは、そこへもどる */
     noteView=''; render(); return true;
   }
   if(act==='note-kind'){
@@ -335,7 +386,12 @@ function todoAction(act, t){
   }
   if(act==='note-save'){ var n1=noteOf(t.dataset.id); if(!n1) return true; readNoteForm(n1); n1.mt=Date.now(); toast('保存しました'); commit(); return true; }
   if(act==='note-pin'){ var n2=noteOf(t.dataset.id); if(!n2) return true; readNoteForm(n2); n2.pinned=n2.pinned?0:1; n2.mt=Date.now(); commit(); return true; }
-  if(act==='note-del'){ removeWithUndo('notes', t.dataset.id, 'メモを削除しました'); noteView=''; commit(); return true; }
+  if(act==='note-del'){
+    removeWithUndo('notes', t.dataset.id, 'メモを削除しました');
+    persist(); pushRemote();
+    if(noteBackToFrom()) return true;
+    noteView=''; commit(); return true;
+  }
   if(act==='note-check-add'){
     var n3=noteOf(t.dataset.id), txt=val('nt_check').trim(); if(!n3||!txt) return true;
     readNoteForm(n3); n3.checks=(n3.checks||[]).concat([{text:txt,done:0}]); n3.mt=Date.now(); commit(); return true;
@@ -343,6 +399,32 @@ function todoAction(act, t){
   if(act==='note-check'){ var n4=noteOf(t.dataset.id); if(!n4) return true; readNoteForm(n4); var i4=toNum(t.dataset.i); if(n4.checks[i4]){ n4.checks[i4].done=n4.checks[i4].done?0:1; n4.mt=Date.now(); commit(); } return true; }
   if(act==='note-check-del'){ var n5=noteOf(t.dataset.id); if(!n5) return true; readNoteForm(n5); n5.checks.splice(toNum(t.dataset.i),1); n5.mt=Date.now(); commit(); return true; }
   if(act==='note-photo'){ var n6=noteOf(t.dataset.id); if(n6) readNoteForm(n6); memoTarget = 'note:'+t.dataset.id; var inp=document.getElementById('memoimg'); if(inp) inp.click(); return true; }
+  /* 写真・ファイルをつける（「ファイル」に保存したPDF・Word なども） */
+  if(act==='note-attach'){
+    var na=noteOf(t.dataset.id); if(!na) return true;
+    readNoteForm(na); persist();
+    var nid = na.id;
+    var inpA = document.createElement('input');
+    inpA.type = 'file'; inpA.multiple = true;                /* 種類をしぼらない（しぼると「ファイル」のPDFがえらべない） */
+    inpA.onchange = function(){ noteAttachFiles(nid, Array.prototype.slice.call(inpA.files || [], 0, 12)); };
+    inpA.click();
+    return true;
+  }
+  if(act==='note-file-view'){
+    var nv=noteOf(t.dataset.id); if(!nv) return true;
+    readNoteForm(nv);
+    docViewOpen({ label:'メモの写真・ファイル', title:noteStr(nv.title) || '（無題）', files:noteDocFiles(nv), focus:t.dataset.pid });
+    return true;
+  }
+  if(act==='note-file-del'){
+    var nd=noteOf(t.dataset.id); if(!nd) return true;
+    var fd = noteFiles(nd).filter(function(f){ return f.pid === t.dataset.pid; })[0];
+    if(!confirm('「' + ((fd && fd.name) || 'ファイル') + '」を外しますか？')) return true;
+    readNoteForm(nd);
+    nd.files = noteFiles(nd).filter(function(f){ return f.pid !== t.dataset.pid; });
+    photoDel(t.dataset.pid);
+    nd.mt = Date.now(); toast('外しました'); commit(); return true;
+  }
   if(act==='note-photo-del'){
     var n7=noteOf(t.dataset.id); if(!n7) return true; readNoteForm(n7);
     n7.photos=(n7.photos||[]).filter(function(x){ return x!==t.dataset.pid; });
@@ -350,4 +432,37 @@ function todoAction(act, t){
     n7.mt=Date.now(); commit(); return true;
   }
   return false;
+}
+
+/* えらんだ写真・ファイルをメモにつける（写真は小さくして photos へ、PDF などは files へ） */
+async function noteAttachFiles(nid, list){
+  var okN = 0, ng = [];
+  for(var i = 0; i < list.length; i++){
+    var f = list[i], nm = String(f.name || ''), type = String(f.type || '');
+    var isImg = /^image\//i.test(type) || /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(nm);
+    var isPdf = /pdf/i.test(type) || /\.pdf$/i.test(nm);
+    try{
+      var n = noteOf(nid); if(!n) break;
+      var pid;
+      if(isImg && !isPdf){
+        var du = null;
+        try{ du = await resizeImage(f, 1800, 0.82); }catch(e){ du = null; }
+        if(du){
+          pid = uid('mi'); await photoPut(pid, du);
+          n.photos = noteArr(n.photos).concat([pid]); n.mt = Date.now(); okN++;
+          continue;
+        }
+      }
+      if(f.size > NOTE_FILE_MAX) throw new Error('大きすぎます（' + Math.round(NOTE_FILE_MAX / 1048576) + 'MBまで）');
+      var data = await new Promise(function(res, rej){ var r = new FileReader(); r.onload = function(){ res(r.result); }; r.onerror = function(){ rej(new Error('読めませんでした')); }; r.readAsDataURL(f); });
+      if(isPdf) data = String(data).replace(/^data:[^;,]*/, 'data:application/pdf');
+      pid = uid('nf'); await photoPut(pid, data);
+      n = noteOf(nid); if(!n) break;
+      n.files = noteFiles(n).concat([{ pid:pid, name:nm.slice(0, 120) || (isPdf ? 'ファイル.pdf' : 'ファイル'), kind:isPdf ? 'pdf' : 'file', size:f.size || 0, type:type.slice(0, 80) }]);
+      n.mt = Date.now(); okN++;
+    }catch(e){ ng.push((nm || 'ファイル') + '：' + (e.message || e)); }
+  }
+  if(okN) toast(okN + 'つつけました' + (ng.length ? '（' + ng.join('／') + '）' : ''));
+  else if(ng.length) toast('つけられませんでした：' + ng.join('／'), true);
+  commit();
 }

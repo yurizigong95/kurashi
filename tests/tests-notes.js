@@ -132,4 +132,94 @@ KT.test('メモ：見ただけでは更新時刻が変わらない・何も書�
   A.removeItem('notes', 'nk_e'); A.removeItem('notes', id); A.commit();
 });
 
+
+KT.test('メモ：授業の画面から作ったり開いたりしたメモは、もどると授業の画面にもどる（メモの一覧からなら一覧へ）', async function(){
+  var A = KT.frames().A, doc = A.document, name = A.termCourses()[0].name;
+  A.appId = 'course'; A.courseView = name; A.courseFrom = ''; A.render();
+  act(A, '[data-act="note-new"][data-link-type="course"]');
+  eq(A.appId, 'notes', 'メモの画面');
+  var back = doc.querySelector('[data-act="note-back"]');
+  ok(back && back.textContent.indexOf(name) >= 0 && /にもどる/.test(back.textContent), 'もどるボタンに授業の名前：' + back.textContent);
+  doc.getElementById('nt_title').value = '授業から作ったメモ';
+  act(A, '[data-act="note-back"]');
+  eq(A.appId, 'course', '授業の画面にもどる');
+  eq(A.courseView, name, '同じ授業');
+  var made = A.S.notes.filter(function(n){ return n.title === '授業から作ったメモ'; })[0];
+  ok(made && made.link && made.link.id === name, 'メモは授業に紐づいて保存');
+  /* 授業の画面の一覧から開いたときも */
+  act(A, '#app [data-act="note-open"][data-id="' + made.id + '"]');
+  eq(A.noteView, made.id, 'メモを開く');
+  act(A, '[data-act="note-back"]');
+  ok(A.appId === 'course' && A.courseView === name, 'もう一度もどっても授業の画面');
+  /* 何も書かずにもどったメモは、のこさずに授業の画面へ */
+  var n0 = A.S.notes.length;
+  act(A, '[data-act="note-new"][data-link-type="course"]');
+  act(A, '[data-act="note-back"]');
+  ok(A.appId === 'course' && A.S.notes.length === n0, '空のメモはのこさない');
+  /* 削除しても授業の画面へ */
+  act(A, '#app [data-act="note-open"][data-id="' + made.id + '"]');
+  act(A, '[data-act="note-del"]');
+  ok(A.appId === 'course' && A.courseView === name, '削除したあとも授業の画面');
+  /* メモの一覧から開いたときは一覧へ */
+  var now = Date.now();
+  A.S.notes.push(J(A, { id:'nt_lst', title:'一覧のメモ', body:'', pinned:0, checks:[], photos:[], link:null, ct:now, mt:now }));
+  openNotes(A);
+  act(A, '[data-act="note-open"][data-id="nt_lst"]');
+  ok(/メモ一覧/.test(doc.querySelector('[data-act="note-back"]').textContent), '一覧から来たら「メモ一覧」');
+  act(A, '[data-act="note-back"]');
+  ok(A.appId === 'notes' && !A.noteView, 'メモの一覧にもどる');
+  A.removeItem('notes', 'nt_lst'); A.appId = 'today'; A.courseView = ''; A.commit();
+});
+
+KT.test('メモ：「ファイル」に保存したPDF・Word なども、写真といっしょにつけられて、アプリの中で見られる', async function(){
+  var A = KT.frames().A, doc = A.document, now = Date.now();
+  KT.freshWrites([A, KT.frames().B]);
+  A.S.notes.push(J(A, { id:'nt_att', title:'資料つきメモ', body:'', pinned:0, checks:[], photos:[], link:null, ct:now, mt:now }));
+  openNotes(A);
+  act(A, '[data-act="note-open"][data-id="nt_att"]');
+  var picked = null, realClick = A.HTMLInputElement.prototype.click;
+  A.HTMLInputElement.prototype.click = function(){ if(this.type === 'file'){ picked = this; return; } return realClick.call(this); };
+  try{ act(A, '[data-act="note-attach"]'); }finally{ A.HTMLInputElement.prototype.click = realClick; }
+  ok(picked && !picked.accept && picked.multiple, '種類をしぼらない（PDFもえらべる）・いくつでも');
+  var c = doc.createElement('canvas'); c.width = 40; c.height = 30; c.getContext('2d').fillRect(0, 0, 40, 30);
+  var jpg = await new Promise(function(r){ c.toBlob(r, 'image/jpeg'); });
+  var pdf = '%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n' +
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n' +
+    '4 0 obj << /Length 40 >> stream\nBT /F1 18 Tf 20 40 Td (Orientation) Tj ET\nendstream endobj\n5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n';
+  var dt = new A.DataTransfer();
+  dt.items.add(new A.File([jpg], '板書.jpg', { type:'image/jpeg' }));
+  dt.items.add(new A.File([pdf], '授業オリエンテーション.pdf', { type:'application/pdf' }));
+  dt.items.add(new A.File(['レポートの下書き'], 'レポート.docx', { type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+  picked.files = dt.files;
+  await picked.onchange();
+  await KT.until(function(){ var n = A.S.notes.filter(function(x){ return x.id === 'nt_att'; })[0]; return n && (n.files || []).length === 2 && (n.photos || []).length === 1; }, 5000, '写真1枚・ファイル2つ');
+  var n = A.S.notes.filter(function(x){ return x.id === 'nt_att'; })[0];
+  eq(n.files.map(function(f){ return f.kind + ':' + f.name; }).join(','), 'pdf:授業オリエンテーション.pdf,file:レポート.docx', 'ファイルの種類と名前');
+  ok(/^data:application\/pdf;base64,/.test(await A.photoGet(n.files[0].pid)), 'PDFの中身をしまう');
+  A.render();
+  eq(doc.querySelectorAll('.nfile').length, 2, 'ファイルが出る');
+  ok(/Word/.test(doc.querySelectorAll('.nfile')[1].textContent), 'Word とわかる');
+  /* PDF を押すと、アプリの中でページが出る */
+  act(A, '.nfile-open[data-pid="' + n.files[0].pid + '"]');
+  var sv = doc.getElementById('sylview');
+  ok(sv && /資料つきメモ/.test(sv.textContent), '見る画面');
+  await KT.until(function(){ return sv.querySelectorAll('canvas.sv-page').length === 1; }, 15000, 'PDFのページ');
+  await KT.until(function(){ var a = sv.querySelector('.sv-file a[data-pidlink="' + n.files[1].pid + '"]'); return a && /^blob:/.test(a.getAttribute('href') || ''); }, 4000, 'Word はひらくボタン');
+  ok(sv.querySelector('.sv-img[data-pid="' + n.photos[0] + '"]'), '写真もいっしょに');
+  sv.querySelector('[data-sv="close"]').click();
+  /* 迷子の写真のそうじで消されない・写真の一覧には出さない */
+  var fp = A.attachFilePids();
+  ok(fp[n.files[0].pid] && fp[n.files[1].pid], 'ファイルは写真あつかいしない');
+  eq(A.noteRow(n).indexOf('📎 2') >= 0, true, '一覧に📎の数');
+  /* 外す */
+  var realConfirm = A.confirm; A.confirm = function(){ return true; };
+  try{ act(A, '[data-act="note-file-del"][data-pid="' + n.files[1].pid + '"]'); }finally{ A.confirm = realConfirm; }
+  eq(A.S.notes.filter(function(x){ return x.id === 'nt_att'; })[0].files.length, 1, '外す');
+  await KT.settle([A, KT.frames().B]);
+  var nb = KT.frames().B.S.notes.filter(function(x){ return x.id === 'nt_att'; })[0];
+  ok(nb && (nb.files || []).length === 1 && nb.files[0].kind === 'pdf', 'ほかの端末にも届く');
+  openNotes(A);
+  A.removeItem('notes', 'nt_att'); A.appId = 'today'; A.commit();
+});
+
 })();

@@ -933,7 +933,8 @@ test('Google：橋わたしv3（コードでつなぐ・写真・メール・朝
 
 /* テストは何時間ぶんの操作を数分で行うので、重いテストの前に「書きこみすぎ防止」の数え方を始めからにする
    （本当にくり返し書きこむこわれ方は、settle の「落ちつかない」で見つかる） */
-function freshWrites(ws){ ws.forEach(function(w){ w.syncState.writes = []; }); }
+/* 書きこみすぎ防止の数えと休み（テストは本物よりずっと速く書くので、テストのはじめに消す） */
+function freshWrites(ws){ ws.forEach(function(w){ w.syncState.writes = []; w.syncState.pauseUntil = 0; if(w.photoWrites){ w.photoWrites.list = []; w.photoWrites.pauseUntil = 0; } }); }
 
 test('Google連携v3：コードでつなぐ・メールとAIの結果・課題の候補・スプレッドシート（アプリ）', async function(){
   var A = frames.A, B = frames.B, doc = A.document;
@@ -1672,7 +1673,7 @@ var KT = window.KT = {
   ok:ok, eq:eq, J:J, sleep:sleep, until:until, settle:settle, clean:clean, openFrame:openFrame,
   frames:function(){ return frames; }, fs:function(){ return FS; },
   gasState:gasState, aiCalls:aiCalls, gasCalls:gasCalls,
-  freshWrites:function(ws){ ws.forEach(function(w){ w.syncState.writes = []; }); },
+  freshWrites:freshWrites,
   ai:[], gas:[], api:[]
 };
 
