@@ -206,12 +206,26 @@ cpTest('授業＋：成績の見込み（シラバスの割合＋自分の点 �
   A.touch('attendLog'); A.courseView = ''; A.commit();
 });
 
-cpTest('授業＋：シラバスを保存（文章・写真・PDF）して、そこからAIで読む（授業計画・先生・教科書）', async function(){
+/* 2ページの小さなPDF（ページの絵にできるか確かめる） */
+function tinyPdf(){
+  return '%PDF-1.4\n' +
+    '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n' +
+    '2 0 obj << /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >> endobj\n' +
+    '3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n' +
+    '4 0 obj << /Length 42 >> stream\nBT /F1 18 Tf 20 40 Td (Syllabus 1) Tj ET\nendstream endobj\n' +
+    '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n' +
+    '6 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 7 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n' +
+    '7 0 obj << /Length 42 >> stream\nBT /F1 18 Tf 20 40 Td (Syllabus 2) Tj ET\nendstream endobj\n' +
+    'trailer << /Root 1 0 R >>\n%%EOF\n';
+}
+cpTest('授業＋：シラバスを保存（文章・写真・PDF）して、1回おすだけでアプリの中で見られる（AIの読み取りはなし）', async function(){
   var A = KT.frames().A, B = KT.frames().B, doc = A.document, name = '看護応用統計学';
+  var ai0 = sylReqs.length;
   A.appId = 'course'; A.courseView = name; A.render();
-  ok(!doc.getElementById('sy_url') && !doc.querySelector('[data-act="cp-syl-url"]') && !doc.querySelector('[data-act="cp-syl-files"]'), 'URLの欄はもうない');
-  ok(doc.getElementById('sy_text') && doc.querySelector('[data-act="syl-file-add"]') && doc.querySelector('[data-act="syl-ai"]'), '文章・写真とPDF・AIのボタン');
-  /* 文章を保存 */
+  ok(!doc.getElementById('sy_url') && !doc.querySelector('[data-act="cp-syl-url"]') && !doc.querySelector('[data-act="cp-syl-files"]'), 'URLの欄はない');
+  ok(!doc.querySelector('[data-act="syl-ai"]') && !/AIで読み取る/.test(doc.getElementById('app').textContent), 'AIで読み取るボタンはない');
+  ok(doc.getElementById('sy_text') && doc.querySelector('[data-act="syl-file-add"]'), '文章・写真とPDFを足すボタン');
+  /* 文章を保存（ボタン） */
   doc.getElementById('sy_text').value = '授業の目的：統計の基礎';
   doc.querySelector('[data-act="syl-text-save"]').click();
   eq(A.S.syllabus[name].text, '授業の目的：統計の基礎', '文章を保存');
@@ -219,8 +233,12 @@ cpTest('授業＋：シラバスを保存（文章・写真・PDF）して、そ
   doc.getElementById('sy_text').value = '授業の目的：統計の基礎\n成績評価：期末50%';
   doc.querySelector('[data-act="att-more"][data-name="' + name + '"]').click();
   eq(doc.getElementById('sy_text').value, '授業の目的：統計の基礎\n成績評価：期末50%', '書きかけが残る');
-  eq(A.S.syllabus[name].text, '授業の目的：統計の基礎', 'まだ保存はしない');
   doc.querySelector('[data-act="att-more"][data-name="' + name + '"]').click();
+  /* 欄をはなれたら、ボタンをおさなくても保存 */
+  var ta = doc.getElementById('sy_text');
+  ta.value = '授業の目的：統計の基礎\n成績評価：期末50%';
+  ta.dispatchEvent(new A.Event('change', { bubbles:true }));
+  eq(A.S.syllabus[name].text, '授業の目的：統計の基礎\n成績評価：期末50%', '書きかえたら自動で保存');
   /* 写真とPDFを足す（ファイルをえらぶ画面のかわりに、ここで渡す） */
   var picked = null, realClick = A.HTMLInputElement.prototype.click;
   A.HTMLInputElement.prototype.click = function(){ if(this.type === 'file'){ picked = this; return; } return realClick.call(this); };
@@ -228,77 +246,128 @@ cpTest('授業＋：シラバスを保存（文章・写真・PDF）して、そ
   ok(picked && /pdf/.test(picked.accept) && /image/.test(picked.accept), '写真とPDFをえらべる');
   var dt = new A.DataTransfer();
   dt.items.add(await shiftFile(A));
-  dt.items.add(new A.File(['%PDF-1.4 シラバス'], 'syllabus.pdf', { type:'application/pdf' }));
+  dt.items.add(new A.File([tinyPdf()], 'syllabus.pdf', { type:'application/pdf' }));
   picked.files = dt.files;
   await picked.onchange();
   var fs = A.S.syllabus[name].files || [];
   eq(fs.map(function(f){ return f.kind; }).join(','), 'photo,pdf', '写真とPDFを保存');
   ok(fs[1].name === 'syllabus.pdf' && fs[1].size > 0, 'PDFの名前と大きさ');
-  eq(A.S.syllabus[name].text, '授業の目的：統計の基礎\n成績評価：期末50%', '書いていた文章もいっしょに保存');
   ok(/^data:application\/pdf;base64,/.test(await A.photoGet(fs[1].pid)), 'PDFの中身をしまう');
   A.render();
   ok(doc.querySelector('.syl-imgs img[data-pid="' + fs[0].pid + '"]'), '写真が出る');
-  var link = doc.querySelector('.syl-pdf a[data-pidlink="' + fs[1].pid + '"]');
-  ok(link && /syllabus\.pdf/.test(doc.querySelector('.syl-pdf').textContent), 'PDFが出る');
-  await KT.until(function(){ return /^blob:/.test(link.getAttribute('href') || ''); }, 4000, 'PDFをひらけるようにする');
-  /* 保存したものから、AIで読む */
-  await A.syllabusRead(name);
-  var r = A.sylAi.result;
-  ok(r, '結果がない：' + A.sylAi.err);
-  var parts = sylReqs[sylReqs.length - 1].contents[0].parts;
-  ok(parts.some(function(p){ return p.inline_data && p.inline_data.mime_type === 'image/jpeg'; }), '保存した写真をAIに渡す');
-  ok(parts.some(function(p){ return p.inline_data && p.inline_data.mime_type === 'application/pdf'; }), '保存したPDFをAIに渡す');
-  ok(/統計の基礎/.test(JSON.stringify(parts)), '保存した文章もAIに渡す');
-  eq(r.plan.length, 2, '授業計画');
-  eq(r.teacher, '山田 花子', '担当の先生');
-  eq(r.exam + '/' + r.report + '/' + r.attend + '/' + r.other, '50/20/10/20', 'うちわけから割合を出す（小テストはそのほか）');
-  eq(r.books[0].isbn, '9784000000001', 'ISBNは数字だけ');
+  ok(doc.querySelector('.syl-pdfopen[data-pid="' + fs[1].pid + '"]') && /syllabus\.pdf/.test(doc.querySelector('.syl-pdf').textContent), 'PDFが出る');
+  ok(doc.querySelector('.pillrow [data-act="syl-view"]'), '授業のいちばん上にも「📄 シラバス」');
+  /* 1回おすだけで見られる：PDF */
+  doc.querySelector('.syl-pdfopen[data-pid="' + fs[1].pid + '"]').click();
+  var sv = doc.getElementById('sylview');
+  ok(sv && /授業の目的：統計の基礎/.test(sv.querySelector('.sv-text').textContent), 'シラバスを見る画面（文章も）');
+  await KT.until(function(){ return sv.querySelectorAll('.sv-pdf[data-pdf="' + fs[1].pid + '"] canvas.sv-page').length === 2; }, 15000, 'PDFを2ページの絵にして出す');
+  var cv = sv.querySelector('canvas.sv-page');
+  ok(cv.width > 100 && cv.height > 40, 'ページの大きさ：' + cv.width + '×' + cv.height);
+  /* 写真 → 押すと大きく */
+  await KT.until(function(){ var im = sv.querySelector('.sv-img[data-pid="' + fs[0].pid + '"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '写真も出る');
+  sv.querySelector('.sv-img').click();
+  ok(doc.getElementById('viewer').classList.contains('on'), '写真を押すと大きく');
+  doc.getElementById('viewer').classList.remove('on');
+  sv.querySelector('[data-sv="close"]').click();
+  ok(!doc.getElementById('sylview'), 'とじる');
+  /* 1回おすだけで見られる：写真のつまみ・「シラバスを見る」 */
+  doc.querySelector('.syl-imgs img[data-pid="' + fs[0].pid + '"]').click();
+  ok(doc.getElementById('sylview'), '写真を押しても開く');
+  doc.querySelector('#sylview [data-sv="close"]').click();
+  doc.querySelector('.syl-open[data-act="syl-view"]').click();
+  ok(doc.getElementById('sylview'), '「📄 シラバスを見る」');
+  doc.querySelector('#sylview [data-sv="close"]').click();
+  eq(sylReqs.length, ai0, 'AIは使わない');
+  /* 評価の割合：欄をはなれたら自動で保存 */
   A.render();
-  eq(doc.querySelectorAll('.syl-book').length, 2, '教科書を選べる');
-  ok(doc.querySelector('.syl-book[data-i="0"]').checked && !doc.querySelector('.syl-book[data-i="1"]').checked, '参考書ははじめ外す');
-  var nb0 = (A.S.books || []).length, ne0 = A.S.exams.length;
-  A.syllabusApply(name);
-  var sy = A.S.syllabus[name];
-  eq(sy.teacher, '山田 花子', '先生を保存');
-  eq(sy.plan.length, 2, '授業計画を保存');
-  eq(sy.items.map(function(x){ return x.name + x.pct; }).join(','), '期末試験50,小テスト20,レポート20,出席10', '評価の項目を保存');
-  eq(sy.exam, '50', 'テストの割合');
-  eq(sy.files.length, 2, '写真・PDFはそのまま');
-  eq(A.S.books.length, nb0 + 1, '教科書を1冊足す');
-  var bk = A.S.books[A.S.books.length - 1];
-  ok(bk.status === '買う予定' && bk.course === name && bk.id && bk.mt, '教科書の形');
-  eq(A.S.exams.length, ne0 + 1, 'テストを予定に入れる');
-  eq(A.cpEvalItems(name).length, 4, '成績の見込みに項目を使う');
-  A.render();
-  ok(/授業計画（2回）/.test(doc.getElementById('app').textContent), '授業計画が出る');
-  eq(doc.querySelectorAll('.evline').length, 4, '評価の割合に4つ出る');
-  ok(/合計 100% ✓/.test(doc.querySelector('.evtot').textContent), '合計100%');
-  A.sylAi.result = J(A, r); A.render();
-  A.syllabusApply(name);
-  eq(A.S.books.length, nb0 + 1, '同じ教科書は2回入れない');
-  /* 評価の割合を手で直しても、授業計画などは消えない */
-  A.render();
-  doc.getElementById('ev_p_0').value = '55';
-  doc.getElementById('ev_p_3').value = '5';
-  doc.querySelector('[data-act="eval-save"]').click();
-  ok(A.S.syllabus[name].plan && A.S.syllabus[name].teacher, '授業計画・先生は残る');
-  eq(A.S.syllabus[name].items[0].pct, 55, '直した割合');
-  eq(A.S.syllabus[name].exam, '55', '前の形の欄も合わせる');
+  doc.querySelector('[data-act="eval-add"][data-v="期末試験"]').click();
+  doc.getElementById('ev_p_0').value = '60';
+  doc.getElementById('ev_p_0').dispatchEvent(new A.Event('change', { bubbles:true }));
+  eq((A.S.syllabus[name].items || []).map(function(x){ return x.name + x.pct; }).join(','), '期末試験60', '書きかえたら自動で保存');
+  ok(/保存しました/.test(doc.querySelector('[data-act="eval-save"]').textContent) && /あと40%/.test(doc.querySelector('.evtot').textContent), '保存した・合計を出し直す');
+  doc.querySelector('[data-act="eval-add"][data-v=""]').click();
+  doc.getElementById('ev_p_1').value = '40';
+  doc.getElementById('ev_p_1').dispatchEvent(new A.Event('change', { bubbles:true }));
+  eq(A.S.syllabus[name].items.length, 1, '名前がまだ空のあいだは保存しない（空の行を消さない）');
+  ok(doc.getElementById('ev_n_1'), '空の行は残る');
+  doc.getElementById('ev_n_1').value = 'グループワーク';
+  doc.getElementById('ev_n_1').dispatchEvent(new A.Event('change', { bubbles:true }));
+  eq(A.S.syllabus[name].items.map(function(x){ return x.name + x.pct; }).join(','), '期末試験60,グループワーク40', '名前を入れたら保存');
   /* 写真を消す */
+  A.render();
   var realConfirm = A.confirm; A.confirm = function(){ return true; };
   try{ doc.querySelector('[data-act="syl-file-del"][data-pid="' + fs[0].pid + '"]').click(); }finally{ A.confirm = realConfirm; }
   eq(A.S.syllabus[name].files.map(function(f){ return f.kind; }).join(','), 'pdf', '写真を消す');
+  /* 相手の端末でも、同じように見られる（PDFは同期から取ってくる） */
   await KT.settle([A, B]);
   var sb = B.S.syllabus[name] || {};
-  eq((sb.plan || []).length, 2, '相手に届く');
   eq(sb.text, '授業の目的：統計の基礎\n成績評価：期末50%', '文章も相手に届く');
   eq((sb.files || []).length, 1, 'ファイルの一覧も相手に届く');
-  eq((sb.items || []).length, 4, '評価の項目も相手に届く');
-  ok((B.S.books || []).some(function(b){ return b.id === bk.id; }), '教科書も相手に届く');
+  eq((sb.items || []).length, 2, '評価の項目も相手に届く');
+  B.appId = 'course'; B.courseView = name; B.render();
+  B.sylViewOpen(name);
+  await KT.until(function(){ var s2 = B.document.getElementById('sylview'); return s2 && s2.querySelectorAll('canvas.sv-page').length === 2; }, 20000, '相手の端末でもPDFが見られる');
+  B.sylViewClose(); B.courseView = ''; B.appId = 'today'; B.render();
   var pdf = A.S.syllabus[name].files[0];
   A.S.syllabus[name] = Object.assign({}, A.S.syllabus[name], { files:[], mt:Date.now() });
   A.photoDel(pdf.pid);
   A.touch('syllabus'); A.courseView = ''; A.commit();
+});
+
+cpTest('授業＋：前に読み取ったシラバス（先生・授業計画・前に入れたリンク）も、1回おすだけで見られる', async function(){
+  var A = KT.frames().A, doc = A.document, name = A.termCourses()[4].name, saveSy = A.S.syllabus[name];
+  A.S.syllabus[name] = J(A, { url:'https://syllabus.example.ac.jp/s/9', exam:'', rep:'', att:'', other:'', memo:'', teacher:'前田 先生',
+    plan:[{ no:1, title:'はじめに' }, { no:2, title:'まとめ' }], mt:Date.now() });
+  A.appId = 'course'; A.courseView = name; A.render();
+  ok(doc.querySelector('.pillrow [data-act="syl-view"]') && doc.querySelector('.syl-open'), '「📄 シラバス」が出る');
+  doc.querySelector('.pillrow [data-act="syl-view"]').click();
+  var sv = doc.getElementById('sylview');
+  ok(sv && /前田 先生/.test(sv.textContent) && /授業計画（2回）/.test(sv.textContent), '先生・授業計画');
+  ok(sv.querySelector('a[href="https://syllabus.example.ac.jp/s/9"]'), '前に入れたリンク');
+  A.sylViewClose();
+  if(saveSy) A.S.syllabus[name] = saveSy; else A.S.syllabus[name] = J(A, { url:'', exam:'', rep:'', att:'', other:'', memo:'', mt:Date.now() });
+  A.S.syllabus[name].mt = Date.now();
+  A.touch('syllabus'); A.courseView = ''; A.appId = 'today'; A.commit();
+});
+
+cpTest('授業＋：授業の画面の項目を並べかえ・かくせる（画面の中の「⇅ 並べ替え」・ドラッグ・はじめにもどす・相手に届く）', async function(){
+  var A = KT.frames().A, B = KT.frames().B, doc = A.document, name = A.termCourses()[0].name;
+  A.appId = 'course'; A.courseView = name; A.render();
+  var order = function(){ return [].slice.call(doc.querySelectorAll('#app section > .head h2, #app section .head h2')).map(function(h){ return h.textContent.trim(); }); };
+  var o0 = order();
+  ok(o0.indexOf('出欠') >= 0 && o0.indexOf('シラバス') > o0.indexOf('テスト'), 'はじめの並び：' + o0.join(','));
+  doc.querySelector('[data-act="course-sort"]').click();
+  var list = doc.querySelector('.coursesort .c9hlist[data-pg="coursedt"]');
+  ok(list && list.querySelectorAll('.c9hrow').length === A.PAGE_SECTIONS.coursedt.length, '並べ替えの一覧');
+  /* シラバスをいちばん上へ（↑を何回か） */
+  for(var i = 0; i < 6; i++){
+    var up = doc.querySelector('.coursesort [data-act="c9-home-mv"][data-id="syllabus"][data-d="-1"]');
+    if(!up || up.disabled) break;
+    up.click();
+  }
+  eq(A.pageOrder('coursedt')[0], 'syllabus', 'シラバスがいちばん上');
+  /* 成績をかくす */
+  doc.querySelector('.coursesort [data-act="c9-home-tg"][data-id="grade"]').click();
+  ok(A.pageHidden('coursedt', 'grade'), '成績をかくす');
+  doc.querySelector('.coursesort [data-act="course-sort"]').click();
+  ok(!doc.querySelector('.coursesort'), 'できた');
+  var o1 = order();
+  eq(o1[0], 'シラバス', '画面でもシラバスが先');
+  ok(o1.indexOf('成績') < 0 && o1.indexOf('成績の見込み') >= 0, '成績は出さない：' + o1.join(','));
+  ok(!doc.getElementById('gr_grade'), '成績の入力欄も出ない');
+  /* ほかの授業でも同じ並び */
+  A.courseView = A.termCourses()[1].name; A.render();
+  eq(order()[0], 'シラバス', 'ほかの授業も同じ並び');
+  await KT.settle([A, B]);
+  await KT.until(function(){ return B.pageOrder('coursedt')[0] === 'syllabus' && B.pageHidden('coursedt', 'grade'); }, 15000, '相手にも届く');
+  /* はじめの並びにもどす */
+  doc.querySelector('[data-act="course-sort"]').click();
+  doc.querySelector('[data-act="course-sort-reset"]').click();
+  eq(A.pageOrder('coursedt')[0], 'attend', 'はじめの並び');
+  ok(!A.pageHidden('coursedt', 'grade'), 'かくしたのももどる');
+  A.courseSortOpen = false; A.courseView = ''; A.appId = 'today'; A.commit();
+  await KT.settle([A, B]);
 });
 
 cpTest('授業＋：評価の割合を自分で登録（項目の名前も自由・前の形から引きつぐ・相手に届く）', async function(){
@@ -815,7 +884,7 @@ cpTest('バイト＋：1日に2回あるシフトは、ほかの登録を上書�
   A.appId = 'today'; A.commit();
 });
 
-cpTest('授業＋：補講の時限がわからないときは入れない・シラバスの古いうちわけを残さない', async function(){
+cpTest('授業＋：補講の時限がわからないときは入れない', async function(){
   var A = KT.frames().A, doc = A.document;
   var name = A.termCourses()[0].name, h0 = A.S.holidays.length;
   var it = A.cpUniMake('補講のお知らせ（時限のテスト）', '補講をします', [], 'cp-test-noperiod', A.today());
@@ -832,17 +901,6 @@ cpTest('授業＋：補講の時限がわからないときは入れない・シ
   var hx = A.S.holidays[A.S.holidays.length - 1];
   eq(hx.period, 2, 'えらんだ時限');
   A.removeItem('holidays', hx.id); A.removeItem('kmItems', it.id);
-  /* シラバス：うちわけのない読み直しで割合がかわったら、前のうちわけは使わない */
-  var sn = A.termCourses()[1].name, saveSy = A.S.syllabus[sn];
-  A.S.syllabus[sn] = J(A, { url:'', exam:'50', rep:'20', att:'10', other:'20', memo:'', mt:Date.now(),
-    items:[{ name:'期末試験', pct:50, kind:'exam' }, { name:'小テスト', pct:20, kind:'quiz' }, { name:'レポート', pct:20, kind:'report' }, { name:'出席', pct:10, kind:'attend' }] });
-  A.sylAi = J(A, { name:sn, busy:false, err:'', files:[], fileNames:[],
-    result:{ exam:70, report:30, attend:null, other:null, notes:'', other_detail:'', tests:[], items:[], plan:[], books:[], teacher:'' } });
-  A.syllabusApply(sn);
-  eq(A.S.syllabus[sn].items.map(function(x){ return x.name + x.pct; }).join(','), 'テスト70,レポート30', '古いうちわけは、新しい割合の項目にかえる');
-  ok(A.S.syllabus[sn].exam === '70' && A.S.syllabus[sn].other === '', '前の形の欄も合わせる');
-  eq(A.cpEvalItems(sn)[0].pct, 70, '成績の見込みは新しい割合で');
-  if(saveSy) A.S.syllabus[sn] = saveSy; else A.S.syllabus[sn] = J(A, { url:'', exam:'', rep:'', att:'', other:'', memo:'', mt:Date.now() });
-  A.touch('syllabus'); A.appId = 'today'; A.commit();
+  A.appId = 'today'; A.commit();
 });
 })();

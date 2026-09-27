@@ -54,10 +54,6 @@ function fakeAi(req){
   var tag = req.tag;
   /* 足した機能のテスト（tests/tests-m-*.js）が用意した答え */
   for(var hi = 0; hi < KT.ai.length; hi++){ var hr = KT.ai[hi](req); if(hr != null) return Promise.resolve(hr); }
-  if(tag === 'syllabus') return Promise.resolve(JSON.stringify({
-    exam:60, report:30, attend:10, other:null, other_detail:'', notes:'出席2/3以上で受験資格',
-    tests:[{ title:'中間試験', kind:'exam', date:'11/12', week:'' }, { title:'小テスト', kind:'quiz', date:null, week:'第3回' }]
-  }));
   if(tag === 'shift') return Promise.resolve(JSON.stringify({ shifts:[
     { date:'2026-09-20', start:'9:00', end:'17:00', note:'' },
     { date:'9/21', start:'17', end:'22:00', note:'レジ' },
@@ -525,23 +521,6 @@ test('お金：シフト表の写真から読み取って登録', async function
   var n0 = A.S.shifts.length;
   A.shiftOcrAdd();
   eq(A.S.shifts.length, n0 + 2, '登録された数');
-});
-
-test('授業：シラバスの文章からAIで読み取る', async function(){
-  var A = frames.A, name = '臨床病態栄養学';
-  A.appId = 'course'; A.courseView = name; A.render();
-  A.document.getElementById('sy_text').value = '成績評価：試験60%、レポート30%、平常点10%';
-  await A.syllabusRead(name);
-  ok(A.sylAi.result, '結果がない');
-  eq(A.sylAi.result.tests.length, 2, 'テストの数');
-  ok(A.isYmd(A.sylAi.result.tests[0].date), '「11/12」に年をつける');
-  var n0 = A.S.exams.length;
-  A.syllabusApply(name);
-  eq(A.S.syllabus[name].exam, '60', 'テストの割合');
-  eq(A.S.syllabus[name].rep, '30', 'レポートの割合');
-  ok(/受験資格/.test(A.S.syllabus[name].memo), '条件のメモ');
-  eq(A.S.exams.length, n0 + 1, '日付のあるテストだけ予定に入る');
-  A.courseView = '';
 });
 
 test('そうだん：よく使う相談ボタン・長い会話のまとめ（相手にも反映）', async function(){

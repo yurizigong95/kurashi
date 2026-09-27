@@ -61,6 +61,8 @@ function setView(){
       '<button type="button" data-act="st-allterms" class="' + (S.set.allTerms ? 'on' : '') + '">ほかの学期の科目も出す</button>' +
     '</div>');
 
+  h += setTabsPart();
+
   h += setStatsPart();
 
   h += section('バックアップ', null,
@@ -249,6 +251,42 @@ function setImport(){
 }
 
 onView('set', setView);
+
+/* 下のタブの並び・出す／出さない（ほかの端末ともそろう） */
+function setTabsPart(){
+  var names = {}; TABS.forEach(function(t){ names[t[0]] = t; });
+  var list = tabOrder(), onN = list.filter(function(x){ return x[1]; }).length;
+  return section('下のタブの並び・表示', list.some(function(x){ return !x[1]; }) ? (list.length - onN) + 'こ かくしています' : null,
+    list.map(function(x, i){
+      var t = names[x[0]];
+      return '<div class="tabrow' + (x[1] ? '' : ' off') + '"><span class="tn">' + t[1] + ' ' + esc(t[2]) + '</span>' +
+        '<button type="button" class="mini" data-act="st-tab-mv" data-id="' + t[0] + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="' + esc(t[2]) + 'を上へ">↑</button>' +
+        '<button type="button" class="mini" data-act="st-tab-mv" data-id="' + t[0] + '" data-d="1"' + (i === list.length - 1 ? ' disabled' : '') + ' aria-label="' + esc(t[2]) + 'を下へ">↓</button>' +
+        '<button type="button" class="mini tg' + (x[1] ? ' on' : '') + '" data-act="st-tab-tg" data-id="' + t[0] + '"' + (x[1] && onN <= 1 ? ' disabled' : '') +
+          ' aria-pressed="' + (x[1] ? 'true' : 'false') + '">' + (x[1] ? '出す' : '出さない') + '</button></div>';
+    }).join('') +
+    '<div class="pair" style="margin-top:8px">' + btn('はじめの並びにもどす', 'st-tab-reset', { cls:'ghost' }) + '</div>' +
+    note('「設定」を出さないにしたときは、上の右に ⚙️ が出ます。'));
+}
+function setTabsSave(list){
+  S.set.tabs = list;
+  save(); if(typeof syTouchSet === 'function') syTouchSet();
+  render();
+}
+onAct('st-tab-mv', function(d){
+  var list = tabOrder(), i = list.findIndex(function(x){ return x[0] === d.id; }), j = i + toNum(d.d);
+  if(i < 0 || j < 0 || j >= list.length) return;
+  var tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+  setTabsSave(list);
+});
+onAct('st-tab-tg', function(d){
+  var list = tabOrder(), x = list.filter(function(y){ return y[0] === d.id; })[0];
+  if(!x) return;
+  if(x[1] && list.filter(function(y){ return y[1]; }).length <= 1){ toast('最後の1つはかくせません', true); return; }
+  x[1] = x[1] ? 0 : 1;
+  setTabsSave(list);
+});
+onAct('st-tab-reset', function(){ setTabsSave(null); toast('はじめの並びにもどしました'); });
 onAct('st-key', function(){
   var v = String(elVal('st_key') || '').trim();
   if(!v){ toast('キーを入れてください', true); return; }

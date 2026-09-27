@@ -103,6 +103,20 @@ function c9FsSettings(){
 
 /* ============================== ホーム画面とタブ（#191） ============================== */
 var C9_HOME_PAGES = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
+/* 並びを変えられる画面（id・名前・どのタブ・どの中のタブ） */
+var C9_PAGES = [
+  ['today','今日','today','today'],['tomo','明日','today','tomo'],['week','今週','today','week'],['life','くらし','today','life'],
+  ['cal','予定（月）','cal','cal'],['calweek','予定（週）','cal','week'],['kind','予定（種類別）','cal','kind'],
+  ['tt','時間割','tt',''],['course','授業（科目の一覧）','course',''],['coursedt','授業の詳細','course',''],
+  ['todo','ToDo','todo','open'],['todoitem','ToDo の詳細','todo','open'],
+  ['money','お金（ホーム）','money','home'],['in','お金（収支）','money','in'],['work','お金（バイト）','money','work']
+];
+function c9Pages(){ return C9_PAGES.filter(function(p){ return PAGE_SECTIONS[p[0]]; }); }
+function c9PageInfo(pg){ return c9Pages().filter(function(p){ return p[0] === pg; })[0] || C9_PAGES[0]; }
+/* 中のタブがあるアプリ */
+var C9_SUB_APPS = [['today','今日'],['cal','予定'],['todo','ToDo'],['money','お金'],['risyu','履修']];
+function c9SubApps(){ return C9_SUB_APPS.filter(function(a){ return SUBTAB_DEFS[a[0]]; }); }
+var c9SubApp = 'today';
 var C9_ICON = { brief:'☀️', weather:'⛅', items:'🎒', events:'📅', classes:'🏫', transit:'🚃', unkou:'🚌', find:'🔎', review:'⭐', leave:'🚪',
   memo:'📝', money:'💴', banners:'📣', next10:'🗓', days:'📆', notes:'🗒', c9yday:'🏅', c9check:'🩺' };
 var c9HomePg = 'today';
@@ -111,7 +125,7 @@ function c9TabNames(){ var n = {}; TAB_DEFS.forEach(function(t){ n[t[0]] = t[1] 
 function c9PageLabels(pg){ var l = {}; (PAGE_SECTIONS[pg] || []).forEach(function(x){ l[x[0]] = x[1]; }); return l; }
 function c9HomeIds(kind, pg){
   if(kind === 'tab') return (S.ui.tabs || []).map(function(t){ return t[0]; });
-  if(kind === 'sub') return subTabs('today').map(function(t){ return t[0]; });
+  if(kind === 'sub') return subTabs(pg || 'today').map(function(t){ return t[0]; });
   return pageOrder(pg);
 }
 function c9HomeRow(kind, pg, id, name, i, n, on, fixed){
@@ -126,30 +140,45 @@ function c9HomeRow(kind, pg, id, name, i, n, on, fixed){
     '</div>';
 }
 function c9HomePreview(pg){
-  var names = c9TabNames(), labels = c9PageLabels(pg);
-  var tabs = (S.ui.tabs || []).filter(function(t){ return t[1] || t[0] === 'set'; });
-  var subs = subVisible('today');
+  var names = c9TabNames(), labels = c9PageLabels(pg), info = c9PageInfo(pg);
+  var tabs = APPS_VISIBLE();
+  var subs = SUBTAB_DEFS[info[2]] ? subVisible(info[2]) : [];
   var ids = pageOrder(pg).filter(function(id){ return !pageHidden(pg, id); });
   var hero = (pg === 'today' || pg === 'tomo') ? '<div class="c9ph-hero">' + (pg === 'today' ? '日付・あいさつ' : '明日の日付') + '</div>' : '';
   return '<div class="c9phone" aria-label="見本">' +
     '<div class="c9ph-cap">見本</div>' +
-    '<div class="c9ph-tabs">' + tabs.map(function(t){ return '<span class="' + (t[0] === 'today' ? 'on' : '') + '">' + esc(names[t[0]] || t[0]) + '</span>'; }).join('') + '</div>' +
-    '<div class="c9ph-sub">' + subs.map(function(s){ return '<span class="' + (s[0] === pg ? 'on' : '') + '">' + esc(s[1]) + '</span>'; }).join('') + '</div>' +
+    '<div class="c9ph-tabs">' + tabs.map(function(t){ return '<span class="' + (t[0] === info[2] ? 'on' : '') + '">' + esc(names[t[0]] || t[0]) + '</span>'; }).join('') + '</div>' +
+    (subs.length ? '<div class="c9ph-sub">' + subs.map(function(s){ return '<span class="' + (s[0] === info[3] ? 'on' : '') + '">' + esc(s[1]) + '</span>'; }).join('') + '</div>' : '') +
     '<div class="c9ph-body">' + hero +
       (ids.length ? ids.map(function(id){ return '<div class="c9ph-blk"><i aria-hidden="true">' + (C9_ICON[id] || '▫️') + '</i>' + esc(labels[id] || id) + '</div>'; }).join('')
                   : '<div class="c9ph-empty">なにも出しません</div>') +
     '</div></div>';
 }
 function c9HomeInner(){
-  var pg = C9_HOME_PAGES.some(function(p){ return p[0] === c9HomePg; }) ? c9HomePg : 'today';
+  var pages = c9Pages();
+  var pg = pages.some(function(p){ return p[0] === c9HomePg; }) ? c9HomePg : 'today';
   var labels = c9PageLabels(pg), ids = pageOrder(pg);
   var names = c9TabNames();
-  var subs = subTabs('today'), subHide = (S.ui.subHide || {}).today || {};
+  var sapps = c9SubApps();
+  var sa = sapps.some(function(x){ return x[0] === c9SubApp; }) ? c9SubApp : 'today';
+  var subs = subTabs(sa), subHide = (S.ui.subHide || {})[sa] || {};
   var tabs = S.ui.tabs || [];
-  return '<p class="note" style="margin-top:0">今日タブ（ホーム画面）に出すものと、その並びを決めます。<b>≡</b> をおしたまま上下に動かすか、↑↓ で動かします。「見本」で、どう見えるかをたしかめられます。</p>' +
-    '<label class="f">どの画面をととのえる？</label>' +
-    '<div class="pillrow">' + C9_HOME_PAGES.map(function(p){
-      return '<button data-act="c9-home-pg" data-v="' + p[0] + '" class="' + (pg === p[0] ? 'on' : '') + '">' + p[1] + '</button>';
+  return '<p class="note" style="margin-top:0">タブと、それぞれの画面に出すものの並び・表示を、ここでまとめて決めます。<b>≡</b> をおしたまま上下に動かすか、↑↓ で動かします。「出さない」にしたものは画面に出ません。</p>' +
+    '<label class="f">アプリのタブ（いちばん上の切りかえ）</label>' +
+    '<div class="c9hlist" data-kind="tab" data-pg="">' + tabs.map(function(t, i){
+      return c9HomeRow('tab', '', t[0], names[t[0]] || t[0], i, tabs.length, !!t[1], false);
+    }).join('') + '</div>' +
+    '<p class="note" style="margin-top:4px">「設定（⚙）」を出さないにしたときは、上の右はしに ⚙ が出ます。「履修」は抽選のシミュレーターです。</p>' +
+    '<label class="f">タブの中のタブ</label>' +
+    '<div class="pillrow">' + sapps.map(function(x){
+      return '<button data-act="c9-sub-app" data-v="' + x[0] + '" class="' + (sa === x[0] ? 'on' : '') + '">' + esc(x[1]) + '</button>';
+    }).join('') + '</div>' +
+    '<div class="c9hlist" data-kind="sub" data-pg="' + sa + '">' + subs.map(function(x, i){
+      return c9HomeRow('sub', sa, x[0], x[1], i, subs.length, !subHide[x[0]], false);
+    }).join('') + '</div>' +
+    '<label class="f">画面の中の並び（どの画面をととのえる？）</label>' +
+    '<div class="pillrow c9pages">' + pages.map(function(p){
+      return '<button data-act="c9-home-pg" data-v="' + p[0] + '" class="' + (pg === p[0] ? 'on' : '') + '">' + esc(p[1]) + '</button>';
     }).join('') + '</div>' +
     '<div class="c9homegrid">' +
       '<div class="c9hlist" data-kind="page" data-pg="' + pg + '">' + ids.map(function(id, i){
@@ -157,22 +186,15 @@ function c9HomeInner(){
       }).join('') + '</div>' +
       c9HomePreview(pg) +
     '</div>' +
-    '<label class="f">今日タブの中のタブ</label>' +
-    '<div class="c9hlist" data-kind="sub" data-pg="today">' + subs.map(function(s, i){
-      return c9HomeRow('sub', 'today', s[0], s[1], i, subs.length, !subHide[s[0]], false);
-    }).join('') + '</div>' +
-    '<label class="f">アプリのタブ（いちばん上の切りかえ）</label>' +
-    '<div class="c9hlist" data-kind="tab" data-pg="">' + tabs.map(function(t, i){
-      return c9HomeRow('tab', '', t[0], names[t[0]] || t[0], i, tabs.length, !!t[1] || t[0] === 'set', t[0] === 'set');
-    }).join('') + '</div>' +
-    '<button class="btn ghost" data-act="c9-home-reset">はじめの並びにもどす</button>' +
-    '<p class="note">もどしたあとでも、下に出る「取り消す」で、いまの並びにもどせます。「履修」は抽選のシミュレーターです。</p>';
+    '<button class="btn ghost" data-act="c9-home-reset">ぜんぶ、はじめの並びにもどす</button>' +
+    '<p class="note">もどしたあとでも、下に出る「取り消す」で、いまの並びにもどせます。</p>';
 }
 function c9HomeSettings(){
   var open = !!(S.ui.setOpen && S.ui.setOpen.c9home);
   var hid = 0;
-  C9_HOME_PAGES.forEach(function(p){ var h = (S.ui.pageHide || {})[p[0]] || {}; Object.keys(h).forEach(function(k){ if(h[k]) hid++; }); });
-  return foldSection('c9home', 'ホーム画面とタブ', '出すもの・並び' + (hid ? '（' + hid + 'こ かくしています）' : ''), open ? c9HomeInner() : '');
+  c9Pages().forEach(function(p){ var h = (S.ui.pageHide || {})[p[0]] || {}; Object.keys(h).forEach(function(k){ if(h[k]) hid++; }); });
+  var th = (S.ui.tabs || []).filter(function(t){ return !t[1]; }).length;
+  return foldSection('c9home', 'タブと画面の並び・表示', '並び・出す／出さない' + (hid + th ? '（' + (hid + th) + 'こ かくしています）' : ''), open ? c9HomeInner() : '');
 }
 function c9HomeLink(pg){
   return '<div class="c9homelink"><button class="mini" data-act="c9-go-home" data-pg="' + esc(pg || 'today') + '">🏠 この画面に出すもの・並びを変える</button></div>';
@@ -186,7 +208,7 @@ function c9HomeSetOrder(kind, pg, ids){
     var m = {}; S.ui.tabs.forEach(function(t){ m[t[0]] = t; });
     S.ui.tabs = ids.map(function(id){ return m[id]; });
   }else if(kind === 'sub'){
-    S.ui.subOrder = S.ui.subOrder || {}; S.ui.subOrder.today = ids;
+    S.ui.subOrder = S.ui.subOrder || {}; S.ui.subOrder[pg || 'today'] = ids;
   }else{
     S.ui.pageOrder = S.ui.pageOrder || {}; S.ui.pageOrder[pg] = ids;
   }
@@ -197,15 +219,17 @@ function c9HomeSetOrder(kind, pg, ids){
 function c9HomeToggle(kind, pg, id){
   if(kind === 'tab'){
     var tb = (S.ui.tabs || []).filter(function(t){ return t[0] === id; })[0];
-    if(!tb || id === 'set') return '';
+    if(!tb) return '';
+    if(tb[1] && (S.ui.tabs || []).filter(function(t){ return t[1]; }).length <= 1){ toast('最後の1つはかくせません', true); return ''; }
     tb[1] = tb[1] ? 0 : 1; touch('ui');
     return tb[1] ? '出す' : '出さない';
   }
   if(kind === 'sub'){
-    S.ui.subHide = S.ui.subHide || {}; S.ui.subHide.today = S.ui.subHide.today || {};
-    var will = !S.ui.subHide.today[id];
-    if(will && subVisible('today').length <= 1){ toast('最後の1つはかくせません', true); return ''; }
-    S.ui.subHide.today[id] = will ? 1 : 0; touch('ui');
+    var ap = pg || 'today';
+    S.ui.subHide = S.ui.subHide || {}; S.ui.subHide[ap] = S.ui.subHide[ap] || {};
+    var will = !S.ui.subHide[ap][id];
+    if(will && subVisible(ap).length <= 1){ toast('最後の1つはかくせません', true); return ''; }
+    S.ui.subHide[ap][id] = will ? 1 : 0; touch('ui');
     return will ? '出さない' : '出す';
   }
   S.ui.pageHide = S.ui.pageHide || {}; S.ui.pageHide[pg] = S.ui.pageHide[pg] || {};
@@ -214,9 +238,9 @@ function c9HomeToggle(kind, pg, id){
 }
 function c9HomeReset(){
   S.ui.pageOrder = S.ui.pageOrder || {}; S.ui.pageHide = S.ui.pageHide || {};
-  C9_HOME_PAGES.forEach(function(p){ delete S.ui.pageOrder[p[0]]; delete S.ui.pageHide[p[0]]; });
+  c9Pages().forEach(function(p){ delete S.ui.pageOrder[p[0]]; delete S.ui.pageHide[p[0]]; });
   S.ui.subOrder = S.ui.subOrder || {}; S.ui.subHide = S.ui.subHide || {};
-  delete S.ui.subOrder.today; delete S.ui.subHide.today;
+  Object.keys(SUBTAB_DEFS).forEach(function(k){ delete S.ui.subOrder[k]; delete S.ui.subHide[k]; });
   var tabs = UI_DEFAULT.tabs.map(function(t){ return t.slice(); });
   TAB_DEFS.forEach(function(t){ if(!tabs.some(function(x){ return x[0] === t[0]; })) tabs.splice(Math.max(0, tabs.length - 1), 0, [t[0], 1]); });
   S.ui.tabs = tabs;
@@ -224,7 +248,7 @@ function c9HomeReset(){
 }
 function c9HomeName(kind, pg, id){
   if(kind === 'tab') return c9TabNames()[id] || id;
-  if(kind === 'sub') return (subTabs('today').filter(function(t){ return t[0] === id; })[0] || [id, id])[1];
+  if(kind === 'sub') return (subTabs(pg || 'today').filter(function(t){ return t[0] === id; })[0] || [id, id])[1];
   return c9PageLabels(pg)[id] || id;
 }
 /* ≡ をおしたまま動かす（指でもマウスでも） */
@@ -296,11 +320,9 @@ var C9_SET_ITEMS = [
   ['chara','キャラクター','キャラ セリフ 顔'],
   ['storageBox','写真とデータの容量','写真 容量 いっぱい 消す 迷子'],
   ['trashBox','ゴミ箱','消したもの もどす'],
-  ['c9home','ホーム画面とタブ','今日タブ ホーム 並べかえ ならべかえ 並び 出す 出さない 非表示 タブ'],
+  ['c9home','タブと画面の並び・表示','今日タブ ホーム 並べかえ ならべかえ 並べ替え 並び 出す 出さない 非表示 タブ 中のタブ サブタブ 項目 授業の詳細 設定のタブ'],
   ['kindSettings','予定の種類','種類 色 名前'],
   ['weekFilterSettings','今週タブに出す予定','今週 しぼる'],
-  ['subTabSet','タブの中のタブ','サブタブ 並び 表示'],
-  ['pageItemSet','ほかのページの項目','並び 表示 項目'],
   ['diaSettings','ダイヤの追加・お気に入り','電車 バス 時刻表 ダイヤ'],
   ['s2','通学の時間','通学 バス 電車 時限 開始 終了 時刻'],
   ['s3','大切な日・バイト','履修登録 締切 引き落とし 引落日 分給 時給 交通費 バイト先'],
@@ -970,6 +992,7 @@ kmAction(function(act, t){
   var d = t.dataset || {};
   /* ホーム画面とタブ */
   if(act === 'c9-home-pg'){ c9HomePg = d.v || 'today'; render(); return true; }
+  if(act === 'c9-sub-app'){ c9SubApp = d.v || 'today'; render(); return true; }
   if(act === 'c9-home-mv'){
     var ids = c9HomeIds(d.kind, d.pg), i = ids.indexOf(d.id), j = i + toNum(d.d);
     if(i < 0 || j < 0 || j >= ids.length) return true;
@@ -984,7 +1007,7 @@ kmAction(function(act, t){
   }
   if(act === 'c9-home-reset'){ c9HomeReset(); toast('はじめの並びにもどしました'); commit(); return true; }
   if(act === 'c9-go-home'){
-    c9HomePg = C9_HOME_PAGES.some(function(p){ return p[0] === d.pg; }) ? d.pg : 'today';
+    c9HomePg = c9Pages().some(function(p){ return p[0] === d.pg; }) ? d.pg : 'today';
     S.ui.setOpen = S.ui.setOpen || {}; S.ui.setOpen.c9home = 1; touch('ui'); persist();
     c9Go('set'); c9ScrollTo('[data-act="fold"][data-id="c9home"]');
     return true;

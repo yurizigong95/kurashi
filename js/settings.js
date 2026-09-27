@@ -97,7 +97,7 @@ function viewSettings(){
     ? foldSection('chara', 'キャラクター', (charaLevel() ? charaNow().name + '・' : '') + CHARA_LEVELS[charaLevel()][1], charaSettings()) : '';
   /* ホーム画面（今日タブ）とタブの並びは、1つの画面にまとめた（js/m-core2.js） */
   var homeSec = (typeof c9HomeSettings === 'function') ? c9HomeSettings() : tabSettings();
-  return look + chSec + (photoOpen ? photoPicker() : '') + storageBox() + trashBox() + homeSec + kindSettings() + weekFilterSettings() + pageSettings() + diaSettings()
+  return look + chSec + (photoOpen ? photoPicker() : '') + storageBox() + trashBox() + homeSec + kindSettings() + weekFilterSettings() + (typeof c9HomeSettings === 'function' ? '' : pageSettings()) + diaSettings()
   + foldSection('s2', '通学の時間', '合計 '+commuteTotal()+'分',
     '<div class="grid3" style="margin-bottom:11px">'+
       '<div><label class="f">家→バス停</label><input id="cm_walk" inputmode="numeric" value="'+toNum(c.walk)+'"></div>'+

@@ -43,6 +43,29 @@ await page.waitForTimeout(1500);
 const sel = await page.$$eval('#tabs button', (bs) => (bs.find((b) => b.getAttribute('aria-selected') === 'true') || {}).textContent || '');
 say((sel || '').trim() === 'ゲーム', `開き直したときに覚えている：${sel}`);
 
+// タブの並び・出す／出さない（⇅）
+await page.click('#edit');
+say(await page.isVisible('#pane'), 'タブの並び・表示を開ける');
+await page.click('#pane button[data-z="down"][data-id="kurashi"]');
+let names = await page.$$eval('#tabs button', (bs) => bs.map((b) => b.textContent.trim()));
+say(names.join(',') === 'もんだい,くらし,ゲーム', `並べかえ：${names.join(' / ')}`);
+await page.click('#pane button[data-z="tg"][data-id="game"]');
+names = await page.$$eval('#tabs button', (bs) => bs.map((b) => b.textContent.trim()));
+say(names.join(',') === 'もんだい,くらし', `ゲームを出さない：${names.join(' / ')}`);
+const selNow = await page.$$eval('#tabs button', (bs) => (bs.find((b) => b.getAttribute('aria-selected') === 'true') || {}).textContent || '');
+say(selNow.trim() === 'もんだい', `見ていたアプリをかくしたら、出ているうちの最初へ：${selNow}`);
+await page.click('#pane button[data-z="tg"][data-id="kurashi"]');
+const last = await page.$eval('#pane button[data-z="tg"][data-id="study"]', (b) => b.disabled);
+say(last, '最後の1つはかくせない');
+await page.reload({ waitUntil: 'load' });
+await page.waitForTimeout(800);
+names = await page.$$eval('#tabs button', (bs) => bs.map((b) => b.textContent.trim()));
+say(names.join(',') === 'もんだい', `開き直しても覚えている：${names.join(' / ')}`);
+await page.click('#edit');
+await page.click('#pane button[data-z="reset"]');
+names = await page.$$eval('#tabs button', (bs) => bs.map((b) => b.textContent.trim()));
+say(names.join(',') === WANT.map((w) => w.tab).join(','), `はじめにもどす：${names.join(' / ')}`);
+
 say(errors.length === 0, `画面のエラー：${errors.length}件 ${errors.join(' / ')}`);
 await browser.close();
 console.log(bad ? `失敗 ${bad}件` : 'ぜんぶ入り：問題なし');

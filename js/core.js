@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-09-27b';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-09-27c';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -892,6 +892,7 @@ var PAGE_SECTIONS = {
   calweek:[['grid','週の予定']],
   tt:    [['grid','時間割'],['notes','週の連絡事項'],['subj','科目ごとの予定（ぜんぶ）'],['cancel','休講・遠隔・補講の登録']],
   course:[['list','科目一覧'],['add','科目を追加']],
+  coursedt:[['attend','出欠'],['tasks','課題'],['exams','テスト'],['events','重要・その他の予定'],['syllabus','シラバス'],['eval','評価の割合'],['forecast','成績の見込み'],['grade','成績'],['notes','この科目のメモ']],
   todoitem:[['prog','進みぐあい'],['time','かかった時間'],['how','出し方'],['sub','小項目'],['memo','メモ']],
   money: [['ready','ご用意額'],['free','自由に使えるお金'],['spend','今月の家計簿'],['flow','お金の流れ（図）'],['fuyou','扶養の壁'],['yearchart','年間の給与'],['balchart','残高の推移'],['outlook','この先の見通し']],
   in:    [['income','毎月の収入'],['fixed','固定費・サブスク'],['balance','口座の残高']],

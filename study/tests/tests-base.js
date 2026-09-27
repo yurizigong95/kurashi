@@ -150,3 +150,29 @@ test('ホーム：今日の数・つづけた日数・科目カード', async fu
   ok(has('1日つづいています') || has('つづいています'), 'つづけた日数');
   eq(W.dayCount(W.today()).n, 1, '今日といた数');
 });
+
+test('下のタブ：並べかえ・出す／出さない（設定を出さないときは上に⚙️）・はじめにもどす・ほかの端末にも送る', async function(){
+  var navIds = function(){ return $$('#nav .navb').map(function(b){ return b.dataset.tab; }); };
+  eq(navIds().join(','), 'home,drill,make,note,lib,set', 'はじめの並び');
+  await click('tab', 'set');
+  ok(has('下のタブの並び・表示'), '設定に出る');
+  await clickEl($('[data-act="st-tab-mv"][data-id="make"][data-d="-1"]'));
+  eq(navIds().join(','), 'home,make,drill,note,lib,set', '上へ動かす');
+  await clickEl($('[data-act="st-tab-tg"][data-id="note"]'));
+  eq(navIds().join(','), 'home,make,drill,lib,set', 'メモを出さない');
+  ok(W.document.getElementById('setgo').hidden, '設定が出ているあいだは⚙️を出さない');
+  await clickEl($('[data-act="st-tab-tg"][data-id="set"]'));
+  eq(navIds().join(','), 'home,make,drill,lib', '設定も出さないにできる');
+  ok(!W.document.getElementById('setgo').hidden, '上に⚙️が出る');
+  ok(W.syPayload().set.tabs, 'ほかの端末に送る設定に入る');
+  await click('tab', 'home');
+  await clickEl(W.document.getElementById('setgo'));
+  eq(W.view.tab, 'set', '⚙️で設定をひらける');
+  ['home', 'drill', 'lib'].forEach(function(id){ var b = $('[data-act="st-tab-tg"][data-id="' + id + '"]'); if(b) b.click(); });
+  await frames();
+  eq(navIds().join(','), 'make', 'のこり1つ');
+  ok($('[data-act="st-tab-tg"][data-id="make"]').disabled, '最後の1つはかくせない');
+  await clickEl($('[data-act="st-tab-reset"]'));
+  eq(navIds().join(','), 'home,drill,make,note,lib,set', 'はじめの並びにもどす');
+  ok(W.document.getElementById('setgo').hidden, '⚙️は消える');
+});

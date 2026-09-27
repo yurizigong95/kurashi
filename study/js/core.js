@@ -5,7 +5,7 @@
    読みこむ順番：core → data → ai → files → subj → make → drill → lib → main */
 
 var APP_NAME = 'もんだいメーカー';
-var APP_BUILD = '2026-09-26c';
+var APP_BUILD = '2026-09-27a';
 
 /* テストモード：?test=1 か、パソコンの中（localhost）で開いたとき。
    本物の保存にはさわらない（?real=1 で本番あつかい）。 */
@@ -107,6 +107,7 @@ var DEFAULT_SET = {
   shuffle:1,       /* 4択の選択肢を毎回いれかえる */
   term:'',         /* いまの学期（例：2026前期） */
   allTerms:0,      /* ほかの学期の科目も出す */
+  tabs:null,       /* 下のタブの並びと、出す・出さない（[[id, 1/0], …]。null ははじめのまま） */
   aiCount:0,       /* AIを呼んだ回数（へらせているか見るため） */
   aiSaved:0,       /* AIを使わずに作った問題の数 */
   /* 使ったぶんの記録（きょう・今月）。トークンの数は、Googleが返したそのままの数 */
@@ -332,6 +333,20 @@ var TABS = [
   ['set', '⚙️', '設定']
 ];
 var view = { tab:'home' };
+/* 下のタブの並び（出さないものも入れて）と、出すタブ */
+function tabOrder(){
+  var names = {}; TABS.forEach(function(t){ names[t[0]] = t; });
+  var cur = Array.isArray(S.set.tabs) ? S.set.tabs.filter(function(x, i, a){
+    return Array.isArray(x) && names[x[0]] && a.findIndex(function(y){ return Array.isArray(y) && y[0] === x[0]; }) === i;
+  }).map(function(x){ return [x[0], x[1] ? 1 : 0]; }) : [];
+  TABS.forEach(function(t){ if(!cur.some(function(x){ return x[0] === t[0]; })) cur.push([t[0], 1]); });
+  if(!cur.some(function(x){ return x[1]; })) cur[0][1] = 1;
+  return cur;
+}
+function tabsShown(){
+  var names = {}; TABS.forEach(function(t){ names[t[0]] = t; });
+  return tabOrder().filter(function(x){ return x[1]; }).map(function(x){ return names[x[0]]; });
+}
 var VIEWS = {};                     /* タブid → 画面を作る関数 */
 function onView(tab, fn){ VIEWS[tab] = fn; }
 function go(tab, opt){
@@ -357,11 +372,14 @@ function render(){
   app.innerHTML = html;
   var nav = document.getElementById('nav');
   if(nav){
-    nav.innerHTML = TABS.map(function(t){
+    nav.innerHTML = tabsShown().map(function(t){
       return '<button type="button" class="navb' + (view.tab === t[0] ? ' on' : '') + '" data-act="tab" data-tab="' + t[0] + '" data-v="' + t[0] + '">' +
         '<span class="ic">' + t[1] + '</span><span class="tx">' + t[2] + '</span></button>';
     }).join('');
   }
+  /* 設定のタブを出さないときは、上に ⚙ を出す */
+  var sg = document.getElementById('setgo');
+  if(sg) sg.hidden = tabsShown().some(function(t){ return t[0] === 'set'; });
   var ttl = document.getElementById('apptitle');
   if(ttl){
     var cur = TABS.filter(function(t){ return t[0] === view.tab; })[0];

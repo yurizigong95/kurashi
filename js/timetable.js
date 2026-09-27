@@ -368,71 +368,103 @@ function courseDetail(name){
       '<button data-act="course-req" data-name="'+esc(name)+'" class="'+(!courseReq(name)?'on':'')+'" style="'+(!courseReq(name)?'background:#0D2B7A;border-color:#0D2B7A;color:#fff':'')+'">選択</button>'+
       '<button data-act="course-room" data-name="'+esc(name)+'">教室を直す</button>'+
       '<button data-act="course-alias" data-name="'+esc(name)+'">略称</button>'+
+      (syllabusSaved(S.syllabus[name]) ? '<button data-act="syl-view" data-name="'+esc(name)+'">📄 シラバス</button>' : '')+
+      '<button data-act="course-sort" class="'+(courseSortOpen?'on':'')+'" aria-expanded="'+(courseSortOpen?'true':'false')+'">⇅ 並べ替え</button>'+
     '</div>'+
     (c.bi ? '<div class="pair" style="margin-top:10px"><div>'+mdPicker('bw_'+name, S.biweek[name]||'', '隔週の基準日（授業がある日を1回選ぶ）', true)+'</div>'+
       '<button class="btn ghost" style="flex:0 0 auto;align-self:flex-end" data-act="biweek-save" data-name="'+esc(name)+'">保存</button></div>'+
       (isYmd(S.biweek[name]) ? '<p class="note">今週は'+(biweekOn(name, td)?'あります':'ありません')+'。</p>' : '') : '')+
     '</div>';
 
-  /* 出欠（スマホで場所をとらないように、まとめる。くわしい記録と設定は、たたんでおく） */
-  h += attendSection(name, at, td, todayCls);
-
-  /* 課題・テスト・重要 */
+  /* 並べ替え（すべての授業で同じ並び。設定の「タブと画面の並び・表示」でも変えられる） */
+  if(courseSortOpen) h += courseSortBox();
+  var sy = S.syllabus[name] || {};
   var rowT = function(t){
     var n = isYmd(t.due) ? daysFromToday(t.due) : null;
     return '<div class="evrow"><span class="cbar" style="background:'+kindHex('task')+'"></span>'+
       (t.done ? '' : '<button class="chk" data-act="task-done" data-id="'+t.id+'" aria-label="完了"></button>')+
       '<span class="grow"><span class="t"'+(t.done?' style="text-decoration:line-through;color:var(--sub)"':'')+'>'+esc(t.title)+'</span>'+
-      '<span class="s">'+(isYmd(t.due)?ymdLabel(t.due):'期限なし')+(t.time?' '+esc(t.time)+'まで':'')+(t.memo?'・'+esc(t.memo):'')+'</span></span>'+
+      '<span class="s">'+(isYmd(t.due)?ymdLabel(t.due):'期限なし')+(t.time?' '+esc(t.time)+'まで':'')+(t.memo?'・'+esc(t.memo):'')+'</span>'+
+      evThumbs(t.photos)+'</span>'+
       (!t.done && n!==null ? '<span class="due '+dueClass(n)+'">'+dueText(n)+'</span>' : '')+
       '<button class="mini" data-act="ev-open" data-src="task" data-id="'+t.id+'">詳細</button></div>';
   };
-  h += section('課題', tasks.filter(function(t){return !t.done;}).length+'件',
-    (tasks.length ? tasks.map(rowT).join('') : '<div class="empty">この科目の課題はありません。</div>')+
-    '<button class="btn ghost" style="margin-top:10px" data-act="course-add" data-name="'+esc(name)+'">この科目の課題を追加</button>');
-
-  h += section('テスト', exams.length ? exams.length+'件' : null,
-    (exams.length ? exams.map(function(x){
-      var n = isYmd(x.date) ? daysFromToday(x.date) : null;
-      var k = kindOf(x.kind==='quiz'?'quiz':x.kind==='kousa'?'kousa':'exam');
-      return '<div class="evrow"><span class="cbar" style="background:'+k.hex+'"></span>'+
-        '<span class="grow"><span class="t">'+esc(k.name)+(x.room?'・'+esc(x.room):'')+'</span>'+
-        '<span class="s">'+(isYmd(x.date)?ymdLabel(x.date):'')+(x.time?' '+esc(x.time):'')+'</span></span>'+
-        (n!==null?'<span class="due '+dueClass(n)+'">'+(n<0?'終了':dueText(n))+'</span>':'')+
-        '<button class="mini" data-act="ev-open" data-src="quiz" data-id="'+x.id+'">詳細</button></div>';
-    }).join('') : '<div class="empty">テストの予定はありません。</div>')+
-    '<div class="field" style="margin-top:12px"><label class="f">テスト範囲・メモ</label><textarea id="cm_range" placeholder="例：第1〜5章、配布プリント">'+esc(cm.range||'')+'</textarea></div>'+
-    '<button class="btn ghost" data-act="course-range-save" data-name="'+esc(name)+'">テスト範囲を保存</button>');
-
-  if(imps.length) h += section('重要・その他の予定', imps.length+'件', imps.map(function(e){
-    var ek = eventKind(e.kind);
-    return '<div class="evrow"><span class="cbar" style="background:'+kindHex(ek)+'"></span>'+
-      '<span class="grow"><span class="t">'+esc(e.title)+'</span><span class="s">'+kindOf(ek).name+'・'+ymdLabel(e.date)+(e.memo?'・'+esc(e.memo):'')+'</span></span>'+
-      '<button class="mini" data-act="ev-open" data-src="'+esc(ek)+'" data-id="'+e.id+'">詳細</button></div>';
-  }).join(''));
-
-  /* シラバス（保存しておく）と、評価の割合（自分で登録） */
-  var sy = S.syllabus[name] || {};
-  h += syllabusSection(name, sy);
-  h += evalSection(name, sy);
-
-  /* 成績の見込み（シラバスの割合＋自分の点） */
-  if(typeof cpForecastSection === 'function') h += cpForecastSection(name);
-
-  /* 成績 */
-  h += section('成績', gr.grade ? esc(gr.grade) : null,
-    '<div class="pair"><div><label class="f">評価（秀・優・良・可・不可／S・A・B・C・D など）</label><input id="gr_grade" value="'+esc(gr.grade||'')+'" placeholder="優"></div>'+
-      '<div><label class="f">点数（任意）</label><input id="gr_score" inputmode="numeric" value="'+esc(gr.score||'')+'"></div>'+
-      '<button class="btn ghost" style="flex:0 0 auto;align-self:flex-end" data-act="grade-save" data-name="'+esc(name)+'">保存</button></div>'+
-    '<p class="note">GPAの計算：'+esc(typeof cpGpText === 'function' ? cpGpText() : 'S=4、A=3、B=2、C=1、D=0')+' として単位で重みづけします（授業タブの「GPAと単位」で変えられます）。</p>');
-
-  /* メモ */
-  h += section('この科目のメモ', notes.length ? notes.length+'件' : null,
-    (notes.length ? notes.map(noteRow).join('') : '<div class="empty">メモはまだありません。</div>')+
-    '<button class="btn ghost" style="margin-top:10px" data-act="note-new" data-link-type="course" data-link-id="'+esc(name)+'">この科目のメモを作る</button>');
+  var parts = {
+    /* 出欠（スマホで場所をとらないように、まとめる。くわしい記録と設定は、たたんでおく） */
+    attend: function(){ return attendSection(name, at, td, todayCls); },
+    tasks: function(){
+      return section('課題', tasks.filter(function(t){return !t.done;}).length+'件',
+        (tasks.length ? tasks.map(rowT).join('') : '<div class="empty">この科目の課題はありません。</div>')+
+        '<button class="btn ghost" style="margin-top:10px" data-act="course-add" data-name="'+esc(name)+'">この科目の課題を追加</button>');
+    },
+    exams: function(){
+      return section('テスト', exams.length ? exams.length+'件' : null,
+        (exams.length ? exams.map(function(x){
+          var n = isYmd(x.date) ? daysFromToday(x.date) : null;
+          var k = kindOf(x.kind==='quiz'?'quiz':x.kind==='kousa'?'kousa':'exam');
+          return '<div class="evrow"><span class="cbar" style="background:'+k.hex+'"></span>'+
+            '<span class="grow"><span class="t">'+esc(k.name)+(x.room?'・'+esc(x.room):'')+'</span>'+
+            '<span class="s">'+(isYmd(x.date)?ymdLabel(x.date):'')+(x.time?' '+esc(x.time):'')+'</span>'+evThumbs(x.photos)+'</span>'+
+            (n!==null?'<span class="due '+dueClass(n)+'">'+(n<0?'終了':dueText(n))+'</span>':'')+
+            '<button class="mini" data-act="ev-open" data-src="quiz" data-id="'+x.id+'">詳細</button></div>';
+        }).join('') : '<div class="empty">テストの予定はありません。</div>')+
+        '<div class="field" style="margin-top:12px"><label class="f">テスト範囲・メモ</label><textarea id="cm_range" placeholder="例：第1〜5章、配布プリント">'+esc(cm.range||'')+'</textarea></div>'+
+        '<button class="btn ghost" data-act="course-range-save" data-name="'+esc(name)+'">テスト範囲を保存</button>');
+    },
+    events: function(){
+      if(!imps.length) return '';
+      return section('重要・その他の予定', imps.length+'件', imps.map(function(e){
+        var ek = eventKind(e.kind);
+        return '<div class="evrow"><span class="cbar" style="background:'+kindHex(ek)+'"></span>'+
+          '<span class="grow"><span class="t">'+esc(e.title)+'</span><span class="s">'+kindOf(ek).name+'・'+ymdLabel(e.date)+(e.memo?'・'+esc(e.memo):'')+'</span>'+evThumbs(e.photos)+'</span>'+
+          '<button class="mini" data-act="ev-open" data-src="'+esc(ek)+'" data-id="'+e.id+'">詳細</button></div>';
+      }).join(''));
+    },
+    /* シラバス（保存しておく） */
+    syllabus: function(){ return syllabusSection(name, sy); },
+    /* 評価の割合（項目の名前も自分で登録） */
+    eval: function(){ return evalSection(name, sy); },
+    /* 成績の見込み（評価の割合＋自分の点） */
+    forecast: function(){ return (typeof cpForecastSection === 'function') ? cpForecastSection(name) : ''; },
+    grade: function(){
+      return section('成績', gr.grade ? esc(gr.grade) : null,
+        '<div class="pair"><div><label class="f">評価（秀・優・良・可・不可／S・A・B・C・D など）</label><input id="gr_grade" value="'+esc(gr.grade||'')+'" placeholder="優"></div>'+
+          '<div><label class="f">点数（任意）</label><input id="gr_score" inputmode="numeric" value="'+esc(gr.score||'')+'"></div>'+
+          '<button class="btn ghost" style="flex:0 0 auto;align-self:flex-end" data-act="grade-save" data-name="'+esc(name)+'">保存</button></div>'+
+        '<p class="note">GPAの計算：'+esc(typeof cpGpText === 'function' ? cpGpText() : 'S=4、A=3、B=2、C=1、D=0')+' として単位で重みづけします（授業タブの「GPAと単位」で変えられます）。</p>');
+    },
+    notes: function(){
+      return section('この科目のメモ', notes.length ? notes.length+'件' : null,
+        (notes.length ? notes.map(noteRow).join('') : '<div class="empty">メモはまだありません。</div>')+
+        '<button class="btn ghost" style="margin-top:10px" data-act="note-new" data-link-type="course" data-link-id="'+esc(name)+'">この科目のメモを作る</button>');
+    }
+  };
+  var shown = 0;
+  pageOrder('coursedt').forEach(function(id){
+    if(pageHidden('coursedt', id) || !parts[id]) return;
+    var part = parts[id]();
+    if(part){ h += part; shown++; }
+  });
+  if(!shown) h += '<div class="empty" style="margin-bottom:12px">出す項目をぜんぶかくしています。上の「⇅ 並べ替え」から出せます。</div>';
 
   h += '<button class="btn ghost" style="margin-top:6px;color:var(--rakuten)" data-act="course-remove" data-name="'+esc(name)+'">この科目を学期から外す</button>';
   return h;
+}
+
+/* ============================== 授業の詳細の並べ替え ============================== */
+var courseSortOpen = false;
+function courseSortBox(){
+  var labels = {}; (PAGE_SECTIONS.coursedt || []).forEach(function(x){ labels[x[0]] = x[1]; });
+  var ids = pageOrder('coursedt');
+  return '<div class="box coursesort" style="margin-bottom:14px">'+
+    '<div class="t" style="font-weight:700;margin-bottom:4px">授業の画面の並び</div>'+
+    '<p class="note" style="margin:0 0 8px"><b>≡</b> をおしたまま上下に動かすか、↑↓ で動かします。「出さない」にした項目は、この画面に出ません。すべての授業で同じ並びになります。</p>'+
+    '<div class="c9hlist" data-kind="page" data-pg="coursedt">'+ids.map(function(id, i){
+      return c9HomeRow('page', 'coursedt', id, labels[id] || id, i, ids.length, !pageHidden('coursedt', id), false);
+    }).join('')+'</div>'+
+    '<div class="pair" style="margin-top:8px"><button class="btn ghost" data-act="course-sort-reset">はじめの並びにもどす</button>'+
+    '<button class="btn" data-act="course-sort">できた</button></div>'+
+  '</div>';
 }
 
 /* ============================== 出欠（まとめた形） ============================== */
@@ -481,29 +513,146 @@ function attendSection(name, at, td, todayCls){
 /* ============================== シラバス（保存しておく） ============================== */
 var SYL_PDF_MAX = 10 * 1024 * 1024;
 function syllabusFiles(sy){ return (Array.isArray(sy && sy.files) ? sy.files : []).filter(function(f){ return f && f.pid; }); }
+/* シラバスとして見せるものがあるか（文章・写真・PDF・前に入れたリンク・前に読み取った中身） */
+function syllabusSaved(sy){
+  sy = sy || {};
+  return !!(String(sy.text || '').trim() || syllabusFiles(sy).length || sy.url || sy.teacher ||
+    (Array.isArray(sy.plan) && sy.plan.length) || (Array.isArray(sy.books) && sy.books.length));
+}
 function syllabusSection(name, sy){
   var files = syllabusFiles(sy), text = String(courseDraftOf(name, 'text', sy.text || ''));
-  var saved = text.trim() || files.length;
+  var saved = syllabusSaved(sy);
   var imgs = files.filter(function(f){ return f.kind !== 'pdf'; }), pdfs = files.filter(function(f){ return f.kind === 'pdf'; });
-  var h = '<div class="field"><label class="f" for="sy_text">シラバスの文章（大学のページからコピーして貼りつけ）</label>' +
-      '<textarea id="sy_text" style="min-height:' + (text ? 140 : 80) + 'px" placeholder="「授業の目的」「授業計画」「成績評価の方法」「教科書」などを、そのまま貼りつけて保存できます">' + esc(text) + '</textarea></div>' +
+  var h = (saved ? '<button class="btn syl-open" data-act="syl-view" data-name="' + esc(name) + '">📄 シラバスを見る</button>' : '') +
     (imgs.length ? '<div class="mphotos syl-imgs">' + imgs.map(function(f){
-      return '<div class="mphoto"><img data-pid="' + esc(f.pid) + '" alt="' + esc(f.name || 'シラバスの写真') + '" data-act="memo-photo-view" data-id="' + esc(f.pid) + '">' +
+      return '<div class="mphoto"><img data-pid="' + esc(f.pid) + '" alt="' + esc(f.name || 'シラバスの写真') + '" data-act="syl-view" data-name="' + esc(name) + '" data-pid="' + esc(f.pid) + '">' +
         '<button class="mini" data-act="syl-file-del" data-name="' + esc(name) + '" data-pid="' + esc(f.pid) + '" aria-label="消す">×</button></div>';
     }).join('') + '</div>' : '') +
     (pdfs.length ? pdfs.map(function(f){
-      return '<div class="syl-pdf"><span class="syl-ic" aria-hidden="true">📄</span><span class="grow"><span class="t">' + esc(f.name || 'シラバス.pdf') + '</span>' +
-        '<span class="s2">' + (f.size ? Math.max(1, Math.round(f.size / 1024)) + 'KB' : '') + '</span></span>' +
-        '<a class="mini" data-pidlink="' + esc(f.pid) + '" download="' + esc(f.name || 'syllabus.pdf') + '" target="_blank" rel="noopener">ひらく</a>' +
+      return '<div class="syl-pdf"><button type="button" class="syl-pdfopen" data-act="syl-view" data-name="' + esc(name) + '" data-pid="' + esc(f.pid) + '">' +
+        '<span class="syl-ic" aria-hidden="true">📄</span><span class="grow"><span class="t">' + esc(f.name || 'シラバス.pdf') + '</span>' +
+        '<span class="s2">' + (f.size ? Math.max(1, Math.round(f.size / 1024)) + 'KB・' : '') + '押すと見られます</span></span></button>' +
         '<button class="mini" data-act="syl-file-del" data-name="' + esc(name) + '" data-pid="' + esc(f.pid) + '" aria-label="消す">×</button></div>';
     }).join('') : '') +
+    '<div class="field" style="margin-top:10px"><label class="f" for="sy_text">シラバスの文章（大学のページからコピーして貼りつけ）</label>' +
+      '<textarea id="sy_text" style="min-height:' + (text ? 120 : 80) + 'px" placeholder="「授業の目的」「授業計画」「成績評価の方法」「教科書」などを、そのまま貼りつけて保存できます">' + esc(text) + '</textarea></div>' +
     '<div class="pair" style="margin-top:8px">' +
-      '<button class="btn" data-act="syl-text-save" data-name="' + esc(name) + '">保存</button>' +
-      '<button class="btn ghost" data-act="syl-file-add" data-name="' + esc(name) + '">📷 写真・PDF</button></div>' +
+      '<button class="btn ghost" data-act="syl-text-save" data-name="' + esc(name) + '">文章を保存</button>' +
+      '<button class="btn ghost" data-act="syl-file-add" data-name="' + esc(name) + '">＋ 写真・PDF</button></div>' +
     (sy.url ? '<p class="note">前に入れたリンク：<a href="' + esc(sy.url) + '" target="_blank" rel="noopener">シラバスのページをひらく</a></p>' : '') +
-    syllabusMore(sy) +
-    syllabusAiBox(name, saved);
+    syllabusMore(sy);
   return section('シラバス', saved ? '保存してあります' + (files.length ? '（' + files.length + 'ファイル）' : '') : null, h);
+}
+
+/* ===== シラバスを見る画面（文章・写真・PDF を、1回おすだけでアプリの中に出す） ===== */
+var sylView = { el:null, name:'' };
+function sylViewClose(){
+  if(sylView.el){ sylView.el.remove(); sylView.el = null; }
+  sylView.name = '';
+  document.documentElement.classList.remove('sylview-on');
+}
+function sylViewOpen(name, focusPid){
+  sylViewClose();
+  var sy = S.syllabus[name] || {};
+  var files = syllabusFiles(sy), text = String(sy.text || '').trim();
+  var el = document.createElement('div');
+  el.id = 'sylview';
+  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', name + 'のシラバス');
+  el.innerHTML = '<div class="sv-hd"><div class="grow"><div class="s2">シラバス</div><div class="sv-ttl">' + esc(name) + '</div></div>' +
+      '<button type="button" class="mini sv-close" data-sv="close">とじる</button></div>' +
+    '<div class="sv-bd">' +
+      (text ? '<div class="sv-blk"><div class="sv-cap">文章</div><div class="sv-text">' + esc(text) + '</div></div>' : '') +
+      files.map(function(f){
+        if(f.kind === 'pdf'){
+          return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📄 ' + esc(f.name || 'シラバス.pdf') + '</div>' +
+            '<div class="sv-pdf" data-pdf="' + esc(f.pid) + '"><div class="s2">ひらいています…</div></div></div>';
+        }
+        return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📷 ' + esc(f.name || 'シラバスの写真') + '</div>' +
+          '<img class="sv-img" data-pid="' + esc(f.pid) + '" data-miss="1" alt="' + esc(f.name || 'シラバスの写真') + '" data-sv="zoom"></div>';
+      }).join('') +
+      (sy.url ? '<div class="sv-blk"><div class="sv-cap">前に入れたリンク</div><a class="mini" href="' + esc(sy.url) + '" target="_blank" rel="noopener">シラバスのページをひらく</a></div>' : '') +
+      syllabusMore(sy) +
+      (!text && !files.length && !sy.url && !syllabusMore(sy) ? '<div class="empty">まだ何も保存していません。</div>' : '') +
+    '</div>';
+  el.addEventListener('click', function(e){
+    var b = e.target.closest('[data-sv]');
+    if(!b) return;
+    if(b.dataset.sv === 'close'){ sylViewClose(); return; }
+    if(b.dataset.sv === 'zoom' && b.getAttribute('src')){
+      var v = document.getElementById('viewer');
+      if(v){ v.querySelector('img').src = b.getAttribute('src'); v.classList.add('on'); }
+    }
+  });
+  document.body.appendChild(el);
+  document.documentElement.classList.add('sylview-on');
+  sylView.el = el; sylView.name = name;
+  if(typeof photoFill === 'function') photoFill();
+  /* PDF はページを絵にして出す */
+  Array.prototype.forEach.call(el.querySelectorAll('.sv-pdf'), function(box){ pdfShowInto(box, box.dataset.pdf); });
+  if(focusPid){
+    var at = el.querySelector('.sv-blk[data-pid="' + focusPid.replace(/"/g, '') + '"]');
+    if(at) setTimeout(function(){ try{ at.scrollIntoView({ block:'start' }); }catch(err){} }, 60);
+  }
+}
+/* PDF を1ページずつ絵にする（道具は lib/pdfjs にある。読めないときは、そのまま埋めこむ） */
+var pdfjsLoading = null;
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if(pdfjsLoading) return pdfjsLoading;
+  pdfjsLoading = new Promise(function(res, rej){
+    var sc = document.createElement('script');
+    sc.src = 'lib/pdfjs/pdf.min.js';
+    sc.onload = function(){
+      if(!window.pdfjsLib){ rej(new Error('PDFを見る道具が読めませんでした')); return; }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdfjs/pdf.worker.min.js';
+      res(window.pdfjsLib);
+    };
+    sc.onerror = function(){ rej(new Error('PDFを見る道具が読めませんでした（ネットにつながっているか確かめてください）')); };
+    document.head.appendChild(sc);
+  });
+  pdfjsLoading['catch'](function(){ pdfjsLoading = null; });
+  return pdfjsLoading;
+}
+function dataUrlToBytes(u){
+  var m = /^data:[^,]*;base64,(.*)$/.exec(String(u || ''));
+  if(!m) return null;
+  var bin = atob(m[1]), out = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+var PDF_PAGES_MAX = 40;
+async function pdfShowInto(box, pid){
+  var src = await photoGet(pid);
+  if(!box.isConnected) return;
+  if(!src){ box.innerHTML = '<div class="pmiss">📄 このPDFは、まだこの端末に届いていません（PDFを入れた端末で、くらしの手帳を開くと送られます）</div>'; return; }
+  try{
+    var lib = await loadPdfJs();
+    var doc = await lib.getDocument({ data:dataUrlToBytes(src) }).promise;
+    if(!box.isConnected) return;
+    box.innerHTML = '';
+    var n = Math.min(doc.numPages, PDF_PAGES_MAX);
+    var w = Math.max(280, Math.min(box.clientWidth || 360, 1100));
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    for(var i = 1; i <= n; i++){
+      var page = await doc.getPage(i);
+      if(!box.isConnected) return;
+      var vp1 = page.getViewport({ scale:1 });
+      var vp = page.getViewport({ scale:(w / vp1.width) * dpr });
+      var cv = document.createElement('canvas');
+      cv.className = 'sv-page'; cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+      cv.setAttribute('aria-label', (i) + 'ページめ');
+      box.appendChild(cv);
+      await page.render({ canvasContext:cv.getContext('2d'), viewport:vp }).promise;
+    }
+    if(doc.numPages > n) box.insertAdjacentHTML('beforeend', '<div class="s2">（' + doc.numPages + 'ページのうち、はじめの' + n + 'ページを出しています）</div>');
+  }catch(e){
+    /* 道具が読めないときは、ブラウザのPDF表示にまかせる */
+    if(!box.isConnected) return;
+    var url = src;
+    try{ var bl = dataUrlToBlob(src); if(bl) url = URL.createObjectURL(bl); }catch(err){}
+    box.innerHTML = '<iframe class="sv-frame" title="シラバスのPDF" src="' + esc(url) + '"></iframe>' +
+      '<p class="note">うまく出ないときは <a href="' + esc(url) + '" target="_blank" rel="noopener">別の画面でひらく</a>（' + esc(e.message) + '）</p>';
+  }
 }
 
 /* ============================== 評価の割合（項目の名前も自分で決める） ============================== */
@@ -588,23 +737,72 @@ function evalSection(name, sy){
       '<button class="mini" data-act="eval-del" data-name="' + esc(name) + '" data-i="' + i + '" aria-label="この項目を消す">×</button></div>';
   }).join('');
   var segs = items.map(function(x, i){ return [x.name, evalPct(x.pct), EVAL_COLORS[i % EVAL_COLORS.length]]; }).filter(function(x){ return x[1] > 0; });
-  var h = (rows ? '<div class="evlist">' + rows + '</div>' : '<div class="s2" style="margin-bottom:8px">テスト・レポートなど、成績の付け方を下から足して、割合（%）を入れてください。</div>') +
-    '<div class="pillrow evpre">' +
-      EVAL_PRESETS.filter(function(p){ return !used[p]; }).map(function(p){
+  var pres = EVAL_PRESETS.filter(function(p){ return !used[p]; });
+  var h = (rows ? '<p class="note evhelp">名前と％は、そのまま書きかえられます（欄をはなれると自動で保存します）。× で消せます。</p>' +
+          '<div class="evhead" aria-hidden="true"><span>項目の名前</span><span>割合</span></div><div class="evlist">' + rows + '</div>'
+        : '<div class="s2" style="margin-bottom:8px">テスト・レポートなど、成績の付け方（項目）を足して、割合（%）を入れてください。項目の名前は自由に決められます。</div>') +
+    '<button class="btn ghost evaddbtn" data-act="eval-add" data-name="' + esc(name) + '" data-v="">＋ 項目を追加（名前を自分で入れる）</button>' +
+    (pres.length ? '<div class="s2" style="margin:8px 0 4px">よく使う名前から足す</div><div class="pillrow evpre">' +
+      pres.map(function(p){
         return '<button data-act="eval-add" data-name="' + esc(name) + '" data-v="' + esc(p) + '">＋ ' + esc(p) + '</button>';
-      }).join('') +
-      '<button data-act="eval-add" data-name="' + esc(name) + '" data-v="">＋ 自分で入れる</button></div>' +
+      }).join('') + '</div>' : '') +
     (segs.length ? '<div class="evbar" role="img" aria-label="' + esc(segs.map(function(x){ return x[0] + ' ' + x[1] + '%'; }).join('、')) + '">' +
         segs.map(function(x){ return '<i style="flex:' + x[1] + ';background:' + x[2] + '"></i>'; }).join('') + '</div>' : '') +
     (items.length ? '<div class="evtot ' + (tot === 100 ? 'evok' : 'evng') + '">合計 ' + tot + '%' +
       (tot === 100 ? ' ✓' : tot < 100 ? '（あと' + Math.round((100 - tot) * 10) / 10 + '%）' : '（' + Math.round((tot - 100) * 10) / 10 + '%多い）') + '</div>' : '') +
     '<div class="field" style="margin-top:8px"><label class="f" for="sy_memo">評価のメモ</label><textarea id="sy_memo" placeholder="例：出席2/3以上で受験資格">' + esc(courseDraftOf(name, 'memo', sy.memo || '')) + '</textarea></div>' +
-    '<button class="btn' + (dirty ? '' : ' ghost') + '" data-act="eval-save" data-name="' + esc(name) + '">' + (dirty ? '保存する（まだ保存していません）' : '保存') + '</button>';
+    '<button class="btn' + (dirty ? '' : ' ghost') + '" data-act="eval-save" data-name="' + esc(name) + '">' + (dirty ? '保存する（まだ保存していません）' : '保存する') + '</button>';
   return section('評価の割合', items.length ? '合計' + tot + '%' : null, h);
 }
 
-/* ===== シラバス（文章・写真・PDF・URL）から、評価の割合・授業計画・教科書・担当の先生・テストの日をAIが読み取る ===== */
-var sylAi = { name:'', busy:false, result:null, err:'', files:[], fileNames:[] };
+/* 評価の割合を保存する（ボタンでも、書きかえて欄をはなれたときでも） */
+function evalSaveNow(name){
+  var its = evalFromForm(name).map(function(x){
+    var nm = String(x.name || '').trim();
+    return { name:nm, pct:evalPct(x.pct), kind:evalKindOf(nm) };
+  }).filter(function(x){ return x.name; });
+  var names = {}, dup = its.filter(function(x){ if(names[x.name]) return true; names[x.name] = 1; return false; });
+  if(dup.length) return { ok:false, msg:'「' + dup[0].name + '」が2つあります。名前を変えてください' };
+  var sy0 = S.syllabus[name] || {};
+  var memoEl = document.getElementById('sy_memo');
+  var nx = Object.assign({}, sy0, syllabusLegacy(its), { items:its, memo:memoEl ? memoEl.value : (sy0.memo || ''), mt:Date.now() });
+  if(!its.length) delete nx.items;
+  S.syllabus[name] = nx;
+  evalDraft = null;
+  courseDraftKeep(name); courseDraft.memo = null;
+  touch('syllabus');
+  var tot = Math.round(its.reduce(function(a, x){ return a + x.pct; }, 0) * 10) / 10;
+  return { ok:true, msg:'評価の割合を保存しました' + (its.length && tot !== 100 ? '（合計' + tot + '%）' : ''), tot:tot, n:its.length };
+}
+/* 書きかえて欄をはなれたら、描き直さずにそのまま保存する（打っている途中の欄は動かさない） */
+function courseAutoSave(el){
+  if(!courseView || appId !== 'course' || !el || !el.id) return;
+  var name = courseView;
+  if(/^ev_[np]_\d+$/.test(el.id) || el.id === 'sy_memo'){
+    /* 名前がまだ空の行があるときは、書きおわるまで待つ（空の行が消えないように） */
+    if(evalFromForm(name).some(function(x){ return !String(x.name || '').trim(); })) return;
+    var r = evalSaveNow(name);
+    var tot = document.querySelector('.evtot'), sv = document.querySelector('[data-act="eval-save"]');
+    if(!r.ok){ if(tot){ tot.className = 'evtot evng'; tot.textContent = r.msg; } evalKeepIfChanged(name); return; }
+    persist(); pushRemote();
+    if(tot){
+      tot.className = 'evtot ' + (r.tot === 100 ? 'evok' : 'evng');
+      tot.textContent = '合計 ' + r.tot + '%' + (r.tot === 100 ? ' ✓' : r.tot < 100 ? '（あと' + Math.round((100 - r.tot) * 10) / 10 + '%）' : '（' + Math.round((r.tot - 100) * 10) / 10 + '%多い）');
+    }
+    if(sv){ sv.className = 'btn ghost'; sv.textContent = '保存しました ✓'; }
+    return;
+  }
+  if(el.id === 'sy_text'){
+    var sy1 = S.syllabus[name] || {};
+    if(String(sy1.text || '') === el.value) return;
+    S.syllabus[name] = Object.assign({}, sy1, { text:el.value.slice(0, 60000), mt:Date.now() });
+    if(courseDraft.name === name) courseDraft.text = null;
+    touch('syllabus'); persist(); pushRemote();
+    toast('シラバスの文章を保存しました');
+  }
+}
+document.addEventListener('change', function(e){ try{ courseAutoSave(e.target); }catch(err){} });
+
 /* 保存してあるシラバスのくわしい中身（担当の先生・評価のうちわけ・授業計画・教科書） */
 function syllabusMore(sy){
   sy = sy || {};
@@ -620,191 +818,6 @@ function syllabusMore(sy){
     }).join('')+'</div></div>' : '')+
   '</div>';
 }
-function syllabusAiBox(name, saved){
-  var r = (sylAi.name === name) ? sylAi.result : null;
-  var h = '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--rule)">'+
-    '<button class="btn ghost" data-act="syl-ai" data-name="'+esc(name)+'"'+(sylAi.busy?' disabled':'')+'>'+
-      (sylAi.busy && sylAi.name === name ? '読み取っています…' : '✨ 保存したシラバスから、AIで評価の割合・授業計画・テストの日を読み取る')+'</button>'+
-    (sylAi.err && sylAi.name === name ? '<p class="note" style="color:var(--rakuten)">'+esc(sylAi.err)+'</p>' : '');
-  if(r){
-    var pct = [['テスト', r.exam], ['レポート', r.report], ['出席・平常点', r.attend], ['そのほか', r.other]]
-      .filter(function(x){ return x[1] != null && x[1] !== ''; });
-    h += '<div class="box" style="margin-top:10px;background:rgba(255,255,255,.4)">'+
-      '<div class="t" style="font-weight:700;margin-bottom:6px">読み取った内容（まだ保存していません）</div>'+
-      (r.teacher ? '<div class="s2" style="margin-bottom:4px">担当の先生：'+esc(r.teacher)+'</div>' : '')+
-      ((r.items||[]).length ? '<div class="s2" style="margin-bottom:6px">成績の付け方：'+r.items.map(function(x){ return esc(x.name)+' '+x.pct+'%'; }).join('・')+'</div>'
-        : (pct.length ? '<div class="s2" style="margin-bottom:6px">'+pct.map(function(x){ return esc(x[0])+' '+toNum(x[1])+'%'; }).join('　')+'</div>' : '<div class="s2">評価の割合は見つかりませんでした。</div>'))+
-      (r.other_detail ? '<div class="s2">そのほかの中身：'+esc(r.other_detail)+'</div>' : '')+
-      (r.notes ? '<div class="s2" style="margin-bottom:6px">条件：'+esc(r.notes)+'</div>' : '')+
-      ((r.plan||[]).length ? '<details style="margin:6px 0"><summary class="s2">授業計画 '+r.plan.length+'回ぶん</summary>'+
-        r.plan.map(function(p){ return '<div class="s2">'+esc(p.no ? '第'+p.no+'回　' : '')+esc(p.title)+'</div>'; }).join('')+'</details>' : '')+
-      ((r.tests||[]).length
-        ? '<label class="f" style="margin-top:6px">テスト・小テスト</label>'+r.tests.map(function(x, i){
-            return '<label class="row" style="gap:8px"><input type="checkbox" class="syl-pick" data-i="'+i+'"'+(isYmd(x.date)?' checked':'')+' style="width:auto">'+
-              '<div class="grow"><div class="t">'+esc(x.title || 'テスト')+'<span class="b cat" style="margin-left:6px">'+(x.kind==='quiz'?'小テスト':'大テスト')+'</span></div>'+
-              '<div class="s">'+(isYmd(x.date) ? ymdLabel(x.date) : '日付なし'+(x.week ? '（'+esc(x.week)+'）' : '')+'　→ 追加したあと「直す」で日付を入れてください')+'</div></div></label>';
-          }).join('')
-        : '<div class="s2">テストの日は見つかりませんでした。</div>')+
-      ((r.books||[]).length
-        ? '<label class="f" style="margin-top:6px">教科書（チェックしたものを「教科書」の買う予定に足す）</label>'+r.books.map(function(b, i){
-            return '<label class="row" style="gap:8px"><input type="checkbox" class="syl-book" data-i="'+i+'"'+(b.need !== '参考' ? ' checked' : '')+' style="width:auto">'+
-              '<div class="grow"><div class="t">'+esc(b.title)+'</div><div class="s">'+esc([b.author, b.isbn ? 'ISBN '+b.isbn : '', b.need].filter(Boolean).join('・'))+'</div></div></label>';
-          }).join('') : '')+
-      '<div class="pair" style="margin-top:10px"><button class="btn" data-act="syl-apply" data-name="'+esc(name)+'">保存して、選んだものを入れる</button>'+
-      '<button class="btn ghost" style="flex:0 0 auto;padding:11px 14px" data-act="syl-cancel">やめる</button></div>'+
-      '</div>';
-  }
-  h += '<p class="note">AIで読み取るときは、保存した文章・写真・PDFがGoogleのAIに送られます（シラバス以外のもの・個人の情報は入れないでください）。割合は「評価の割合」に入り、テストは「大テスト／小テスト」として予定に入ります。AIはまちがえることがあるので、保存する前にたしかめてください。</p></div>';
-  return h;
-}
-/* ページの文字だけを取り出す（HTMLのタグ・スクリプトを外す） */
-function syllabusPageText(html){
-  var s = String(html || '');
-  s = s.replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|tr|li|h\d)>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-  return s.replace(/[ \t　]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
-}
-/* opt … { files:[dataUrl], url } */
-async function syllabusRead(name, opt){
-  opt = opt || {};
-  var el = document.getElementById('sy_text');
-  var text = (el ? el.value : String((S.syllabus[name] || {}).text || '')).trim();
-  /* 書いた文章は、先に保存しておく */
-  if(el){ var sy1 = S.syllabus[name] || {}; if(String(sy1.text || '') !== el.value){ S.syllabus[name] = Object.assign({}, sy1, { text:el.value.slice(0, 60000), mt:Date.now() }); touch('syllabus'); persist(); } }
-  var files = opt.files || [];
-  if(!opt.files){
-    var saved = syllabusFiles(S.syllabus[name]);
-    for(var fi = 0; fi < saved.length; fi++){ var du = await photoGet(saved[fi].pid); if(du) files.push(du); }
-  }
-  var url = String(opt.url || '').trim();
-  if(!text && !files.length && !url){ toast('先にシラバスの文章を貼るか、写真・PDFを足して保存してください', true); return; }
-  if(!aiReady()){ toast('先に設定タブでGemini APIキーを登録してください', true); return; }
-  sylAi = { name:name, busy:true, result:null, err:'', files:files, fileNames:sylAi.fileNames || [] };
-  render();
-  try{
-    if(url){
-      if(!/^https?:\/\//i.test(url)) throw new Error('URLは https:// からはじまるものを入れてください');
-      /* 大学のページは、アプリから直接読めない（橋わたしでも読めない場所）ことが多いので、わかる言葉で知らせる */
-      var raw;
-      try{ raw = await apiGet(url); }
-      catch(e0){ throw new Error('このページは読めませんでした（' + e0.message + '）。大学のシラバスのページは、アプリから読めないことが多いので、ページの文章をコピーして貼るか、写真・PDFで読んでください'); }
-      var page = syllabusPageText(raw);
-      if(page.length < 20) throw new Error('ページの中身を読めませんでした（ログインが必要なページかもしれません。文章をコピーして貼ってください）');
-      text = (text ? text + '\n' : '') + page;
-    }
-    var t = curTerm();
-    var r = await aiJson(
-      'つぎは大学の授業「' + name + '」のシラバス' + (files.length ? '（写真・PDF）' : 'の文章') + 'です。JSONだけを返してください。\n' +
-      '{"exam":期末・中間テストの割合(数字。%は付けない。なければnull),"report":レポート・課題の割合,"attend":出席・平常点・授業態度の割合,' +
-      '"other":そのほか(小テスト・発表など)の割合,"other_detail":"そのほかの中身を短く",' +
-      '"items":[{"name":"評価の項目（期末試験・小テスト・レポート・出席 など）","pct":割合(数字),"kind":"exam|quiz|report|attend|other"}],' +
-      '"teacher":"担当の先生の名前（何人もいれば「、」で区切る。なければ空）",' +
-      '"plan":[{"no":回の番号,"title":"その回の内容を短く"}],' +
-      '"books":[{"title":"教科書の名前","author":"著者","isbn":"ISBN（数字だけ。なければ空）","need":"必須 または 参考"}],' +
-      '"notes":"単位をとる条件（例：出席2/3以上で受験資格）を短く。なければ空",' +
-      '"tests":[{"title":"中間試験 など","kind":"exam(中間・期末) または quiz(小テスト)","date":"YYYY-MM-DD。書いていなければnull","week":"第何回か（日付がないとき。なければ空）"}]}\n' +
-      '・割合が書いていないものは null。合計が100にならなくてもよい。書いていないものは空の配列にする。\n' +
-      '・今は' + today() + '、学期は「' + t.label + '」。年が書いていない日付は、この学期の中の日にする。\n' +
-      (text ? '【シラバス】\n' + text.slice(0, 20000) : ''), files, (files.length || url) ? 'cp-syl' : 'syllabus');
-    r = r || {};
-    r.tests = (Array.isArray(r.tests) ? r.tests : []).map(function(x){
-      x = x || {};
-      var d = String(x.date || '');
-      var m = d.match(/(\d{1,2})[-\/月](\d{1,2})/);
-      if(!isYmd(d) && m) d = guessYear(+m[1], +m[2]) + '-' + pad(+m[1]) + '-' + pad(+m[2]);
-      if(!isYmd(d)) d = syllabusWeekDate(name, x.week) || '';
-      return { title:String(x.title || 'テスト').slice(0, 40), kind:(x.kind === 'quiz' ? 'quiz' : 'exam'), date:d, week:String(x.week || '') };
-    });
-    var kinds = { exam:1, quiz:1, report:1, attend:1, other:1 };
-    r.items = (Array.isArray(r.items) ? r.items : []).map(function(x){
-      x = x || {};
-      return { name:String(x.name || '').slice(0, 30), pct:toNum(x.pct), kind:kinds[x.kind] ? x.kind : 'other' };
-    }).filter(function(x){ return x.name && x.pct > 0; }).slice(0, 12);
-    /* うちわけがあって、大まかな割合がないときは、うちわけから足して出す */
-    if(r.items.length && [r.exam, r.report, r.attend, r.other].every(function(v){ return v == null || v === ''; })){
-      var sum = function(k){ var s = 0, hit = false; r.items.forEach(function(x){ if(k.indexOf(x.kind) >= 0){ s += x.pct; hit = true; } }); return hit ? s : null; };
-      r.exam = sum(['exam']); r.report = sum(['report']); r.attend = sum(['attend']); r.other = sum(['quiz', 'other']);
-    }
-    r.teacher = String(r.teacher || '').slice(0, 60);
-    r.plan = (Array.isArray(r.plan) ? r.plan : []).map(function(p, i){
-      p = p || {};
-      return { no:toNum(p.no) || (i + 1), title:String(p.title || '').slice(0, 80) };
-    }).filter(function(p){ return p.title; }).slice(0, 40);
-    r.books = (Array.isArray(r.books) ? r.books : []).map(function(b){
-      b = b || {};
-      return { title:String(b.title || '').slice(0, 100), author:String(b.author || '').slice(0, 60),
-               isbn:String(b.isbn || '').replace(/[^0-9Xx]/g, '').slice(0, 13), need:/参考/.test(String(b.need || '')) ? '参考' : '必須' };
-    }).filter(function(b){ return b.title; }).slice(0, 10);
-    sylAi.result = r;
-  }catch(e){
-    sylAi.err = '読み取れませんでした：' + e.message;
-    logErr('シラバス', e.message);
-  }finally{
-    sylAi.busy = false;
-    render();
-  }
-}
-/* 「第8回」→ 初回の日から数えた日付（初回の日が分かるときだけ） */
-function syllabusWeekDate(name, week){
-  var s = String(week || '');
-  try{ s = s.normalize('NFKC'); }catch(e){}
-  var n = toNum(s);
-  if(!n || n > 30) return '';
-  var c = courseByName(name);
-  if(!c || !c.slots.length) return '';
-  var first = (S.terms && S.terms.first) ? (S.terms.first[c.slots[0].d + c.slots[0].p] || S.terms.first[name]) : '';
-  if(!isYmd(first)) return '';
-  return shiftDate(first, (n - 1) * (c.bi ? 14 : 7));
-}
-function syllabusApply(name){
-  var r = sylAi.result;
-  if(!r) return;
-  var cur = S.syllabus[name] || {};
-  var num = function(v, old){ return (v == null || v === '') ? (old || '') : String(toNum(v)); };
-  var notes = [cur.memo || '', r.notes || '', r.other_detail ? 'そのほか：' + r.other_detail : '']
-    .filter(function(x, i, a){ return x && a.indexOf(x) === i; }).join('\n');
-  S.syllabus[name] = Object.assign({}, cur, {
-    exam:num(r.exam, cur.exam), rep:num(r.report, cur.rep), att:num(r.attend, cur.att), other:num(r.other, cur.other),
-    memo:notes, mt:Date.now()
-  });
-  var sy = S.syllabus[name];
-  if(r.teacher) sy.teacher = r.teacher;
-  /* 評価の割合は、項目（名前＋％）の形で入れる。うちわけがなければ、大まかな割合から作る */
-  var its = (r.items || []).length ? r.items
-    : [['テスト', r.exam, 'exam'], ['レポート', r.report, 'report'], ['出席・平常点', r.attend, 'attend'], ['そのほか', r.other, 'other']]
-      .filter(function(a){ return toNum(a[1]) > 0; }).map(function(a){ return { name:a[0], pct:toNum(a[1]), kind:a[2] }; });
-  if(its.length){ sy.items = its; Object.assign(sy, syllabusLegacy(its)); }
-  evalDraft = null;
-  if((r.plan || []).length) sy.plan = r.plan;
-  if((r.books || []).length) sy.books = r.books;
-  var picks = Array.prototype.map.call(document.querySelectorAll('.syl-pick'), function(el){ return el.checked ? toNum(el.dataset.i) : -1; })
-    .filter(function(i){ return i >= 0; });
-  var added = 0, nb = 0;
-  picks.forEach(function(i){
-    var x = r.tests[i]; if(!x) return;
-    var date = isYmd(x.date) ? x.date : today();
-    var dup = S.exams.some(function(e){ return sameSubject(e.subject, name) && e.date === date && (e.title||'') === x.title; });
-    if(dup) return;
-    S.exams.push({ id:uid('ex'), subject:name, title:x.title + (isYmd(x.date) ? '' : '（日付を入れてください）'), date:date, time:'',
-      room:'', kind:x.kind, photos:[], rid:'', mt:Date.now() });
-    added++;
-  });
-  /* 教科書は「教科書」の一覧（S.books）に、買う予定として足す */
-  Array.prototype.forEach.call(document.querySelectorAll('.syl-book'), function(el){
-    if(!el.checked) return;
-    var b = (r.books || [])[toNum(el.dataset.i)]; if(!b) return;
-    S.books = Array.isArray(S.books) ? S.books : [];
-    if(S.books.some(function(x){ return (b.isbn && x.isbn === b.isbn) || (x.title === b.title && sameSubject(x.course, name)); })) return;
-    S.books.push({ id:uid('bk'), mt:Date.now(), title:b.title, author:b.author, isbn:b.isbn, course:name, status:'買う予定' });
-    nb++;
-  });
-  sylAi = { name:'', busy:false, result:null, err:'', files:[], fileNames:[] };
-  touch('syllabus');
-  toast('保存しました' + (added || nb ? '（' + [added ? 'テスト' + added + '件を予定に' : '', nb ? '教科書' + nb + '冊を買う予定に' : ''].filter(Boolean).join('・') + '入れました）' : ''));
-  commit();
-}
-
-/* GPA（学期ごと・累積）。GPの付け方は授業タブの「GPAと単位」（cpGpOf）に合わせる */
 function gpaOf(termIds){
   var pts = { S:4, A:3, B:2, C:1, D:0 };
   var sum = 0, cr = 0, earned = 0;
@@ -892,9 +905,16 @@ function ttAction(act, t, ev){
     var nm7 = t.dataset.name, cm7 = S.courseMeta[nm7] || {};
     cm7.range = val('cm_range'); S.courseMeta[nm7] = cm7; touch('courseMeta'); toast('保存しました'); commit(); return true;
   }
-  if(act==='syl-ai'){ syllabusRead(t.dataset.name); return true; }
-  if(act==='syl-apply'){ syllabusApply(t.dataset.name); return true; }
-  if(act==='syl-cancel'){ sylAi = { name:'', busy:false, result:null, err:'', files:[], fileNames:[] }; render(); return true; }
+  /* シラバスを見る（文章・写真・PDF をまとめて、アプリの中で） */
+  if(act==='syl-view'){ courseKeepAll(t.dataset.name); sylViewOpen(t.dataset.name, t.dataset.pid || ''); return true; }
+  /* 授業の画面の並べ替え */
+  if(act==='course-sort'){ courseKeepAll(courseView); courseSortOpen = !courseSortOpen; render(); return true; }
+  if(act==='course-sort-reset'){
+    courseKeepAll(courseView);
+    S.ui.pageOrder = S.ui.pageOrder || {}; S.ui.pageHide = S.ui.pageHide || {};
+    delete S.ui.pageOrder.coursedt; delete S.ui.pageHide.coursedt;
+    touch('ui'); toast('はじめの並びにもどしました'); commit(); return true;
+  }
   /* シラバス：文章を保存 */
   if(act==='syl-text-save'){
     var nmS = t.dataset.name, syS = S.syllabus[nmS] || {};
@@ -966,20 +986,9 @@ function ttAction(act, t, ev){
     render(); return true;
   }
   if(act==='eval-save'){
-    var nmV = t.dataset.name, itsV = evalFromForm(nmV).map(function(x){
-      var nm = String(x.name || '').trim();
-      return { name:nm, pct:evalPct(x.pct), kind:evalKindOf(nm) };
-    }).filter(function(x){ return x.name; });
-    var names = {}, dup = itsV.filter(function(x){ if(names[x.name]) return true; names[x.name] = 1; return false; });
-    if(dup.length){ toast('「' + dup[0].name + '」が2つあります。名前を変えてください', true); return true; }
-    var syV = S.syllabus[nmV] || {};
-    var nxV = Object.assign({}, syV, syllabusLegacy(itsV), { items:itsV, memo:val('sy_memo'), mt:Date.now() });
-    if(!itsV.length) delete nxV.items;
-    S.syllabus[nmV] = nxV;
-    evalDraft = null;
-    courseDraftKeep(nmV); courseDraft.memo = null;
-    var totV = Math.round(itsV.reduce(function(a, x){ return a + x.pct; }, 0) * 10) / 10;
-    touch('syllabus'); toast('評価の割合を保存しました' + (itsV.length && totV !== 100 ? '（合計' + totV + '%）' : '')); commit(); return true;
+    var rV = evalSaveNow(t.dataset.name);
+    if(!rV.ok){ toast(rV.msg, true); return true; }
+    toast(rV.msg); commit(); return true;
   }
   /* 出欠：くわしい記録をひらく・記録を消す */
   if(act==='att-more'){ courseKeepAll(t.dataset.name); attMore[t.dataset.name] = !attMore[t.dataset.name]; render(); return true; }

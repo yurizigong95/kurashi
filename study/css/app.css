@@ -381,3 +381,15 @@ nav{
 .gnrow .bd b{font-size:14px; overflow-wrap:anywhere}
 
 #gn-sec, #sy-sec{scroll-margin-top:72px}
+
+/* 下のタブの並び・表示 */
+.tabrow{display:flex; align-items:center; gap:6px; padding:7px 0; border-top:1px solid var(--line)}
+.tabrow:first-of-type{border-top:0}
+.tabrow .tn{flex:1; font-weight:700}
+.tabrow.off .tn{color:var(--sub); text-decoration:line-through}
+.tabrow button{appearance:none; border:1px solid var(--line); background:var(--card); color:var(--ink); font:inherit; font-size:13px;
+  border-radius:9px; padding:6px 10px; cursor:pointer}
+.tabrow button:disabled{opacity:.35; cursor:default}
+.tabrow .tg.on{background:var(--main); border-color:var(--main); color:#fff}
+header .setgo{margin-left:6px; border:1px solid var(--line); background:var(--card); border-radius:10px; font:inherit; font-size:16px; padding:3px 8px; cursor:pointer}
+header .setgo[hidden]{display:none}
