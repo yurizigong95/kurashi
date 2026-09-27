@@ -11,7 +11,7 @@ GitHub Pages（https://yurizigong95.github.io/kurashi/ ）で動かします。
 |---|---|---|---|
 | くらしの手帳 | `/`（このフォルダ） | https://yurizigong95.github.io/kurashi/ | 支払い・履修・時間割・予定・バイト・相談 |
 | もんだいメーカー | `study/` | https://yurizigong95.github.io/kurashi/study/ | 授業の写真・スライド・配布資料から問題を作って解く勉強アプリ |
-| ゲーム道場 | `game/` | https://yurizigong95.github.io/kurashi/game/ | ひといきつくための小さなゲーム集（58種・HTML1枚） |
+| ゲーム道場 | `game/` | https://yurizigong95.github.io/kurashi/game/ | チェス・ゲームセンター（58種）・パーティーのすごろく（HTML1枚＋3Dの素材） |
 | ぜんぶ入り | `all/` | https://yurizigong95.github.io/kurashi/all/ | 上の3つを、上の切りかえバーで行き来できる1つのアプリ |
 
 - 3つのアプリはそれぞれ独立していて、コードも保存場所も別です（かたほうを直しても、もう一方は影響を受けません）。
@@ -19,7 +19,7 @@ GitHub Pages（https://yurizigong95.github.io/kurashi/ ）で動かします。
 - もんだいメーカーのくわしい説明は `study/README.md`
 - **4つとも、端末どうしでひとりでにそろいます**（くらしの手帳・もんだいメーカー・ゲーム道場の記録）。つなぎ先はぜんぶ同じ Firebase で、遊ぶ端末でいちどくらしの手帳を開いておけば、それだけで動きます。APIキーは同期しません。
 - ゲーム道場の**リアルタイム対局（2台の端末）**は、くらしの手帳と同じつなぎ先（Firebase）を使います。遊ぶ端末で、いちどくらしの手帳を開いておけば、そのまま使えます（部屋は手帳の合言葉ではじまる名前で作るので、いまのきまり（ルール）のままで動きます）。
-- ゲーム道場のAI（コーチ・しりとりの相手・実況・自伝）は **Gemini** を使います。APIキーは、くらしの手帳やもんだいメーカーに入れたものを自動で使います（無ければ、はじめて使うときに聞きます）。ゲームの「AIと対局」の強さは端末の中の計算なので、キーもネットもいりません。
+- ゲーム道場のAI（コーチ・しりとりの相手・実況・新聞・自伝）は **Gemini** を使います。APIキーは、くらしの手帳やもんだいメーカーに入れたものを自動で使います（無ければ、はじめて使うときに聞きます）。ゲームの「AIと対局」の強さは端末の中の計算なので、キーもネットもいりません。
 
 ## ファイルの中身
 
@@ -54,15 +54,29 @@ GitHub Pages（https://yurizigong95.github.io/kurashi/ ）で動かします。
 | `gas/Code.gs` | Google連携の「橋わたし」（Apps Script に貼るプログラム） |
 | `gas/appsscript.json` | 橋わたしの設定ファイル（Apps Script のエディタに貼る） |
 | `files.json` | アップロードの確認に使うファイルの一覧（`tools/チェック.bat` で作る） |
-| `tools/` | 公開（`公開.bat`）・アップロード前のファイル確認・GitHubでの自動テストの道具 |
+| `tools/` | 公開（`公開.bat`）・アップロード前のファイル確認・GitHubでの自動テストの道具・ゲーム道場の新しい版を入れる道具（`game-port.py`） |
 | `.github/workflows/ci.yml` | GitHubにアップロードしたときの自動テスト |
 | `tests/` | 自動テスト（本物のデータには触れません） |
 | `sw.js` / `manifest.json` / `icon-*.png` | ホーム画面に置いたときのための設定 |
 | `study/` | もんだいメーカー（別のアプリ。1つで完結） |
-| `game/index.html` | ゲーム道場（HTML1枚のゲーム集） |
+| `game/index.html` | ゲーム道場（HTML1枚のゲーム集。Claude で作った版に、Gemini・Firebase のつなぎを足したもの） |
+| `game/assets3d/` | ゲーム道場の3Dの模型と地面の模様（どれも CC0。出どころは `CREDITS.md`） |
 | `all/` | ぜんぶ入り（3つを行き来する入れ物。index.html・sw.js・manifest.json・アイコン） |
 
 `js/` のファイルは、`index.html` に書いた順番で読みこみます。順番は変えないでください。
+
+## ゲーム道場を新しい版にするとき
+
+Claude で作ったゲーム道場の新しい版（公開ページの html か、ZIP の `chess-dojo.html`）を入れるときは、
+kurashi のフォルダで次のようにします。AI を Gemini に、リアルタイム対局と記録の同期を Firebase に、自動でつなぎ直します。
+
+```
+python3 tools/game-port.py <新しい版の html>
+```
+
+- ZIP の `assets3d` フォルダは、`game/assets3d/` にそのまま置きます
+- 新しい版で画面の文が変わっていて、つなぎ直せないところがあると、止まって場所を知らせます
+- `node tools/ci-game.mjs`（GitHub の自動テストでも動きます）で、Gemini・リアルタイム対局・同期・3D の素材を確かめられます
 
 ## 公開のしかた（GitHub に上げる）
 
