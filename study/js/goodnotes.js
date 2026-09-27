@@ -7,7 +7,7 @@
      橋わたしのURLと合言葉は、この端末のくらしの手帳のものを読むだけ（写さない・同期しない）。
    ・橋わたしは、Goodnotesのフォルダの中のPDFだけを渡します（ほかのファイルは渡さない）。 */
 
-var gn = { open:0, busy:'', msg:'', items:null, err:'', why:'', folder:'', q:'', pick:{}, from:'' };
+var gn = { open:0, busy:'', msg:'', items:null, err:'', why:'', folder:'', q:'', pick:{}, from:'', sort:'', closed:{} };
 var GN_PART = 4 * 1024 * 1024;              /* 1回に受けとる大きさ（橋わたしの返事が大きくなりすぎないように） */
 
 function gnIsLink(u){ return /^https?:\/\/(?:share|web)\.goodnotes\.com\//i.test(String(u || '')); }
@@ -139,6 +139,69 @@ async function gnTake(){
   if(bad.length) toast('受けとれなかったノート：' + bad.join('／'), true);
 }
 
+/* ===== 一覧の並べ方（フォルダごと・名前順・新しい順） ===== */
+var gnColl = (typeof Intl !== 'undefined' && Intl.Collator) ? new Intl.Collator('ja', { numeric:true, sensitivity:'base' }) : null;
+function gnCmp(a, b){ a = String(a || ''); b = String(b || ''); return gnColl ? gnColl.compare(a, b) : (a < b ? -1 : a > b ? 1 : 0); }
+function gnNoteName(it){ return String((it && it.name) || '').replace(/\.pdf$/i, ''); }
+/* 橋わたしが新しい版なら、どのフォルダのノートかがわかる */
+function gnHasPaths(){ return (gn.items || []).some(function(it){ return typeof it.path === 'string'; }); }
+function gnSortMode(){
+  var m = gn.sort || (gnHasPaths() ? 'folder' : 'name');
+  if(m === 'folder' && !gnHasPaths()) m = 'name';
+  return m;
+}
+function gnSorted(list, mode){
+  return list.slice().sort(function(a, b){
+    if(mode === 'new') return (toNum(b.updated) - toNum(a.updated)) || gnCmp(gnNoteName(a), gnNoteName(b));
+    return gnCmp(gnNoteName(a), gnNoteName(b));
+  });
+}
+function gnRow(it){
+  var on = !!gn.pick[it.id];
+  return '<button type="button" class="gnrow' + (on ? ' on' : '') + '" data-act="gn-pick" data-v="' + esc(it.id) + '" aria-pressed="' + on + '">' +
+    '<span class="ck">' + (on ? '✓' : '') + '</span><span class="bd"><b>' + esc(gnNoteName(it)) + '</b>' +
+    '<span class="s">' + esc(syAgo(it.updated)) + 'に更新・' + esc(fSizeText(it.size)) + '</span></span></button>';
+}
+function gnListHtml(){
+  var mode = gnSortMode(), items = gnSorted(gn.items || [], mode === 'folder' ? 'name' : mode);
+  if(mode !== 'folder') return items.map(gnRow).join('');
+  /* フォルダごとにまとめる（フォルダは名前順・いちばん上のノートは最後） */
+  var groups = {}, keys = [];
+  items.forEach(function(it){
+    var k = String(it.path || '');
+    if(!groups[k]){ groups[k] = []; keys.push(k); }
+    groups[k].push(it);
+  });
+  keys.sort(function(a, b){ if(!a) return 1; if(!b) return -1; return gnCmp(a, b); });
+  var closed = gn.closed || {};
+  return keys.map(function(k){
+    var list = groups[k], shut = !!closed[k];
+    var picked = list.filter(function(it){ return gn.pick[it.id]; }).length;
+    return '<div class="gngrp">' +
+      '<button type="button" class="gnfold' + (shut ? '' : ' open') + '" data-act="gn-fold" data-v="' + esc(k) + '" aria-expanded="' + !shut + '">' +
+        '<span class="tw" aria-hidden="true">' + (shut ? '▸' : '▾') + '</span><span class="fn">📁 ' + esc(k || (gn.folder || 'GoodNotes') + '（いちばん上）') + '</span>' +
+        '<span class="fc">' + list.length + '冊' + (picked ? '・' + picked + 'えらんだ' : '') + '</span></button>' +
+      (shut ? '' : list.map(gnRow).join('')) +
+    '</div>';
+  }).join('');
+}
+function gnSortBar(){
+  var mode = gnSortMode(), has = gnHasPaths();
+  var opts = (has ? [['folder', '📁 フォルダごと']] : []).concat([['name', '名前順'], ['new', '新しい順']]);
+  return '<div class="pillrow gnsort">' + opts.map(function(o){
+      return '<button type="button" data-act="gn-sort" data-v="' + o[0] + '" class="' + (mode === o[0] ? 'on' : '') + '">' + o[1] + '</button>';
+    }).join('') + '</div>' +
+    (has ? '' : '<div class="s gnhint">フォルダごとにまとめるには、くらしの手帳 › 設定 › Google連携 の「プログラムをコピー」で橋わたしを貼り直して、「デプロイを管理」→ ✏️ →「新バージョン」→「デプロイ」してください。</div>');
+}
+/* えらんでも、一覧の見ていた場所から動かさない（描き直すと、一覧のスクロールがいちばん上にもどるため） */
+function gnRender(){
+  var el = document.querySelector('.gnlist'), top = el ? el.scrollTop : 0, y = window.scrollY || 0;
+  render();
+  var el2 = document.querySelector('.gnlist');
+  if(el2) el2.scrollTop = top;
+  if(Math.abs((window.scrollY || 0) - y) > 1) try{ window.scrollTo(0, y); }catch(e){}
+}
+
 /* ===== 画面 ===== */
 function gnSteps(){
   return '<div class="s">Goodnotesで：<b>設定 → 自動バックアップ → Google ドライブ</b>をオンにして、<b>ファイル形式を PDF</b> にします。' +
@@ -170,12 +233,7 @@ function gnPart(){
     var n = Object.keys(gn.pick).filter(function(id){ return gn.pick[id]; }).length;
     h += '<div class="pair" style="margin-top:8px"><input id="gn_q" type="search" placeholder="ノートの名前でさがす" value="' + esc(inVal('gn_q', gn.q)) + '">' +
       btn('さがす', 'gn-search', { cls:'ghost' }) + '</div>' +
-      (gn.items.length ? '<div class="gnlist">' + gn.items.map(function(it){
-        var on = !!gn.pick[it.id];
-        return '<button type="button" class="gnrow' + (on ? ' on' : '') + '" data-act="gn-pick" data-v="' + esc(it.id) + '" aria-pressed="' + on + '">' +
-          '<span class="ck">' + (on ? '✓' : '') + '</span><span class="bd"><b>' + esc(String(it.name || '').replace(/\.pdf$/i, '')) + '</b>' +
-          '<span class="s">' + esc(syAgo(it.updated)) + 'に更新・' + esc(fSizeText(it.size)) + '</span></span></button>';
-      }).join('') + '</div>' : '<div class="s">そのことばのノートは見つかりません。</div>') +
+      (gn.items.length ? gnSortBar() + '<div class="gnlist">' + gnListHtml() + '</div>' : '<div class="s">そのことばのノートは見つかりません。</div>') +
       btn(n ? '📓 えらんだノートを読む（' + n + '）' : 'ノートをえらんでください', 'gn-take', { cls:'main', dis:!n || !!gn.busy });
   }
   return '<div id="gn-sec">' + section('📓 Goodnotesのノート', 'Googleドライブの自動バックアップ',
@@ -187,5 +245,7 @@ onAct('gn-open', function(){ gnOpen(''); });
 onAct('gn-close', function(){ gn.open = 0; gn.from = ''; render(); });
 onAct('gn-reload', function(){ gn.items = null; gnLoad(); });
 onAct('gn-search', function(){ gn.q = String(elVal('gn_q') || '').trim(); gn.items = null; gn.pick = {}; gnLoad(); });
-onAct('gn-pick', function(d){ gn.pick[d.v] = !gn.pick[d.v]; render(); });
+onAct('gn-pick', function(d){ gn.pick[d.v] = !gn.pick[d.v]; gnRender(); });
+onAct('gn-fold', function(d){ gn.closed = gn.closed || {}; gn.closed[d.v] = !gn.closed[d.v]; gnRender(); });
+onAct('gn-sort', function(d){ gn.sort = d.v || ''; render(); var el = document.querySelector('.gnlist'); if(el) el.scrollTop = 0; });
 onAct('gn-take', function(){ gnTake(); });

@@ -1610,28 +1610,40 @@ function gnSearch_(q){
 function gnFolderIds_(){
   var name = feat_().gnFolder || 'GoodNotes';
   var fo = DriveApp.getFoldersByName(name);
-  if(!fo.hasNext()) return { name:name, root:null, ids:[] };
-  var root = fo.next(), ids = [];
-  var walk = function(folder, depth){
+  if(!fo.hasNext()) return { name:name, root:null, ids:[], paths:{} };
+  var root = fo.next(), ids = [], paths = {};
+  /* paths … フォルダのid → Goodnotesの中の場所（「1年後期 / 解剖生理学」。いちばん上は空） */
+  var walk = function(folder, depth, path){
     if(ids.length >= 60) return;
-    ids.push(folder.getId());
+    var id = folder.getId();
+    ids.push(id); paths[id] = path;
     if(depth >= 4) return;
     var sub = folder.getFolders();
-    while(sub.hasNext() && ids.length < 60) walk(sub.next(), depth + 1);
+    while(sub.hasNext() && ids.length < 60){
+      var s = sub.next(), nm = '';
+      try{ nm = String(s.getName() || ''); }catch(e){}
+      walk(s, depth + 1, path ? path + ' / ' + nm : nm);
+    }
   };
-  walk(root, 0);
-  return { name:name, root:root, ids:ids };
+  walk(root, 0, '');
+  return { name:name, root:root, ids:ids, paths:paths };
 }
 function gnList_(q){
   var f = gnFolderIds_();
   if(!f.root) return { ok:true, items:[], none:'「' + f.name + '」フォルダが見つかりません', folderName:f.name };
   var parents = '(' + f.ids.map(function(id){ return "'" + id + "' in parents"; }).join(' or ') + ')';
   var word = clip_(String(q || '').replace(/[\\'"]/g, ' ').trim(), 40);
-  var query = parents + " and trashed = false and mimeType = 'application/pdf'" + (word ? " and title contains '" + word + "'" : '');
-  var it = DriveApp.searchFiles(query), out = [];
-  while(it.hasNext() && out.length < 200){
-    var file = it.next();
-    out.push({ id:file.getId(), name:clip_(file.getName(), 120), size:file.getSize(), updated:file.getLastUpdated().getTime() });
+  /* フォルダごとにさがす（どのフォルダのノートかがわかるように。path … Goodnotesの中の場所） */
+  var out = [], seen = {};
+  for(var k = 0; k < f.ids.length && out.length < 400; k++){
+    var fid = f.ids[k];
+    var it = DriveApp.searchFiles("'" + fid + "' in parents and trashed = false and mimeType = 'application/pdf'" + (word ? " and title contains '" + word + "'" : ''));
+    while(it.hasNext() && out.length < 400){
+      var file = it.next(), id = file.getId();
+      if(seen[id]) continue;
+      seen[id] = 1;
+      out.push({ id:id, name:clip_(file.getName(), 120), size:file.getSize(), updated:file.getLastUpdated().getTime(), path:clip_(f.paths[fid] || '', 200) });
+    }
   }
   out.sort(function(a, b){ return b.updated - a.updated; });
   /* PDFがないとき：バックアップの形式がPDFでないかもしれない */
@@ -1640,7 +1652,7 @@ function gnList_(q){
     var it2 = DriveApp.searchFiles(parents + ' and trashed = false');
     while(it2.hasNext() && other < 5){ it2.next(); other++; }
   }
-  return { ok:true, items:out.slice(0, 80), folder:f.root.getUrl(), folderName:f.name, other:other };
+  return { ok:true, items:out, folder:f.root.getUrl(), folderName:f.name, other:other, paths:1 };
 }
 /* PDFの中身を、少しずつ（base64で）渡す。at … 何バイト目から、len … 何バイト（5MBまで） */
 function gnGet_(id, at, len){
