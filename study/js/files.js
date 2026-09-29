@@ -680,6 +680,51 @@ async function loadLinkDirect(u){
   o.link = u;
   return o;
 }
+/* くらしの手帳の橋わたし（Google Apps Script）から読む。
+   ・ブラウザからは読ませてもらえないページも、Googleのサーバーからなら読める
+   ・Googleドライブ・ドキュメント・スライドは、あなたのアカウントで読む（自分のファイル・共有されたファイル）
+   読めないとき（橋わたしがない・古い・ページがことわった）は null か { fail, why } を返す（あとでAIにたのむ） */
+function linkBridgeReady(){ var a = gasApiOf(); return a === 0 || a >= GAS_API_LINK; }
+async function loadLinkBridge(u, onPct){
+  var parts = [], at = 0, size = 0, first = null;
+  for(var k = 0; k < 60; k++){
+    var r;
+    try{ r = await gnCall('linkGet', { url:u, at:at, len:GN_PART }); }
+    catch(e){
+      if(e && (e.why === 'old' || e.why === 'nogas')) return null;          /* 古い橋わたし：AIにまかせる */
+      return { fail:1, why:String((e && e.message) || e).slice(0, 120), drive:!!linkExportUrl(u) };
+    }
+    if(!first) first = r;
+    if(r.kind === 'text'){
+      var raw = String(r.text || '');
+      var t = (/html|xml/.test(String(r.mime || '')) || /^\s*</.test(raw)) ? htmlText(raw) : { title:'', text:raw.trim() };
+      if(t.text.length < 60) return null;                                   /* 字がほとんどない：AIにまかせる */
+      return { name:(t.title || String(r.name || '').replace(/\.[a-z0-9]{2,4}$/i, '') || linkName(u)).slice(0, 80), kind:'link', url:'',
+               text:t.text.slice(0, TEXT_SEND * 2), link:u, size:t.text.length, sig:hash(t.text.slice(0, 800)), gas:1 };
+    }
+    size = toNum(r.size) || size;
+    if(!toNum(r.n)) break;
+    parts.push(gnBytes(r.data));
+    at += toNum(r.n);
+    if(onPct) try{ onPct(size ? Math.min(99, Math.round(at / size * 100)) : 0); }catch(e){}
+    if(at >= size) break;
+  }
+  if(!parts.length || !first) return null;
+  var mime = String(first.mime || '').split(';')[0];
+  var name = String(first.name || '').trim() || (linkName(u).split('/').pop() || 'link');
+  var ext = { 'application/pdf':'.pdf', 'image/jpeg':'.jpg', 'image/png':'.png',
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation':'.pptx',
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'.docx' }[mime] || '';
+  if(ext && !/\.[a-z0-9]{2,4}$/i.test(name)) name += ext;
+  var file = null;
+  try{ file = new File(parts, name, { type:mime }); }
+  catch(e){ file = new Blob(parts, { type:mime }); file.name = name; }
+  var kind = fKindOf(file);
+  if(!kind || kind === 'zip') return { fail:1, why:'この種類のファイルは読めません（' + (mime || name) + '）' };
+  var o = await loadOne(file, kind);
+  o.link = u; o.gas = 1;
+  return o;
+}
 /* Google ドキュメント・スライド・スプレッドシート・ドライブのリンクは、中身を取り出せる形のアドレスにする
    （「リンクを知っている全員」が見られるようにしてあるものだけ読めます） */
 function linkExportUrl(u){

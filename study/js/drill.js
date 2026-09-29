@@ -27,6 +27,7 @@ function runSaved(){
 }
 function runDrop(){
   run = null;
+  delete INP.dr_in;                                   /* 書きかけの答えを、次にのこさない */
   try{ localStorage.removeItem(RUN_KEY); }catch(e){}
 }
 function runResume(){
@@ -49,6 +50,7 @@ function drillStart(mode, n, moc, fixed){
     return false;
   }
   shuffle(list);
+  delete INP.dr_in;
   run = {
     mode:mode, sub:subId, scope:fixed ? [] : scopeKeys(subId, drill.scope),
     list:list.slice(0, n || drill.n).map(function(q){ return q.id; }),
@@ -61,6 +63,14 @@ function drillStart(mode, n, moc, fixed){
   return true;
 }
 function runQ(){ return run ? qGet(run.list[run.i]) : null; }
+/* 出しているとちゅうで消した問題は、とばす（ほかのタブや、ほかの端末で消したとき） */
+function runPrune(){
+  if(!run) return;
+  var n0 = run.list.length, gone = 0;
+  run.list = run.list.filter(function(id, k){ var keep = !!qGet(id); if(!keep && k < run.i) gone++; return keep; });
+  run.i = Math.max(0, run.i - gone);
+  if(run.list.length !== n0) runSave();
+}
 /* 答え合わせ */
 function drillCheck(){
   var q = runQ();
@@ -86,6 +96,7 @@ function drillCheck(){
     drillNext();
     return;
   }
+  run.prevLog = logOf(q.id) ? JSON.parse(JSON.stringify(logOf(q.id))) : null;   /* 「やっぱり」で直すとき用 */
   logAnswer(q.id, ok);
   if(!ok){
     run.missed = run.missed || [];
@@ -99,6 +110,7 @@ function drillNext(){
   run.i++;
   run.showing = 0;
   run.picked = []; run.typed = ''; run.order = []; run.picks = {}; run.res = null; run.cur = ''; run.shuf = null;
+  delete run.prevLog;
   delete INP.dr_in;
   if(run.i >= run.list.length){
     if(run.moc){ mocEnd(); return; }
@@ -114,12 +126,21 @@ function drillNext(){
 }
 /* ===== 画面 ===== */
 function drillView(){
-  if(run) return run.moc ? mocRunView() : drillRunView();
+  if(run){
+    runPrune();
+    if(run.i < run.list.length) return run.moc ? mocRunView() : drillRunView();
+    /* のこりの問題が、ぜんぶ消えていた：ここでおわりにする */
+    if(run.moc){ mocEnd(true); return mocEndView(); }
+    var done0 = run.done, ok0 = run.ok, miss0 = (run.missed || []).filter(function(id){ return !!qGet(id); });
+    runDrop();
+    if(done0){ view.after = { done:done0, ok:ok0, miss:miss0 }; return afterView(); }
+  }
   if(view.after) return afterView();
   if(view.weak) return weakView();
   if(view.mocEnd) return mocEndView();
   if(view.moc) return mocSetupView();
   var subId = curSub();
+  if(drill.scopeSub !== subId){ drill.scope = []; drill.scopeSub = subId; }   /* ほかのタブで科目をかえたら、範囲はもどす */
   drill.scope = scopeKeys(subId, drill.scope);              /* 消した資料・フォルダは外す */
   var sc = drill.scope;
   var st = stats(subId, sc);
@@ -351,7 +372,7 @@ function mocLeft(){
 }
 function mocRunView(){
   var q = runQ();
-  if(!q){ mocEnd(); return ''; }
+  if(!q){ mocEnd(true); return mocEndView(); }
   var left = mocLeft();
   var h = '<div class="runbar">' + bar(run.i * 100 / run.list.length) +
     '<div class="s">' + (run.i + 1) + ' / ' + run.list.length + '　のこり ' +
@@ -362,7 +383,7 @@ function mocRunView(){
     btn('とばす', 'dr-skip', { cls:'ghost' }) + '</div>';
   return h;
 }
-function mocEnd(){
+function mocEnd(quiet){
   if(!run || !run.moc) return;
   var ans = run.moc.answers || {};
   var ids = run.list.slice();
@@ -381,6 +402,7 @@ function mocEnd(){
   runDrop();
   saveNow();
   view.mocEnd = rec.id;
+  if(quiet) return;                                 /* 画面を作っているとちゅう（描き直しはしない） */
   render();
   try{ window.scrollTo(0, 0); }catch(e){}
 }
@@ -432,7 +454,8 @@ function mocSetupView(){
 }
 /* ============================== にが手ノート ============================== */
 function weakList(subId){
-  return qsOf(subId === 'all' ? '' : subId).filter(function(q){
+  var list = subId === 'none' ? qsAll().filter(function(x){ return !x.sub; }) : qsOf(subId === 'all' ? '' : subId);
+  return list.filter(function(q){
     var l = logOf(q.id);
     return l && (l.res === 0 || toNum(l.miss) >= 2);
   }).sort(function(a, b){
@@ -497,7 +520,7 @@ onAct('dr-n', function(d){ drill.n = toNum(d.v); render(); });
 onAct('dr-start', function(){ drillStart(drill.mode, drill.n); });
 onAct('dr-resume', function(){ if(runResume()) render(); else toast('つづきが見つかりませんでした', true); });
 onAct('dr-dropsave', function(){ runDrop(); render(); });
-onAct('dr-quit', function(){ runSave(); run = null; render(); });
+onAct('dr-quit', function(){ runSave(); run = null; delete INP.dr_in; render(); });
 onAct('dr-pick', function(d){
   var q = runQ();
   if(!q || run.showing) return;
@@ -525,7 +548,11 @@ onAct('dr-down', function(d){
   var t = run.order[n]; run.order[n] = run.order[n + 1]; run.order[n + 1] = t;
   render();
 });
-onAct('dr-match', function(d, el){ run.picks[toNum(d.i)] = toNum(el.value); });
+onAct('dr-match', function(d, el){
+  if(!run) return;
+  if(String(el.value) === '') delete run.picks[toNum(d.i)];     /* 「えらぶ」にもどした：えらんでいないことにする */
+  else run.picks[toNum(d.i)] = toNum(el.value);
+});
 onAct('dr-check', function(){ drillCheck(); });
 onAct('dr-skip', function(){ drillNext(); });
 onAct('dr-next', function(){ drillNext(); });
@@ -546,13 +573,17 @@ onAct('dr-flip', function(){
   var was = run.res;
   run.res = !was;
   run.ok += run.res ? 1 : -1;
-  /* 記録を、いまの答えで入れ直す */
-  var l = logOf(q.id) || {};
-  l.n = Math.max(0, toNum(l.n) - 1);
-  if(was) l.ok = Math.max(0, toNum(l.ok) - 1); else l.miss = Math.max(0, toNum(l.miss) - 1);
+  /* 記録を、答える前にもどしてから、いまの答えで入れ直す（次に出す日も、正しく決め直す） */
   var d = dayCount(today());
   S.day[today()] = { n:Math.max(0, d.n - 1), ok:Math.max(0, d.ok - (was ? 1 : 0)) };
-  S.log[q.id] = l;
+  if(run.prevLog !== undefined){
+    if(run.prevLog) S.log[q.id] = JSON.parse(JSON.stringify(run.prevLog)); else delete S.log[q.id];
+  }else{
+    var l = logOf(q.id) || {};
+    l.n = Math.max(0, toNum(l.n) - 1);
+    if(was) l.ok = Math.max(0, toNum(l.ok) - 1); else l.miss = Math.max(0, toNum(l.miss) - 1);
+    S.log[q.id] = l;
+  }
   logAnswer(q.id, run.res);
   if(!run.res){
     run.missed = run.missed || [];

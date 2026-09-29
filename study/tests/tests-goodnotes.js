@@ -153,3 +153,21 @@ test('Goodnotes：前の橋わたし（フォルダがわからない）なら�
   eq($$('.gnrow b').map(function(e){ return e.textContent; }).join(','), '解剖生理 まとめ,成人看護学 第5回', '名前順');
   ok(has('フォルダごとにまとめるには') && has('貼り直して'), '貼り直しを案内');
 });
+
+test('Goodnotes：ノートを受けとれなかったときは、わけを一覧の上にのこす', async function(){
+  fakeGas();
+  var base = W.__FAKE_GAS;
+  W.__FAKE_GAS = async function(req){
+    if(req.action === 'gnGet') return { ok:false, error:'ドライブから読めませんでした（403）' };
+    return base(req);
+  };
+  await click('tab', 'make');
+  await click('gn-open');
+  await until(function(){ return W.gn.items && !W.gn.busy; }, 4000, '一覧が出る');
+  await clickEl($('[data-act="gn-pick"][data-v="g1"]'));
+  await click('gn-take');
+  await until(function(){ return !W.gn.busy; }, 4000, 'おわる');
+  ok(has('受けとれなかったノート') && has('403'), 'わけが画面にのこる');
+  eq(W.mk.files.length, 0, '資料には入らない');
+  ok(W.gn.open, '一覧はひらいたまま（えらびなおせる）');
+});

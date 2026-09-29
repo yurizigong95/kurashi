@@ -324,13 +324,33 @@ async function mkReadLinks(urls){
       try{ o = await loadLinkDirect(urls[i]); }catch(e){ o = null; }      /* 1つ読めなくても、ほかは続ける */
       if(o) got.push(o); else left.push(urls[i]);
     }
-    /* ② 読めなかったものは、AIがページを開いて読む */
+    /* ② 読めなかったものは、くらしの手帳の橋わたし（Googleのサーバー）から読む。ドライブのファイルも読める */
+    if(left.length && gnGas() && linkBridgeReady()){
+      var left2 = [];
+      for(var bi = 0; bi < left.length; bi++){
+        mk.linkMsg = 'Google連携（橋わたし）から読んでいます…（' + (bi + 1) + '/' + left.length + '）'; render();
+        var b = null;
+        try{ b = await loadLinkBridge(left[bi], function(p){ mk.linkMsg = 'Google連携（橋わたし）から読んでいます…（' + (bi + 1) + '/' + left.length + '） ' + p + '%'; render(); }); }
+        catch(e){ b = { fail:1, why:String((e && e.message) || e).slice(0, 120) }; }
+        if(b && !b.fail) got.push(b);
+        else if(b && b.fail && b.drive) fails.push({ u:left[bi], why:b.why });     /* 自分のドライブのファイル：AIには見られないので、ここでわけを出す */
+        else left2.push(left[bi]);
+      }
+      left = left2;
+    }
+    /* ③ まだ読めないものは、AIがページを開いて読む */
     if(left.length){
       if(aiReady()){
         var res = await loadLinksAi(left, { onStep:function(k, n){ mk.linkMsg = 'AIがページを開いて読んでいます…（' + (k + 1) + '/' + n + '）'; render(); } });
         res.forEach(function(o){
           if(!o.fail){ got.push(o); return; }
-          fails.push({ u:o.link, why:(!o.err && linkNeedsLogin(o.link)) ? 'ログインが必要なページは読めません' : o.why });
+          var why = (!o.err && linkNeedsLogin(o.link)) ? 'ログインが必要なページは読めません' : o.why;
+          /* ドライブのファイル：Google連携（橋わたし）がないと、自分のファイルは読めない */
+          if(linkExportUrl(o.link)){
+            why += !gnGas() ? '（自分のドライブのファイルは、くらしの手帳の「Google連携」をつなぐと読めます）'
+              : gasOld() ? '（自分のドライブのファイルは、橋わたしを新しい版にすると読めます。' + GAS_UPDATE_HOW + '）' : '';
+          }
+          fails.push({ u:o.link, why:why });
         });
       }else{
         left.forEach(function(u){ fails.push({ u:u, why:'このページはAIでないと読めません（設定か、くらしの手帳でAPIキーを入れてください）' }); });
@@ -562,6 +582,7 @@ async function mkAdd(){
   var pv = mk.pv;
   if(!pv) return;
   var subId = pv.sub || '';
+  if(subId && (!sub(subId) || sub(subId).arch)) subId = mkSubId();     /* 作っているあいだに、その科目を消した・しまった */
   var matId = '';
   if(!pv.nomat){
     var photos = [];

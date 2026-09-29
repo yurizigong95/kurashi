@@ -36,7 +36,8 @@ var SY = {
 var SY_COL = 'shiharai';
 var SY_PART = 700 * 1024;        /* 1つの切れはしの大きさ（Firestore は1MBまで） */
 var SY_IMG_PART = 700 * 1024;
-var SY_SET_KEYS = ['goal', 'shuffle', 'term', 'allTerms', 'model', 'lim', 'tabs'];   /* 同期する設定（キーと使用量は入れない） */
+var SY_SET_KEYS = ['goal', 'shuffle', 'term', 'allTerms', 'model', 'lim', 'tabs', 'logReset'];   /* 同期する設定（キーと使用量は入れない）。
+   logReset … 記録を消した（バックアップを読みこんだ）時こく。それより前の記録は、ほかの端末からもらっても入れない */
 /* 組みこみのつなぎ先（くらしの手帳の js/core.js の DEFAULT_ROOM・DEFAULT_FB と同じ） */
 var SY_ROOM = '8b7f4e6et9jhxded';
 var SY_FB = { apiKey:'AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww', authDomain:'kurashi-59562.firebaseapp.com',
@@ -213,7 +214,7 @@ function syPayload(){
   var set = {};
   SY_SET_KEYS.forEach(function(k){ if(S.set[k] !== undefined) set[k] = S.set[k]; });
   return {
-    v:1, subs:syById(S.subs), mats:syById(S.mats), qs:syById(S.qs), moc:syById(S.moc),
+    v:1, subs:syById(S.subs), fds:syById(S.fds || []), mats:syById(S.mats), qs:syById(S.qs), moc:syById(S.moc),
     notes:syById(S.notes).filter(function(n){ return String(n.body || '').trim(); }),   /* 書きはじめる前のからのメモは送らない */
     log:S.log || {}, day:S.day || {}, why:S.why || {}, del:S.del || {},
     set:set, smt:toNum(S.set.smt)
@@ -232,7 +233,7 @@ function syMergeList(mine, theirs, dead){
   });
   Object.keys(by).forEach(function(id){
     var x = by[id];
-    if(toNum(dead[id]) > toNum(x.mt)) return;          /* 消したあとに直していなければ、消えたまま */
+    if(toNum(dead[id]) >= toNum(x.mt)) return;         /* 消したあとに直していなければ、消えたまま（同じ時こくなら、消したほう） */
     out.push(x);
   });
   return out;
@@ -240,7 +241,7 @@ function syMergeList(mine, theirs, dead){
 function syMergeSnap(){
   var set = {};
   SY_SET_KEYS.forEach(function(k){ set[k] = S.set[k]; });
-  return syStable([syById(S.subs), syById(S.mats), syById(S.qs), syById(S.moc), syById(S.notes), S.log, S.day, S.why, set]);
+  return syStable([syById(S.subs), syById(S.fds || []), syById(S.mats), syById(S.qs), syById(S.moc), syById(S.notes), S.log, S.day, S.why, set]);
 }
 function syMerge(rem){
   if(!rem || typeof rem !== 'object') return false;
@@ -253,18 +254,30 @@ function syMerge(rem){
   syPrune();
 
   S.subs = syMergeList(S.subs, rem.subs, dead);
+  S.fds = syMergeList(S.fds || [], rem.fds, dead);
   S.mats = syMergeList(S.mats, rem.mats, dead);
   S.qs = syMergeList(S.qs, rem.qs, dead);
   S.moc = syMergeList(S.moc, rem.moc, dead);
   S.notes = syMergeList(S.notes, rem.notes, dead);
 
+  /* 記録を消した（バックアップを読みこんだ）端末があるとき：それより前の記録は、どちらの端末のものも使わない */
+  var myReset = toNum(S.set.logReset), remReset = toNum(rem.set && rem.set.logReset), reset = Math.max(myReset, remReset);
+  var resetDay = reset ? ymdOf(new Date(reset)) : '';
+  if(remReset > myReset){
+    Object.keys(S.log || {}).forEach(function(id){ if(toNum((S.log[id] || {}).mt) < remReset) delete S.log[id]; });
+    Object.keys(S.day || {}).forEach(function(k){ if(k <= resetDay) delete S.day[k]; });   /* その日までの数は、消した端末のものを使う */
+    S.set.logReset = remReset;
+  }
   /* といた記録：といた回数が多いほう（回数はふえるだけ） */
   var log = S.log || {}, rl = rem.log || {};
   Object.keys(rl).forEach(function(id){
     if(toNum(dead[id])) return;
     var a = log[id], b = rl[id];
-    if(!b) return;
-    if(!a || toNum(b.n) > toNum(a.n) || (toNum(b.n) === toNum(a.n) && String(b.last || '') > String(a.last || ''))) log[id] = b;
+    if(!b || toNum(b.mt) < reset) return;
+    /* 回数が同じなら、あとから直したほう（「やっぱり正解」で直したときなど） */
+    var same = toNum(b.n) === toNum(a && a.n);
+    if(!a || toNum(b.n) > toNum(a.n) || (same && (toNum(b.mt) > toNum(a.mt) ||
+       (toNum(b.mt) === toNum(a.mt) && String(b.last || '') > String(a.last || ''))))) log[id] = b;
   });
   Object.keys(log).forEach(function(id){ if(toNum(dead[id])) delete log[id]; });
   S.log = log;
@@ -272,6 +285,7 @@ function syMerge(rem){
   /* その日にといた数：多いほう */
   var day = S.day || {}, rd = rem.day || {};
   Object.keys(rd).forEach(function(k){
+    if(myReset > remReset && k <= resetDay) return;          /* こちらで消した日までの数は、もらわない */
     var a = day[k] || { n:0, ok:0 }, b = rd[k] || { n:0, ok:0 };
     day[k] = { n:Math.max(toNum(a.n), toNum(b.n)), ok:Math.max(toNum(a.ok), toNum(b.ok)) };
   });
@@ -294,7 +308,7 @@ function syMerge(rem){
 function syTouchSet(){ S.set.smt = Date.now(); syTouch(); }
 
 /* ===== 変更の記録（何が変わったか・まだ送っていないもの） ===== */
-var SY_KINDS = [['subs', '科目'], ['mats', '資料'], ['qs', '問題'], ['notes', 'メモ'], ['moc', '模擬テスト']];
+var SY_KINDS = [['subs', '科目'], ['fds', 'フォルダ'], ['mats', '資料'], ['qs', '問題'], ['notes', 'メモ'], ['moc', '模擬テスト']];
 /* 中身の「しるし」：種類ごとに id → 直した時こく。といた記録は id → といた回数 */
 function sySigOf(o){
   o = o || {};

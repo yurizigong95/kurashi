@@ -1,6 +1,7 @@
 /* もんだいメーカー：中身（科目・資料・問題・記録）
    ============================================================
-   ・科目 subject … { id, name, icon, ord, color, term, field, arch, fds:[{ id, name }]（資料のフォルダ） }
+   ・科目 subject … { id, name, icon, ord, color, term, field, arch }
+   ・フォルダ fd   … { id, sub, name, c, mt }（科目の中で資料を分ける）
    ・資料 mat     … { id, sub, fd:'フォルダid', title, kind, sig, photos:[写真id], text, cut, n }
                     （前の版の資料には at・no・memo が入っていることがある。今は使わない）
    ・問題 q       … { id, sub, mat, qt, q, c:[選択肢], a:[正解の番号], at:'答え', alt:[別の言い方],
@@ -137,6 +138,10 @@ function subDel(id, withItems){
     (S.mats || []).forEach(function(m){ if(m.sub === id){ m.sub = ''; m.mt = Date.now(); } });
     (S.qs || []).forEach(function(q){ if(q.sub === id){ q.sub = ''; q.mt = Date.now(); } });
   }
+  /* フォルダは消す（資料は上で消したか、科目なしにした） */
+  (S.fds || []).forEach(function(f){ if(f.sub === id && typeof syDead === 'function') syDead(f.id); });
+  S.fds = (S.fds || []).filter(function(f){ return f.sub !== id; });
+  (S.mats || []).forEach(function(m){ if(m.fd && !m.sub){ m.fd = ''; } });
   /* メモは消さずに、科目なしにする */
   (S.notes || []).forEach(function(x){ if(x.sub === id){ x.sub = ''; x.mt = Date.now(); } });
   S.subs = (S.subs || []).filter(function(x){ return x.id !== id; });
@@ -147,42 +152,41 @@ function subDel(id, withItems){
 }
 
 /* ============================== フォルダ（科目の中で、資料を分ける） ==============================
-   フォルダは科目の中に持つ（s.fds）。資料は m.fd でフォルダをさす。
-   科目といっしょに同期されるので、ほかの端末でも同じフォルダになる。 */
+   フォルダは S.fds に1つずつ持つ（{ id, sub, name, c:作った時こく, mt }）。資料は m.fd でフォルダをさす。
+   科目とは別に1つずつ同期するので、2台で科目とフォルダを同時に直しても、フォルダは消えない。 */
 function fdsOf(subId){
-  var s = sub(subId);
-  return (s && Array.isArray(s.fds)) ? s.fds.filter(function(f){ return f && f.id && String(f.name || '').trim(); }) : [];
+  return (S.fds || []).filter(function(f){ return f && f.id && f.sub === subId && String(f.name || '').trim(); })
+    .sort(function(a, b){ return (toNum(a.c) - toNum(b.c)) || String(a.id).localeCompare(String(b.id)); });
 }
 function fdGet(subId, id){ return id ? fdsOf(subId).filter(function(f){ return f.id === id; })[0] || null : null; }
 function fdName(subId, id){ var f = fdGet(subId, id); return f ? f.name : ''; }
 function fdAdd(subId, name){
-  var s = sub(subId);
   name = String(name == null ? '' : name).trim().slice(0, 40);
-  if(!s || !name) return null;
+  if(!sub(subId) || !name) return null;
   var dup = fdsOf(subId).filter(function(f){ return f.name === name; })[0];
   if(dup) return dup;
-  var f = { id:uid('fd'), name:name };
-  s.fds = fdsOf(subId).concat([f]);
-  s.mt = Date.now();
+  var now = Date.now();
+  var f = { id:uid('fd'), sub:subId, name:name, c:now, mt:now };
+  if(!Array.isArray(S.fds)) S.fds = [];
+  S.fds.push(f);
   saveSoon();
   return f;
 }
 function fdRename(subId, id, name){
-  var s = sub(subId), f = fdGet(subId, id);
+  var f = fdGet(subId, id);
   name = String(name == null ? '' : name).trim().slice(0, 40);
-  if(!s || !f || !name) return false;
+  if(!f || !name) return false;
   if(fdsOf(subId).some(function(x){ return x.id !== id && x.name === name; })) return false;
-  s.fds = fdsOf(subId).map(function(x){ return x.id === id ? { id:x.id, name:name } : x; });
-  s.mt = Date.now();
+  f.name = name;
+  f.mt = Date.now();
   saveSoon();
   return true;
 }
 /* フォルダを消す（中の資料と問題はのこして、フォルダに入れていない資料にする） */
 function fdDel(subId, id){
-  var s = sub(subId);
-  if(!s || !fdGet(subId, id)) return false;
-  s.fds = fdsOf(subId).filter(function(x){ return x.id !== id; });
-  s.mt = Date.now();
+  if(!fdGet(subId, id)) return false;
+  S.fds = (S.fds || []).filter(function(x){ return x.id !== id; });
+  if(typeof syDead === 'function') syDead(id);
   (S.mats || []).forEach(function(m){ if(m.sub === subId && m.fd === id){ m.fd = ''; m.mt = Date.now(); } });
   saveSoon();
   return true;

@@ -214,12 +214,19 @@ async function aiCall(opt){
   [String(S.set.model || '')].filter(Boolean).concat(AI_FALLBACK).forEach(function(m){ if(!seen[m]){ seen[m] = 1; models.push(m); } });
   var lastErr = '';
   for(var i = 0; i < models.length; i++){
-    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-goog-api-key':key },
-      body:JSON.stringify(body),
-      signal:opt.signal
-    });
+    var res = null;
+    try{
+      res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'x-goog-api-key':key },
+        body:JSON.stringify(body),
+        signal:opt.signal
+      });
+    }catch(e){
+      if((opt.signal && opt.signal.aborted) || /abort/i.test(String(e && (e.name || e.message)))) throw e;
+      lastErr = 'ネットにつながりませんでした（' + String((e && e.message) || e).slice(0, 60) + '）';
+      continue;                                        /* とちゅうで切れた：次のモデルでもう一度 */
+    }
     var j = null;
     try{ j = await res.json(); }catch(e){}
     if(res.ok && j){
@@ -232,6 +239,14 @@ async function aiCall(opt){
                meta:c.urlContextMetadata || c.url_context_metadata || null };
     }
     lastErr = (j && j.error && j.error.message) ? j.error.message : ('エラー ' + res.status);
+    /* このモデルの枠がいっぱい（429）・混んでいる（500・503）ときは、次のモデルで（枠はモデルごとなので） */
+    if(res.status === 429 || res.status >= 500) continue;
+    /* 答えの長さの上限が、このモデルには大きすぎる：上限を下げて、同じモデルでもう一度 */
+    if(res.status === 400 && /max_?output_?tokens|maxOutputTokens|out of range/i.test(lastErr) && body.generationConfig.maxOutputTokens > 8192){
+      body.generationConfig.maxOutputTokens = 8192;
+      i--;
+      continue;
+    }
     /* そのモデルが無いとき・道具（リンクを読む など）が使えないモデルのときは、次のモデルを試す
        （リンクを読むときは、道具なしでやり直さない。読まずに作り話をしてしまうため） */
     var toolNg = body.tools && (/tool|url_context|not supported|unsupported/i.test(lastErr) ||
@@ -249,6 +264,7 @@ function aiErrText(msg){
       : 'APIキーが正しくないようです。設定で入れ直してください。';
   }
   if(/quota|RESOURCE_EXHAUSTED|429/i.test(msg)) return '今日の無料ぶんを使い切ったかもしれません。時間をおくか、「AIを使わずに作る」を試してください。';
+  if(/overloaded|UNAVAILABLE|503|500|INTERNAL|high demand/i.test(msg)) return 'AI（Gemini）が混んでいるようです。少し時間をおいて、もう一度ためしてください。';
   if(/abort/i.test(msg)) return 'とちゅうでやめました';
   return msg.slice(0, 160);
 }

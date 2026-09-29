@@ -27,9 +27,11 @@ var KEEP_BACKUPS = 12;          // バックアップは新しい12個だけ残�
 var BATCH = 40;                 // 1回に直す予定の数（時間切れを防ぐ）
 var TZ = 'Asia/Tokyo';
 var VER = 3;
-var API = 6;                    // 窓口の版。4 … 手書きノートの検索・Discordボット・Siri/Apple Watch/リマインダーの窓口・ウィジェットの色
+var API = 7;                    // 窓口の版。4 … 手書きノートの検索・Discordボット・Siri/Apple Watch/リマインダーの窓口・ウィジェットの色
 // 5 … 手帳の中身をAIが読んで答える（aiDataPut）
 // 6 … Goodnotesのノート（ドライブの自動バックアップのPDF）の一覧と中身を、もんだいメーカーに渡す（gnList・gnGet）
+// 7 … リンクの中身をもんだいメーカーに渡す（linkGet：ウェブのページ・Googleドライブ／ドキュメント／スライド）。
+//     大きいノートも、ドライブから少しずつ読む（ノート全体を一度に読みこまない）
 var INBOX_FOLDER_NAME = '受け取り';            // ショートカットで送った写真（バックアップのフォルダの中）
 var LECTURE_FOLDER_NAME = 'くらしの手帳 講義資料'; // ここに入れたPDF・写真から暗記カードを作る
 var SHEET_NAME = 'くらしの手帳 記録';
@@ -84,6 +86,7 @@ function doPost(e){
       case 'gnSearch':      return out_(gnSearch_(req.q));
       case 'gnList':        return out_(gnList_(req.q));
       case 'gnGet':         return out_(gnGet_(req.id, req.at, req.len));
+      case 'linkGet':       return out_(linkGet_(req.url, req.at, req.len));
       case 'aiDataPut':     return out_(aiDataPut_(req.data));
       case 'dcBotSet':      return out_(dcBotSet_(req.bot));
       case 'dcBotChannels': return out_(dcBotChannels_());
@@ -1666,10 +1669,88 @@ function gnGet_(id, at, len){
   var size = file.getSize();
   if(size > 200 * 1024 * 1024) return { ok:false, error:'ノートが大きすぎます（200MBまで）' };
   var from = Math.max(0, Number(at) || 0), n = Math.min(5 * 1024 * 1024, Math.max(1, Number(len) || 4 * 1024 * 1024));
-  var bytes = file.getBlob().getBytes();
-  var part = bytes.slice(from, Math.min(bytes.length, from + n));
-  return { ok:true, name:clip_(file.getName(), 120), size:bytes.length, at:from, n:part.length,
+  /* ドライブから、たのまれたところだけ読む（大きいノートを一度に読みこむと、橋わたしのメモリが足りなくなる） */
+  var part;
+  try{ part = driveRange_(file.getId(), from, n); }
+  catch(e){ var all = file.getBlob().getBytes(); size = all.length; part = all.slice(from, Math.min(all.length, from + n)); }
+  return { ok:true, name:clip_(file.getName(), 120), size:size, at:from, n:part.length,
            mime:String(file.getMimeType() || 'application/pdf'), data:Utilities.base64Encode(part) };
+}
+/* ドライブのファイルの一部（from バイト目から n バイト）を読む */
+function driveRange_(id, from, n){
+  var res = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?alt=media&supportsAllDrives=true', {
+    headers:{ Authorization:'Bearer ' + ScriptApp.getOAuthToken(), Range:'bytes=' + from + '-' + (from + n - 1) }, muteHttpExceptions:true });
+  var code = res.getResponseCode();
+  if(code === 416) return [];                                     /* もう終わりまで読んだ */
+  if(code !== 206 && code !== 200) throw new Error('ドライブから読めませんでした（' + code + '）');
+  var bytes = res.getContent();
+  if(code === 200 && (from > 0 || bytes.length > n)) bytes = bytes.slice(from, from + n);   /* 一部だけ読むのをことわられたとき */
+  return bytes;
+}
+
+/* ===================== リンクの中身を、もんだいメーカーに渡す（API 7） =====================
+   ・ふつうのウェブページ・PDF … この橋わたし（Googleのサーバー）から読む。
+     ブラウザからは、ほとんどのサイトに「ほかのサイトからは読ませない」と止められるため。
+   ・Googleドライブ・ドキュメント・スライド・スプレッドシート … あなたのアカウントで読む（自分のファイル・共有されたファイル）。
+     ドキュメント・スライドは字だけ、スプレッドシートは1枚目をCSVで渡す。
+   返すもの：{ ok, kind:'text'|'bin', name, mime, size, text } または { …, at, n, data（base64） } */
+function driveIdOf_(url){
+  var s = String(url || ''), m;
+  if((m = /docs\.google\.com\/(?:document|presentation|spreadsheets)\/(?:u\/\d+\/)?d\/([\w-]{10,})/.exec(s))) return m[1];
+  if((m = /drive\.google\.com\/(?:file\/(?:u\/\d+\/)?d\/|open\?(?:[^#]*&)?id=|uc\?(?:[^#]*&)?id=)([\w-]{10,})/.exec(s))) return m[1];
+  return '';
+}
+function linkGet_(url, at, len){
+  url = String(url || '').trim();
+  if(!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 2000) return { ok:false, error:'https:// ではじまるリンクだけ読めます' };
+  var from = Math.max(0, Number(at) || 0), n = Math.min(5 * 1024 * 1024, Math.max(1, Number(len) || 4 * 1024 * 1024));
+  var id = driveIdOf_(url);
+  if(id) return driveGet_(id, from, n);
+  var res;
+  try{
+    res = UrlFetchApp.fetch(url, { muteHttpExceptions:true, followRedirects:true,
+      headers:{ 'User-Agent':'Mozilla/5.0 (compatible; kurashi-bridge)', 'Accept-Language':'ja,en;q=0.8' } });
+  }catch(e){ return { ok:false, error:'ページを開けませんでした（' + clip_(e && e.message || e, 80) + '）' }; }
+  var code = res.getResponseCode();
+  if(code >= 400) return { ok:false, status:code, error:'ページを開けませんでした（エラー ' + code + '。ログインが必要なページかもしれません）' };
+  var h = res.getHeaders() || {}, type = String(h['Content-Type'] || h['content-type'] || '').toLowerCase();
+  var bytes = res.getContent();
+  var name = clip_(decodeURIComponent(String(url.split(/[?#]/)[0].split('/').pop() || '')) || 'link', 120);
+  if(/^text\/|html|xml|json/.test(type)){
+    var cs = (/charset=["']?([\w-]+)/i.exec(type) || [])[1] || '';
+    if(!cs){
+      var head = Utilities.newBlob(bytes.slice(0, 4096)).getDataAsString('ISO-8859-1');
+      cs = (/<meta[^>]+charset=["']?([\w-]+)/i.exec(head) || [])[1] || 'UTF-8';
+    }
+    var text;
+    try{ text = Utilities.newBlob(bytes).getDataAsString(cs); }catch(e){ text = Utilities.newBlob(bytes).getDataAsString('UTF-8'); }
+    return { ok:true, kind:'text', name:name, mime:type, size:bytes.length, text:clip_(text, 3000000) };
+  }
+  if(bytes.length > 50 * 1024 * 1024) return { ok:false, error:'大きすぎます（50MBまで）' };
+  var part = bytes.slice(from, Math.min(bytes.length, from + n));
+  return { ok:true, kind:'bin', name:name, mime:type || 'application/octet-stream', size:bytes.length, at:from, n:part.length,
+           data:Utilities.base64Encode(part) };
+}
+function driveGet_(id, from, n){
+  var file;
+  try{ file = DriveApp.getFileById(id); file.getName(); }
+  catch(e){ return { ok:false, error:'ドライブのファイルが見つかりません（橋わたしのGoogleアカウントで見られるファイルだけ読めます）' }; }
+  var mime = String(file.getMimeType() || ''), name = clip_(file.getName(), 120);
+  var exp = { 'application/vnd.google-apps.document':'text/plain', 'application/vnd.google-apps.presentation':'text/plain',
+              'application/vnd.google-apps.spreadsheet':'text/csv' }[mime];
+  if(exp){
+    var r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '/export?mimeType=' + encodeURIComponent(exp),
+      { headers:{ Authorization:'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions:true });
+    if(r.getResponseCode() !== 200) return { ok:false, error:'ドライブのファイルを読めませんでした（' + r.getResponseCode() + '。とても大きいファイルかもしれません）' };
+    var text = r.getContentText('UTF-8');
+    return { ok:true, kind:'text', name:name, mime:exp, size:text.length, text:clip_(text, 3000000) };
+  }
+  if(/^application\/vnd\.google-apps\./.test(mime)) return { ok:false, error:'この種類のファイル（フォーム・フォルダなど）は読めません' };
+  var size = file.getSize();
+  if(size > 200 * 1024 * 1024) return { ok:false, error:'ファイルが大きすぎます（200MBまで）' };
+  var part = driveRange_(id, from, n);
+  return { ok:true, kind:'bin', name:name, mime:mime || 'application/octet-stream', size:size, at:from, n:part.length,
+           data:Utilities.base64Encode(part) };
 }
 
 /* ===================== Google ToDoリスト ===================== */

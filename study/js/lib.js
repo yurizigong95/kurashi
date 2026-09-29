@@ -160,7 +160,7 @@ function libMatDetail(m){
   if(m.text) h += '<details><summary>取り出した字（' + m.text.length + '文字' + (m.cut ? '・とちゅうまで' : '') + '）</summary><pre>' + esc(m.text.slice(0, 3000)) + '</pre></details>';
   var nq = qsOfMat(m.id).length;
   h += '<div class="minirow">' +
-    '<button type="button" data-act="lb-matgo" data-id="' + m.id + '"' + (nq ? '' : ' disabled') + '>▶ この資料からとく</button>' +
+    (m.sub ? '<button type="button" data-act="lb-matgo" data-id="' + m.id + '"' + (nq ? '' : ' disabled') + '>▶ この資料からとく</button>' : '') +
     '<button type="button" data-act="lb-matq" data-id="' + m.id + '">この資料の問題を見る</button>' +
     '<button type="button" data-act="lb-matdel" data-id="' + m.id + '">けす</button>' +
     '</div></div>';
@@ -179,6 +179,7 @@ function libQList(){
 }
 function libQView(){
   var subId = curSub();
+  if(lib.qscopeSub !== subId){ lib.qscope = ''; lib.qscopeSub = subId; }   /* ほかのタブで科目をかえたら、ぜんぶにもどす */
   var list = libQList();
   var h = section('問題', list.length + '問',
     subChips('lb-sub', subId, true) +
@@ -266,7 +267,7 @@ function libQEdit(q){
 onView('lib', libView);
 onAct('lb-tab', function(d){ lib.tab = d.v; render(); });
 onAct('lb-sub', function(d){ if(view.sub !== d.v){ lib.qscope = ''; lib.fdEdit = ''; } view.sub = d.v; render(); });
-onAct('lb-qscope', function(d){ lib.qscope = String(d.v || ''); render(); });
+onAct('lb-qscope', function(d){ lib.qscope = String(d.v || ''); lib.qscopeSub = curSub(); render(); });
 onAct('lb-add', function(){
   var name = String(elVal('lb_new') || '').trim();
   if(!name){ toast('名前を入れてください', true); return; }
@@ -336,11 +337,12 @@ onAct('lb-matq', function(d){
   lib.q = ''; inClear('lb_q');
   view.sub = m.sub || 'none';
   lib.qscope = m.sub ? 'mat:' + m.id : '';
+  lib.qscopeSub = view.sub;
   render();
 });
 /* 資料・フォルダから、そのまま「とく」へ（出題範囲をそれだけにする） */
 function libGoDrill(subId, key){
-  view.sub = subId; drill.scope = [key]; view.weak = 0; view.moc = 0;
+  view.sub = subId; drill.scope = [key]; drill.scopeSub = subId; view.weak = 0; view.moc = 0;
   drill.mode = pool(subId, 'due', drill.scope).length ? 'due' : pool(subId, 'new', drill.scope).length ? 'new' : 'all';
   go('drill');
 }
