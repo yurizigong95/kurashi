@@ -216,9 +216,10 @@ onAct('nt-make', function(){
   if(n.sub) S.ui.lastSub = n.sub;
   mk.pv = null; mk.warp = null; mk.mode = 'file';
   mk.files = [];
-  mk.mat = { no:String(n.no || ''), memo:'', at:n.at || today(), title:noteTitle(n) };
+  mk.mat = { title:'', auto:noteTitle(n) };
+  mk.fd = '';
   INP.mk_paste = body;
-  inClear('mk_no'); inClear('mk_at'); inClear('mk_memo');
+  INP.mk_title = noteTitle(n);                              /* 資料の名前は、メモの題にする（直せる） */
   inClear('nt_body'); inClear('nt_no'); inClear('nt_at');
   nt.edit = ''; nt.del = '';
   saveNow();

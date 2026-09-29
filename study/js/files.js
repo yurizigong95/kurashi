@@ -394,7 +394,7 @@ function dupMark(list){
     var sig = fileSig(f);
     f.sig = sig;
     var hit = mats.filter(function(m){ return m.sig === sig; })[0];
-    if(hit) f.dup = '📌 この資料は「' + hit.title + '」（' + mdText(hit.at) + '）で、もう取りこんでいます。';
+    if(hit) f.dup = '📌 この資料は「' + hit.title + '」で、もう取りこんでいます。';
   });
   return list;
 }

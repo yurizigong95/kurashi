@@ -122,7 +122,7 @@ test('二重取りこみに気づく', async function(){
   ok(list[0].dup && list[0].dup.indexOf('第1回のスライド') >= 0, 'もう取りこんだと教えてくれる');
 });
 
-test('つくる画面：スライドを読みこむと、第◯回と名前が入る', async function(){
+test('つくる画面：スライドを読みこむと、名前が入る（第◯回・日付はもたない）', async function(){
   W.subAdd('循環器');
   var pptx = fileOf(zipOf([
     { name:'ppt/slides/slide1.xml', text:slideXml(['血圧の基準値は120/80mmHg未満である'], false) }
@@ -131,8 +131,8 @@ test('つくる画面：スライドを読みこむと、第◯回と名前が�
   await W.mkTake([pptx]);
   await frames();
   eq(W.mk.files.length, 1, '読みこめた');
-  eq(W.mk.mat.no, '5', 'ファイル名から「第5回」を見つける');
-  ok(W.mk.mat.title.indexOf('循環器') >= 0, '資料の名前');
+  ok(W.mk.mat.auto.indexOf('第5回 循環器') >= 0, 'ファイルの名前を、資料の名前のもとにする');
+  ok(W.mk.mat.no === undefined && W.mk.mat.at === undefined, '第◯回・日付はもたない');
   ok(has('スライド'), '画面にも出る');
   /* そのままAIなしで作れる */
   await click('mk-noai');

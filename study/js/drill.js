@@ -1,7 +1,7 @@
 /* もんだいメーカー：「とく」タブ（出題・答え合わせ・くり返し・模擬テスト・にが手ノート） */
 
 var run = null;
-var drill = { mode:'due', n:10, panel:'', why:{} };
+var drill = { mode:'due', n:10, panel:'', why:{}, scope:[] };   /* scope … 出題範囲（[] は科目のぜんぶ） */
 var RUN_KEY = KEY + ':run';
 
 function modeName(m){
@@ -12,7 +12,7 @@ function runSave(){
   if(!run) return;
   try{
     localStorage.setItem(RUN_KEY, JSON.stringify({
-      mode:run.mode, sub:run.sub, unit:run.unit, list:run.list, i:run.i, done:run.done, ok:run.ok,
+      mode:run.mode, sub:run.sub, scope:run.scope || [], list:run.list, i:run.i, done:run.done, ok:run.ok,
       moc:run.moc, at:Date.now()
     }));
   }catch(e){}
@@ -32,24 +32,25 @@ function runDrop(){
 function runResume(){
   var o = runSaved();
   if(!o) return false;
-  run = { mode:o.mode, sub:o.sub, unit:o.unit || '', list:o.list.filter(function(id){ return qGet(id); }),
+  run = { mode:o.mode, sub:o.sub, scope:Array.isArray(o.scope) ? o.scope : [], list:o.list.filter(function(id){ return qGet(id); }),
           i:toNum(o.i), done:toNum(o.done), ok:toNum(o.ok), moc:o.moc || null,
           picked:[], typed:'', order:[], picks:{}, showing:0, res:null, cur:'', shuf:null };
   if(run.i >= run.list.length){ runDrop(); return false; }
   return true;
 }
 /* ===== はじめる ===== */
-function drillStart(mode, n, moc){
+/* fixed … 出す問題が決まっているとき（模擬テスト） */
+function drillStart(mode, n, moc, fixed){
   view.after = null;
   var subId = curSub();
-  var list = pool(subId, mode || 'due');
+  var list = fixed ? fixed.slice() : pool(subId, mode || 'due', drill.scope);
   if(!list.length){
     toast(modeName(mode) + 'の問題がありません', true);
     return false;
   }
   shuffle(list);
   run = {
-    mode:mode, sub:subId, unit:view.unit || '',
+    mode:mode, sub:subId, scope:fixed ? [] : scopeKeys(subId, drill.scope),
     list:list.slice(0, n || drill.n).map(function(q){ return q.id; }),
     i:0, done:0, ok:0, picked:[], typed:'', order:[], picks:{}, showing:0, res:null, cur:'', shuf:null,
     missed:[], moc:moc || null, start:Date.now()
@@ -119,7 +120,9 @@ function drillView(){
   if(view.mocEnd) return mocEndView();
   if(view.moc) return mocSetupView();
   var subId = curSub();
-  var st = stats(subId);
+  drill.scope = scopeKeys(subId, drill.scope);              /* 消した資料・フォルダは外す */
+  var sc = drill.scope;
+  var st = stats(subId, sc);
   var saved = runSaved();
   var h = '';
   if(!qsAll().length){
@@ -128,18 +131,22 @@ function drillView(){
       btn('📸 問題をつくる', 'tab', { data:{ tab:'make' }, cls:'main' }));
   }
   h += section('どの科目？', subTitle(subId), subChips('dr-sub', subId, true) +
-    (unitsOf(subId).length ? '<label class="f">章（単元）でしぼる</label>' +
-      chips([['', 'ぜんぶ']].concat(unitsOf(subId).map(function(u){ return [u, u]; })), view.unit || '', 'dr-unit') : ''));
+    (subId && subId !== 'none' ? '' : '<div class="s">科目をえらぶと、資料ごと・フォルダごとに出題範囲をしぼれます。</div>'));
+  h += drScopePart(subId);
   if(saved){
     h += section('つづきから', null,
       '<div class="s">' + modeName(saved.mode) + '・' + (saved.list.length - saved.i) + '問のこっています</div>' +
       '<div class="pair">' + btn('つづきをとく', 'dr-resume', { cls:'main' }) + btn('すてる', 'dr-dropsave', { cls:'ghost' }) + '</div>');
   }
+  var modes = [['due', '復習', st.due], ['new', 'はじめて', pool(subId, 'new', sc).length],
+       ['wrong', 'まちがい直し', st.wrong], ['star', '★', pool(subId, 'star', sc).length],
+       ['all', 'ぜんぶ', st.total]];
+  /* えらんでいる「どれをとく」が0問なら、問題のあるものに切りかえる（おしても始まらないのを防ぐ） */
+  var curM = modes.filter(function(m){ return m[0] === drill.mode; })[0];
+  if(!curM || !curM[2]){ var firstM = modes.filter(function(m){ return m[2]; })[0]; if(firstM) drill.mode = firstM[0]; }
   h += section('どれをとく？', st.total + '問', 
     '<div class="modes">' +
-      [['due', '復習', st.due], ['new', 'はじめて', pool(subId, 'new').length],
-       ['wrong', 'まちがい直し', st.wrong], ['star', '★', pool(subId, 'star').length],
-       ['all', 'ぜんぶ', st.total]].map(function(m){
+      modes.map(function(m){
         return '<button type="button" data-act="dr-mode" data-v="' + m[0] + '" class="' + (drill.mode === m[0] ? 'on' : '') + '"' +
           (m[2] ? '' : ' disabled') + '><b>' + m[1] + '</b><span>' + m[2] + '問</span></button>';
       }).join('') +
@@ -155,11 +162,39 @@ function drillView(){
       btn('❌ にが手ノート', 'dr-weak', { cls:'ghost' }) +
     '</div>' +
     '<div class="stats">' +
-      statBox('のこり（今日）', todoCount(subId)) +
+      statBox('のこり（今日）', st.due + st.fresh) +
       statBox('正答率', st.rate == null ? '—' : st.rate + '%') +
       statBox('といた問題', st.answered + '／' + st.total) +
     '</div>');
   return h;
+}
+/* 出題範囲：この科目のぜんぶ／フォルダ／資料（ファイル）。いくつでもえらべる */
+function drScopePart(subId){
+  if(!subId || subId === 'none') return '';
+  var mats = matsByName(subId), fds = fdsOf(subId), all = qsOf(subId);
+  if(!mats.length) return '';
+  var keys = scopeKeys(subId, drill.scope);
+  var cnt = function(k){ return scopeFilter(all, subId, [k]).length; };
+  var chip = function(k, label){
+    var n = cnt(k);
+    return '<button type="button" data-act="dr-scope" data-v="' + esc(k) + '" class="' + (keys.indexOf(k) >= 0 ? 'on' : '') + '"' +
+      (n ? '' : ' disabled') + '>' + esc(label) + ' <small>' + n + '問</small></button>';
+  };
+  var h = '<div class="chips">' +
+    '<button type="button" data-act="dr-scope" data-v="" class="' + (keys.length ? '' : 'on') + '">この科目のぜんぶ <small>' + all.length + '問</small></button></div>';
+  fds.forEach(function(fd){
+    var inF = mats.filter(function(m){ return matFd(m) === fd.id; });
+    h += '<div class="scgrp"><div class="chips">' + chip('fd:' + fd.id, '📁 ' + fd.name) +
+      inF.map(function(m){ return chip('mat:' + m.id, '📄 ' + m.title); }).join('') + '</div></div>';
+  });
+  var loose = mats.filter(function(m){ return !matFd(m); });
+  if(loose.length){
+    h += (fds.length ? '<div class="s">フォルダに入れていない資料</div>' : '') +
+      '<div class="chips">' + loose.map(function(m){ return chip('mat:' + m.id, '📄 ' + m.title); }).join('') + '</div>';
+  }
+  if(cnt('mat:')) h += '<div class="chips">' + chip('mat:', '資料なし（表から作った問題など）') + '</div>';
+  return section('出題範囲', keys.length ? 'えらんだ範囲 ' + scopeFilter(all, subId, keys).length + '問' : 'この科目のぜんぶ',
+    h + note('いくつでもえらべます。フォルダをえらぶと、中の資料がぜんぶ入ります。'));
 }
 /* といたあとのまとめ（まちがえた問題は、その場でもう一回） */
 function afterView(){
@@ -308,10 +343,7 @@ function mocStart(){
   shuffle(list);
   var n = Math.min(moc.n, list.length);
   view.sub = subId;
-  drillStart('all', n, { n:n, min:moc.min, start:Date.now(), answers:{} });
-  if(run) run.list = list.slice(0, n).map(function(q){ return q.id; });
-  runSave();
-  render();
+  drillStart('all', n, { n:n, min:moc.min, start:Date.now(), answers:{} }, list.slice(0, n));
 }
 function mocLeft(){
   if(!run || !run.moc) return 0;
@@ -452,8 +484,14 @@ function weakOut(){
 
 /* ============================== 操作 ============================== */
 onView('drill', drillView);
-onAct('dr-sub', function(d){ view.sub = d.v; view.unit = ''; render(); });
-onAct('dr-unit', function(d){ view.unit = d.v; render(); });
+onAct('dr-sub', function(d){ if(view.sub !== d.v) drill.scope = []; view.sub = d.v; render(); });
+onAct('dr-scope', function(d){
+  var k = String(d.v || '');
+  if(!k){ drill.scope = []; render(); return; }
+  var i = drill.scope.indexOf(k);
+  if(i >= 0) drill.scope.splice(i, 1); else drill.scope.push(k);
+  render();
+});
 onAct('dr-mode', function(d){ drill.mode = d.v; render(); });
 onAct('dr-n', function(d){ drill.n = toNum(d.v); render(); });
 onAct('dr-start', function(){ drillStart(drill.mode, drill.n); });
@@ -528,7 +566,7 @@ onAct('dr-again', function(){
   var ids = (view.after && view.after.miss) || [];
   view.after = null;
   if(!ids.length){ render(); return; }
-  run = { mode:'wrong', sub:curSub(), unit:view.unit || '', list:ids.slice(), i:0, done:0, ok:0,
+  run = { mode:'wrong', sub:curSub(), scope:[], list:ids.slice(), i:0, done:0, ok:0,
           picked:[], typed:'', order:[], picks:{}, showing:0, res:null, cur:'', shuf:null, moc:null,
           missed:[], start:Date.now() };
   runSave();
@@ -541,7 +579,7 @@ onAct('dr-weakrun', function(){
   var list = weakList(curSub()).slice(0, 20);
   if(!list.length) return;
   view.weak = 0;
-  run = { mode:'wrong', sub:curSub(), unit:'', list:list.map(function(q){ return q.id; }), i:0, done:0, ok:0,
+  run = { mode:'wrong', sub:curSub(), scope:[], list:list.map(function(q){ return q.id; }), i:0, done:0, ok:0,
           picked:[], typed:'', order:[], picks:{}, showing:0, res:null, cur:'', shuf:null, moc:null, start:Date.now() };
   runSave();
   render();

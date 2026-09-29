@@ -52,12 +52,12 @@ async function fresh(){
   W.S = W.blankState();
   W.INP = {};
   W.run = null;
-  W.mk.files = []; W.mk.pv = null; W.mk.mode = 'file'; W.mk.opt.noai = 0; W.mk.opt.types = ['mc', 'tf', 'cloze'];
-  W.mk.mat = { no:'', memo:'', at:'', title:'' };
-  W.drill.why = {};
-  W.lib.tab = 'sub'; W.lib.edit = ''; W.lib.qEdit = ''; W.lib.del = ''; W.lib.matFilter = ''; W.lib.qtype = ''; W.lib.star = 0; W.lib.q = '';
+  W.mk.files = []; W.mk.pv = null; W.mk.mode = 'file'; W.mk.opt = W.mkOptDefault(); W.mk.more = 0;
+  W.mk.mat = { title:'', auto:'' }; W.mk.fd = ''; W.mk.kit.n = 20;
+  W.drill.why = {}; W.drill.scope = []; W.drill.mode = 'due';
+  W.lib.tab = 'sub'; W.lib.edit = ''; W.lib.qEdit = ''; W.lib.del = ''; W.lib.qscope = ''; W.lib.fdEdit = ''; W.lib.matOpen = ''; W.lib.qtype = ''; W.lib.star = 0; W.lib.q = '';
   if(W.nt){ W.nt = { edit:'', q:'', sub:'', star:0, del:'' }; }
-  W.view = { tab:'home', sub:'', unit:'' };
+  W.view = { tab:'home', sub:'' };
   try{ W.localStorage.removeItem(W.KEY + ':run'); }catch(e){}
   W.saveNow();
   aiCalls = [];

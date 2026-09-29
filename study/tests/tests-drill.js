@@ -237,18 +237,152 @@ test('模擬テスト：まとめて解いて、点数と前の回との差が�
   eq(W.logOf(W.qsAll()[0].id).n, 1, '記録にも入る');
 });
 
-test('しぼりこみ：章（単元）と★', async function(){
+test('しぼりこみ：★（章・単元ではしぼらない）', async function(){
   var s = W.subAdd('しぼりこみ');
   addQ(s.id, { qt:'tf', q:'循環器の問題である。', c:['○（正しい）', '×（まちがい）'], a:[0], ch:'循環器' });
   var q2 = addQ(s.id, { qt:'tf', q:'呼吸器の問題である。', c:['○（正しい）', '×（まちがい）'], a:[0], ch:'呼吸器' });
   q2.star = 1;
   W.saveNow();
-  eq(W.unitsOf(s.id), ['呼吸器', '循環器'], '章の一覧');
-  W.view.sub = s.id;
-  W.view.unit = '循環器';
-  eq(W.pool(s.id, 'all').length, 1, '循環器だけ');
-  W.view.unit = '';
+  eq(W.pool(s.id, 'all').length, 2, 'ぜんぶ');
   eq(W.pool(s.id, 'star').length, 1, '★だけ');
+  await click('tab', 'drill');
+  await click('dr-sub', s.id);
+  ok(!actEl('dr-unit') && !has('章（単元）でしぼる'), '章（単元）でしぼるは、もうない');
+});
+
+/* 資料（ファイル）・フォルダを作って、それぞれに問題を入れる */
+function scopeSetup(){
+  var s = W.subAdd('成人看護学');
+  var fd = W.fdAdd(s.id, '中間テストまで');
+  var m1 = { id:'m_a', mt:Date.now(), sub:s.id, fd:fd.id, title:'第2回 心不全', kind:'slide', photos:[], text:'' };
+  var m2 = { id:'m_b', mt:Date.now(), sub:s.id, fd:fd.id, title:'第10回 腎不全', kind:'pdf', photos:[], text:'' };
+  var m3 = { id:'m_c', mt:Date.now(), sub:s.id, fd:'', title:'糖尿病', kind:'text', photos:[], text:'' };
+  W.S.mats.push(m1, m2, m3);
+  var tf = function(q, mid){ var o = W.qAdd({ qt:'tf', q:q, c:['○（正しい）', '×（まちがい）'], a:[0] }, s.id, mid); return o; };
+  tf('心不全の問題1である。', 'm_a'); tf('心不全の問題2である。', 'm_a');
+  tf('腎不全の問題である。', 'm_b');
+  tf('糖尿病の問題1である。', 'm_c'); tf('糖尿病の問題2である。', 'm_c'); tf('糖尿病の問題3である。', 'm_c');
+  tf('表から作った問題である。', '');
+  W.saveNow();
+  return { s:s, fd:fd };
+}
+
+test('とく：出題範囲を、資料（ファイル）ごと・フォルダごと・ぜんぶからえらべる', async function(){
+  var o = scopeSetup(), s = o.s;
+  await click('tab', 'drill');
+  await click('dr-sub', s.id);
+  ok(has('出題範囲'), '出題範囲が出る');
+  eq($$('[data-act="dr-scope"]').map(function(e){ return e.textContent.replace(/\s+/g, ''); }).join('|'),
+    'この科目のぜんぶ7問|📁中間テストまで3問|📄第2回心不全2問|📄第10回腎不全1問|📄糖尿病3問|資料なし（表から作った問題など）1問',
+    'ぜんぶ・フォルダ・その中の資料（名前の順）・フォルダなしの資料・資料なし');
+  /* 資料1つ */
+  await click('dr-scope', 'mat:m_c');
+  ok(has('えらんだ範囲 3問'), '3問にしぼれた');
+  await click('dr-mode', 'all');
+  await click('dr-n', '20');
+  await click('dr-start');
+  eq(W.run.list.length, 3, '糖尿病の3問だけ');
+  ok(W.run.list.every(function(id){ return W.qGet(id).mat === 'm_c'; }), 'ぜんぶその資料の問題');
+  await click('dr-quit');
+  W.runDrop();
+  /* フォルダ ＋ 資料なし（いくつでもえらべる） */
+  await click('dr-scope', 'mat:m_c');          /* はずす */
+  await click('dr-scope', 'fd:' + o.fd.id);
+  await click('dr-scope', 'mat:');
+  ok(has('えらんだ範囲 4問'), 'フォルダ3問＋資料なし1問');
+  await click('dr-start');
+  eq(W.run.list.length, 4, '4問');
+  ok(W.run.list.every(function(id){ var q = W.qGet(id); return q.mat === 'm_a' || q.mat === 'm_b' || !q.mat; }), 'フォルダの中の資料と、資料なし');
+  await click('dr-quit');
+  W.runDrop();
+  /* ぜんぶにもどす */
+  await click('dr-scope', '');
+  eq(W.drill.scope.length, 0, 'ぜんぶ');
+  ok(has('この科目のぜんぶ'), 'ぜんぶにもどった');
+  /* 科目をかえたら、範囲はもどる */
+  await click('dr-scope', 'mat:m_a');
+  var s2 = W.subAdd('ほかの科目'); W.saveNow(); W.render(); await frames();
+  await click('dr-sub', s2.id);
+  eq(W.drill.scope.length, 0, '科目をかえたら、ぜんぶにもどる');
+});
+
+test('科目タブ：資料をフォルダに分ける（作る・入れる・名前を直す・消す）と、そのままとく', async function(){
+  var o = scopeSetup(), s = o.s;
+  await click('tab', 'lib');
+  await click('lb-tab', 'mat');
+  await click('lb-sub', s.id);
+  ok(has('📁 中間テストまで'), 'フォルダが出る');
+  ok(has('フォルダに入れていない資料'), 'フォルダなしの資料も分かれて出る');
+  ok(!/\d+\/\d+・/.test(text()), '日付は出さない');
+  /* 新しいフォルダ */
+  await type('lb_fdnew', '期末テスト');
+  await click('lb-fdadd');
+  var f2 = W.fdsOf(s.id).filter(function(f){ return f.name === '期末テスト'; })[0];
+  ok(f2, 'フォルダができた');
+  /* 糖尿病を、期末テストへ */
+  await clickEl($('[data-act="lb-mat"][data-id="m_c"]'));
+  ok($('#lb_mtt_m_c'), '資料をひらけた');
+  await clickEl($('[data-act="lb-matfd"][data-id="m_c"][data-v="' + f2.id + '"]'));
+  eq(W.mat('m_c').fd, f2.id, 'フォルダに入った');
+  /* 資料の名前を直す */
+  await type('lb_mtt_m_c', '糖尿病の看護');
+  await clickEl($('[data-act="lb-matname"][data-id="m_c"]'));
+  eq(W.mat('m_c').title, '糖尿病の看護', '名前を直せた');
+  /* フォルダの名前を直す */
+  await clickEl($('[data-act="lb-fdedit"][data-id="' + f2.id + '"]'));
+  await type('lb_fdnm_' + f2.id, '期末');
+  await clickEl($('[data-act="lb-fdrename"][data-id="' + f2.id + '"]'));
+  eq(W.fdName(s.id, f2.id), '期末', 'フォルダの名前を直せた');
+  /* フォルダからそのままとく */
+  await clickEl($('[data-act="lb-fdgo"][data-id="' + f2.id + '"]'));
+  eq(W.view.tab, 'drill', '「とく」にうつる');
+  eq(W.drill.scope, ['fd:' + f2.id], '出題範囲がそのフォルダになる');
+  ok(has('えらんだ範囲 3問'), '3問');
+  /* フォルダを消しても、資料と問題はのこる */
+  await click('tab', 'lib');
+  await clickEl($('[data-act="lb-fdedit"][data-id="' + f2.id + '"]'));
+  var orig = W.confirm; W.confirm = function(){ return true; };
+  await clickEl($('[data-act="lb-fddel"][data-id="' + f2.id + '"]'));
+  W.confirm = orig;
+  ok(!W.fdGet(s.id, f2.id), 'フォルダは消えた');
+  eq(W.mat('m_c').fd, '', '資料はのこって、フォルダなしに');
+  eq(W.qsOfMat('m_c').length, 3, '問題ものこる');
+  ok(W.sub(s.id).mt > 0, '科目が直ったしるし（ほかの端末にも送る）');
+});
+
+test('科目タブ：問題を資料（ファイル）ごとに見る・問題の資料をうつす', async function(){
+  var o = scopeSetup(), s = o.s;
+  await click('tab', 'lib');
+  await click('lb-tab', 'q');
+  await click('lb-sub', s.id);
+  ok(!actEl('lb-unit'), '章（単元）でしぼるは、もうない');
+  await click('lb-qscope', 'mat:m_a');
+  eq($$('.card.q').length, 2, '心不全の2問だけ');
+  ok(has('📄 第2回 心不全（📁 中間テストまで）'), 'どの資料の問題か出る');
+  await click('lb-qscope', 'fd:' + o.fd.id);
+  eq($$('.card.q').length, 3, 'フォルダの3問');
+  await click('lb-qscope', 'mat:');
+  eq($$('.card.q').length, 1, '資料なしの1問');
+  /* 資料なしの問題を、糖尿病の資料へうつす */
+  var q = W.qsAll().filter(function(x){ return !x.mat; })[0];
+  await click('lb-qedit');
+  await clickEl($('[data-act="lb-qmat"][data-id="' + q.id + '"][data-v="m_c"]'));
+  eq(W.qGet(q.id).mat, 'm_c', '資料をうつせた');
+  await click('lb-qscope', 'mat:m_c');
+  eq($$('.card.q').length, 4, '糖尿病は4問に');
+  /* 資料の「この資料の問題を見る」 */
+  await click('lb-tab', 'mat');
+  await clickEl($('[data-act="lb-mat"][data-id="m_b"]'));
+  await clickEl($('[data-act="lb-matq"][data-id="m_b"]'));
+  eq(W.lib.tab, 'q', '問題の一覧へ');
+  eq($$('.card.q').length, 1, '腎不全の1問');
+  /* ほかの科目にうつしたら、資料とのつながりは外れる */
+  var s2 = W.subAdd('ほかの科目'); W.saveNow(); W.render(); await frames();
+  var q2 = W.qsOfMat('m_b')[0];
+  await click('lb-qedit');
+  await clickEl($('[data-act="lb-qsub"][data-id="' + q2.id + '"][data-v="' + s2.id + '"]'));
+  eq(W.qGet(q2.id).sub, s2.id, '科目をうつした');
+  eq(W.qGet(q2.id).mat, '', '前の科目の資料とのつながりは外れる');
 });
 
 test('問題の直し・けす（科目タブ）', async function(){
@@ -260,11 +394,14 @@ test('問題の直し・けす（科目タブ）', async function(){
   await click('lb-qedit');
   await type('lb_qq_' + q.id, '直した問題文');
   await type('lb_qa_' + q.id, 'あたらしいこたえ');
-  await type('lb_qc_' + q.id, '第3回');
+  await type('lb_q', 'まちがった');
+  W.lib.q = 'まちがった';
+  ok(!$('#lb_qc_' + q.id), '章（単元）の欄は、もうない');
   await click('lb-qsave');
   eq(W.qGet(q.id).q, '直した問題文', '問題文');
   eq(W.qGet(q.id).at, 'あたらしいこたえ', '答え');
-  eq(W.qGet(q.id).ch, '第3回', '章');
+  eq($('#lb_q').value, 'まちがった', '直しても「ことばでさがす」の字は消えない（しぼりこみと合っている）');
+  W.lib.q = ''; W.INP.lb_q = ''; W.render(); await frames();
   var origConfirm = W.confirm;
   W.confirm = function(){ return true; };
   await click('lb-qdel');

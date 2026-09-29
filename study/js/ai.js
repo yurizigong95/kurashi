@@ -197,7 +197,7 @@ async function aiCall(opt){
   opt = opt || {};
   var fake = aiFake();
   if(fake){
-    var t = await fake(JSON.parse(JSON.stringify({ tag:opt.tag || '', contents:opt.contents || [], json:!!opt.json, tools:opt.tools || null })));
+    var t = await fake(JSON.parse(JSON.stringify({ tag:opt.tag || '', contents:opt.contents || [], json:!!opt.json, tools:opt.tools || null, maxTokens:opt.maxTokens || 0 })));
     if(t && typeof t === 'object' && t.usage) aiUseAdd(t.usage, 0);
     return { text:(t && typeof t === 'object') ? String(t.text || '') : String(t == null ? '' : t),
              meta:(t && typeof t === 'object' && t.meta) || null };
@@ -260,5 +260,40 @@ function parseJsonLoose(text){
   var a2 = t.indexOf('['), b2 = t.lastIndexOf(']');
   if(a2 >= 0 && (a < 0 || a2 < a) && b2 > a2){ try{ return JSON.parse(t.slice(a2, b2 + 1)); }catch(e){} }
   if(a >= 0 && b > a){ try{ return JSON.parse(t.slice(a, b + 1)); }catch(e){} }
+  var saved = jsonSalvageQs(t);
+  if(saved) return saved;
   throw new Error('AIの答えを読みとれませんでした');
+}
+/* 答えがとちゅうで切れたとき（問題がとても多いとき など）、できあがっている問題だけ取り出す */
+function jsonSalvageQs(t){
+  var k = t.indexOf('"questions"');
+  if(k < 0) return null;
+  var i = t.indexOf('[', k);
+  if(i < 0) return null;
+  var out = [], depth = 0, start = -1, str = false, bs = false;
+  for(var p = i + 1; p < t.length; p++){
+    var c = t[p];
+    if(str){
+      if(bs) bs = false;
+      else if(c === '\\') bs = true;
+      else if(c === '"') str = false;
+      continue;
+    }
+    if(c === '"'){ str = true; continue; }
+    if(c === '{'){ if(depth === 0) start = p; depth++; }
+    else if(c === '}'){
+      depth--;
+      if(depth === 0 && start >= 0){
+        try{ out.push(JSON.parse(t.slice(start, p + 1))); }catch(e){}
+        start = -1;
+      }
+      if(depth < 0) break;
+    }else if(c === ']' && depth === 0) break;
+  }
+  if(!out.length) return null;
+  var head = t.slice(0, k), o = { questions:out, cut:1 };
+  var tm = head.match(/"title"\s*:\s*"((?:[^"\\]|\\.)*)"/), sm = head.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  try{ if(tm) o.title = JSON.parse('"' + tm[1] + '"'); }catch(e){}
+  try{ if(sm) o.summary = JSON.parse('"' + sm[1] + '"'); }catch(e){}
+  return o;
 }
