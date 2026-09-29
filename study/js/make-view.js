@@ -42,7 +42,9 @@ function mkFilePart(){
     btn('🔗 リンクを読む', 'mk-links', { cls:'ghost', dis:!!mk.busy }) +
     ((mk.linkFails || []).length ? '<div class="warnbox" style="margin-top:8px"><div class="s"><b>読めなかったリンク</b></div>' +
       mk.linkFails.map(function(f){ return '<div class="s">・' + esc(linkName(f.u)) + '：' + esc(f.why) + '</div>'; }).join('') +
-      '<div class="s">ページを開いて文章をコピーし、下の「文章をはりつける」に入れても作れます。PDFなら保存して「ファイルから」でも入れられます。</div></div>' : '') +
+      '<div class="s">ページを開いて文章をコピーし、下の「文章をはりつける」に入れても作れます。PDFなら保存して「ファイルから」でも入れられます。</div>' +
+      (mk.linkFails.some(function(f){ return linkExportUrl(f.u); }) ? '<div class="s">Googleドライブのファイルは、「📁 ファイルから」→「ブラウズ」→「Google ドライブ」からもえらべます（iPhoneに Google ドライブのアプリが入っているとき）。</div>' : '') +
+      '</div>' : '') +
     (mk.busy === 'read' ? '<div class="s wait">' + esc(mk.linkMsg || '読みこんでいます…') + '</div>' : '') +
     mkFileList() +
     mkCostPart() +

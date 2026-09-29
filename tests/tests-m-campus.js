@@ -2,6 +2,7 @@
 (function(){
 'use strict';
 var ok = KT.ok, eq = KT.eq, J = KT.J;
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
 /* ===== にせAI ===== */
 var sylReqs = [];
@@ -206,6 +207,24 @@ cpTest('授業＋：成績の見込み（シラバスの割合＋自分の点 �
   A.touch('attendLog'); A.courseView = ''; A.commit();
 });
 
+/* 拡大画面を、指でさわるまね */
+function zoomPtr(A, el, type, id, x, y){
+  var r = el.getBoundingClientRect();
+  el.dispatchEvent(new A.PointerEvent(type, { pointerId:id, pointerType:'touch', isPrimary:id === 1, clientX:r.left + x, clientY:r.top + y, bubbles:true, cancelable:true }));
+}
+function zoomPinch(A, el, d0, d1){
+  var cx = el.clientWidth / 2, cy = el.clientHeight / 2;
+  zoomPtr(A, el, 'pointerdown', 1, cx - d0 / 2, cy); zoomPtr(A, el, 'pointerdown', 2, cx + d0 / 2, cy);
+  for(var k = 1; k <= 5; k++){ var d = d0 + (d1 - d0) * k / 5; zoomPtr(A, el, 'pointermove', 1, cx - d / 2, cy); zoomPtr(A, el, 'pointermove', 2, cx + d / 2, cy); }
+  zoomPtr(A, el, 'pointerup', 2, cx + d1 / 2, cy); zoomPtr(A, el, 'pointerup', 1, cx - d1 / 2, cy);
+}
+function zoomDrag(A, el, dx, dy){
+  var cx = el.clientWidth / 2, cy = el.clientHeight / 2;
+  zoomPtr(A, el, 'pointerdown', 1, cx, cy);
+  for(var k = 1; k <= 4; k++) zoomPtr(A, el, 'pointermove', 1, cx + dx * k / 4, cy + dy * k / 4);
+  zoomPtr(A, el, 'pointerup', 1, cx + dx, cy + dy);
+}
+function zoomTap(A, el, x, y){ zoomPtr(A, el, 'pointerdown', 1, x, y); zoomPtr(A, el, 'pointerup', 1, x, y); }
 /* 2ページの小さなPDF（ページの絵にできるか確かめる） */
 function tinyPdf(){
   return '%PDF-1.4\n' +
@@ -264,11 +283,48 @@ cpTest('授業＋：シラバスを保存（文章・写真・PDF）して、1�
   await KT.until(function(){ return sv.querySelectorAll('.sv-pdf[data-pdf="' + fs[1].pid + '"] canvas.sv-page').length === 2; }, 15000, 'PDFを2ページの絵にして出す');
   var cv = sv.querySelector('canvas.sv-page');
   ok(cv.width > 100 && cv.height > 40, 'ページの大きさ：' + cv.width + '×' + cv.height);
+  /* PDF のページを押すと、大きくして見られる（ボタン・指2本・2回たたく・ページめくり） */
+  cv.click();
+  var zv = doc.getElementById('zview');
+  await KT.until(function(){ return zv && zv.classList.contains('on') && A.ZV.ok; }, 15000, 'PDFのページを大きくして見る');
+  eq(zv.querySelector('.zv-no').textContent, '1 / 2', 'ページの数');
+  eq(zv.querySelector('.zv-ttl').textContent, 'syllabus.pdf', 'PDFの名前');
+  ok(zv.querySelector('.zv-img').naturalWidth >= 1200, '拡大しても字がつぶれないように、細かい絵にする：' + zv.querySelector('.zv-img').naturalWidth);
+  ok(Number(A.getComputedStyle(zv).zIndex) > Number(A.getComputedStyle(sv).zIndex), 'シラバスの画面の上に出る');
+  var fit = A.ZV.fit;
+  zv.querySelector('[data-zv="in"]').click();
+  ok(A.ZV.s > fit * 1.5 && /^\d+%$/.test(zv.querySelector('.zv-pct').textContent) && zv.querySelector('.zv-pct').textContent !== '100%', '＋で大きく：' + zv.querySelector('.zv-pct').textContent);
+  zv.querySelector('[data-zv="out"]').click();
+  zv.querySelector('[data-zv="out"]').click();
+  ok(Math.abs(A.ZV.s - fit) < 1e-6, '画面に合わせた大きさより小さくはならない');
+  zoomPinch(A, zv.querySelector('.zv-stage'), 40, 160);
+  ok(A.ZV.s > fit * 2.5, '指2本で広げると大きく：' + (A.ZV.s / fit).toFixed(2) + '倍');
+  var st = zv.querySelector('.zv-stage'), sw = st.clientWidth, sh = st.clientHeight;
+  ok(A.ZV.x <= 0.5 && A.ZV.x + A.ZV.nw * A.ZV.s >= sw - 0.5, '拡大したら、はみ出さずに端まで動かせる');
+  zoomDrag(A, st, 2000, 0);
+  ok(Math.abs(A.ZV.x) < 0.5, '左はしより先には動かない');
+  zoomPinch(A, st, 160, 30);
+  ok(A.ZV.s >= fit - 1e-6 && A.ZV.s < fit * 1.5, '指2本でせばめると小さく（画面に合わせた大きさまで）');
+  zoomTap(A, st, sw / 2, sh / 2); await sleep(60); zoomTap(A, st, sw / 2, sh / 2);
+  ok(A.ZV.s > fit * 2, '2回たたくと拡大');
+  zoomTap(A, st, sw / 2, sh / 2); await sleep(60); zoomTap(A, st, sw / 2, sh / 2);
+  ok(Math.abs(A.ZV.s - fit) < 1e-6, 'もう2回たたくと、もとの大きさ');
+  ok(zv.querySelector('[data-zv="prev"]').disabled && !zv.querySelector('[data-zv="next"]').disabled, '1ページめ：前へは押せない');
+  zv.querySelector('[data-zv="next"]').click();
+  await KT.until(function(){ return zv.querySelector('.zv-no').textContent === '2 / 2' && A.ZV.ok; }, 15000, '次のページ');
+  zoomDrag(A, st, 120, 0);
+  await KT.until(function(){ return zv.querySelector('.zv-no').textContent === '1 / 2' && A.ZV.ok; }, 15000, '拡大していないときは、右にはらうと前のページ');
+  A.zoomClose();
+  ok(!zv.classList.contains('on') && doc.getElementById('sylview'), 'とじても、シラバスの画面はそのまま');
+  sv.querySelector('.sv-zoom[data-pid="' + fs[1].pid + '"]').click();
+  await KT.until(function(){ return zv.classList.contains('on') && A.ZV.ok && zv.querySelector('.zv-no').textContent === '1 / 2'; }, 15000, '「🔍 大きくして見る」でも');
+  A.zoomClose();
   /* 写真 → 押すと大きく */
   await KT.until(function(){ var im = sv.querySelector('.sv-img[data-pid="' + fs[0].pid + '"]'); return im && /^data:image\//.test(im.getAttribute('src') || ''); }, 4000, '写真も出る');
   sv.querySelector('.sv-img').click();
-  ok(doc.getElementById('viewer').classList.contains('on'), '写真を押すと大きく');
-  doc.getElementById('viewer').classList.remove('on');
+  await KT.until(function(){ return zv.classList.contains('on') && A.ZV.ok && /^data:image\//.test(zv.querySelector('.zv-img').getAttribute('src') || ''); }, 4000, '写真を押すと大きく');
+  ok(zv.classList.contains('zv-one'), '1枚だけのときは ‹ › を出さない');
+  A.zoomClose();
   sv.querySelector('[data-sv="close"]').click();
   ok(!doc.getElementById('sylview'), 'とじる');
   /* 1回おすだけで見られる：写真のつまみ・「シラバスを見る」 */

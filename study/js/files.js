@@ -692,7 +692,9 @@ async function loadLinkBridge(u, onPct){
     try{ r = await gnCall('linkGet', { url:u, at:at, len:GN_PART }); }
     catch(e){
       if(e && (e.why === 'old' || e.why === 'nogas')) return null;          /* 古い橋わたし：AIにまかせる */
-      return { fail:1, why:String((e && e.message) || e).slice(0, 120), drive:!!linkExportUrl(u) };
+      /* down … 橋わたしそのものに届かない（ほかのリンクも、橋わたしでは読まない） */
+      return { fail:1, why:String((e && e.message) || e).slice(0, 120), drive:!!linkExportUrl(u),
+               down:!!(e && (e.why === 'net' || e.why === 'broken' || e.why === 'login')) };
     }
     if(!first) first = r;
     if(r.kind === 'text'){

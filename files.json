@@ -1,10 +1,10 @@
 {
-    "build":  "2026-09-29a",
-    "made":  "2026-09-29 09:16",
+    "build":  "2026-09-29b",
+    "made":  "2026-09-29 10:43",
     "files":  [
                   {
                       "path":  "css/app.css",
-                      "sha256":  "ad72b1fb8cd9f44e"
+                      "sha256":  "dbfd703ab6513107"
                   },
                   {
                       "path":  "css/m-anki2.css",
@@ -65,7 +65,7 @@
                   },
                   {
                       "path":  "index.html",
-                      "sha256":  "85bf457a6475f07e"
+                      "sha256":  "18fc43c88dcebdb8"
                   },
                   {
                       "path":  "js/ai.js",
@@ -85,7 +85,7 @@
                   },
                   {
                       "path":  "js/calendar.js",
-                      "sha256":  "ae7afff1b1837b01"
+                      "sha256":  "258361c8d74b9e67"
                   },
                   {
                       "path":  "js/chara.js",
@@ -121,7 +121,7 @@
                   },
                   {
                       "path":  "js/core.js",
-                      "sha256":  "fe9940a7f1d099ae"
+                      "sha256":  "c2e024491a616b3b"
                   },
                   {
                       "path":  "js/data.js",
@@ -137,7 +137,7 @@
                   },
                   {
                       "path":  "js/google.js",
-                      "sha256":  "20856839b255c6a9"
+                      "sha256":  "09e67bf255e4fe70"
                   },
                   {
                       "path":  "js/hooks.js",
@@ -177,7 +177,7 @@
                   },
                   {
                       "path":  "js/m-life.js",
-                      "sha256":  "4460f9d541491c0b"
+                      "sha256":  "3f7439362508ea5e"
                   },
                   {
                       "path":  "js/m-links2.js",
@@ -185,7 +185,7 @@
                   },
                   {
                       "path":  "js/money.js",
-                      "sha256":  "d2dce8adeedee066"
+                      "sha256":  "989ca5663b732418"
                   },
                   {
                       "path":  "js/m-petplus.js",
@@ -225,7 +225,7 @@
                   },
                   {
                       "path":  "js/timetable.js",
-                      "sha256":  "83c00ce1a0e71569"
+                      "sha256":  "f72b52cfdf81b768"
                   },
                   {
                       "path":  "js/today.js",
@@ -237,11 +237,15 @@
                   },
                   {
                       "path":  "js/whatsnew.js",
-                      "sha256":  "8b509ad3f0ec2508"
+                      "sha256":  "834b8a40768213f2"
                   },
                   {
                       "path":  "js/wx-plus.js",
                       "sha256":  "202588ff400f9ade"
+                  },
+                  {
+                      "path":  "js/zoom.js",
+                      "sha256":  "b109a21a180197b8"
                   },
                   {
                       "path":  "manifest.json",
@@ -249,7 +253,7 @@
                   },
                   {
                       "path":  "sw.js",
-                      "sha256":  "62d4b172b810645c"
+                      "sha256":  "d1aa16300d1382c0"
                   }
               ]
 }

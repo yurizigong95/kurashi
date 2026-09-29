@@ -171,3 +171,42 @@ test('Goodnotes：ノートを受けとれなかったときは、わけを一�
   eq(W.mk.files.length, 0, '資料には入らない');
   ok(W.gn.open, '一覧はひらいたまま（えらびなおせる）');
 });
+
+test('Goodnotes：橋わたしに届かないときは、わけ（消えた・許可切れ）・作ったアカウント・たしかめ方・ファイルから入れる道を出す', async function(){
+  var calls = 0;
+  W.__FAKE_GAS = async function(){ calls++; var e = new Error(W.GAS_PROBE_TEXT.broken); e.why = 'broken'; throw e; };
+  W.__FAKE_GAS_ACCT = 'kango@example.com';
+  await click('tab', 'make');
+  await click('gn-open');
+  await until(function(){ return W.gn.why === 'broken' && !W.gn.busy; }, 4000, '一覧を読みおわるのを待つ');
+  ok(has('橋わたし（Apps Script）から返事が来ません'), 'ネットではなく、橋わたしが答えないと出す');
+  ok(!has('ネットにつながりませんでした'), '「ネットにつながらない」とは出さない');
+  ok(has('kango@example.com'), '橋わたしを作ったアカウントを出す');
+  ok(has('右上の丸いアイコン'), 'アカウントの切りかえ方');
+  var a = W.document.querySelector('#gn-sec a[href="https://script.google.com/fake"]');
+  ok(a && a.target === '_blank', '橋わたしのページをひらくボタン');
+  ok(has('橋わたしなしでも入れられます') && W.document.querySelector('#gn-sec [data-act="mk-pick"]'), 'ファイルからえらぶ道も出す');
+  ok(!has('大きいノートが読めないときは'), '新しい版にする話は出さない（まぎらわしいので）');
+  eq(calls, 1, '橋わたしには1回だけ');
+});
+
+test('Goodnotes：届かないわけの見分け方（動いている・公開が全員でない・消えた／許可切れ・ネットがない）', async function(){
+  var orig = W.fetch, mode = '';
+  W.fetch = async function(url, opt){
+    if(!/script\.google\.com\/macros\/s\/probe/.test(String(url))) return orig.apply(W, arguments);
+    opt = opt || {};
+    if(mode === 'alive') return new W.Response(JSON.stringify({ ok:true, msg:'くらしの手帳の橋わたしは動いています' }));
+    if(mode === 'login') return new W.Response('<html><a href="https://accounts.google.com/ServiceLogin">login</a></html>');
+    if(mode === 'broken'){ if(opt.mode === 'no-cors') return new W.Response(''); throw new TypeError('Load failed'); }
+    throw new TypeError('Load failed');
+  };
+  try{
+    var ms = ['alive', 'login', 'broken', 'offline'];
+    for(var i = 0; i < ms.length; i++){
+      mode = ms[i];
+      eq(await W.gasProbe('https://script.google.com/macros/s/probe' + i + '/exec'), ms[i], ms[i]);
+    }
+    mode = 'alive';
+    eq(await W.gasProbe('https://script.google.com/macros/s/probe3/exec'), 'offline', '1分のあいだは、同じ答えを使う（何度もたしかめない）');
+  }finally{ W.fetch = orig; }
+});

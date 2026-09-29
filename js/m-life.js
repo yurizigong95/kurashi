@@ -90,12 +90,10 @@ function lfFilePick(accept, cb){
 function lfDataToFile(data){
   return fetch(data).then(function(r){ return r.blob(); }).then(function(b){ return new File([b], 'photo.jpg', { type:b.type || 'image/jpeg' }); });
 }
-function lfPhotoView(pid){
-  photoGet(pid).then(function(src){
-    if(!src){ toast('この端末に写真がありません', true); return; }
-    var v = document.getElementById('viewer');
-    if(v){ v.querySelector('img').src = src; v.classList.add('on'); }
-  });
+function lfPhotoView(pid, el){
+  /* 大きくして見る（指2本で拡大・縮小。となりの写真へも） */
+  if(el && el.tagName === 'IMG') zoomFromEl(el, '証明書の写真');
+  else zoomOpen([{ pid:pid }], 0, '証明書の写真');
 }
 /* 棒グラフ（vals：[{ label, v, low, now, title }]、opt：{ max, goal, aria, cls }） */
 function lfBars(vals, opt){
@@ -1682,7 +1680,7 @@ kmAction(function(act, t){
       render();
       setTimeout(function(){ var el = document.getElementById('lf-sec-' + v); if(el && el.scrollIntoView) el.scrollIntoView({ block:'start' }); }, 30);
       return true;
-    case 'lf-photo': lfPhotoView(t.dataset.id); return true;
+    case 'lf-photo': lfPhotoView(t.dataset.id, t); return true;
     /* 睡眠・歩数 */
     case 'lf-bed': lfGoodnight(); return true;
     case 'lf-wake': lfGoodmorning(); return true;

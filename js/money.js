@@ -601,9 +601,7 @@ function moneyAction(act, t){
   else if(act==='view-img'){
     var src=null; try{ src=localStorage.getItem(imgKey(t.dataset.id)); }catch(err){}
     if(!src){ toast('この端末に写真は保存されていません'); return true; }
-    var box=el('<div id="lightbox"><img src="'+src+'" alt="明細"></div>');
-    box.addEventListener('click',function(){ box.remove(); });
-    document.body.appendChild(box);
+    zoomPhoto(src, '明細');                     /* 大きくして見る（指2本で拡大・縮小） */
   }
   else if(act==='ics'){ makeIcs(); toast('カレンダー用ファイルを保存しました'); }
   else if(act==='add-income'){

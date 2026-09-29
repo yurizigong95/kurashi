@@ -1014,19 +1014,8 @@ function calAction(act, t){
     touch('memos'); toast('写真を外しました'); commit(); return true;
   }
   if(act==='memo-photo-view'){
-    var src = null;
-    photoGet(t.dataset.id).then(function(s2){
-      if(!s2){ toast('この写真は、まだこの端末に届いていません（写真を入れた端末で、くらしの手帳を開くと送られます）', true); return; }
-      var v = document.getElementById('viewer');
-      if(v){ v.querySelector('img').src = s2; v.classList.add('on'); }
-    });
-    return true;
-    /* 以下は使わない */
-    try{ src = null; }catch(e){}
-    if(!src){ toast('この端末に写真がありません'); return true; }
-    var box = el('<div id="lightbox"><img src="'+src+'" alt="メモの写真"></div>');
-    box.addEventListener('click', function(){ box.remove(); });
-    document.body.appendChild(box);
+    /* 大きくして見る（指2本で拡大・縮小。となりの写真へも） */
+    zoomFromEl(t, '写真');
     return true;
   }
   if(act==='add-health'){
