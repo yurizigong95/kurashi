@@ -74,7 +74,7 @@ test('メモ：この文から、そのまま問題をつくれる', async funct
   await click('nt-make');
   eq(W.view.tab, 'make', '「つくる」に移る');
   eq(W.INP.mk_paste.indexOf('安静度を守る') >= 0, true, 'メモの文が入っている');
-  eq(W.mk.mat.no, '7', '第◯回も持っていく');
+  eq(W.INP.mk_title, '心不全の看護', '資料の名前は、メモの題');
   eq(W.S.ui.lastSub, s.id, '科目も持っていく');
   /* そのままAIなしで問題にできる */
   await click('mk-noai');

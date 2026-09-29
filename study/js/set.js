@@ -219,6 +219,30 @@ function setCsv(){
     toast('書き出せませんでした：' + e.message, true);
   }
 }
+/* 読みこんだバックアップの中身で、いまのデータを入れかえる */
+function setImportData(d){
+  /* ほかの端末とそろえているときも、読みこんだ中身になるように：
+     ・いまあって、ファイルにないものは「消した」しるしをつける（ほかの端末からもどってこない）
+     ・読みこんだものは、いちばん新しい時こくにする（ほかの端末の古いものに負けない）
+     ・といた記録は、読みこんだ時こくより前のものを、ほかの端末からもらわない */
+  var LISTS = ['subs', 'fds', 'mats', 'qs', 'moc', 'notes'], had = {}, now = Date.now();
+  LISTS.forEach(function(k){ (S[k] || []).forEach(function(x){ if(x && x.id) had[x.id] = 1; }); });
+  var delNow = Object.assign({}, S.del || {});
+  LISTS.forEach(function(k){ S[k] = Array.isArray(d[k]) ? d[k] : []; });
+  ['log', 'day', 'why', 'ui'].forEach(function(k){ S[k] = (d[k] && typeof d[k] === 'object') ? d[k] : {}; });
+  S.del = Object.assign({}, (d.del && typeof d.del === 'object') ? d.del : {}, delNow);
+  var keepIds = {};
+  LISTS.forEach(function(k){ (S[k] || []).forEach(function(x){ if(x && x.id){ keepIds[x.id] = 1; x.mt = now; delete S.del[x.id]; } }); });
+  Object.keys(had).forEach(function(id){ if(!keepIds[id] && typeof syDead === 'function') syDead(id); });
+  Object.keys(S.log || {}).forEach(function(id){ if(S.log[id] && typeof S.log[id] === 'object') S.log[id].mt = now; });
+  if(d.set && typeof d.set === 'object'){
+    var keep = S.set.key;                       /* キーは、いまの端末のものを残す */
+    S.set = Object.assign({}, DEFAULT_SET, d.set);
+    S.set.key = keep || S.set.key || '';      /* この端末にキーがなければ、ファイルのキーを使う */
+  }
+  S.set.logReset = now - 1;                     /* 読みこんだ記録（時こく now）はのこし、それより前の記録はもらわない */
+  if(typeof syTouchSet === 'function') syTouchSet();   /* 読みこんだ設定を、いちばん新しいものにする */
+}
 function setImport(){
   var inp = document.createElement('input');
   inp.type = 'file';
@@ -231,14 +255,7 @@ function setImport(){
       var d = (j && j.data) ? j.data : j;
       if(!d || !Array.isArray(d.qs)) throw new Error('このアプリのバックアップではないようです');
       if(!ask('いまのデータを、読みこんだ内容に入れかえます。よろしいですか？')) return;
-      ['subs', 'mats', 'qs', 'moc', 'notes'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
-      ['log', 'day', 'why', 'ui', 'del'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
-      if(d.set && typeof d.set === 'object'){
-        var keep = S.set.key;                       /* キーは、いまの端末のものを残す */
-        S.set = Object.assign({}, DEFAULT_SET, d.set);
-        S.set.key = keep || S.set.key || '';      /* この端末にキーがなければ、ファイルのキーを使う */
-        if(typeof syTouchSet === 'function') syTouchSet();   /* 読みこんだ設定を、いちばん新しいものにする */
-      }
+      setImportData(d);
       if(typeof nt === 'object'){ nt.edit = ''; nt.del = ''; }
       saveNow();
       toast('読みこみました（問題' + S.qs.length + '問）');
@@ -350,7 +367,10 @@ onAct('st-import', function(){ setImport(); });
 onAct('st-csv', function(){ setCsv(); });
 onAct('st-logreset', function(){
   if(!ask('といた記録（正解・まちがい・次の日）だけを消します。問題はのこります。よろしいですか？')) return;
+  (S.moc || []).forEach(function(m){ if(m && m.id && typeof syDead === 'function') syDead(m.id); });
   S.log = {}; S.day = {}; S.moc = []; S.why = {};
+  S.set.logReset = Date.now();                  /* ほかの端末の、これより前の記録ももどってこない */
+  if(typeof syTouchSet === 'function') syTouchSet();
   saveNow();
   toast('記録を消しました');
   render();
@@ -363,8 +383,16 @@ onAct('st-reset', function(){
   if(!ask('作った問題・科目・記録を、ぜんぶ消します。よろしいですか？')) return;
   if(!ask('本当に消しますか？（もとにもどせません）')) return;
   var key = S.set.key;
+  /* ほかの端末とそろえているときも、消したものがもどってこないように「消した」しるしをのこす */
+  ['subs', 'fds', 'mats', 'qs', 'moc', 'notes'].forEach(function(k){
+    (S[k] || []).forEach(function(x){ if(x && x.id && typeof syDead === 'function') syDead(x.id); });
+  });
+  var del = S.del;
   S = blankState();
   S.set.key = key;
+  S.del = del;
+  S.set.logReset = Date.now();
+  if(typeof syTouchSet === 'function') syTouchSet();
   saveNow();
   toast('ぜんぶ消しました');
   go('home');

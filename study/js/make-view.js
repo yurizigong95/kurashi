@@ -54,26 +54,24 @@ function mkFilePart(){
 
   h += (typeof gnPart === 'function') ? gnPart() : '';
 
-  h += section('資料の情報', null,
-    '<div class="pair">' +
-      '<div><label class="f" for="mk_no">第◯回</label><input id="mk_no" type="number" min="1" max="30" inputmode="numeric" value="' + esc(inVal('mk_no', mk.mat.no)) + '" placeholder="3"></div>' +
-      '<div><label class="f" for="mk_at">日付</label><input id="mk_at" type="date" value="' + esc(inVal('mk_at', mk.mat.at)) + '"></div>' +
-    '</div>' +
-    '<label class="f" for="mk_memo">先生が強調したところ（あれば）</label>' +
-    '<input id="mk_memo" type="text" maxlength="200" value="' + esc(inVal('mk_memo', mk.mat.memo)) + '" placeholder="「ここテストに出す」と言われたところ">');
+  h += mkNamePart();
 
-  h += section('どんな問題にする？', mk.opt.noai ? 'AIなし' : (mk.opt.auto ? 'おまかせ' : mk.opt.n + '問'),
+  h += section('どんな問題にする？', mk.opt.noai ? 'AIなし' : mk.opt.n + '問',
     '<label class="f">問題の数</label>' +
-    '<div class="pillrow">' +
-      '<button type="button" data-act="mk-auto" class="' + (mk.opt.auto ? 'on' : '') + '">おまかせ</button>' +
-      [5, 10, 15, 20].map(function(n){
-        return '<button type="button" data-act="mk-n" data-v="' + n + '" class="' + (!mk.opt.auto && mk.opt.n === n ? 'on' : '') + '">' + n + '問</button>';
+    '<div class="pillrow">' + MK_NS.map(function(n){
+        return '<button type="button" data-act="mk-n" data-v="' + n + '" class="' + (mk.opt.n === n ? 'on' : '') + '">' + n + '問</button>';
       }).join('') +
     '</div>' +
-    '<label class="f">種類（いくつでも）</label>' +
-    '<div class="chips">' + AI_TYPES.map(function(t){
-      return '<button type="button" data-act="mk-type" data-v="' + t + '" class="' + (mk.opt.types.indexOf(t) >= 0 ? 'on' : '') + '">' + esc(typeName(t)) + '</button>';
+    '<label class="f">種類（いくつでも。はじめは、ぜんぶ）</label>' +
+    '<div class="chips">' + MK_TYPES.map(function(t){
+      return '<button type="button" data-act="mk-type" data-v="' + t[0] + '" class="' + (mk.opt.types.indexOf(t[0]) >= 0 ? 'on' : '') + '">' + esc(t[1]) + '</button>';
+    }).join('') +
+    (mk.opt.types.length < MK_TYPES.length ? '<button type="button" data-act="mk-typeall">ぜんぶえらぶ</button>' : '') + '</div>' +
+    '<label class="f">どんなテストふう？</label>' +
+    '<div class="pillrow">' + MK_FORMS.map(function(f){
+      return '<button type="button" data-act="mk-form" data-v="' + f[0] + '" class="' + (mk.opt.form === f[0] ? 'on' : '') + '">' + esc(f[1]) + '</button>';
     }).join('') + '</div>' +
+    '<div class="s">' + esc((MK_FORMS.filter(function(f){ return f[0] === mk.opt.form; })[0] || MK_FORMS[0])[2]) + '</div>' +
     '<label class="f">むずかしさ</label>' +
     '<div class="pillrow">' +
       [[1, '基本'], [2, 'ふつう'], [3, '応用']].map(function(v){
@@ -81,6 +79,7 @@ function mkFilePart(){
       }).join('') +
       '<button type="button" data-act="mk-both" class="' + (mk.opt.both ? 'on' : '') + '">2通り作る</button>' +
     '</div>' +
+    '<div class="s">' + esc(mkLvHelp()) + '</div>' +
     (mk.more ? mkMorePart() : '<button type="button" class="link" data-act="mk-more">くわしい設定をひらく</button>') +
     '<div class="pair" style="margin-top:12px">' +
       btn((mk.opt.noai ? '✏️ AIを使わずに作る'
@@ -95,15 +94,31 @@ function mkFilePart(){
   return h;
 }
 function mkMorePart(){
-  return '<label class="f">出しかた</label>' +
+  return '<label class="f">くわしい設定</label>' +
     '<div class="chips">' +
-      '<button type="button" data-act="mk-style" data-v="case" class="' + (mk.opt.style === 'case' ? 'on' : '') + '">事例（患者さんの場面）</button>' +
-      '<button type="button" data-act="mk-style" data-v="exam" class="' + (mk.opt.style === 'exam' ? 'on' : '') + '">定期テストふう</button>' +
-      '<button type="button" data-act="mk-kokushi" class="' + (mk.opt.kokushi ? 'on' : '') + '">国試ふうの言い回し</button>' +
+      '<button type="button" data-act="mk-case" class="' + (mk.opt.cas ? 'on' : '') + '">事例（患者さんの場面）をふやす</button>' +
       '<button type="button" data-act="mk-en" class="' + (mk.opt.en ? 'on' : '') + '">英語・略語を入れる</button>' +
-      '<button type="button" data-act="mk-two" class="' + (mk.opt.two ? 'on' : '') + '">「2つ選べ」を入れる</button>' +
     '</div>' +
     '<button type="button" class="link" data-act="mk-more">とじる</button>';
+}
+/* むずかしさの説明（えらんでいるもの） */
+function mkLvHelp(){
+  if(mk.opt.both) return '半分を「基本」、半分を「応用」で作ります（1回のAIで2つのむずかしさ）。';
+  return { 1:'基本：授業に出たことばの意味・正常値・名前など、覚えているかを聞きます。',
+           2:'ふつう：テストによく出るところを、ことばと理由の両方から聞きます。',
+           3:'応用：なぜそうするか・場面でどう考えるか・まちがえやすいところを聞きます。' }[mk.opt.lv] || '';
+}
+/* 資料の名前（と、入れるフォルダ） */
+function mkNamePart(){
+  var subId = mkSubId(), fds = subId ? fdsOf(subId) : [];
+  if(mk.fd && !fdGet(subId, mk.fd)) mk.fd = '';
+  return section('資料の名前', null,
+    '<input id="mk_title" type="text" maxlength="60" value="' + esc(inVal('mk_title', mk.mat.title)) + '" placeholder="例：第3回 循環器">' +
+    '<div class="s">からのときは、AIがつけた見出し（なければファイルの名前）にします。</div>' +
+    (fds.length
+      ? '<label class="f">入れるフォルダ</label>' +
+        chips([['', 'なし']].concat(fds.map(function(f){ return [f.id, '📁 ' + f.name]; })), mk.fd || '', 'mk-fd')
+      : ''));
 }
 /* どれくらい使いそうか（大きさ・トークン・お金・無料のめやす） */
 function mkCostPart(){
@@ -201,7 +216,7 @@ function mkKitPart(){
         chips([['', 'すべて']].concat(D_FIELDS.map(function(f){ return [f[0], f[1]]; })), mk.kit.field, 'mk-kitfield')
       : '') +
     '<label class="f">問題の数</label>' +
-    '<div class="pillrow">' + [5, 10, 20, 30].map(function(n){
+    '<div class="pillrow">' + MK_NS.map(function(n){
       return '<button type="button" data-act="mk-kitn" data-v="' + n + '" class="' + (mk.kit.n === n ? 'on' : '') + '">' + n + '問</button>';
     }).join('') + '</div>' +
     btn('この中から' + mk.kit.n + '問つくる', 'mk-kitrun', { cls:'main' }) +
@@ -214,7 +229,10 @@ function mkKitPart(){
 function mkPvView(){
   var pv = mk.pv;
   var h = section('できた問題', pv.items.length + '問',
-    '<div class="s">' + esc(pv.title) + (pv.summary ? '<br>' + esc(pv.summary) : '') + '</div>' +
+    (pv.nomat ? '<div class="s">' + esc(pv.title) + '</div>'
+      : '<label class="f" for="mk_title">資料の名前</label>' +
+        '<input id="mk_title" type="text" maxlength="60" value="' + esc(inVal('mk_title', pv.title)) + '">') +
+    (pv.summary ? '<div class="s">' + esc(pv.summary) + '</div>' : '') +
     '<div class="pair" style="margin-top:10px">' +
       btn('この' + pv.items.length + '問を入れる', 'mk-add', { cls:'main' }) +
       btn('すてる', 'mk-drop-all', { cls:'ghost' }) +
@@ -297,23 +315,26 @@ onAct('mk-warp-mv', function(d){
 });
 onAct('mk-warp-ok', function(){ mkWarpApply(); });
 onAct('mk-warp-no', function(){ mk.warp = null; render(); });
-onAct('mk-auto', function(){ mk.opt.auto = 1; render(); });
-onAct('mk-n', function(d){ mk.opt.auto = 0; mk.opt.n = toNum(d.v); render(); });
+onAct('mk-n', function(d){ mk.opt.n = toNum(d.v); render(); });
 onAct('mk-type', function(d){
   var i = mk.opt.types.indexOf(d.v);
-  if(i >= 0){ if(mk.opt.types.length > 1) mk.opt.types.splice(i, 1); }
+  if(i >= 0){
+    if(mk.opt.types.length > 1) mk.opt.types.splice(i, 1);
+    else toast('1つはえらんでください', true);
+  }
   else mk.opt.types.push(d.v);
   render();
 });
+onAct('mk-typeall', function(){ mk.opt.types = MK_TYPES.map(function(t){ return t[0]; }); render(); });
+onAct('mk-form', function(d){ mk.opt.form = d.v; render(); });
+onAct('mk-fd', function(d){ mk.fd = String(d.v || ''); render(); });
 onAct('mk-lv', function(d){ mk.opt.both = 0; mk.opt.lv = toNum(d.v); render(); });
 onAct('mk-both', function(){ mk.opt.both = mk.opt.both ? 0 : 1; render(); });
 onAct('mk-more', function(){ mk.more = mk.more ? 0 : 1; render(); });
-onAct('mk-style', function(d){ mk.opt.style = (mk.opt.style === d.v) ? '' : d.v; render(); });
-onAct('mk-kokushi', function(){ mk.opt.kokushi = mk.opt.kokushi ? 0 : 1; render(); });
+onAct('mk-case', function(){ mk.opt.cas = mk.opt.cas ? 0 : 1; render(); });
 onAct('mk-en', function(){ mk.opt.en = mk.opt.en ? 0 : 1; render(); });
-onAct('mk-two', function(){ mk.opt.two = mk.opt.two ? 0 : 1; render(); });
 onAct('mk-noai', function(){ mk.opt.noai = mk.opt.noai ? 0 : 1; render(); });
-onAct('mk-run', function(){ mk.mat.no = String(elVal('mk_no') || ''); mk.mat.at = String(elVal('mk_at') || ''); mk.mat.memo = String(elVal('mk_memo') || ''); mkRun(); });
+onAct('mk-run', function(){ mk.mat.title = String(elVal('mk_title') || '').trim(); mkRun(); });
 onAct('mk-stop', function(){ mkStop(); });
 onAct('mk-kit', function(d){ mk.kit.id = d.v; mk.kit.cat = ''; render(); });
 onAct('mk-kitcat', function(d){ mk.kit.cat = d.v; render(); });
@@ -327,6 +348,11 @@ onAct('mk-calc', function(d){
 });
 onAct('mk-kitrun', function(){ mkRunKit(); });
 onAct('mk-add', function(){ mkAdd(); });
-onAct('mk-drop-all', function(){ if(ask('作った問題をすてますか？')){ mk.pv = null; render(); } });
+onAct('mk-drop-all', function(){
+  if(!ask('作った問題をすてますか？')) return;
+  mk.pv = null;
+  if(!mk.mat.title) delete INP.mk_title;          /* 自分でつけた名前でなければ、AIの見出しはのこさない */
+  render();
+});
 onAct('mk-dropone', function(d){ mkDrop(toNum(d.i)); });
 onAct('mk-remake', function(d){ mkRemake(toNum(d.i)); });

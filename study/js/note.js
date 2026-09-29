@@ -67,11 +67,12 @@ function noteList(){
     if(nt.sub && n.sub !== nt.sub) return false;
     if(nt.star && !n.star) return false;
     if(!q) return true;
-    var s = (n.body || '') + ' ' + (subName(n.sub) || '') + ' ' + (n.no ? '第' + n.no + '回' : '');
+    var s = (n.body || '') + ' ' + noteSubName(n.sub) + ' ' + (n.no ? '第' + n.no + '回' : '');
     return s.toLowerCase().indexOf(q) >= 0;
   });
 }
-function subName(id){ var s = sub(id); return s ? s.name : ''; }
+/* メモの科目の名前（科目なしなら空。アプリ全体の subName は「そのほか」を返すので、別の名前にする） */
+function noteSubName(id){ var s = sub(id); return s ? s.name : ''; }
 
 /* ===== 画面 ===== */
 function noteView(){
@@ -104,7 +105,7 @@ function noteListView(){
         (n.star ? '<span class="nt-star">★</span>' : '') +
       '</div>' +
       (noteBodyRest(n) ? '<div class="s">' + esc(noteBodyRest(n)) + '</div>' : '') +
-      '<div class="s sub">' + [subName(n.sub) ? esc(subName(n.sub)) : '', n.no ? '第' + esc(n.no) + '回' : '', mdText(n.at)]
+      '<div class="s sub">' + [noteSubName(n.sub) ? esc(noteSubName(n.sub)) : '', n.no ? '第' + esc(n.no) + '回' : '', mdText(n.at)]
         .filter(Boolean).join('　') + '</div>' +
     '</section>';
   }).join('');
@@ -213,12 +214,13 @@ onAct('nt-make', function(){
   var had = mk.files.length, paste = String(inVal('mk_paste') || '').trim();
   if((had || (paste && paste !== body)) &&
      !ask('「つくる」に入れてある' + (had ? '資料（' + had + 'つ）' : '文章') + 'を外して、このメモの文に入れかえますか？')) return;
-  if(n.sub) S.ui.lastSub = n.sub;
+  if(n.sub){ S.ui.lastSub = n.sub; view.sub = n.sub; }      /* 「つくる」の科目も、メモの科目にする */
   mk.pv = null; mk.warp = null; mk.mode = 'file';
   mk.files = [];
-  mk.mat = { no:String(n.no || ''), memo:'', at:n.at || today(), title:noteTitle(n) };
+  mk.mat = { title:'', auto:noteTitle(n) };
+  mk.fd = '';
   INP.mk_paste = body;
-  inClear('mk_no'); inClear('mk_at'); inClear('mk_memo');
+  INP.mk_title = noteTitle(n);                              /* 資料の名前は、メモの題にする（直せる） */
   inClear('nt_body'); inClear('nt_no'); inClear('nt_at');
   nt.edit = ''; nt.del = '';
   saveNow();

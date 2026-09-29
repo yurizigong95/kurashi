@@ -64,13 +64,13 @@ function homeView(){
 }
 onView('home', homeView);
 onAct('hm-go', function(){
-  view.sub = ''; view.unit = ''; view.weak = 0; view.moc = 0;
+  view.sub = ''; drill.scope = []; view.weak = 0; view.moc = 0;
   drill.mode = pool('', 'due').length ? 'due' : 'new';
   go('drill');
   drillStart(drill.mode, drill.n);
 });
 onAct('hm-sub', function(d){
-  view.sub = d.id; view.unit = ''; view.weak = 0; view.moc = 0;
+  view.sub = d.id; drill.scope = []; view.weak = 0; view.moc = 0;
   drill.mode = pool(d.id, 'due').length ? 'due' : 'new';
   go('drill');
 });

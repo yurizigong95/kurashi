@@ -293,3 +293,85 @@ test('まとめてえらぶ：入りきらないぶんは、読む前に外す�
     ok(toastText().indexOf('10つは入れませんでした') >= 0, '入れなかった数を知らせる：' + toastText());
   }finally{ W.loadFiles = orig; }
 });
+
+/* ===== Google連携（橋わたし）から読む ===== */
+function b64of(u8){ var s = ''; for(var i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return W.btoa(s); }
+
+test('リンク：ブラウザで読めないページ・自分のドライブのファイルは、Google連携（橋わたし）から読む（AIを使わない）', async function(){
+  W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
+  fakeAI(function(){ throw new Error('AIは使わないはず'); });
+  var pdf = new W.TextEncoder().encode('%PDF-1.4\n' + new Array(30).join('1 0 obj << /Type /Page >> endobj\n') + '%%EOF');
+  var calls = [];
+  W.__FAKE_GAS = async function(req){
+    calls.push(req);
+    if(req.action !== 'linkGet') return { ok:false, error:'知らないお願いです：' + req.action };
+    if(/example\.com/.test(req.url)) return { ok:true, kind:'text', name:'jokuso', mime:'text/html; charset=utf-8', size:500,
+      text:'<html><head><title>褥瘡の予防</title></head><body><nav>メニュー</nav><article><h1>褥瘡の予防</h1>' +
+        '<p>2時間ごとに体の向きを変える。栄養状態をととのえる。皮膚を清潔に保ち、湿らせたままにしない。' +
+        '骨の出っぱったところは、とくに注意して毎日観察する。</p></article></body></html>' };
+    if(/drive\.google\.com/.test(req.url)){
+      var at = req.at || 0, n = Math.min(120, pdf.length - at);
+      return { ok:true, kind:'bin', name:'第4回 授業スライド.pdf', mime:'application/pdf', size:pdf.length, at:at, n:n, data:b64of(pdf.slice(at, at + n)) };
+    }
+    return { ok:false, error:'ページを開けませんでした（エラー 404）' };
+  };
+  await click('tab', 'make');
+  await type('mk_links', 'https://example.com/jokuso\nhttps://drive.google.com/file/d/1AbcDEFghijKLmn/view?usp=sharing');
+  await click('mk-links');
+  await until(function(){ return W.mk.files.length === 2 && !W.mk.busy; }, 8000, '読みおわるのを待つ');
+  eq(aiCalls.length, 0, 'AIは使っていない');
+  eq(W.mk.files[0].name, '褥瘡の予防', 'ページの題');
+  ok(W.mk.files[0].text.indexOf('2時間ごとに') >= 0 && W.mk.files[0].text.indexOf('メニュー') < 0, '本文だけ');
+  eq(W.mk.files[1].kind, 'pdf', 'ドライブのPDF');
+  eq(W.mk.files[1].name, '第4回 授業スライド.pdf', 'ファイルの名前');
+  ok(calls.filter(function(c){ return /drive/.test(c.url); }).length >= 2, '大きいファイルは少しずつ受けとる');
+  eq(W.document.getElementById('mk_links').value, '', '読めたリンクは欄から消える');
+});
+
+test('リンク：橋わたしで読めなかったページはAIへ。ドライブのファイルは、わけを出す', async function(){
+  W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
+  W.__FAKE_GAS = async function(req){
+    if(/drive\.google\.com/.test(req.url)) return { ok:false, error:'ドライブのファイルが見つかりません（橋わたしのGoogleアカウントで見られるファイルだけ読めます）' };
+    return { ok:false, error:'ページを開けませんでした（エラー 403）' };
+  };
+  fakeAI(function(req){
+    var u = askedUrl(req);
+    return { text:'タイトル：肺炎\n肺炎では発熱とせきが出る。SpO2を見る。痰の色と量を記録する。', meta:{ urlMetadata:[{ retrievedUrl:u, urlRetrievalStatus:'URL_RETRIEVAL_STATUS_SUCCESS' }] } };
+  });
+  await click('tab', 'make');
+  await type('mk_links', 'https://example.org/lung\nhttps://drive.google.com/file/d/1ZZZyyyXXXwww/view');
+  await click('mk-links');
+  await until(function(){ return !W.mk.busy && (W.mk.linkFails || []).length === 1; }, 8000, '読みおわるのを待つ');
+  eq(W.mk.files.map(function(f){ return f.name; }).join('／'), '肺炎', 'ふつうのページはAIが読んだ');
+  eq(aiCalls.length, 1, 'ドライブのファイルは、AIにはたのまない（AIには見られないので）');
+  ok(/ドライブのファイルが見つかりません/.test(W.mk.linkFails[0].why), 'ドライブのわけを出す');
+  ok(has('読めなかったリンク'), '画面にも出る');
+});
+
+test('AI：枠がいっぱい（429）・混んでいる（503）モデルは、次のモデルでためす', async function(){
+  W.S.set.key = 'dummy';
+  W.S.set.model = '';
+  var orig = W.fetch, seen = [];
+  var resp = function(obj, st){ return new W.Response(JSON.stringify(obj), { status:st, headers:{ 'Content-Type':'application/json' } }); };
+  W.fetch = async function(url){
+    if(!/generativelanguage/.test(String(url))) return orig.apply(W, arguments);
+    seen.push((String(url).match(/models\/([^:]+)/) || [])[1]);
+    if(seen.length === 1) return resp({ error:{ message:'Resource has been exhausted (e.g. check quota).' } }, 429);
+    if(seen.length === 2) return resp({ error:{ message:'The model is overloaded. Please try again later.' } }, 503);
+    return resp({ candidates:[{ content:{ parts:[{ text:'{"ok":1}' }] } }] }, 200);
+  };
+  try{
+    var j = await W.aiJson('テスト', []);
+    eq(j.ok, 1, '3つめのモデルで答えた');
+    eq(seen.length, 3, '3つのモデルをためした');
+    ok(seen[0] !== seen[1] && seen[1] !== seen[2], 'ちがうモデル');
+  }finally{ W.fetch = orig; }
+  W.fetch = async function(url){
+    if(!/generativelanguage/.test(String(url))) return orig.apply(W, arguments);
+    return resp({ error:{ message:'The model is overloaded. Please try again later.' } }, 503);
+  };
+  var err = '';
+  try{ await W.aiJson('テスト', []); }catch(e){ err = e.message; }
+  finally{ W.fetch = orig; }
+  ok(/混んでいる/.test(err), 'ぜんぶ混んでいたら、そう知らせる：' + err);
+});

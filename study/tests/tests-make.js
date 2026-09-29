@@ -5,16 +5,16 @@ test('AIなし：組みこみの表から小テストを作る（AIは1回も呼
   await click('tab', 'make');
   await click('mk-mode', 'kit');
   await click('mk-kit', 'lab');
-  await click('mk-kitn', '10');
+  await click('mk-kitn', '20');
   await click('mk-kitrun');
   ok(W.mk.pv, '下書きができた');
-  eq(W.mk.pv.items.length, 10, '10問');
+  eq(W.mk.pv.items.length, 20, '20問');
   eq(aiCalls.length, 0, 'AIを呼んでいない');
   ok(W.mk.pv.items.every(function(x){ return x.qt === 'mc' && x.c.length >= 3; }), 'ぜんぶ4択');
   ok(has('できた問題'), '下書きの画面');
   await click('mk-add');
-  eq(W.qsAll().length, 10, '本番に入った');
-  eq(W.toNum(W.S.set.aiSaved), 10, 'AIなしで作った数をかぞえている');
+  eq(W.qsAll().length, 20, '本番に入った');
+  eq(W.toNum(W.S.set.aiSaved), 20, 'AIなしで作った数をかぞえている');
   eq(aiCalls.length, 0, '入れるときもAIを呼ばない');
 });
 
@@ -24,7 +24,7 @@ test('AIなし：ほかの工房（略語・英語・薬・手順・根拠・組
   var kinds = ['dict', 'en', 'drug', 'skill', 'why', 'match', 'kokushi', 'labc', 'anat'];
   for(var i = 0; i < kinds.length; i++){
     await click('mk-kit', kinds[i]);
-    await click('mk-kitn', '5');
+    await click('mk-kitn', '20');
     await click('mk-kitrun');
     ok(W.mk.pv && W.mk.pv.items.length >= 3, kinds[i] + ' が作れる（' + (W.mk.pv ? W.mk.pv.items.length : 0) + '問）');
     ok(W.mk.pv.items.every(function(x){ return W.qOk(Object.assign({ id:'x' }, x)); }), kinds[i] + ' の中身が正しい');
@@ -40,7 +40,7 @@ test('AIなし：解剖の図の穴うめ（図つきの問題）', async functi
   await click('tab', 'make');
   await click('mk-mode', 'kit');
   await click('mk-kit', 'anat');
-  await click('mk-kitn', '5');
+  await click('mk-kitn', '20');
   await click('mk-kitrun');
   ok(W.mk.pv && W.mk.pv.items.length >= 3, '作れた：' + (W.mk.pv ? W.mk.pv.items.length : 0));
   ok(W.mk.pv.items.every(function(x){ return x.fig && W.anatOf(x).indexOf('<svg') === 0; }), '図がついている');
@@ -62,7 +62,7 @@ test('AIなし：計算問題の式と答えが合っている', async function(
   await click('mk-mode', 'kit');
   await click('mk-kit', 'calc');
   await click('mk-calc', 'drip20');
-  await click('mk-kitn', '5');
+  await click('mk-kitn', '20');
   await click('mk-kitrun');
   var items = W.mk.pv.items;
   ok(items.length >= 3, '作れた');
@@ -121,7 +121,7 @@ test('AI：資料から問題を作って、たしかめてから入れる', asy
   eq(W.S.mats[0].title, '循環器のまとめ', '資料の名前');
 });
 
-test('AI：送る量をへらす（字があるときは写真を送らない・かぶり防止・章の見本）', async function(){
+test('AI：送る量をへらす（字があるときは写真を送らない・かぶり防止）', async function(){
   var s = W.subAdd('母性看護学');
   W.qAdd({ qt:'mc', q:'すでにある問題：分娩の3要素はどれか。', c:['あ', 'い', 'う', 'え'], a:[0] }, s.id, '');
   W.S.set.key = 'dummy';
@@ -140,11 +140,11 @@ test('AI：送る量をへらす（字があるときは写真を送らない・
   var prompt = parts[parts.length - 1].text;
   ok(prompt.indexOf('かぶらないように') >= 0, 'かぶり防止を伝えている');
   ok(prompt.indexOf('すでにある問題') >= 0, '前の問題文（みじかく）を送っている');
-  ok(prompt.indexOf('妊娠') >= 0, 'この科目の章の見本を送っている');
+  ok(prompt.indexOf('章や単元') < 0, '章（単元）はもう聞かない');
   ok(prompt.indexOf('初乳') >= 0, '資料の字を送っている');
 });
 
-test('AI：種類・むずかしさ・事例・国試ふう・2つ選べが、たのみに入る', async function(){
+test('AI：種類・むずかしさ・事例・国試ふうが、たのみに入る', async function(){
   W.subAdd('基礎看護学');
   W.S.set.key = 'dummy';
   var prompt = '';
@@ -154,26 +154,115 @@ test('AI：種類・むずかしさ・事例・国試ふう・2つ選べが、�
   });
   await click('tab', 'make');
   await type('mk_paste', '手洗いの手順を確認する。');
-  await click('mk-type', 'order');
-  await click('mk-type', 'mc');          /* mc をはずす */
-  await click('mk-type', 'tf');          /* tf をはずす */
-  await click('mk-type', 'cloze');       /* cloze をはずす */
+  eq(W.mk.opt.types.length, 7, 'はじめは7種類ぜんぶ');
+  for(var k of ['tf', 'mc', 'cloze', 'short', 'match', 'two']) await click('mk-type', k);
   eq(W.mk.opt.types, ['order'], '並べかえだけ');
+  await click('mk-type', 'order');
+  eq(W.mk.opt.types, ['order'], '最後の1つは外せない');
+  await click('mk-form', 'kokushi');
   await click('mk-more');
-  await click('mk-style', 'case');
-  await click('mk-kokushi');
-  await click('mk-two');
+  await click('mk-case');
   await click('mk-both');
   await click('mk-run');
   await until(function(){ return W.mk.pv; }, 4000, '作られる');
   ok(prompt.indexOf('order（並べかえ）') >= 0, '種類を伝えている');
   ok(prompt.indexOf('mc（4択）') < 0, 'えらんでいない種類は伝えない');
-  ok(prompt.indexOf('事例問題') >= 0, '事例');
-  ok(prompt.indexOf('国家試験の言い回し') >= 0, '国試ふう');
-  ok(prompt.indexOf('2つ選べ') >= 0, '2つ選べ');
+  ok(prompt.indexOf('事例') >= 0, '事例');
+  ok(prompt.indexOf('看護師国家試験') >= 0, '国試ふう');
+  ok(prompt.indexOf('2つ選べ') < 0, '2つ選べはえらんでいない');
   ok(prompt.indexOf('半分を「基本」') >= 0, '2通りのむずかしさ');
   eq(W.mk.pv.items[0].qt, 'order', '並べかえができた');
   eq(W.mk.pv.items[0].c.length, 3, '手順3つ');
+});
+
+test('つくる：20・30・40・50問・7種類（2つ選べ）・小テスト／定期テストふう', async function(){
+  W.subAdd('成人看護学');
+  W.S.set.key = 'dummy';
+  var req = null;
+  fakeAI(function(r){
+    req = r;
+    return aiJsonReply({ title:'AIの見出し', questions:[
+      { type:'mc', q:'答えが1つの4択', choices:['あ', 'い', 'う', 'え'], ans:[1] },
+      { type:'mc', q:'2つ選べ。', choices:['あ', 'い', 'う', 'え', 'お'], ans:[1, 3] },
+      { type:'tf', q:'これは○×である。', answer:'○' }
+    ] });
+  });
+  await click('tab', 'make');
+  eq($$('[data-act="mk-n"]').map(function(e){ return e.dataset.v; }).join(','), '20,30,40,50', '数は20・30・40・50');
+  eq(W.mk.opt.n, 20, 'はじめは20問');
+  eq(W.mk.opt.form, 'exam', 'はじめは定期テストふう');
+  ok(!actEl('mk-auto'), 'おまかせはない');
+  eq($$('[data-act="mk-type"].on').length, 7, '種類は7つ（ぜんぶオン）');
+  ok(actEl('mk-type', 'two'), '「2つ選べ」も種類にある');
+  await type('mk_paste', '心不全の看護。水分と塩分を守る。体重を毎日はかる。');
+  await click('mk-n', '50');
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 4000, '作られる');
+  var p = req.contents[0].parts.slice(-1)[0].text;
+  ok(p.indexOf('問題を50問') >= 0, '50問をたのむ');
+  ok(req.maxTokens >= 30000, '50問ぶん長く答えられる（' + req.maxTokens + '）');
+  ok(p.indexOf('定期テスト') >= 0, '定期テストふう');
+  ok(p.indexOf('3割ほどは「2つ選べ。」') >= 0, '4択の一部を2つ選べに');
+  ok(p.indexOf('説明しなさい') >= 0, '定期テストの記述は説明の形');
+  eq(W.mk.pv.items.length, 3, '3問とも入る');
+  eq(W.mk.pv.title, 'AIの見出し', '名前をつけていなければ、AIの見出し');
+  W.mk.pv = null; W.render(); await frames();
+  /* 「2つ選べ」だけ → 答えが1つの4択はすてる。小テストふう */
+  for(var k of ['tf', 'mc', 'cloze', 'short', 'order', 'match']) await click('mk-type', k);
+  eq(W.mk.opt.types, ['two'], '2つ選べだけ');
+  await click('mk-form', 'quiz');
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 4000, '作られる');
+  p = req.contents[0].parts.slice(-1)[0].text;
+  ok(p.indexOf('mc はすべて「2つ選べ。」') >= 0, 'ぜんぶ2つ選べ');
+  ok(p.indexOf('小テスト') >= 0, '小テストふう');
+  eq(W.mk.pv.items.map(function(x){ return x.q; }).join('／'), '2つ選べ。', '2つ選べの問題だけのこる');
+  W.mk.pv = null; W.render(); await frames();
+  await click('mk-typeall');
+  eq(W.mk.opt.types.length, 7, '「ぜんぶえらぶ」でもどせる');
+});
+
+test('つくる：資料は名前だけ（第◯回・日付の欄はない）。名前とフォルダをえらんで入れる', async function(){
+  var s = W.subAdd('解剖生理学');
+  var f = W.fdAdd(s.id, '中間テストまで');
+  W.S.ui.lastSub = s.id;
+  W.S.set.key = 'dummy';
+  W.saveNow();
+  fakeAI(function(){ return aiJsonReply({ title:'AIの見出し', questions:[{ type:'tf', q:'心臓は4つの部屋がある。', answer:'○' }] }); });
+  await click('tab', 'make');
+  ok(!$('#mk_no') && !$('#mk_at') && !$('#mk_memo'), '第◯回・日付・強調の欄はない');
+  ok($('#mk_title'), '名前の欄がある');
+  await click('mk-fd', f.id);
+  await type('mk_title', '第3回 心臓のしくみ');
+  await type('mk_paste', '心臓は右心房・右心室・左心房・左心室の4つの部屋がある。');
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 4000, '作られる');
+  eq(W.mk.pv.title, '第3回 心臓のしくみ', 'つけた名前を使う');
+  eq($('#mk_title').value, '第3回 心臓のしくみ', 'できた問題の画面でも直せる');
+  await type('mk_title', '心臓のしくみ（なおした）');
+  await click('mk-add');
+  var m = W.S.mats[0];
+  eq(m.title, '心臓のしくみ（なおした）', '直した名前で入る');
+  eq(m.fd, f.id, 'えらんだフォルダに入る');
+  ok(m.at === undefined && m.no === undefined && m.memo === undefined, '日付・第◯回はもたない');
+});
+
+test('AI：答えがとちゅうで切れても、できている問題だけ使う', async function(){
+  W.subAdd('成人看護学');
+  W.S.set.key = 'dummy';
+  fakeAI(function(){
+    var full = JSON.stringify({ title:'見出し', questions:[
+      { type:'tf', q:'1つめの問題である。', answer:'○' },
+      { type:'tf', q:'2つめの問題である。', answer:'×' },
+      { type:'tf', q:'3つめの問題（とちゅう）', answer:'○' }] });
+    return { text:full.slice(0, full.indexOf('3つめ') + 5) };
+  });
+  await click('tab', 'make');
+  await type('mk_paste', 'なにかの資料の文章です。');
+  await click('mk-run');
+  await until(function(){ return W.mk.pv; }, 4000, '作られる');
+  eq(W.mk.pv.items.length, 2, 'できあがっていた2問');
+  eq(W.mk.pv.title, '見出し', '見出しも読める');
 });
 
 test('AI：えらんでいない種類の問題は、すてる', async function(){
@@ -186,7 +275,8 @@ test('AI：えらんでいない種類の問題は、すてる', async function(
   });
   await click('tab', 'make');
   await type('mk_paste', 'なにかの資料。');
-  eq(W.mk.opt.types.indexOf('short'), -1, 'はじめは記述をえらんでいない');
+  await click('mk-type', 'short');
+  eq(W.mk.opt.types.indexOf('short'), -1, '記述をはずした');
   await click('mk-run');
   await until(function(){ return W.mk.pv; }, 4000, '作られる');
   eq(W.mk.pv.items.length, 1, '記述はすてる');

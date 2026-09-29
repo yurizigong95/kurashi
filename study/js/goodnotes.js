@@ -22,6 +22,13 @@ function gnGas(){
   return null;
 }
 function gnErr(why, msg){ var e = new Error(msg || why); e.why = why; return e; }
+/* 橋わたしの窓口の版（くらしの手帳が、つないだときにたしかめた数。わからないときは 0）。
+   7 から、リンク（ウェブのページ・Googleドライブ）を読めて、大きいノートも少しずつ読める */
+var GAS_API_LINK = 7;
+function gasApiOf(){ var g = gnGas(); return !g ? -1 : g.fake ? 99 : toNum(g.api); }
+function gasOld(){ var a = gasApiOf(); return a > 0 && a < GAS_API_LINK; }
+var GAS_UPDATE_HOW = 'くらしの手帳 › 設定 › Google連携 の「プログラムをコピー」で Apps Script に貼り直して、' +
+  '「デプロイを管理」→ ✏️ →「新バージョン」→「デプロイ」。1回だけで大丈夫です。'; 
 async function gnCall(action, body){
   var g = gnGas();
   if(!g) throw gnErr('nogas', 'くらしの手帳のGoogle連携が、この端末でつながっていません');
@@ -123,6 +130,12 @@ async function gnTake(){
   }finally{
     gn.busy = ''; gn.msg = '';
   }
+  if(!files.length && bad.length){
+    /* ぜんぶ受けとれなかったときは、わけを一覧の上にのこす（すぐ消える知らせだけだと、見のがすので） */
+    gn.err = '受けとれなかったノート：' + bad.join('／') +
+      (gasOld() ? '（大きいノートは、橋わたしを新しい版にすると読めます。' + GAS_UPDATE_HOW + '）' : '');
+    gn.why = '';
+  }
   if(files.length){
     gn.pick = {}; gn.open = 0;
     /* 共有リンクから来たときは、リンクの欄から外す */
@@ -219,15 +232,17 @@ function gnPart(){
       '<div class="s">この端末で、くらしの手帳 › 設定 › <b>Google連携</b> をつないでください（ほかの端末とは、6けたのコードでもつなげます）。</div>' + gnSteps() + '</div>';
   }else if(gn.why === 'old'){
     h += '<div class="warnbox"><div class="s"><b>くらしの手帳のGoogle連携（橋わたし）を、新しい版にしてください</b></div>' +
-      '<div class="s">くらしの手帳 › 設定 › Google連携 の「プログラムをコピー」で Apps Script に貼り直して、' +
-      '「デプロイを管理」→ ✏️ →「新バージョン」→「デプロイ」。1回だけで大丈夫です。</div></div>';
+      '<div class="s">' + GAS_UPDATE_HOW + '</div></div>';
   }else if(gn.why === 'nofolder' || gn.why === 'notpdf' || gn.why === 'empty'){
     h += '<div class="warnbox"><div class="s"><b>' + (gn.why === 'nofolder' ? 'Googleドライブに「' + esc(gn.folder || 'GoodNotes') + '」フォルダが見つかりません'
         : gn.why === 'notpdf' ? 'バックアップの形式が PDF ではないようです' : 'バックアップのノートが、まだありません') + '</b></div>' + gnSteps() +
       (gn.why === 'nofolder' ? '<div class="s">フォルダの名前を変えているときは、くらしの手帳 › 設定 › Google連携 の「手書きノートのフォルダ」を同じ名前にしてください。</div>' : '') +
       '</div>';
   }else if(gn.err){
-    h += '<div class="warnbox"><div class="s">ノートの一覧を読めませんでした：' + esc(gn.err) + '</div></div>';
+    h += '<div class="warnbox"><div class="s">' + (gn.items ? '' : 'ノートの一覧を読めませんでした：') + esc(gn.err) + '</div></div>';
+  }
+  if(!gn.busy && gasOld()){
+    h += '<div class="s gnhint">💡 大きいノートが読めないときは、橋わたしを新しい版にしてください（ノートを少しずつ読めるようになります）。' + esc(GAS_UPDATE_HOW) + '</div>';
   }
   if(gn.items && gn.why !== 'nofolder' && gn.why !== 'notpdf' && !(gn.why === 'empty' && !gn.q)){
     var n = Object.keys(gn.pick).filter(function(id){ return gn.pick[id]; }).length;

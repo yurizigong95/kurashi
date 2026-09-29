@@ -1,7 +1,9 @@
 /* もんだいメーカー：中身（科目・資料・問題・記録）
    ============================================================
    ・科目 subject … { id, name, icon, ord, color, term, field, arch }
-   ・資料 mat     … { id, sub, title, kind, at, no, memo, sig, photos:[写真id], text, cut, n }
+   ・フォルダ fd   … { id, sub, name, c, mt }（科目の中で資料を分ける）
+   ・資料 mat     … { id, sub, fd:'フォルダid', title, kind, sig, photos:[写真id], text, cut, n }
+                    （前の版の資料には at・no・memo が入っていることがある。今は使わない）
    ・問題 q       … { id, sub, mat, qt, q, c:[選択肢], a:[正解の番号], at:'答え', alt:[別の言い方],
                       pairs:[[左,右]], un:'単位', tol:許容％, how:'式', exp:'解説', src:'出典',
                       lv:1〜3, tag:'小見出し', ch:'章', pg:'どこから', star:0/1, pid:写真id }
@@ -136,6 +138,10 @@ function subDel(id, withItems){
     (S.mats || []).forEach(function(m){ if(m.sub === id){ m.sub = ''; m.mt = Date.now(); } });
     (S.qs || []).forEach(function(q){ if(q.sub === id){ q.sub = ''; q.mt = Date.now(); } });
   }
+  /* フォルダは消す（資料は上で消したか、科目なしにした） */
+  (S.fds || []).forEach(function(f){ if(f.sub === id && typeof syDead === 'function') syDead(f.id); });
+  S.fds = (S.fds || []).filter(function(f){ return f.sub !== id; });
+  (S.mats || []).forEach(function(m){ if(m.fd && !m.sub){ m.fd = ''; } });
   /* メモは消さずに、科目なしにする */
   (S.notes || []).forEach(function(x){ if(x.sub === id){ x.sub = ''; x.mt = Date.now(); } });
   S.subs = (S.subs || []).filter(function(x){ return x.id !== id; });
@@ -145,12 +151,80 @@ function subDel(id, withItems){
   return n;
 }
 
+/* ============================== フォルダ（科目の中で、資料を分ける） ==============================
+   フォルダは S.fds に1つずつ持つ（{ id, sub, name, c:作った時こく, mt }）。資料は m.fd でフォルダをさす。
+   科目とは別に1つずつ同期するので、2台で科目とフォルダを同時に直しても、フォルダは消えない。 */
+function fdsOf(subId){
+  return (S.fds || []).filter(function(f){ return f && f.id && f.sub === subId && String(f.name || '').trim(); })
+    .sort(function(a, b){ return (toNum(a.c) - toNum(b.c)) || String(a.id).localeCompare(String(b.id)); });
+}
+function fdGet(subId, id){ return id ? fdsOf(subId).filter(function(f){ return f.id === id; })[0] || null : null; }
+function fdName(subId, id){ var f = fdGet(subId, id); return f ? f.name : ''; }
+function fdAdd(subId, name){
+  name = String(name == null ? '' : name).trim().slice(0, 40);
+  if(!sub(subId) || !name) return null;
+  var dup = fdsOf(subId).filter(function(f){ return f.name === name; })[0];
+  if(dup) return dup;
+  var now = Date.now();
+  var f = { id:uid('fd'), sub:subId, name:name, c:now, mt:now };
+  if(!Array.isArray(S.fds)) S.fds = [];
+  S.fds.push(f);
+  saveSoon();
+  return f;
+}
+function fdRename(subId, id, name){
+  var f = fdGet(subId, id);
+  name = String(name == null ? '' : name).trim().slice(0, 40);
+  if(!f || !name) return false;
+  if(fdsOf(subId).some(function(x){ return x.id !== id && x.name === name; })) return false;
+  f.name = name;
+  f.mt = Date.now();
+  saveSoon();
+  return true;
+}
+/* フォルダを消す（中の資料と問題はのこして、フォルダに入れていない資料にする） */
+function fdDel(subId, id){
+  if(!fdGet(subId, id)) return false;
+  S.fds = (S.fds || []).filter(function(x){ return x.id !== id; });
+  if(typeof syDead === 'function') syDead(id);
+  (S.mats || []).forEach(function(m){ if(m.sub === subId && m.fd === id){ m.fd = ''; m.mt = Date.now(); } });
+  saveSoon();
+  return true;
+}
+/* 資料が入っているフォルダ（ない・消えたフォルダなら ''） */
+function matFd(m){ return (m && m.fd && fdGet(m.sub, m.fd)) ? m.fd : ''; }
+function matSetFd(id, fd){
+  var m = mat(id);
+  if(!m) return false;
+  m.fd = fdGet(m.sub, fd) ? fd : '';
+  m.mt = Date.now();
+  saveSoon();
+  return true;
+}
+function matRename(id, title){
+  var m = mat(id);
+  title = String(title == null ? '' : title).trim().slice(0, 60);
+  if(!m || !title) return false;
+  m.title = title;
+  m.mt = Date.now();
+  saveSoon();
+  return true;
+}
+
 /* ============================== 資料 ============================== */
 function matsOf(subId){
   return (S.mats || []).filter(function(x){ return !subId || x.sub === subId; })
     .sort(function(a, b){ return toNum(b.mt) - toNum(a.mt); });
 }
 function mat(id){ return (S.mats || []).filter(function(x){ return x.id === id; })[0] || null; }
+/* 名前の順（「第2回」→「第10回」のように、数字は大きさでならべる） */
+function nameCmp(a, b){
+  try{ return String(a).localeCompare(String(b), 'ja', { numeric:true, sensitivity:'base' }); }
+  catch(e){ return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0; }
+}
+function matsByName(subId){
+  return matsOf(subId).sort(function(a, b){ return nameCmp(a.title, b.title) || (toNum(b.mt) - toNum(a.mt)); });
+}
 function matDel(id){
   var m = mat(id);
   if(!m) return false;
@@ -271,11 +345,39 @@ function streak(){
   while(dayCount(d).n > 0 && n < 400){ n++; d = shiftDate(d, -1); }
   return n;
 }
-/* 出す問題をえらぶ（due 復習の日／new はじめて／wrong まちがえた／star 星／all ぜんぶ） */
-function pool(subId, mode){
+/* 出題範囲 … [] は科目のぜんぶ。'fd:フォルダid'・'mat:資料id'・'mat:'（資料なし）をいくつでも */
+function scopeKeys(subId, scope){
+  if(!Array.isArray(scope) || !scope.length || !subId || subId === 'none') return [];
+  var mats = {}, fds = {};
+  matsOf(subId).forEach(function(m){ mats[m.id] = 1; });
+  fdsOf(subId).forEach(function(f){ fds[f.id] = 1; });
+  return scope.filter(function(k, i, a){
+    k = String(k || '');
+    if(a.indexOf(k) !== i) return false;
+    if(k === 'mat:') return true;
+    if(k.indexOf('mat:') === 0) return !!mats[k.slice(4)];
+    if(k.indexOf('fd:') === 0) return !!fds[k.slice(3)];
+    return false;
+  });
+}
+function scopeFilter(list, subId, scope){
+  var keys = scopeKeys(subId, scope);
+  if(!keys.length) return list;
+  var fdOf = {};
+  matsOf(subId).forEach(function(m){ fdOf[m.id] = matFd(m); });
+  return list.filter(function(q){
+    var mid = q.mat && fdOf[q.mat] != null ? q.mat : '';     /* 消した資料・ほかの科目の資料は「資料なし」 */
+    return keys.some(function(k){
+      if(k.indexOf('mat:') === 0) return mid === k.slice(4);
+      return !!mid && fdOf[mid] === k.slice(3);
+    });
+  });
+}
+/* 出す問題をえらぶ（due 復習の日／new はじめて／wrong まちがえた／star 星／all ぜんぶ）。scope は出題範囲 */
+function pool(subId, mode, scope){
   var td = today();
   var list = subId === 'none' ? qsAll().filter(function(x){ return !x.sub; }) : qsOf(subId);
-  if(view.unit) list = list.filter(function(x){ return x.ch === view.unit; });
+  if(scope) list = scopeFilter(list, subId, scope);
   if(mode === 'due') return list.filter(function(x){ var l = logOf(x.id); return l && l.due && String(l.due) <= td; });
   if(mode === 'new') return list.filter(function(x){ return !logOf(x.id); });
   if(mode === 'wrong') return list.filter(function(x){ var l = logOf(x.id); return l && l.res === 0; });
@@ -284,8 +386,9 @@ function pool(subId, mode){
 }
 function todoCount(subId){ return pool(subId, 'due').length + pool(subId, 'new').length; }
 function subTitle(subId){ return subId === 'none' ? '科目なし' : subId ? subName(subId) : 'すべての科目'; }
-function stats(subId){
+function stats(subId, scope){
   var list = subId === 'none' ? qsAll().filter(function(x){ return !x.sub; }) : qsOf(subId);
+  if(scope) list = scopeFilter(list, subId, scope);
   var n = 0, ok = 0, answered = 0;
   list.forEach(function(x){
     var l = logOf(x.id);
@@ -294,16 +397,7 @@ function stats(subId){
   });
   return { total:list.length, answered:answered, fresh:list.length - answered, tries:n, ok:ok,
            rate:n ? Math.round(ok * 100 / n) : null,
-           due:pool(subId, 'due').length, wrong:pool(subId, 'wrong').length };
-}
-/* この科目で使われている章（単元） */
-function unitsOf(subId){
-  var seen = {}, out = [];
-  qsOf(subId).forEach(function(q){
-    var c = String(q.ch || '').trim();
-    if(c && !seen[c]){ seen[c] = 1; out.push(c); }
-  });
-  return out.sort();
+           due:pool(subId, 'due', scope).length, wrong:pool(subId, 'wrong', scope).length };
 }
 /* 問題を足す（下書きから本番へ） */
 function qAdd(o, subId, matId){

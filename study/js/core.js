@@ -5,7 +5,7 @@
    読みこむ順番：core → data → ai → files → subj → make → drill → lib → main */
 
 var APP_NAME = 'もんだいメーカー';
-var APP_BUILD = '2026-09-27b';
+var APP_BUILD = '2026-09-29a';
 
 /* テストモード：?test=1 か、パソコンの中（localhost）で開いたとき。
    本物の保存にはさわらない（?real=1 で本番あつかい）。 */
@@ -117,7 +117,7 @@ var DEFAULT_SET = {
 };
 var S = null;
 function blankState(){
-  return { ver:1, subs:[], mats:[], qs:[], notes:[], log:{}, day:{}, moc:[], why:{},
+  return { ver:1, subs:[], fds:[], mats:[], qs:[], notes:[], log:{}, day:{}, moc:[], why:{},
            del:{}, set:Object.assign({}, DEFAULT_SET), ui:{}, mt:0 };
 }
 function load(){
@@ -127,7 +127,7 @@ function load(){
   if(raw){ try{ d = JSON.parse(raw); }catch(e){ d = null; } }
   S = blankState();
   if(d && typeof d === 'object'){
-    ['subs', 'mats', 'qs', 'moc', 'notes'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
+    ['subs', 'fds', 'mats', 'qs', 'moc', 'notes'].forEach(function(k){ if(Array.isArray(d[k])) S[k] = d[k]; });
     ['log', 'day', 'why', 'ui', 'del'].forEach(function(k){ if(d[k] && typeof d[k] === 'object') S[k] = d[k]; });
     S.set = Object.assign({}, DEFAULT_SET, (d.set && typeof d.set === 'object') ? d.set : {});
     S.mt = toNum(d.mt);
@@ -401,6 +401,10 @@ function bindEvents(){
   document.addEventListener('click', function(ev){
     var el = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
     if(!el) return;
+    /* 入力らん・えらぶ箱の act は、書きおわった・えらんだ（change）ときだけ。
+       おしただけで動かすと、キーボードが引っこんだり、えらぶ前の空の値が入ったりする */
+    var tg = String(el.tagName || '').toUpperCase();
+    if(tg === 'INPUT' || tg === 'TEXTAREA' || tg === 'SELECT') return;
     var act = el.dataset.act;
     if(act === 'tab'){ go(el.dataset.tab || el.dataset.v); return; }
     if(fireAct(act, el, ev)) ev.preventDefault();

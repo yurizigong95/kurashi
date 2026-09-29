@@ -193,7 +193,10 @@ async function loadGas(opt){
     LockService:{ getScriptLock:function(){ return { waitLock:function(){}, tryLock:function(){ return true; }, releaseLock:function(){} }; } },
     ContentService:{ MimeType:{ JSON:'json', TEXT:'text', ICAL:'ical' }, createTextOutput:function(s){ return { s:s, setMimeType:function(m){ this.m = m; return this; } }; } },
     Utilities:{ formatDate:function(d){ return new Date(d.getTime() + 9 * 3600000).toISOString().slice(0, 10); },
-      base64Encode:function(a){ var s = ''; for(var i = 0; i < a.length; i++) s += String.fromCharCode(a[i] & 255); return btoa(s); } },
+      base64Encode:function(a){ var s = ''; for(var i = 0; i < a.length; i++) s += String.fromCharCode(a[i] & 255); return btoa(s); },
+      newBlob:function(a){ return { getDataAsString:function(cs){
+        var u8 = Uint8Array.from(a || [], function(b){ return b & 255; });
+        try{ return new TextDecoder(String(cs || 'utf-8').toLowerCase()).decode(u8); }catch(e){ return new TextDecoder('utf-8').decode(u8); } } }; } },
     Session:{ getEffectiveUser:function(){ return { getEmail:function(){ return 'me@example.com'; } }; } },
     DriveApp:opt.drive || {},
     ScriptApp:{ getProjectTriggers:function(){ return triggers; }, getOAuthToken:function(){ return 'oauth'; },
@@ -252,7 +255,7 @@ KT.test('連携＋：橋わたしv4（Siri・次の予定・リマインダー�
   var G = await loadGas({ now:NOW, fetch:fetchFn, drive:drive });
   var ping = G.post({ action:'ping' });
   eq(ping.ver, 3, '版は3のまま（アプリの本体のテストが3を見ている）');
-  eq(ping.api, 6, '窓口の版は6（Goodnotesのノートを、もんだいメーカーに渡す）');
+  eq(ping.api, 7, '窓口の版は7（リンクの中身を、もんだいメーカーに渡す）');
   eq(ping.dcBot, null, 'ボットはまだ');
   /* アプリのまとめ */
   var l2 = { v:1, day:TD,
@@ -1026,5 +1029,67 @@ KT.test('連携＋：Goodnotesのノート（ドライブの自動バックア�
   var ng = G.post({ action:'gnGet', id:'secret', at:0, len:100 });
   ok(!ng.ok && /Goodnotesのフォルダ/.test(ng.error), 'フォルダの外のファイルは渡さない');
   ok(!G.post({ action:'gnGet', id:'nope' }).ok, 'ないノート');
+});
+
+KT.test('連携＋：リンクの中身をもんだいメーカーに渡す（linkGet）・大きいノートもドライブから少しずつ（gnGet）', async function(){
+  var iter = function(a){ var i = 0; return { hasNext:function(){ return i < a.length; }, next:function(){ return a[i++]; } }; };
+  var enc = function(s){ return Array.prototype.map.call(new TextEncoder().encode(s), function(b){ return b > 127 ? b - 256 : b; }); };
+  var pdfText = '%PDF-1.4 ' + new Array(400).join('page ') + '%%EOF', pdf = enc(pdfText);
+  var root = { getId:function(){ return 'fo-gn'; }, getName:function(){ return 'GoodNotes'; }, getUrl:function(){ return ''; }, getFolders:function(){ return iter([]); } };
+  var blobReads = 0;
+  var mkFile = function(id, name, mime, parent){ return { getId:function(){ return id; }, getName:function(){ return name; }, getSize:function(){ return pdf.length; },
+    getMimeType:function(){ return mime; }, getParents:function(){ return iter([parent || root]); }, getLastUpdated:function(){ return new Date(); },
+    getBlob:function(){ blobReads++; return { getBytes:function(){ return pdf.slice(); } }; } }; };
+  var files = { big:mkFile('big', '大きいノート.pdf', 'application/pdf'), doc:mkFile('doc1234567890', '第3回 授業メモ', 'application/vnd.google-apps.document'),
+                slide:mkFile('pdf1234567890', '第4回 スライド.pdf', 'application/pdf'), form:mkFile('form123456789', 'アンケート', 'application/vnd.google-apps.form') };
+  var drive = { getFoldersByName:function(n){ return iter(n === 'GoodNotes' ? [root] : []); },
+    getFileById:function(id){ var f = Object.keys(files).map(function(k){ return files[k]; }).filter(function(x){ return x.getId() === id; })[0]; if(!f) throw new Error('none'); return f; } };
+  var resp = function(code, bytes, type){ return { getResponseCode:function(){ return code; }, getContent:function(){ return bytes || []; },
+    getContentText:function(){ return new TextDecoder().decode(Uint8Array.from(bytes || [], function(b){ return b & 255; })); },
+    getHeaders:function(){ return type ? { 'Content-Type':type } : {}; } }; };
+  var fetchFn = function(url, o){
+    var m = /googleapis\.com\/drive\/v3\/files\/([^/?]+)(\/export)?\?/.exec(url);
+    if(m){
+      if(!o.headers || o.headers.Authorization !== 'Bearer oauth') return resp(401);
+      if(m[2]) return resp(200, enc('心不全の看護\n体重を毎日はかる。水分は1日1000mLまで。'), 'text/plain');
+      var r = /bytes=(\d+)-(\d+)/.exec(o.headers.Range || '');
+      var a = Number(r[1]), b = Number(r[2]) + 1;
+      return a >= pdf.length ? resp(416) : resp(206, pdf.slice(a, b), 'application/pdf');
+    }
+    if(url === 'https://example.com/page') return resp(200, enc('<html><head><meta charset="utf-8"><title>褥瘡</title></head><body><p>2時間ごとに体の向きを変える。</p></body></html>'), 'text/html');
+    if(url === 'https://example.com/sjis') return resp(200, [0x82, 0xA0, 0x82, 0xA2].map(function(b){ return b - 256; }), 'text/plain; charset=Shift_JIS');
+    if(url === 'https://example.com/file.pdf') return resp(200, pdf, 'application/pdf');
+    if(url === 'https://example.com/login') return resp(403, [], 'text/html');
+    return resp(404);
+  };
+  var G = await loadGas({ now:Date.now(), fetch:fetchFn, drive:drive });
+  /* 大きいノート：ドライブから、たのんだところだけ（ノート全体を読みこまない） */
+  var got = [], at = 0;
+  for(var k = 0; k < 20; k++){
+    var r = G.post({ action:'gnGet', id:'big', at:at, len:700 });
+    ok(r.ok, '受けとれる：' + r.error);
+    got.push(atob(r.data)); at += r.n;
+    if(at >= r.size) break;
+  }
+  eq(got.join(''), pdfText, 'もとのPDFにもどる');
+  eq(blobReads, 0, 'ノート全体は読みこまない（ドライブから少しずつ）');
+  ok(G.fetched.some(function(f){ return /alt=media/.test(f.url) && /bytes=700-1399/.test(f.opt.headers.Range); }), 'たのんだところだけ読む');
+  /* ふつうのページ・字の読み方 */
+  var p = G.post({ action:'linkGet', url:'https://example.com/page' });
+  ok(p.ok && p.kind === 'text' && p.text.indexOf('2時間ごとに') >= 0, 'ページの字を渡す');
+  eq(G.post({ action:'linkGet', url:'https://example.com/sjis' }).text, 'あい', 'Shift_JIS のページも字化けしない');
+  /* PDF：少しずつ */
+  var f1 = G.post({ action:'linkGet', url:'https://example.com/file.pdf', at:0, len:500 });
+  ok(f1.ok && f1.kind === 'bin' && f1.n === 500 && f1.size === pdf.length && f1.mime === 'application/pdf', 'PDFは少しずつ渡す');
+  /* ドライブ：ドキュメントは字だけ・PDFは少しずつ・フォームは読めない */
+  var d1 = G.post({ action:'linkGet', url:'https://docs.google.com/document/d/doc1234567890/edit?usp=sharing' });
+  ok(d1.ok && d1.kind === 'text' && /体重を毎日はかる/.test(d1.text) && d1.name === '第3回 授業メモ', 'Googleドキュメントは字にして渡す');
+  var d2 = G.post({ action:'linkGet', url:'https://drive.google.com/file/d/pdf1234567890/view', at:0, len:300 });
+  ok(d2.ok && d2.kind === 'bin' && d2.n === 300 && d2.name === '第4回 スライド.pdf', 'ドライブのPDFは少しずつ');
+  ok(!G.post({ action:'linkGet', url:'https://drive.google.com/file/d/form123456789/view' }).ok, 'フォームは読めない');
+  ok(/見つかりません/.test(G.post({ action:'linkGet', url:'https://drive.google.com/file/d/nothere12345/view' }).error), '見られないファイル');
+  /* 読めないとき */
+  ok(/403/.test(G.post({ action:'linkGet', url:'https://example.com/login' }).error), 'ことわられたページ');
+  ok(!G.post({ action:'linkGet', url:'javascript:alert(1)' }).ok, 'https でないものは読まない');
 });
 })();
