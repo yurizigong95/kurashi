@@ -1029,7 +1029,7 @@ test('エラーの記録・新しい版のお知らせ・写真を大きく見�
   ok(A.document.getElementById('whatsnew').classList.contains('on'), 'お知らせが出ない');
   A.closeWhatsNew();
   eq(A.SYNC_LOCAL.seenBuild, A.APP_BUILD, '見た印');
-  ok(A.document.getElementById('viewer'), '写真を見る画面がある');
+  ok(A.document.getElementById('viewer') && typeof A.zoomOpen === 'function', '写真を見る画面がある');
 });
 
 test('見た目：画面のスタイルとキャラクターを選べて、相手にも届く', async function(){

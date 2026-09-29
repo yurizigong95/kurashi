@@ -22,28 +22,68 @@ function gasReady(){
 }
 async function gasCall(action, body){
   var req = Object.assign({ token:GAS.token, action:action }, body || {});
+  var js;
   if(TEST_MODE){
     var f = gasFake();
     if(!f) throw new Error('テストモードでは使えません');
-    var r0 = await f(JSON.parse(JSON.stringify(req)));
-    if(!r0 || !r0.ok) throw new Error((r0 && r0.error) || '失敗しました');
-    return r0;
+    js = await f(JSON.parse(JSON.stringify(req)));
+    if(!js) throw new Error('失敗しました');
+  }else{
+    var res, text;
+    try{
+      res = await withTimeout(fetch(GAS.url, {
+        method:'POST', redirect:'follow',
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' },   /* これだと事前確認なしで送れる */
+        body: JSON.stringify(req)
+      }), 90000, 'Google');
+      text = await res.text();
+    }catch(e){
+      if(/時間切れ/.test(String(e && e.message))) throw e;
+      /* 「ネットにつながらない」のか「橋わたしが動いていない」のかを、たしかめてから知らせる */
+      var pr = await gasProbe(GAS.url);
+      gasCheck = { why:pr, at:Date.now(), steps:gasCheck.steps };   /* 設定の画面に、たしかめ方と直し方を出す */
+      var er = new Error(GAS_PROBE_TEXT[pr]); er.why = pr;
+      throw er;
+    }
+    try{ js = JSON.parse(text); }
+    catch(e){
+      if(/accounts\.google\.com|ServiceLogin/i.test(text)) throw new Error('橋わたしの公開設定が「全員」になっていません');
+      throw new Error('橋わたしから読めない返事が来ました（URLをたしかめてください）');
+    }
   }
-  var res = await withTimeout(fetch(GAS.url, {
-    method:'POST', redirect:'follow',
-    headers:{ 'Content-Type':'text/plain;charset=utf-8' },   /* これだと事前確認なしで送れる */
-    body: JSON.stringify(req)
-  }), 90000, 'Google');
-  var text = await res.text();
-  var js;
-  try{ js = JSON.parse(text); }
-  catch(e){
-    if(/accounts\.google\.com|ServiceLogin/i.test(text)) throw new Error('橋わたしの公開設定が「全員」になっていません');
-    throw new Error('橋わたしから読めない返事が来ました（URLをたしかめてください）');
-  }
+  /* 橋わたしから返事が来た：届かなかったときの知らせを消す */
+  if(gasCheck.why) gasCheck = { why:'', at:Date.now(), steps:gasCheck.steps };
+  /* 橋わたしを作ったアカウントを覚えておく（届かなくなったとき、どのアカウントで探せばよいか出すため） */
+  if(action === 'ping' && js.user && /@/.test(js.user) && GAS.acct !== js.user){ GAS.acct = String(js.user); saveGas(); }
   if(!js.ok) throw new Error(js.error || '失敗しました');
   return js;
 }
+/* 橋わたしに届かなかったとき、わけを見分ける（1分のあいだは、同じ答えを使う）。
+   alive … 動いている（そのお願いだけが止まった）／login … 公開が「全員」でない／
+   broken … Googleは返事をするが橋わたしが答えない（消えた・許可が切れた）／offline … ネットがない */
+var gasProbeMemo = { url:'', at:0, res:'' };
+async function gasProbe(url){
+  if(gasProbeMemo.url === url && Date.now() - gasProbeMemo.at < 60000) return gasProbeMemo.res;
+  var res = 'offline';
+  try{
+    var r = await withTimeout(fetch(url, { method:'GET', redirect:'follow' }), 20000, 'Google');
+    var t = await r.text(), js = null;
+    try{ js = JSON.parse(t); }catch(e){}
+    res = (js && js.ok) ? 'alive' : /accounts\.google\.com|ServiceLogin/i.test(t) ? 'login' : 'broken';
+  }catch(e){
+    /* 中身は読めなくても、Googleから返事が来れば（no-cors）、ネットはつながっている */
+    try{ await withTimeout(fetch(url, { method:'GET', mode:'no-cors', redirect:'follow' }), 15000, 'Google'); res = 'broken'; }
+    catch(e2){ res = 'offline'; }
+  }
+  gasProbeMemo = { url:url, at:Date.now(), res:res };
+  return res;
+}
+var GAS_PROBE_TEXT = {
+  alive:'橋わたしは動いていますが、このお願いの途中で止まりました。少し待って、もう一度ためしてください',
+  login:'橋わたしの公開設定が「全員」になっていません',
+  broken:'橋わたし（Apps Script）から返事が来ません。橋わたしが消えているか、Googleの許可が切れています',
+  offline:'ネットにつながりませんでした'
+};
 /* 合言葉を作る（英数字32文字） */
 function gasNewToken(){
   var a = new Uint8Array(24);
@@ -230,15 +270,9 @@ function gasSettings(){
   if(!ready){
     h += '<div class="bn amber" style="margin-bottom:12px"><span class="ic">!</span><span>'+
       '<b>まだつながっていません。</b>下の手順で「橋わたし」を作ると、Googleカレンダーへの予定の送信と、Googleドライブへの毎週のバックアップが自動で動きます。</span></div>'+
-      '<ol class="steps">'+
-        '<li>下の「合言葉を作って、プログラムをコピー」を押す</li>'+
-        '<li><a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> で新しいプロジェクトを作り、Code.gs の中身を全部消して<b>貼り付け</b>、保存</li>'+
-        '<li>左の「⚙ プロジェクトの設定」→「appsscript.json マニフェスト ファイルをエディタで表示する」にチェック → エディタの <b>appsscript.json</b> を下の「設定ファイルをコピー」の中身に置きかえて保存</li>'+
-        '<li>右上の「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」<br>・次のユーザーとして実行：<b>自分</b><br>・アクセスできるユーザー：<b>全員</b></li>'+
-        '<li>「デプロイ」→ Googleの確認画面で許可（「このアプリは確認されていません」と出たら「詳細」→「移動」）</li>'+
-        '<li>出てきた<b>ウェブアプリのURL</b>を下に貼って「つながるか試す」</li>'+
-      '</ol>';
+      gasStepsHtml();
   }
+  if(ready && gasCheck.why && gasCheck.why !== 'alive') h += gasFixHtml(gasCheck.why);
   h += '<div class="pair"><button class="btn ghost" data-act="gas-copy">合言葉を作って、プログラムをコピー</button>'+
     '<button class="btn ghost" data-act="gas-manifest" style="flex:0 0 auto">設定ファイルをコピー</button></div>'+
     (ready ? '<p class="note">新しい版にしたときは、プログラムと設定ファイルを貼り直して、「デプロイ」→「デプロイを管理」→ ✏️ →「新バージョン」で更新してください（URLは変わりません）。</p>' : '')+
@@ -247,8 +281,11 @@ function gasSettings(){
     '<div class="field"><label class="f">合言葉</label>'+
     '<input id="gas_token" type="password" value="'+esc(GAS.token)+'" placeholder="プログラムに入っている合言葉"></div>'+
     '<div class="pair"><button class="btn" data-act="gas-save">保存して、つながるか試す</button></div>'+
-    (GAS.user ? '<p class="note">つながっています：'+esc(GAS.user)+(GAS.ver ? '（5分ごとの確認：'+(GAS.trigger ? '動いている' : '止まっている')+(GAS.fast ? '・Discordは1分ごと' : '')+'）' : '（古いプログラムです。貼り直してください）')+'</p>' : '')+
-    (GAS.user && GAS.ver && !GAS.trigger ? '<button class="mini" data-act="gas-setup">5分ごとの確認を動かす</button>' : '');
+    (GAS.user ? '<p class="note">'+(gasCheck.why && gasCheck.why !== 'alive' ? '橋わたしを作ったアカウント：' : 'つながっています：')+esc(GAS.acct || GAS.user)+(GAS.ver ? '（5分ごとの確認：'+(GAS.trigger ? '動いている' : '止まっている')+(GAS.fast ? '・Discordは1分ごと' : '')+'）' : '（古いプログラムです。貼り直してください）')+'</p>' : '')+
+    (GAS.user && GAS.ver && !GAS.trigger ? '<button class="mini" data-act="gas-setup">5分ごとの確認を動かす</button>' : '')+
+    (ready ? '<div class="gas-steps"><button class="mini" data-act="gas-steps" aria-expanded="'+!!gasCheck.steps+'">'+(gasCheck.steps ? '▾' : '▸')+' 橋わたしを作り直す手順（消えてしまったとき・見つからないとき）</button>'+
+      (gasCheck.steps ? gasStepsHtml()+
+      '<p class="note">作り直したときは、上の「合言葉を作って、プログラムをコピー」でコピーしたものを貼ってください（合言葉はいまのまま使います）。新しいURLを「橋わたしのURL」に貼って「保存して、つながるか試す」を押すと、ほかの端末も自動で新しい橋わたしに移ります。</p>' : '')+'</div>' : '');
   if(ready){
     h += '<label class="f" style="margin-top:14px">Googleカレンダー</label>'+
       '<div class="pillrow">'+
@@ -278,6 +315,36 @@ function gasSettings(){
       '<p class="note">「くらしの手帳バックアップ」フォルダに、1週間に1回、新しい12回分を残します（写真も「写真」フォルダに入ります）。どれか1台が保存すれば、ほかの端末は保存しません。</p>';
   }
   return h;
+}
+/* 橋わたしの作り方 */
+function gasStepsHtml(){
+  return '<ol class="steps">'+
+    '<li>下の「合言葉を作って、プログラムをコピー」を押す</li>'+
+    '<li><a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> で新しいプロジェクトを作り、Code.gs の中身を全部消して<b>貼り付け</b>、保存'+
+      '<br><span class="s">（Googleドライブの Goodnotes のバックアップを読むときは、<b>そのドライブと同じGoogleアカウント</b>で作ってください。パソコンがあれば、パソコンのほうが楽です）</span></li>'+
+    '<li>左の「⚙ プロジェクトの設定」→「appsscript.json マニフェスト ファイルをエディタで表示する」にチェック → エディタの <b>appsscript.json</b> を下の「設定ファイルをコピー」の中身に置きかえて保存</li>'+
+    '<li>右上の「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」<br>・次のユーザーとして実行：<b>自分</b><br>・アクセスできるユーザー：<b>全員</b></li>'+
+    '<li>「デプロイ」→ Googleの確認画面で許可（「このアプリは確認されていません」と出たら「詳細」→「移動」）</li>'+
+    '<li>出てきた<b>ウェブアプリのURL</b>を下に貼って「つながるか試す」</li>'+
+  '</ol>';
+}
+/* 橋わたしに届かないときの、たしかめ方と直し方 */
+var gasCheck = { why:'', at:0, steps:0 };
+function gasFixHtml(why){
+  var acc = [GAS.acct, GAS.user].filter(function(u){ return /@/.test(String(u || '')); })[0] || '';
+  var h = '<div class="bn amber" style="margin-bottom:12px"><span class="ic">!</span><span><b>'+esc(GAS_PROBE_TEXT[why] || '')+'</b>';
+  if(why === 'login'){
+    h += '<br>Apps Script で、右上の「デプロイ」→「デプロイを管理」→ ✏️ →「アクセスできるユーザー」を<b>全員</b>にして「デプロイ」を押してください。';
+  }else if(why === 'broken'){
+    h += (acc ? '<br>橋わたしを作ったGoogleアカウント：<b>'+esc(acc)+'</b>' : '')+
+      '<br>下の「橋わたしのページをひらく」で、たしかめられます。'+
+      '<br>・「くらしの手帳の橋わたしは動いています」→ 大丈夫です。もう一度「保存して、つながるか試す」を。'+
+      '<br>・「ファイルを開くことができません」など → 橋わたしが消えています。下の「橋わたしを作り直す手順」で作り直してください。'+
+      '<br>・「承認が必要です」など → Apps Script でそのプロジェクトを開き、上の「▷ 実行」を1回押して、許可してください。'+
+      '<br>script.google.com にプロジェクトが1つも出ないときは、右上の丸いアイコンを押して'+(acc ? '、<b>'+esc(acc)+'</b> に切りかえてください' : '、橋わたしを作ったアカウントに切りかえてください')+'（ちがうアカウントで開いていることが多いです）。'+
+      (GAS.url ? '<br><a class="mini" href="'+esc(GAS.url)+'" target="_blank" rel="noopener">橋わたしのページをひらく</a>' : '');
+  }
+  return h + '</span></div>';
 }
 function backupListHtml(){
   var list = gasBackupState.list || [];
@@ -312,6 +379,7 @@ function gasAction(act, t){
     if(u && !/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec/.test(u)){
       toast('URLは https://script.google.com/macros/s/…/exec の形です', true); return true;
     }
+    if(!GAS.acct && /@/.test(String(GAS.user || ''))) GAS.acct = GAS.user;   /* 橋わたしを作ったアカウントは、つながらなくても覚えておく */
     GAS.url = u; GAS.token = tk; GAS.user = ''; saveGas();
     if(!u || !tk){ toast('URLと合言葉の両方を入れてください', true); render(); return true; }
     toast('つながるか試しています…');
@@ -333,6 +401,7 @@ function gasAction(act, t){
     });
     return true;
   }
+  if(act === 'gas-steps'){ gasCheck.steps = !gasCheck.steps; render(); return true; }
   if(act === 'gas-manifest'){
     fetch('gas/appsscript.json', { cache:'no-store' }).then(function(r){ if(!r.ok) throw new Error('設定ファイルが見つかりません'); return r.text(); })
       .then(function(txt){ return navigator.clipboard.writeText(txt); })

@@ -1092,4 +1092,50 @@ KT.test('連携＋：リンクの中身をもんだいメーカーに渡す（li
   ok(/403/.test(G.post({ action:'linkGet', url:'https://example.com/login' }).error), 'ことわられたページ');
   ok(!G.post({ action:'linkGet', url:'javascript:alert(1)' }).ok, 'https でないものは読まない');
 });
+
+KT.test('連携＋：橋わたしに届かないとき、ネットか橋わたしかを見分けて、作ったアカウント・たしかめ方・作り直す手順を出す', async function(){
+  var A = KT.frames().A, doc = A.document;
+  var realFetch = A.fetch, mode = '';
+  A.fetch = function(url, opt){
+    if(!/script\.google\.com\/macros\/s\/probe/.test(String(url))) return realFetch.apply(A, arguments);
+    opt = opt || {};
+    if(mode === 'alive') return Promise.resolve(new A.Response(JSON.stringify({ ok:true, msg:'くらしの手帳の橋わたしは動いています' })));
+    if(mode === 'login') return Promise.resolve(new A.Response('<html>https://accounts.google.com/ServiceLogin</html>'));
+    if(mode === 'broken') return opt.mode === 'no-cors' ? Promise.resolve(new A.Response('')) : Promise.reject(new TypeError('Load failed'));
+    return Promise.reject(new TypeError('Load failed'));
+  };
+  var saveOpen = J(A, A.S.ui.setOpen || {}), saveApp = A.appId;
+  try{
+    var ms = ['alive', 'login', 'broken', 'offline'];
+    for(var i = 0; i < ms.length; i++){
+      mode = ms[i];
+      eq(await A.gasProbe('https://script.google.com/macros/s/probe' + i + '/exec'), ms[i], ms[i]);
+    }
+    /* 設定の画面：わけ・作ったアカウント・たしかめ方・作り直す手順 */
+    gasOn(A, 7);
+    A.GAS.user = 'kango@example.com'; A.GAS.acct = ''; A.saveGas();
+    A.gasCheck = { why:'broken', at:Date.now(), steps:0 };
+    A.appId = 'set'; A.S.ui.setOpen = A.S.ui.setOpen || {}; A.S.ui.setOpen.gas = 1; A.render();
+    var app = doc.getElementById('app');
+    ok(/橋わたし（Apps Script）から返事が来ません/.test(app.textContent), 'わけを出す');
+    ok(/橋わたしを作ったGoogleアカウント：kango@example\.com/.test(app.textContent), '作ったアカウントを出す');
+    ok(app.querySelector('a[href="' + A.GAS.url + '"]'), '橋わたしのページをひらく');
+    ok(!app.querySelector('.gas-steps ol.steps'), '作り直す手順は、押すまでたたんでおく');
+    app.querySelector('[data-act="gas-steps"]').click();
+    ok(doc.querySelector('#app .gas-steps ol.steps') && /同じGoogleアカウント/.test(doc.querySelector('#app .gas-steps').textContent), '押すと作り直す手順が出る');
+    A.render();
+    ok(doc.querySelector('#app .gas-steps ol.steps'), '描き直しても、ひらいたまま');
+    /* ためし直して、つながったら消える */
+    await A.gasCall('ping');
+    eq(A.gasCheck.why, '', 'つながったら、わけを消す');
+    eq(A.GAS.acct, 'test@example.com', 'つながったアカウントを覚える');
+    A.render();
+    ok(!/返事が来ません/.test(doc.getElementById('app').textContent), '画面からも消える');
+  }finally{
+    A.fetch = realFetch;
+    A.gasCheck = { why:'', at:0, steps:0 };
+    A.S.ui.setOpen = saveOpen; A.appId = saveApp;
+    gasOff(A); A.render();
+  }
+});
 })();

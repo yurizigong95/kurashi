@@ -130,6 +130,7 @@ details summary{font-size:13px; color:var(--sub); cursor:pointer; margin-top:8px
 .btn.bad{background:var(--ng); border-color:var(--ng); color:#fff}
 .btn:disabled{opacity:.45}
 .btn + .btn{margin-top:8px}
+a.btn{display:flex; align-items:center; justify-content:center; text-decoration:none; box-sizing:border-box}
 .pair{display:flex; gap:8px; align-items:stretch}
 .pair > *{flex:1; margin-top:0 !important}
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:8px}

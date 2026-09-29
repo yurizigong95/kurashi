@@ -348,6 +348,25 @@ test('リンク：橋わたしで読めなかったページはAIへ。ドライ
   ok(has('読めなかったリンク'), '画面にも出る');
 });
 
+test('リンク：橋わたしに届かないときは、ほかのリンクで何度もためさない（ページはAIへ・ドライブはわけを出す）', async function(){
+  W.__FAKE_FETCH = async function(){ throw new Error('CORS'); };
+  var calls = 0;
+  W.__FAKE_GAS = async function(){ calls++; var e = new Error(W.GAS_PROBE_TEXT.broken); e.why = 'broken'; throw e; };
+  fakeAI(function(req){
+    var u = askedUrl(req);
+    var two = /heart2/.test(u);
+    return { text:'タイトル：' + (two ? '心不全の看護' : '心不全') + '\n' + (two ? '体重と尿量を毎日はかり、むくみと息切れを観察する。' : '水分と塩分をひかえる。起座呼吸に注意する。') + '心不全の看護のポイントをまとめる。', meta:{ urlMetadata:[{ retrievedUrl:u, urlRetrievalStatus:'URL_RETRIEVAL_STATUS_SUCCESS' }] } };
+  });
+  await click('tab', 'make');
+  await type('mk_links', 'https://example.org/heart1\nhttps://drive.google.com/file/d/1QQQrrrSSStt/view\nhttps://example.org/heart2');
+  await click('mk-links');
+  await until(function(){ return !W.mk.busy && (W.mk.linkFails || []).length === 1; }, 8000, '読みおわるのを待つ');
+  eq(calls, 1, '橋わたしには1回だけ（届かないとわかったら、あとはためさない）');
+  eq(W.mk.files.length, 2, 'ふつうのページは2つともAIが読んだ');
+  ok(/橋わたし（Apps Script）から返事が来ません/.test(W.mk.linkFails[0].why), 'ドライブのファイルは、橋わたしに届かないわけを出す：' + W.mk.linkFails[0].why);
+  ok(has('「📁 ファイルから」→「ブラウズ」→「Google ドライブ」'), 'ドライブのファイルを「ファイルから」入れる道も出す');
+});
+
 test('AI：枠がいっぱい（429）・混んでいる（503）モデルは、次のモデルでためす', async function(){
   W.S.set.key = 'dummy';
   W.S.set.model = '';

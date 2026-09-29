@@ -12,6 +12,7 @@ function closeAll(w){
   var doc = w.document;
   try{ if(doc.getElementById('detail').classList.contains('on')) w.closeDetail(); }catch(e){}
   ['sheet', 'veil', 'viewer', 'fabmenu'].forEach(function(id){ var el = doc.getElementById(id); if(el) el.classList.remove('on'); });
+  try{ if(w.zoomIsOpen && w.zoomIsOpen()) w.zoomClose(); }catch(e){}
 }
 
 KT.test('総点検：AIが、足した機能のデータもぜんぶ読める（分野・計算した数字・道具の名前）', async function(){
@@ -497,8 +498,10 @@ KT.test('予定の写真：一覧に小さく出る・詳細で見られる・�
   ok(!doc.querySelector('#detail img[data-pid="ph_evdt_none"]'), 'こわれた写真の印は出さない');
   /* 押すと大きく見られる */
   doc.querySelector('#detail img[data-pid="ph_evdt1"]').click();
-  await KT.until(function(){ var v = doc.getElementById('viewer'); return v.classList.contains('on') && /^data:image\//.test(v.querySelector('img').getAttribute('src') || ''); }, 4000, '大きく見る');
-  doc.getElementById('viewer').classList.remove('on');
+  await KT.until(function(){ var z = doc.getElementById('zview'); return z && z.classList.contains('on') && A.ZV.ok && /^data:image\//.test(z.querySelector('.zv-img').getAttribute('src') || ''); }, 4000, '大きく見る（拡大できる画面）');
+  eq(A.ZV.items.length, 1, '届いた写真だけ');
+  A.zoomClose();
+  ok(!doc.getElementById('zview').classList.contains('on'), 'とじる');
   A.closeDetail();
   /* 予定を直す画面：入力欄だけ描き直しても、写真は出たまま */
   A.evDraft = J(A, { date:td, title:'写真のテスト', kind:'other', time:'', memo:'', rep:0, subject:'', photos:['ph_evdt1'], pri:1, how:'', how2:'', url:'', realEnd:'' });

@@ -13,7 +13,7 @@ var GN_PART = 4 * 1024 * 1024;              /* 1回に受けとる大きさ（�
 function gnIsLink(u){ return /^https?:\/\/(?:share|web)\.goodnotes\.com\//i.test(String(u || '')); }
 /* くらしの手帳の橋わたし（この端末のもの） */
 function gnGas(){
-  if(typeof window !== 'undefined' && window.__FAKE_GAS) return { url:'https://script.google.com/fake', token:'test', fake:window.__FAKE_GAS };
+  if(typeof window !== 'undefined' && window.__FAKE_GAS) return { url:'https://script.google.com/fake', token:'test', fake:window.__FAKE_GAS, acct:window.__FAKE_GAS_ACCT || '' };
   if(TEST_MODE) return null;                                    /* テストでは本物につながない */
   try{
     var o = JSON.parse(localStorage.getItem('shiharai:v1:gas') || 'null');
@@ -28,7 +28,42 @@ var GAS_API_LINK = 7;
 function gasApiOf(){ var g = gnGas(); return !g ? -1 : g.fake ? 99 : toNum(g.api); }
 function gasOld(){ var a = gasApiOf(); return a > 0 && a < GAS_API_LINK; }
 var GAS_UPDATE_HOW = 'くらしの手帳 › 設定 › Google連携 の「プログラムをコピー」で Apps Script に貼り直して、' +
-  '「デプロイを管理」→ ✏️ →「新バージョン」→「デプロイ」。1回だけで大丈夫です。'; 
+  '「デプロイを管理」→ ✏️ →「新バージョン」→「デプロイ」。1回だけで大丈夫です。';
+/* 橋わたしに届かなかったとき、わけを見分ける（1分のあいだは、同じ答えを使う）。
+   ・'alive'   … 橋わたしは動いている（そのお願いだけが止まった）
+   ・'login'   … 公開が「全員」になっていない（Googleのログイン画面が返ってくる）
+   ・'broken'  … Googleは返事をするが、橋わたしの返事が来ない（橋わたしが消えた・Googleの許可が切れた）
+   ・'offline' … Googleにもつながらない（ネットがない） */
+var gasProbeMemo = { url:'', at:0, res:'' };
+function fetchWait(url, opt, ms){
+  var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  var tm = setTimeout(function(){ if(ctl) ctl.abort(); }, ms);
+  return fetch(url, Object.assign({ signal:ctl ? ctl.signal : undefined }, opt || {}))
+    .then(function(r){ clearTimeout(tm); return r; }, function(e){ clearTimeout(tm); throw e; });
+}
+async function gasProbe(url){
+  if(gasProbeMemo.url === url && Date.now() - gasProbeMemo.at < 60000) return gasProbeMemo.res;
+  var res = 'offline';
+  try{
+    var r = await fetchWait(url, { method:'GET', redirect:'follow' }, 20000);
+    var t = await r.text();
+    var js = null;
+    try{ js = JSON.parse(t); }catch(e){}
+    res = (js && js.ok) ? 'alive' : /accounts\.google\.com|ServiceLogin/i.test(t) ? 'login' : 'broken';
+  }catch(e){
+    /* 中身は読めなくても、Googleから返事が来れば（no-cors）、ネットはつながっている */
+    try{ await fetchWait(url, { method:'GET', mode:'no-cors', redirect:'follow' }, 15000); res = 'broken'; }
+    catch(e2){ res = 'offline'; }
+  }
+  gasProbeMemo = { url:url, at:Date.now(), res:res };
+  return res;
+}
+var GAS_PROBE_TEXT = {
+  alive:'橋わたしは動いていますが、このお願いの途中で止まりました。少し待って、もう一度ためしてください',
+  login:'橋わたしの公開設定が「全員」になっていません（くらしの手帳 › 設定 › Google連携）',
+  broken:'橋わたし（Apps Script）から返事が来ません。橋わたしが消えているか、Googleの許可が切れています',
+  offline:'ネットにつながりませんでした'
+};
 async function gnCall(action, body){
   var g = gnGas();
   if(!g) throw gnErr('nogas', 'くらしの手帳のGoogle連携が、この端末でつながっていません');
@@ -50,7 +85,10 @@ async function gnCall(action, body){
       }
     }catch(e){
       if(e && e.why) throw e;
-      throw gnErr('net', /abort/i.test(String(e && (e.name || e.message))) ? '橋わたしから返事がありませんでした' : 'ネットにつながりませんでした');
+      if(/abort/i.test(String(e && (e.name || e.message)))) throw gnErr('net', '橋わたしから返事がありませんでした');
+      /* 「ネットにつながらない」のか「橋わたしが動いていない」のかを、たしかめてから知らせる */
+      var pr = await gasProbe(g.url);
+      throw gnErr(pr === 'offline' ? 'net' : pr === 'alive' ? 'gaserr' : pr, GAS_PROBE_TEXT[pr]);
     }finally{ clearTimeout(tm); }
   }
   if(!js || !js.ok){
@@ -216,6 +254,37 @@ function gnRender(){
 }
 
 /* ===== 画面 ===== */
+/* 橋わたしを作ったGoogleアカウント（くらしの手帳が、つないだときに覚えたもの） */
+function gnAccount(){
+  var g = gnGas() || {};
+  return [g.acct, g.user].filter(function(u){ return /@/.test(String(u || '')); })[0] || '';
+}
+/* 橋わたしに届かないときの、たしかめ方と直し方 */
+function gnFixHtml(why){
+  var g = gnGas(), acc = gnAccount();
+  var h = '<div class="warnbox"><div class="s"><b>' + esc(GAS_PROBE_TEXT[why] || gn.err) + '</b></div>';
+  if(why === 'login'){
+    h += '<div class="s">Apps Script で、右上の「デプロイ」→「デプロイを管理」→ ✏️ →「アクセスできるユーザー」を<b>全員</b>にして「デプロイ」をおしてください。</div>';
+  }else if(why === 'broken'){
+    h += (acc ? '<div class="s">橋わたしを作ったGoogleアカウント：<b>' + esc(acc) + '</b></div>' : '') +
+      '<div class="s">下のボタンで、橋わたしのページを開いてみてください。</div>' +
+      '<div class="s">・「くらしの手帳の橋わたしは動いています」→ 橋わたしは大丈夫です。「一覧を読みなおす」をもう一度。</div>' +
+      '<div class="s">・「ファイルを開くことができません」など → 橋わたしが消えています。作り直してください（くらしの手帳 › 設定 › Google連携 に手順があります）。</div>' +
+      '<div class="s">・「承認が必要です」など → Apps Script でそのプロジェクトを開き、上の「▷ 実行」を1回おして、許可してください。</div>' +
+      '<div class="s">script.google.com にプロジェクトが1つも出ないときは、右上の丸いアイコンをおして' +
+        (acc ? '、<b>' + esc(acc) + '</b> に切りかえてください' : '、橋わたしを作ったアカウントに切りかえてください') + '（ちがうアカウントで開いていることが多いです）。</div>' +
+      (g && g.url ? '<a class="btn ghost" style="margin-top:8px" href="' + esc(g.url) + '" target="_blank" rel="noopener">橋わたしのページをひらく</a>' : '');
+  }
+  return h + '</div>';
+}
+/* 橋わたしを使わずに、Goodnotesのノートを入れる道（iPhoneの「ファイル」から） */
+function gnNoBridgeHtml(){
+  return '<div class="costbox"><div class="s"><b>橋わたしなしでも入れられます</b></div>' +
+    '<div class="s">・iPhoneに「Google ドライブ」のアプリが入っていれば：下の「📁 ファイルからえらぶ」→「ブラウズ」→「Google ドライブ」→「' +
+      esc(gn.folder || 'GoodNotes') + '」フォルダ → ノートのPDFをえらぶ</div>' +
+    '<div class="s">・Goodnotesから：ノートを開いて、共有（□↑）→「書き出す」→「PDF」→「"ファイル"に保存」。そのあと「📁 ファイルからえらぶ」で、そのPDFをえらぶ</div>' +
+    '<div style="margin-top:8px">' + btn('📁 ファイルからえらぶ', 'mk-pick', { cls:'ghost' }) + '</div></div>';
+}
 function gnSteps(){
   return '<div class="s">Goodnotesで：<b>設定 → 自動バックアップ → Google ドライブ</b>をオンにして、<b>ファイル形式を PDF</b> にします。' +
     'しばらくすると、Googleドライブの「' + esc(gn.folder || 'GoodNotes') + '」フォルダにノートが入ります。</div>';
@@ -238,10 +307,14 @@ function gnPart(){
         : gn.why === 'notpdf' ? 'バックアップの形式が PDF ではないようです' : 'バックアップのノートが、まだありません') + '</b></div>' + gnSteps() +
       (gn.why === 'nofolder' ? '<div class="s">フォルダの名前を変えているときは、くらしの手帳 › 設定 › Google連携 の「手書きノートのフォルダ」を同じ名前にしてください。</div>' : '') +
       '</div>';
+  }else if(gn.why === 'broken' || gn.why === 'login'){
+    h += gnFixHtml(gn.why);
   }else if(gn.err){
     h += '<div class="warnbox"><div class="s">' + (gn.items ? '' : 'ノートの一覧を読めませんでした：') + esc(gn.err) + '</div></div>';
   }
-  if(!gn.busy && gasOld()){
+  /* 一覧が読めないときは、橋わたしを使わない道も見せる */
+  if(!gn.busy && !gn.items && gn.why && gn.why !== 'nofolder' && gn.why !== 'notpdf' && gn.why !== 'empty') h += gnNoBridgeHtml();
+  if(!gn.busy && gasOld() && gn.why !== 'broken' && gn.why !== 'login' && gn.why !== 'net'){
     h += '<div class="s gnhint">💡 大きいノートが読めないときは、橋わたしを新しい版にしてください（ノートを少しずつ読めるようになります）。' + esc(GAS_UPDATE_HOW) + '</div>';
   }
   if(gn.items && gn.why !== 'nofolder' && gn.why !== 'notpdf' && !(gn.why === 'empty' && !gn.q)){

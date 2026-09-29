@@ -65,7 +65,8 @@ async function fresh(){
   W.__FAKE_AI = null;
   W.__FAKE_UPLOAD = null;
   W.__FAKE_FETCH = null;
-  W.__FAKE_GAS = null;
+  W.__FAKE_GAS = null; W.__FAKE_GAS_ACCT = '';
+  if(W.gasProbeMemo) W.gasProbeMemo = { url:'', at:0, res:'' };
   if(W.gn){ W.gn = { open:0, busy:'', msg:'', items:null, err:'', why:'', folder:'', q:'', pick:{}, from:'', sort:'', closed:{} }; }
   W.mk.linkMsg = ''; W.mk.linkFails = [];
   if(W.syStop) W.syStop();

@@ -1,12 +1,12 @@
 /* くらしの手帳：オフライン用・通知の受け取り・前の版にもどす */
-var CACHE = 'kurashi-v26';
+var CACHE = 'kurashi-v27';
 var PREV = 'kurashi-prev';      /* ひとつ前の版のファイル（「前の版にもどす」で使う） */
 var FLAGS = 'kurashi-flags';    /* 前の版を使っているかの印 */
 var FILES = [
   './', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png', './files.json',
   './css/app.css', './css/styles.css',
   './css/m-kokushi.css', './css/m-research.css', './css/m-anki2.css', './css/m-campus.css', './css/m-life.css', './css/m-petplus.css', './css/m-chara2.css', './css/m-links2.css', './css/m-core2.css',
-  './js/data.js', './js/core.js', './js/hooks.js', './js/aidata.js', './js/sync.js', './js/ai.js', './js/common.js', './js/decor.js',
+  './js/data.js', './js/core.js', './js/hooks.js', './js/aidata.js', './js/sync.js', './js/ai.js', './js/common.js', './js/zoom.js', './js/decor.js',
   './js/chara-data.js', './js/chara-art.js', './js/chara.js', './js/chara-make.js', './js/chara-talk.js', './js/pet.js',
   './js/commute.js', './js/today.js', './js/money.js', './js/kakeibo.js', './js/risyu.js', './js/calendar.js',
   './js/settings.js', './js/google.js', './js/links.js', './js/notify.js', './js/wx-plus.js', './js/timetable.js',

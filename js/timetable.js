@@ -574,15 +574,16 @@ function docViewOpen(opt){
       (text ? '<div class="sv-blk"><div class="sv-cap">' + esc(opt.textCap || '文章') + '</div><div class="sv-text">' + esc(text) + '</div></div>' : '') +
       files.map(function(f){
         if(f.kind === 'pdf'){
-          return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📄 ' + esc(f.name || 'PDF') + '</div>' +
-            '<div class="sv-pdf" data-pdf="' + esc(f.pid) + '"><div class="s2">ひらいています…</div></div></div>';
+          return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-caprow"><div class="sv-cap">📄 ' + esc(f.name || 'PDF') + '</div>' +
+              '<button type="button" class="mini sv-zoom" data-sv="pdf" data-pid="' + esc(f.pid) + '" data-page="1" data-name="' + esc(f.name || 'PDF') + '">🔍 大きくして見る</button></div>' +
+            '<div class="sv-pdf" data-pdf="' + esc(f.pid) + '" data-name="' + esc(f.name || 'PDF') + '"><div class="s2">ひらいています…</div></div></div>';
         }
         if(f.kind === 'file'){
           return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📎 ' + esc(f.name || 'ファイル') + '</div>' +
             '<div class="sv-file"><span class="s2">' + esc(fileKindText(f)) + '</span>' +
             '<a class="mini" data-pidlink="' + esc(f.pid) + '" download="' + esc(f.name || 'file') + '" target="_blank" rel="noopener">ひらく</a></div></div>';
         }
-        return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📷 ' + esc(f.name || '写真') + '</div>' +
+        return '<div class="sv-blk" data-pid="' + esc(f.pid) + '"><div class="sv-cap">📷 ' + esc(f.name || '写真') + '<span class="sv-hint">（押すと大きくなります）</span></div>' +
           '<img class="sv-img" data-pid="' + esc(f.pid) + '" data-miss="1" alt="' + esc(f.name || '写真') + '" data-sv="zoom"></div>';
       }).join('') +
       (opt.extra || '') +
@@ -592,9 +593,11 @@ function docViewOpen(opt){
     var b = e.target.closest('[data-sv]');
     if(!b) return;
     if(b.dataset.sv === 'close'){ sylViewClose(); return; }
-    if(b.dataset.sv === 'zoom' && b.getAttribute('src')){
-      var v = document.getElementById('viewer');
-      if(v){ v.querySelector('img').src = b.getAttribute('src'); v.classList.add('on'); }
+    /* 大きくして見る（指2本で拡大・縮小。写真は、となりの写真へも・PDFは、ページをめくれる） */
+    if(b.dataset.sv === 'zoom' && b.getAttribute('src')) zoomFromEl(b, opt.title || '');
+    if(b.dataset.sv === 'pdf' && b.dataset.pid){
+      var box = b.closest('.sv-blk'), pdfBox = box && box.querySelector('.sv-pdf');
+      zoomPdf(b.dataset.pid, b.dataset.page || 1, b.dataset.name || (pdfBox && pdfBox.dataset.name) || opt.title || 'PDF');
     }
   });
   document.body.appendChild(el);
@@ -662,7 +665,8 @@ async function pdfShowInto(box, pid){
       var vp = page.getViewport({ scale:(w / vp1.width) * dpr });
       var cv = document.createElement('canvas');
       cv.className = 'sv-page'; cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
-      cv.setAttribute('aria-label', (i) + 'ページめ');
+      cv.setAttribute('aria-label', (i) + 'ページめ（押すと大きくなります）');
+      cv.dataset.sv = 'pdf'; cv.dataset.pid = pid; cv.dataset.page = String(i);       /* 押すと、このページを大きくして見る */
       box.appendChild(cv);
       await page.render({ canvasContext:cv.getContext('2d'), viewport:vp }).promise;
     }

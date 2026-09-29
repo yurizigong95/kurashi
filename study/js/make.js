@@ -326,12 +326,15 @@ async function mkReadLinks(urls){
     }
     /* ② 読めなかったものは、くらしの手帳の橋わたし（Googleのサーバー）から読む。ドライブのファイルも読める */
     if(left.length && gnGas() && linkBridgeReady()){
-      var left2 = [];
+      var left2 = [], down = false;
       for(var bi = 0; bi < left.length; bi++){
+        if(down && !linkExportUrl(left[bi])){ left2.push(left[bi]); continue; }   /* 橋わたしに届かない：AIにまかせる */
+        if(down){ fails.push({ u:left[bi], why:down }); continue; }
         mk.linkMsg = 'Google連携（橋わたし）から読んでいます…（' + (bi + 1) + '/' + left.length + '）'; render();
         var b = null;
         try{ b = await loadLinkBridge(left[bi], function(p){ mk.linkMsg = 'Google連携（橋わたし）から読んでいます…（' + (bi + 1) + '/' + left.length + '） ' + p + '%'; render(); }); }
         catch(e){ b = { fail:1, why:String((e && e.message) || e).slice(0, 120) }; }
+        if(b && b.down) down = b.why;
         if(b && !b.fail) got.push(b);
         else if(b && b.fail && b.drive) fails.push({ u:left[bi], why:b.why });     /* 自分のドライブのファイル：AIには見られないので、ここでわけを出す */
         else left2.push(left[bi]);

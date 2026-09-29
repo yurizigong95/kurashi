@@ -1155,6 +1155,8 @@ input[type="color"]{font-size:16px !important}
 ol.steps{margin:0 0 12px; padding-left:1.4em; font-size:.84em; line-height:1.6}
 ol.steps li{margin:4px 0}
 ol.steps a{color:var(--accent)}
+.gas-steps{margin:10px 0}
+.gas-steps ol.steps{margin-top:8px}
 
 /* テストモードの印 */
 html[data-test] body::after{content:"テストモード（本物のデータには触れません）"; position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 6px);
@@ -1543,6 +1545,11 @@ html.sylview-on, html.sylview-on body{overflow:hidden}
 #sylview .sv-bd{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px 16px calc(env(safe-area-inset-bottom) + 24px)}
 #sylview .sv-blk{margin-bottom:18px; scroll-margin-top:8px}
 #sylview .sv-cap{font-size:.78em; color:var(--sub); font-weight:700; margin-bottom:6px; word-break:break-all}
+#sylview .sv-caprow{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px}
+#sylview .sv-caprow .sv-cap{margin-bottom:0; flex:1; min-width:0}
+#sylview .sv-caprow .sv-zoom{flex:none}
+#sylview .sv-hint{font-weight:400; margin-left:4px}
+#sylview .sv-page{cursor:zoom-in}
 #sylview .sv-text{white-space:pre-wrap; line-height:1.75; font-size:.95em; background:var(--card); border:1px solid var(--edge); border-radius:14px; padding:12px 14px; word-break:break-word}
 #sylview .sv-img{display:block; width:100%; height:auto; min-height:60px; border-radius:12px; border:1px solid var(--edge); background:rgba(255,255,255,.4); cursor:zoom-in}
 #sylview .sv-page{display:block; width:100%; height:auto; margin-bottom:8px; border-radius:8px; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.12)}
@@ -1569,3 +1576,22 @@ body[data-theme="dark"] #setbtn{background:rgba(255,255,255,.12); border-color:r
 .nfile .mini{flex:none}
 #sylview .sv-file{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--edge); border-radius:12px; padding:10px 12px}
 #sylview .sv-file .s2{flex:1}
+
+/* 写真・PDFを大きくして見る（指2本で拡大・縮小） */
+#zview{position:fixed; inset:0; z-index:80; display:none; flex-direction:column; background:#0e1116; color:#fff}
+#zview.on{display:flex}
+html.zv-on, html.zv-on body{overflow:hidden}
+#zview .zv-hd{display:flex; align-items:center; gap:10px; padding:calc(env(safe-area-inset-top) + 8px) 12px 8px; flex:none}
+#zview .zv-ttl{flex:1; min-width:0; font-weight:700; font-size:.95em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+#zview .zv-no{flex:none; font-size:.85em; opacity:.8; font-variant-numeric:tabular-nums}
+#zview .zv-close{flex:none; color:#fff; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.4); border-radius:999px; padding:7px 16px; font:inherit; font-size:.9em}
+#zview .zv-stage{position:relative; flex:1; min-height:0; overflow:hidden; touch-action:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none}
+#zview .zv-img{position:absolute; left:0; top:0; max-width:none !important; max-height:none !important; transform-origin:0 0; border-radius:0; box-shadow:none; -webkit-user-drag:none; user-select:none; pointer-events:none}
+#zview .zv-msg{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:24px; text-align:center; font-size:.9em; line-height:1.7; opacity:.85; pointer-events:none}
+#zview .zv-tip{position:absolute; left:50%; bottom:10px; transform:translateX(-50%); width:max-content; max-width:calc(100% - 24px); text-align:center; font-size:.72em; color:#fff; background:rgba(0,0,0,.55); border-radius:999px; padding:4px 12px; pointer-events:none}
+#zview.zv-big .zv-tip{display:none}
+#zview .zv-bar{display:flex; justify-content:center; align-items:center; gap:8px; padding:8px 12px calc(env(safe-area-inset-bottom) + 10px); flex:none}
+#zview .zv-bar button{min-width:48px; height:44px; padding:0 12px; border-radius:999px; border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.12); color:#fff; font:inherit; font-size:1.15em; line-height:1}
+#zview .zv-bar button:disabled{opacity:.3}
+#zview .zv-bar .zv-pct{min-width:76px; font-size:.85em; font-variant-numeric:tabular-nums}
+#zview.zv-one [data-zv="prev"], #zview.zv-one [data-zv="next"]{display:none}
