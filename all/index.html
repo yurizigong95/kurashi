@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" id="tcolor" content="#1E2A32">
-<meta name="description" content="くらしの手帳・もんだいメーカー・ゲーム道場を、1つのアプリでまとめて使う">
+<meta name="description" content="くらしの手帳・もんだいメーカー・ゲーム道場・かんご実習メーカーを、1つのアプリでまとめて使う">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -82,14 +82,15 @@ html,body{ margin:0; padding:0; height:100%; overflow:hidden; background:var(--b
 <div id="pane" role="dialog" aria-label="タブの並び・表示"></div>
 <main id="stage"><div id="msg"></div></main>
 <script>
-/* ぜんぶ入り：3つのアプリを1つの画面でまとめて使う。
+/* ぜんぶ入り：4つのアプリ（くらしの手帳・もんだいメーカー・ゲーム道場・かんご実習メーカー）を1つの画面でまとめて使う。
    それぞれのアプリはそのまま（保存場所もコードも別）で、行き来だけをここが受けもつ。 */
 (function(){
   'use strict';
   var APPS = [
     { id:'kurashi', name:'くらし',     url:'../index.html',       color:'#EAD0D7' },
     { id:'study',   name:'もんだい',   url:'../study/index.html', color:'#2B6C7A' },
-    { id:'game',    name:'ゲーム',     url:'../game/index.html',  color:'#1E2A32' }
+    { id:'game',    name:'ゲーム',     url:'../game/index.html',  color:'#1E2A32' },
+    { id:'care',    name:'かんご',     url:'../care/index.html',  color:'#A8506A' }   /* かんご実習メーカー */
   ];
   var KEY = 'zenbu:tab';
   var KEY_ORDER = 'zenbu:tabs';      /* タブの並びと、出す・出さない（[{ id, on }]） */
