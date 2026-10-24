@@ -273,9 +273,10 @@ async function ttsGeminiAudio(text){
   if(tts.cache[k]) return tts.cache[k];
   var key = aiKey();
   if(!key) throw new Error('APIキーがありません');
-  var lastErr = '';
-  for(var i = 0; i < TTS_MODELS.length; i++){
-    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + TTS_MODELS[i] + ':generateContent', {
+  var lastErr = '', models = [];
+  ((await aiTtsModelIds()) || []).concat(TTS_MODELS).forEach(function(m){ if(models.indexOf(m) < 0) models.push(m); });
+  for(var i = 0; i < models.length; i++){
+    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
       method:'POST', headers:{ 'Content-Type':'application/json', 'x-goog-api-key':key },
       body: JSON.stringify({
         contents:[{ parts:[{ text:'やさしく、明るく、聞き取りやすく読んでください：\n' + text }] }],

@@ -148,10 +148,10 @@ function notifyJobs(){
     for(var di = 0; di < 7; di++){
       var dy = shiftDate(today(), di);
       var lines = dayBrief(dy, true);
-      /* 10:30までに始まる授業がある日は、6:15に早める（もっと早い時刻にしている人は、そのまま） */
+      /* 10:30までに始まる授業がある日は、6:15に早める（自分で時刻を保存した人（amSet）は、そのまま） */
       var amAt = p.amTime, amM = minutesOf(amAt);
       var amEarly = classesForDate(dy).some(function(c){ var m = minutesOf(S.commute.periods[c.period - 1]); return !c.off && m != null && m <= 630; });
-      if(amEarly && (amM == null || amM > 375)) amAt = '06:15';
+      if(amEarly && !p.amSet && (amM == null || amM > 375)) amAt = '06:15';
       if(lines.length) add('am-' + dy, notifyAt(dy, amAt), '☀️ 今日のまとめ', lines.join('\n').slice(0, 400), { wx:1, cat:'today' });
     }
   }
@@ -400,7 +400,7 @@ function notifySettings(){
     '<div class="field"><label class="f" for="nt_rules">持ち物のきまり（1行に「言葉＝持ち物」。言葉は | で「または」）</label>'+
       '<textarea id="nt_rules" rows="4">'+esc(amRules().map(function(r){ return r.k + '＝' + r.v; }).join('\n'))+'</textarea></div>'+
     '<button class="btn ghost" data-act="nt-am-save">持ち物の設定を保存</button>'+
-    '<p class="note">予定に「〜持参」と書いてあれば、それも持ち物に入ります。雨なら傘、寒暖差が大きい日は上着、暗記の復習の枚数も入ります。10:30までに始まる授業がある日は、朝のまとめを 6:15 に早めます。</p>'+
+    '<p class="note">予定に「〜持参」と書いてあれば、それも持ち物に入ります。雨なら傘、寒暖差が大きい日は上着、暗記の復習の枚数も入ります。10:30までに始まる授業がある日は、朝のまとめを 6:15 に早めます（自分で時刻を決めているときは、そのまま）。</p>'+
     '<div class="row"><div class="grow s">明日（'+esc(ymdLabel(tmr))+'）の見本</div></div>'+
     (prev.length ? '<div class="s" style="white-space:pre-wrap;margin:0 0 8px">'+esc(prev.join('\n'))+'</div>' : '<div class="empty" style="padding:4px 0 8px">明日は特にありません。</div>');
   h += '<label class="f">おせわの子</label><div class="pillrow">'+

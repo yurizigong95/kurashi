@@ -10,6 +10,106 @@ function aiFake(){
 }
 function aiKey(){ return String(S.settings.geminiKey || '').trim(); }
 function aiReady(){ return TEST_MODE ? !!aiFake() : !!aiKey(); }
+/* ---------- 使うモデルを、Gemini のモデル一覧から自動で決める ----------
+   新しいモデルが出たら、アプリを更新しなくてもそちらを使う。一覧は1日1回だけ取りに行く。
+   一覧が取れないとき（キーなし・オフラインなど）は AI_FALLBACK_MODELS を使う。 */
+var AI_MODELS_KEY = 'kurashi:aimodels:v1';
+var AI_MODELS_TTL = 24 * 60 * 60 * 1000;
+var aiModelsBusy = null;
+/* 'gemini-3.6-flash' → [3,6]、'gemini-3-flash' → [3,0]。読めないものは [0,0] */
+function aiModelVer(id){
+  var m = String(id).match(/^gemini-(\d+)(?:\.(\d+))?(?=-|$)/);
+  return m ? [Number(m[1]), Number(m[2] || 0)] : [0, 0];
+}
+/* flash=0・lite=1・pro=2・そのほか=3 */
+function aiModelKind(id){
+  return /lite/.test(id) ? 1 : /-pro(?=-|$)/.test(id) ? 2 : /flash/.test(id) ? 0 : 3;
+}
+function aiModelSort(a, b){
+  var va = aiModelVer(a), vb = aiModelVer(b);
+  return (vb[0] - va[0]) || (vb[1] - va[1]) || (aiModelKind(a) - aiModelKind(b)) || (a < b ? -1 : a > b ? 1 : 0);
+}
+/* 一覧（models.list の答え）から、ふだんの相談に使える候補を、選ぶ順に並べる（'models/' はとる）
+   ① いちばん新しい flash → ② いちばん新しい lite → ③ いちばん新しい pro → ④ のこりを新しい順 */
+function aiRankModelIds(modelsJson){
+  var list = Array.isArray(modelsJson) ? modelsJson : ((modelsJson && modelsJson.models) || []);
+  var ids = list.filter(function(m){
+    return m && /^models\/gemini-/.test(m.name || '') && (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0;
+  }).map(function(m){ return m.name.slice(7); }).filter(function(id){
+    return !/preview|exp|latest|tts|image|embedding|robotics|computer-use/i.test(id);
+  });
+  ids = ids.filter(function(id, i){ return ids.indexOf(id) === i; }).sort(aiModelSort);
+  var head = [0, 1, 2].map(function(k){ return ids.filter(function(id){ return aiModelKind(id) === k; })[0]; }).filter(Boolean);
+  return head.concat(ids.filter(function(id){ return head.indexOf(id) < 0; }));
+}
+/* 読み上げ用（名前に tts をふくむもの）：flash を先に、新しい順 */
+function aiRankTtsIds(names){
+  return (names || []).filter(function(id, i, a){ return /tts/i.test(id) && a.indexOf(id) === i; }).sort(function(a, b){
+    return ((/flash/.test(a) ? 0 : 1) - (/flash/.test(b) ? 0 : 1)) || aiModelSort(a, b);
+  });
+}
+/* Gemini のモデル一覧を取りに行く → { ids, tts }。取れなければ null（エラーは外に出さない） */
+async function aiModelIdsLive(){
+  var key = aiKey();
+  if(TEST_MODE || !key) return null;
+  try{
+    var all = [], token = '';
+    for(var p = 0; p < 3; p++){
+      var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000' + (token ? '&pageToken=' + encodeURIComponent(token) : ''), {
+        headers:{ 'x-goog-api-key':key }
+      });
+      if(!res.ok) return null;
+      var j = await res.json();
+      all = all.concat((j && j.models) || []);
+      token = (j && j.nextPageToken) || '';
+      if(!token) break;
+    }
+    var ids = aiRankModelIds(all);
+    if(!ids.length) return null;
+    var names = all.filter(function(m){
+      return m && /^models\/gemini-/.test(m.name || '') && (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0;
+    }).map(function(m){ return m.name.slice(7); });
+    return { ids:ids, tts:aiRankTtsIds(names) };
+  }catch(e){ return null; }
+}
+/* しまってある一覧。anyAge のときは古くても返す（設定の表示用） */
+function aiModelsCached(anyAge){
+  try{
+    var o = JSON.parse(localStorage.getItem(AI_MODELS_KEY) || 'null');
+    if(o && Array.isArray(o.ids) && o.ids.length && (anyAge || Date.now() - (o.at || 0) < AI_MODELS_TTL)) return o;
+  }catch(e){}
+  return null;
+}
+function aiModelsForget(){ try{ localStorage.removeItem(AI_MODELS_KEY); }catch(e){} }
+async function aiModelsLoad(){
+  var o = aiModelsCached();
+  if(o) return o;
+  if(!aiModelsBusy){
+    aiModelsBusy = aiModelIdsLive().then(function(r){
+      aiModelsBusy = null;
+      if(!r) return null;
+      r.at = Date.now();
+      try{ localStorage.setItem(AI_MODELS_KEY, JSON.stringify(r)); }catch(e){}
+      return r;
+    });
+  }
+  return aiModelsBusy;
+}
+/* ふだんの相談に使う候補（選ぶ順）。取れなければ null */
+async function aiModelCandidates(){
+  var o = await aiModelsLoad();
+  return o ? o.ids.slice() : null;
+}
+/* 読み上げに使うモデル（選ぶ順）。取れなければ null */
+async function aiTtsModelIds(){
+  var o = await aiModelsLoad();
+  return (o && o.tts && o.tts.length) ? o.tts.slice() : null;
+}
+function aiModelOrder(picked, cands){
+  var seen = {}, models = [];
+  [picked].filter(Boolean).concat(cands || AI_FALLBACK_MODELS).forEach(function(m){ if(!seen[m]){ seen[m] = 1; models.push(m); } });
+  return models;
+}
 /* opt: { system, contents:[{role,parts}], json, temperature, maxTokens, signal, tag } → 文字 */
 async function aiGenerate(opt){
   var r = await aiCall(opt);
@@ -76,9 +176,8 @@ async function aiCallOnce(opt){
   if(opt.json) body.generationConfig.responseMimeType = 'application/json';
   if(opt.tools && opt.tools.length) body.tools = opt.tools;
   var picked = S.ui.aiModel || S.settings.geminiModel;
-  var seen = {}, models = [];
-  [picked].filter(Boolean).concat(AI_FALLBACK_MODELS).forEach(function(m){ if(!seen[m]){ seen[m] = 1; models.push(m); } });
-  var lastErr = '';
+  var models = aiModelOrder(picked, await aiModelCandidates());
+  var lastErr = '', tried = [], relisted = false;
   for(var i = 0; i < models.length; i++){
     var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
       method:'POST',
@@ -108,6 +207,17 @@ async function aiCallOnce(opt){
     }
     if(!/not available|not found|NOT_FOUND|unsupported|deprecated|update your code/i.test(lastErr)) break;
     if(S.ui.aiModel === models[i]){ S.ui.aiModel = ''; touch('ui'); }
+    tried.push(models[i]);
+    /* ぜんぶ使えなかったら、一覧を1回だけ取り直して、まだ試していないモデルで続ける */
+    if(i === models.length - 1 && !relisted){
+      relisted = true;
+      aiModelsForget();
+      var fresh = await aiModelCandidates();
+      if(fresh){
+        models = aiModelOrder('', fresh).filter(function(m){ return tried.indexOf(m) < 0; });
+        i = -1;
+      }
+    }
   }
   throw new Error(aiErrText(lastErr || 'つながりませんでした'));
 }

@@ -144,6 +144,7 @@ function viewSettings(){
       return '<button data-act="ai-model" data-v="'+esc(m[0])+'" class="'+((S.settings.geminiModel||'')===m[0]?'on':'')+'">'+esc(m[1])+'</button>';
     }).join('')+'</div>'+
     '<p class="note" style="margin:-4px 0 10px">'+esc(modelNote(S.settings.geminiModel))+
+      ((!S.settings.geminiModel && typeof aiModelsCached === 'function' && aiModelsCached(true)) ? '。おまかせ中：いまは '+esc(aiModelsCached(true).ids[0])+' を使います' : '')+
       (S.settings.aiLastModel ? '（前回つながったのは '+esc(S.settings.aiLastModel)+'）' : '')+'</p>'+
     '<label class="f">AIの話し方</label>'+
     '<div class="pillrow">'+AI_TONES.map(function(t2){
