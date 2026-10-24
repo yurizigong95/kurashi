@@ -180,6 +180,69 @@ function selListHtml(){
 function codeText(){
   return rSelected().map(function(c){ return c.code + '  ' + c.slotText + '  ' + c.name; }).join('\n');
 }
+/* ============================== 履修：成績から自動集計 ==============================
+   前の学期までの成績（S.grades・MUSESの基準値）から、合格した科目の単位を区分ごとに足す。
+   今学期の科目は上の「選択中の科目を足した状態」で数えているので入れない（二重に数えない）。
+   区分が分からない科目は「未分類」にまとめて見せる（黙って落とさない） */
+var risyuAuto = null;
+function rGradeState(gv){
+  if(typeof cpGpOf === 'function'){ var o = cpGpOf(gv); return !o.key ? 'unknown' : o.pass ? 'pass' : 'fail'; }
+  var s = String(gv).trim().toUpperCase();
+  if(/^(S|A|B|C|AA|秀|優|良|可|合|合格|認定)$/.test(s)) return 'pass';
+  if(/^(D|E|F|不可|欠|欠席|失格)$/.test(s)) return 'fail';
+  if(/^\d+(\.\d+)?$/.test(s)) return parseFloat(s) >= 60 ? 'pass' : 'fail';
+  return 'unknown';
+}
+function rAutoTally(){
+  var cur = curTerm().id, seen = {}, list = [];
+  termCourses().forEach(function(c){ seen[c.name] = 1; });
+  termsAll().forEach(function(t){
+    if(t.id === cur) return;
+    (t.courses || []).forEach(function(c){ if(c && c.name && !seen[c.name]){ seen[c.name] = 1; list.push({ name:c.name, c:c }); } });
+  });
+  Object.keys(S.grades || {}).forEach(function(n){ if(!seen[n]){ seen[n] = 1; list.push({ name:n, c:null }); } });
+  var out = { by:{ kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0 }, rows:[], other:0, otherRows:[], fail:[], unknown:[], noCr:[] };
+  list.forEach(function(x){
+    var g = S.grades[x.name] || gradeBase(x.name), gv = g && (g.grade || g.score);
+    if(!gv) return;
+    var st = rGradeState(gv);
+    if(st === 'fail'){ out.fail.push(x.name); return; }
+    if(st === 'unknown'){ out.unknown.push(x.name); return; }
+    var m = COURSES.filter(function(y){ return sameSubject(y.name, x.name); })[0] || null;
+    var cr = Number(x.c && x.c.cr) || (m ? m.cr : 0);
+    if(!cr){ out.noCr.push(x.name); return; }
+    var cat = (S.courseMeta[x.name] || {}).cat || (x.c && x.c.cat) || (m ? m.cat : '');
+    var grp = CAT_INFO[cat] ? CAT_INFO[cat].group : '';
+    if(grp){
+      out.by[grp] += cr;
+      if(grp === 'lang' && ((x.c && x.c.en) || (m && m.en))) out.by.langEn += cr;
+      out.rows.push({ name:x.name, cr:cr, label:CAT_INFO[cat].label });
+    }else{
+      out.other += cr;
+      out.otherRows.push({ name:x.name, cr:cr });
+    }
+  });
+  return out;
+}
+function rAutoHtml(){
+  var r = risyuAuto, h = '<div class="pillrow" style="margin-top:10px"><button class="mini" data-act="r-auto">成績から自動集計</button></div>';
+  if(S.risyu.autoAt) h += '<p class="note">'+esc(ymdLabel(toYmd(new Date(S.risyu.autoAt))))+'に成績から自動集計して反映しました。上の欄で手で直せます。</p>';
+  if(!r) return h;
+  var names = { kyoyo:'基礎教養科目群', topic:'トピック等4群', lang:'言語リテラシー', langEn:'うち英語', info:'情報リテラシー', health:'健康・スポーツ科学', pe:'スポーツ実技ほか' };
+  var rowsOf = function(a){ return a.map(function(x){ return esc(x.name)+'（'+x.cr+'単位'+(x.label ? '・'+esc(x.label) : '')+'）'; }).join('、'); };
+  h += '<div class="box" style="margin-top:8px">'+
+    Object.keys(names).map(function(k){ return '<div class="row"><div class="grow s">'+names[k]+'</div><div class="t num">'+r.by[k]+'単位</div></div>'; }).join('')+
+    '<div class="row"><div class="grow s">未分類（区分が分からない科目）</div><div class="t num">'+r.other+'単位</div></div>'+
+    (r.rows.length ? '<p class="note">区分あり：'+rowsOf(r.rows)+'</p>' : '')+
+    (r.otherRows.length ? '<p class="note">未分類：'+rowsOf(r.otherRows)+'</p>' : '')+
+    (r.fail.length ? '<p class="note">不合格で入れなかった科目：'+esc(r.fail.join('、'))+'</p>' : '')+
+    (r.unknown.length ? '<p class="note">評価が読み取れず入れなかった科目：'+esc(r.unknown.join('、'))+'</p>' : '')+
+    (r.noCr.length ? '<p class="note">単位数が分からず入れなかった科目：'+esc(r.noCr.join('、'))+'</p>' : '')+
+    '<div class="pair" style="margin-top:8px"><button class="btn" data-act="r-auto-apply">この内容で反映</button>'+
+    '<button class="btn ghost" style="flex:0 0 auto" data-act="r-auto-close">とじる</button></div>'+
+    '<p class="note">区分別の数は上の欄に入ります。未分類の分は「修得した単位（未分類）」として別にしまい、キャップ制の計算（今学期の専門・基礎教育）には入れません。</p></div>';
+  return h;
+}
 function earnInput(label, key, v){
   return '<label>'+esc(label)+'<input type="number" min="0" step="1" data-earn="'+key+'" value="'+(Number(v)||0)+'"></label>';
 }
@@ -187,14 +250,16 @@ function viewRisyuTt(){
   var cs = rSelected(), e = S.risyu.earned;
   return section('卒業要件の埋まりぐあい', '選択中の科目を足した状態',
       '<div id="meters">'+metersHtml()+'</div>'+
-      '<details style="margin-top:10px;border-top:1px solid var(--rule);padding-top:10px">'+
+      '<details style="margin-top:10px;border-top:1px solid var(--rule);padding-top:10px"'+(risyuAuto ? ' open' : '')+'>'+
       '<summary style="font-size:.85em;color:var(--risyu);font-weight:600">すでに修得した単位を入力する</summary>'+
       '<div class="earn-grid">'+
         earnInput('基礎教養科目群','kyoyo',e.kyoyo)+earnInput('トピック等4群','topic',e.topic)+
         earnInput('言語リテラシー','lang',e.lang)+earnInput('うち英語','langEn',e.langEn)+
         earnInput('情報リテラシー','info',e.info)+earnInput('健康・スポーツ科学','health',e.health)+
         earnInput('スポーツ実技ほか','pe',e.pe)+earnInput('今学期の専門・基礎教育','otherCr',S.risyu.otherCr)+
-      '</div><p class="note">「今学期の専門・基礎教育」はキャップ制（25単位以下）の計算に使います。</p></details>')
+      '</div><p class="note">「今学期の専門・基礎教育」はキャップ制（25単位以下）の計算に使います。'+
+        (toNum(S.risyu.otherEarned) ? '修得した単位（未分類）：'+toNum(S.risyu.otherEarned)+'単位。' : '')+'</p>'+
+      rAutoHtml()+'</details>')
     + '<section><div class="head"><h2>時間割</h2><span>2026年 2学期</span></div>'+
       '<div class="scroll"><table class="tt" id="tt">'+gridHtml()+'</table></div>'+
       '<p class="note">赤は必修、青は選択です。科目をタップすると、その科目の課題をすぐ登録できます。</p>'+
@@ -471,6 +536,15 @@ function risyuAction(act, t, ev){
     openPicker(k); return true;
   }
   if(act==='r-toggle'){ if(!t.disabled) rToggle(t.dataset.code); return true; }
+  if(act==='r-auto'){ risyuAuto = rAutoTally(); render(); return true; }
+  if(act==='r-auto-close'){ risyuAuto = null; render(); return true; }
+  if(act==='r-auto-apply'){
+    var ra = risyuAuto || rAutoTally();
+    S.risyu.earned = Object.assign({}, S.risyu.earned, ra.by);
+    S.risyu.otherEarned = ra.other;
+    S.risyu.autoAt = Date.now();
+    risyuAuto = null; touchRisyu(); toast('成績から集計した単位を反映しました'); commit(); return true;
+  }
   if(act==='r-clear'){ S.risyu.selected = []; touchRisyu(); toast('すべて外しました'); commit(); return true; }
   if(act==='r-plan'){
     var p = RISYU_PLANS.filter(function(x){ return x.id === t.dataset.plan; })[0];
