@@ -277,6 +277,7 @@ function viewHome(d){
       '<div class="stat"><div class="k">今月の収入</div><div class="v num">'+yen(b.income)+'</div></div>'+
     '</div>'+
     '<button class="btn ghost" style="margin-top:12px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>'); };
+  partsM.eom = function(){ return eomCard(); };
   partsM.flow = function(){ return flowCard(); };
   partsM.spend = function(){ return (typeof kbHomeCard === 'function') ? kbHomeCard() : ''; };
   partsM.fuyou = function(){ return fuyouCard(); };
@@ -289,6 +290,123 @@ function viewHome(d){
   var outM = '';
   pageOrder('money').forEach(function(id){ if(partsM[id] && !pageHidden('money', id)) outM += partsM[id](); });
   return outM;
+}
+
+/* ============================== お金：月末までの見通し ==============================
+   どれも今あるデータから出すだけ（新しく保存するものはない）。
+   残高＝口座の残高の合計（budget() と同じ）。カード＝分割の未払いぶん＋明細（derive()、引き落とし日は設定の日）。
+   バイト代＝15日締め・25日払い（payPeriod / periodPay）。残高に入れた月（payApplied）は数えない。 */
+function eomYmd(ym, day){
+  var a = ym.split('-'), last = new Date(+a[0], +a[1], 0).getDate();
+  return ym + '-' + pad(Math.min(Math.max(1, day), last));
+}
+/* 家計簿に、今月もう入っている（払った・入った）か。名前が入っているか、金額が同じで日付が近いもの */
+function eomDone(x, io, ym){
+  if(typeof kbMonth !== 'function') return false;
+  var nm = String(x.name || '').replace(/[\s　]+/g, ''), amt = toNum(x.amount), day = toNum(x.day);
+  return kbMonth(ym).some(function(s){
+    if((s.io === 'in') !== (io === 'in')) return false;
+    var tt = String(s.title || '').replace(/[\s　]+/g, '');
+    if(nm.length >= 2 && tt.indexOf(nm) >= 0) return true;
+    return Math.abs(toNum(s.amount)) === amt && (!day || Math.abs(toNum(String(s.date).slice(8, 10)) - day) <= 3);
+  });
+}
+function eomOutlook(){
+  var td = today(), cur = thisYm(), nxt = addMonths(cur, 1), d = derive();
+  var monthEnd = shiftDate(nxt + '-01', -1), nextEnd = shiftDate(addMonths(cur, 2) + '-01', -1);
+  var ev = [], notes = [], approx = false;
+  var hasBal = S.balances.length > 0, balance = sumBy(S.balances, function(x){ return x.amount; });
+  if(!hasBal){ approx = true; notes.push('口座の残高が未登録なので、月末の残高は出せません（「収支」から入れられます）。'); }
+  else if(S.balances.some(function(x){ return !x.mt || toYm(new Date(x.mt)) !== cur; })){
+    approx = true; notes.push('今月まだ残高を更新していない口座があります。今の残高がずれていると、見通しもずれます。');
+  }
+  var shiftIncome = S.shifts.length > 0, skipped = [];
+  [cur, nxt].forEach(function(ym){
+    var isCur = ym === cur;
+    /* カードの引き落とし */
+    [['smbc', S.settings.smbcDay], ['rakuten', S.settings.rakutenDay]].forEach(function(p){
+      var day = toNum(p[1]), g = d.byMonth[ym] ? d.byMonth[ym][p[0]] : null;
+      if(!day || !g) return;
+      var date = eomYmd(ym, day);
+      if(date < td) return;
+      var amt = sumBy(g.rows.filter(function(r){ return !isPaid(r.planId + ':' + r.month); }), function(r){ return r.amount; }) + g.stmt;
+      if(amt > 0) ev.push({ date:date, amount:-amt, label:ACCOUNTS[p[0]].bank + ' 引き落とし', kind:'card' });
+    });
+    /* バイト代（その月の25日払い） */
+    var pp = payPeriod(ym), pay = periodPay(ym);
+    if(pay > 0 && !(S.payApplied || {})[ym]){
+      if(pp.payDay >= td) ev.push({ date:pp.payDay, amount:pay, label:'バイト代（' + shiftsInPeriod(ym).length + '回ぶん・見込み）', kind:'pay' });
+      else if(isCur){ approx = true; notes.push(ymdLabel(pp.payDay) + 'のバイト代（見込み ' + yen(pay) + '）が、まだ残高に入っていません。振り込まれていたら「バイト」から残高に入れてください（見通しには入れていません）。'); }
+    }
+    /* 毎月の収入（テンプレート）。シフトがあるときは、バイト代の収入はシフトから数える（二重にしない） */
+    S.income.forEach(function(x){
+      var amt = toNum(x.amount), day = toNum(x.day);
+      if(amt <= 0) return;
+      if(shiftIncome && (x.id === 'in_shift' || /バイト/.test(x.name || ''))){ if(isCur) skipped.push(x.name); return; }
+      if(!day){ if(isCur){ approx = true; notes.push('「' + (x.name || '収入') + '」は入金日が未設定なので、見通しに入れていません。'); } return; }
+      var date = eomYmd(ym, day);
+      if(date < td || (isCur && eomDone(x, 'in', ym))) return;
+      ev.push({ date:date, amount:amt, label:x.name || '収入', kind:'income' });
+    });
+    /* 固定費・サブスク（家計簿に今月もう出ているものは払い済み） */
+    S.fixed.forEach(function(x){
+      var amt = toNum(x.amount), day = toNum(x.day);
+      if(amt <= 0 || (isCur && eomDone(x, 'out', ym))) return;
+      if(!day){
+        if(isCur){ approx = true; ev.push({ date:monthEnd, amount:-amt, label:(x.name || '固定費') + '（引落日未設定）', kind:'fixed' }); }
+        return;
+      }
+      var date = eomYmd(ym, day);
+      if(date >= td) ev.push({ date:date, amount:-amt, label:x.name || '固定費', kind:'fixed' });
+    });
+  });
+  if(skipped.length) notes.push('バイト代はシフトから計算しているので、収入の「' + skipped.join('・') + '」は数えていません。');
+  if(ev.some(function(e){ return e.kind === 'fixed' && /引落日未設定/.test(e.label); })) notes.push('引落日が未設定の固定費は、月末に払うものとして数えました。');
+  /* 同じ日は、入るお金を先に */
+  ev.sort(function(a, b){ return a.date.localeCompare(b.date) || (b.amount > 0) - (a.amount > 0); });
+  var run = balance;
+  ev.forEach(function(e){ run += e.amount; e.after = run; });
+  var thisMonth = ev.filter(function(e){ return e.date <= monthEnd; });
+  var sumOf = function(kinds, list){ return sumBy((list || thisMonth).filter(function(e){ return kinds.indexOf(e.kind) >= 0; }), function(e){ return e.amount; }); };
+  /* 来月の収入：今月16日からのシフトは、来月25日払い */
+  var nextShifts = S.shifts.filter(function(s){ return isYmd(s.date) && s.date.slice(0, 7) === cur && closeYmOf(s.date) === nxt; });
+  return {
+    hasBal:hasBal, balance:balance, approx:approx, notes:notes, monthEnd:monthEnd,
+    inPay:sumOf(['pay']), inOther:sumOf(['income']), outCard:-sumOf(['card']), outFixed:-sumOf(['fixed']),
+    eom:balance + sumBy(thisMonth, function(e){ return e.amount; }),
+    nextCard:ev.filter(function(e){ return e.kind === 'card' && e.date <= nextEnd; })[0] || null,
+    big:ev.filter(function(e){ return e.kind === 'card' || e.kind === 'pay'; }).slice(0, 6),
+    nextIncome:{ amount:sumBy(nextShifts, shiftPay), n:nextShifts.length, payDay:payPeriod(nxt).payDay }
+  };
+}
+function eomCard(){
+  var o = eomOutlook();
+  var row = function(k, v, sign){ return '<div class="row"><div class="grow s">' + k + '</div><div class="amt num">' + (sign || '') + yen(v) + '</div></div>'; };
+  var h = o.hasBal
+    ? '<div class="big num" style="color:' + (o.eom < 0 ? 'var(--rakuten)' : 'var(--ink)') + '">' + yen(o.eom) + '</div>' +
+      '<div class="s" style="margin:4px 0 12px">' + ymdLabel(o.monthEnd) + ' の残高（予想）' + (o.approx ? '・概算' : '') + '</div>'
+    : '<div class="msg ng" style="margin-bottom:12px">口座の残高を入れると、月末の残高（予想）が出ます。</div>';
+  h += (o.hasBal ? row('今の残高', o.balance) : '') +
+    row('月末までに入る：バイト代', o.inPay, '＋') +
+    row('月末までに入る：毎月の収入', o.inOther, '＋') +
+    row('月末までに出る：カードの引き落とし', o.outCard, '−') +
+    row('月末までに出る：固定費・サブスク', o.outFixed, '−');
+  if(o.nextIncome.n) h += '<div class="row"><div class="grow s">来月の収入（' + ymdLabel(o.nextIncome.payDay) + '払い・今月16日からのシフト' + o.nextIncome.n + '回）<br>月末の残高には入れていません</div><div class="amt num">' + yen(o.nextIncome.amount) + '</div></div>';
+  if(o.nextCard && o.hasBal){
+    var ok = o.nextCard.after >= 0;
+    h += '<div class="bn ' + (ok ? 'green' : 'red') + '" style="margin-top:12px"><span class="ic">' + (ok ? '✓' : '!') + '</span><span class="grow">' +
+      '次の引き落とし：' + ymdLabel(o.nextCard.date) + ' ' + esc(o.nextCard.label) + ' ' + yen(-o.nextCard.amount) + ' → 残高 ' + yen(o.nextCard.after) +
+      '（<b>' + (ok ? '足ります' : yen(-o.nextCard.after) + '足りません') + '</b>）</span></div>';
+  }
+  if(o.big.length){
+    h += '<div style="margin-top:12px">' + o.big.map(function(e){
+      return '<div class="row"><div class="tick" style="background:' + (e.amount > 0 ? 'var(--ok)' : 'var(--rakuten)') + '"></div>' +
+        '<div class="grow"><div class="t">' + esc(e.label) + '</div><div class="s">' + ymdLabel(e.date) + (o.hasBal ? '・そのあとの残高 ' + yen(e.after) : '') + '</div></div>' +
+        '<div class="amt num" style="color:' + (e.amount > 0 ? 'var(--ok)' : 'var(--rakuten)') + '">' + (e.amount > 0 ? '＋' : '−') + yen(Math.abs(e.amount)) + '</div></div>';
+    }).join('') + '</div>';
+  }
+  if(o.notes.length) h += '<p class="note">※ 概算です。' + o.notes.map(esc).join('<br>') + '</p>';
+  return section('月末までの見通し', o.approx ? '概算' : null, h);
 }
 
 /* ============================== お金：予定 ============================== */

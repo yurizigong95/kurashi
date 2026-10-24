@@ -269,11 +269,36 @@ function lfShortcutHelp(){
     '<p class="note">睡眠は「分」でも「時間（7.5 など）」でも大丈夫です。睡眠がうまく取れないときは、<b>&amp;sleep=睡眠</b> を消して歩数だけ送ってもかまいません。' +
     'iOSの版によって、アクションの名前が少しちがうことがあります。届いた記録は、次にアプリを開いたときに入ります（睡眠は起きた日の記録）。</p>';
 }
+/* 今月のまとめ（記録がある項目だけ。0では埋めない）
+   体重は、記録に weight（kg）があるときだけ。目標は設定に weightGoal があるときだけ出す */
+function lfMonthHtml(){
+  var td = today(), d = thisYm() + '-01', sl = [], st = [], wt = [];
+  while(d <= td){
+    var r = lfLog(d), s = lfSleepOf(r), p = lfStepsOf(r), w = r ? Number(r.weight) : 0;
+    if(s) sl.push(s);
+    if(p) st.push(p);
+    if(w > 0 && w < 500) wt.push({ date:d, kg:w });
+    d = shiftDate(d, 1);
+  }
+  var sum = function(a){ return sumBy(a, function(x){ return x; }); };
+  var cells = [];
+  if(sl.length) cells.push(lfStat('睡眠の平均', lfHm(Math.round(sum(sl) / sl.length)), sl.length + '日の記録から'));
+  if(st.length) cells.push(lfStat('歩数の合計', lfComma(sum(st)) + '歩', '1日平均 ' + lfComma(Math.round(sum(st) / st.length)) + '歩（' + st.length + '日）'));
+  if(wt.length){
+    var first = wt[0], last = wt[wt.length - 1], diff = Math.round((last.kg - first.kg) * 10) / 10;
+    var goal = Number(lfPrefs().weightGoal) || 0;
+    cells.push(lfStat('体重', last.kg + 'kg', (wt.length > 1 ? lfMd(first.date) + ' ' + first.kg + 'kg から ' + (diff > 0 ? '+' : diff < 0 ? '−' : '±') + Math.abs(diff) + 'kg' : lfMd(last.date) + 'の記録') +
+      (goal > 0 ? '・目標 ' + goal + 'kg' + (last.kg > goal ? '（あと ' + Math.round((last.kg - goal) * 10) / 10 + 'kg）' : '（達成）') : '')));
+  }
+  if(!cells.length) return '';
+  return '<div class="lf-ch"><div class="lf-cht">今月のまとめ<span class="s2">' + (+td.slice(5, 7)) + '月</span></div><div class="grid2 lf-stats">' + cells.join('') + '</div></div>';
+}
 function lfHealthHtml(){
   var p = lfPrefs(), st = lfHealthStats(14), td = today(), r = lfLog(td), s0 = lfSleepOf(r);
   var h = '<div class="grid2 lf-stats">' +
     lfStat('睡眠（14日の平均）', st.sleepN ? lfHm(st.sleepAvg) : '—', '目標 ' + lfHm(p.sleepGoal)) +
     lfStat('歩数（14日の平均）', st.stepsN ? lfComma(st.stepsAvg) + '歩' : '—', '目標 ' + lfComma(p.stepGoal) + '歩') + '</div>';
+  h += lfMonthHtml();
   if(st.short >= 3) h += lfBn('amber', '😪', '<b>寝不足の日が' + st.short + '日続いています。</b>今日は早めにおふとんへ。昼に15〜20分の仮眠も効きます。');
   h += '<div class="pillrow lf-row">' + lfSleepBtns() + '<button class="mini" data-act="lf-log-form">✎ 手で入れる</button></div>';
   if(lfUi.logForm) h += lfLogFormHtml();

@@ -11,7 +11,7 @@ var MONEY_TABS = [['home','ホーム'],['schedule','予定'],['chart','グラフ
 var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
 var TODAY_TABS = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
 var CAL_TABS = [['cal','カレンダー'],['add','追加'],['imp','重要'],['health','健康']];
-var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', anki:'暗記', study:'勉強', notes:'メモ', news:'お知らせ', set:'設定', c9search:'検索' };
+var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', anki:'暗記', study:'勉強', exam:'試験', notes:'メモ', news:'お知らせ', set:'設定', c9search:'検索' };
 /* タブに出していない画面を、検索などから一時的に開いているとき（その画面の id） */
 var c9TempApp = '';
 var FOOTS = {
@@ -26,6 +26,7 @@ var FOOTS = {
   pet:'課題を終えたり、暗記カードをやったり、きょうのミッションをこなしたりすると、コインがたまります。',
   anki:'「おぼえた」ほど、次に出るまでの日があきます。毎日少しずつが近道です。',
   study:'AIの答えや基準値は、教科書・先生の資料で確かめてから使ってください。',
+  exam:'小テスト・大テスト・考査の予定をまとめています。勉強時間は、課題の「かかった時間」を科目ごとに足したものです。',
   notes:'ピン留めしたメモは今日ページにも出ます。',
   news:'今日ページに出たお知らせの履歴です。',
   set:'合言葉は他人に教えないでください。Firestoreのセキュリティルールを必ず設定してください。',
@@ -91,6 +92,7 @@ function renderInner(){
   else if(appId==='news'){ html += viewNews(); }
   else if(appId==='pet'){ html += viewPet(); }
   else if(appId==='anki'){ html += viewAnki(); }
+  else if(appId==='exam'){ html += viewExam(); }
   else if(typeof KM !== 'undefined' && KM.views[appId]){
     try{ html += KM.views[appId](); }
     catch(e){ kmErr('画面 ' + appId, e); html += '<div class="msg ng">この画面を表示できませんでした：' + esc(e.message || e) + '</div>'; }
@@ -196,6 +198,8 @@ function appClick(e, t, act){
     }
     render(); window.scrollTo(0,0); return;
   }
+  if(act==='go-exam'){ examGo(t.dataset.app, t.dataset.tool); return; }        /* 試験タブ・今日の帯から、勉強の画面へ */
+  if(act==='go-weekahead'){ openWeekAhead(); return; }                          /* 今週タブの「来週のまとめ」 */
   if(act.indexOf('cal-')===0 || act.indexOf('ev-')===0 || act==='add-health' || act==='del-health'){
     if(calAction(act, t)) return;
   }

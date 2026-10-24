@@ -268,6 +268,7 @@ function viewDay(ymd, pageKey){
 
   /* 欠席があと1回で上限の授業（いちばん上に出す） */
   html += absenceAlert(ymd);
+  if(isToday) html += examStrip();          /* 次の試験が7日以内なら、小さな帯（並べ替えの外・いつも同じ場所） */
   if(isToday && typeof placeCard === 'function') html += placeCard();
 
   var parts = {};
@@ -344,7 +345,8 @@ function viewWeekTab(){
   var all = []; for(var i=0;i<7;i++){ all = all.concat(focusItemsFor(toYmd(new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()+i)))); }
   var n = function(src){ return all.filter(function(x){ return x.src===src; }).length; };
   var label = weekOff===0?'今週':weekOff===1?'来週':weekOff===-1?'先週':(weekOff>0?weekOff+'週あと':(-weekOff)+'週前');
-  var html = '<div class="head"><h2>'+label+'</h2><span>'+(mon.getMonth()+1)+'/'+mon.getDate()+'〜'+(sun.getMonth()+1)+'/'+sun.getDate()+'</span></div>';
+  var html = '<button class="btn ghost" style="margin-bottom:12px" data-act="go-weekahead">📋 来週のまとめ</button>';
+  html += '<div class="head"><h2>'+label+'</h2><span>'+(mon.getMonth()+1)+'/'+mon.getDate()+'〜'+(sun.getMonth()+1)+'/'+sun.getDate()+'</span></div>';
   html += '<div class="pillrow"><button class="mini" data-act="wk-off" data-v="-1">‹ 前週</button>'+
     '<button data-act="wk-set" data-v="0" class="'+(weekOff===0?'on':'')+'">今週</button>'+
     '<button data-act="wk-set" data-v="1" class="'+(weekOff===1?'on':'')+'">来週</button>'+
@@ -390,4 +392,151 @@ function next10Card(){
         '<span class="s">'+ymdLabel(x.date)+(x.time?' '+x.time:'')+(x.sub?'・'+esc(x.sub):'')+'</span></span>'+
         '<span class="due '+dueClass(n)+'">'+dueText(n)+'</span></div>';
     }).join('') : '<div class="empty">10日以内の課題やテストはありません。</div>');
+}
+
+/* ============================== 試験タブ ============================== */
+/* 試験系の予定（小テスト・大テスト・考査）。S.exams も、種類を試験系にした予定も、normItems の src で見分ける */
+var EXAM_SRCS = ['quiz','exam','kousa'];
+function examUpcoming(from){
+  from = from || today();
+  return normItems().filter(function(x){ return EXAM_SRCS.indexOf(x.src) >= 0 && isYmd(x.date) && x.date >= from; })
+    .sort(function(a,b){ return a.date.localeCompare(b.date) || String(a.time||'').localeCompare(String(b.time||'')); });
+}
+function examLeftText(n){ return n===0 ? '今日' : n===1 ? '明日' : 'あと'+n+'日'; }
+function examHm(min){
+  min = Math.round(toNum(min));
+  if(min <= 0) return '0分';
+  var h = Math.floor(min/60), m = min%60;
+  return (h ? h+'時間' : '') + (m || !h ? m+'分' : '');
+}
+/* その試験の進みぐあい（どれも今あるデータを数えるだけ） */
+function examProgress(x){
+  var pre = 'examstudy_' + x.id + '_', subj = x.subj || '';
+  var plan = S.tasks.filter(function(t){ return String(t.id||'').indexOf(pre) === 0; });
+  var min = 0;
+  if(subj) S.tasks.forEach(function(t){ if(sameSubject(t.subject, subj)) min += taskMinutes(t.id); });
+  var cards = (subj && typeof ankiCards === 'function') ? ankiCards().filter(function(c){ return sameSubject(c.deck, subj); }) : [];
+  return { planAll:plan.length, planDone:plan.filter(function(t){ return t.done; }).length, min:min,
+    cardsAll:cards.length, cardsLeft:cards.filter(function(c){ return ankiIsNew(c) || ankiIsDue(c); }).length };
+}
+function examName(x){
+  var raw = (S.exams||[]).filter(function(e){ return e.id === x.id; })[0];
+  return x.title + (raw && raw.title && raw.title !== x.title ? '「'+raw.title+'」' : '');
+}
+/* 勉強の画面へ（タブに出していない画面でも、一時的に開く） */
+function examGo(app, tool){
+  if(!app) return;
+  var setup = function(){ if(app === 'study') studyTool = tool || ''; };
+  if(typeof c9Go === 'function'){ c9Go(app, setup); return; }
+  appId = app; setup(); render(); window.scrollTo(0,0);
+}
+function examRow(x){
+  var n = daysFromToday(x.date), p = examProgress(x);
+  var bits = [];
+  if(p.planAll) bits.push('試験勉強の予定 '+p.planDone+'/'+p.planAll+' 済み');
+  if(x.subj) bits.push('勉強時間 '+examHm(p.min));
+  if(p.cardsAll) bits.push('暗記カード 残り'+p.cardsLeft+'枚（ぜんぶで'+p.cardsAll+'枚）');
+  var isCourse = x.subj && termCourses().some(function(c){ return c.name === x.subj; });
+  return '<div class="exrow" style="padding:4px 0 10px;border-bottom:1px solid var(--rule)">'+
+    '<div class="evrow" style="border-bottom:0" data-act="ev-open" data-src="'+x.src+'" data-id="'+esc(x.id)+'" role="button">'+
+      '<span class="cbar" style="background:'+itemColor(x)+'"></span>'+
+      '<span class="grow"><span class="t">'+esc(examName(x))+'</span>'+
+      '<span class="s">'+esc(kindOf(x.src).name)+'・'+ymdLabel(x.date)+(x.time?' '+esc(x.time):'')+'</span></span>'+
+      '<span class="due '+dueClass(n)+'">'+examLeftText(n)+'</span></div>'+
+    (bits.length ? '<div class="s2" style="margin:0 0 6px 14px">'+esc(bits.join('・'))+'</div>' : '')+
+    '<div class="pillrow" style="margin-left:14px">'+
+      '<button class="mini" data-act="go-exam" data-app="study" data-tool="ak2-plan">📅 勉強する</button>'+
+      (p.cardsAll ? '<button class="mini" data-act="go-exam" data-app="anki">🃏 暗記カード</button>' : '')+
+      (isCourse ? '<button class="mini" data-act="course-open" data-name="'+esc(x.subj)+'">授業の画面</button>' : '')+
+    '</div></div>';
+}
+function viewExam(){
+  var list = examUpcoming();
+  if(!list.length){
+    return section('試験', null, '<div class="empty">'+ART.empty+'<div style="margin-top:8px">試験の予定はありません。</div></div>'+
+      '<p class="note">予定の種類を「小テスト」「大テスト」「考査」にして登録すると、ここにまとまります。</p>');
+  }
+  var nx = list[0], n = daysFromToday(nx.date);
+  var html = section('次の試験まで', ymdLabel(nx.date)+(nx.time?' '+nx.time:''),
+    '<div class="big num" style="color:'+(n<=3?'var(--rakuten)':'var(--ink)')+'">'+(n===0 ? '今日' : 'あと'+n+'日')+'</div>'+
+    '<div class="s" style="margin-top:4px">'+esc(examName(nx))+'（'+esc(kindOf(nx.src).name)+'）</div>');
+  html += section('これからの試験', list.length+'件', list.map(examRow).join(''));
+  return html;
+}
+/* 今日タブの帯：次の試験が7日以内のときだけ */
+function examStrip(){
+  var nx = examUpcoming()[0];
+  if(!nx) return '';
+  var n = daysFromToday(nx.date);
+  if(n == null || n > 7) return '';
+  return '<div class="bn '+(n<=2?'red':'amber')+'" data-act="go-exam" data-app="exam" role="button" style="cursor:pointer">'+
+    '<span class="ic">📝</span><span class="grow">'+
+    (n===0 ? '今日は<b>'+esc(nx.title)+'</b>の試験です' : '<b>'+esc(nx.title)+'</b>の試験まで あと'+n+'日')+'</span>'+
+    '<span class="s2">›</span></div>';
+}
+
+/* ============================== 来週のまとめ（今週タブから） ============================== */
+/* 端末のデータだけで作る（Discordへ送る週まとめは、橋わたし側のまま） */
+function weekAheadData(){
+  var td = today(), a = td.split('-'), d0 = new Date(+a[0], +a[1]-1, +a[2]);
+  var mon = shiftDate(td, 7 - ((d0.getDay()+6)%7)), days = [];
+  for(var i=0;i<7;i++) days.push(shiftDate(mon, i));
+  var sun = days[6];
+  var inWeek = function(ymd){ return isYmd(ymd) && ymd >= mon && ymd <= sun; };
+  var clsDays = days.filter(function(ymd){ return classesForDate(ymd).some(function(c){ return !c.off; }); });
+  var items = normItems().filter(function(x){
+    return inWeek(x.date) && (EXAM_SRCS.indexOf(x.src) >= 0 || (x.src === 'task' && !x.done));
+  }).sort(function(p,q){ return p.date.localeCompare(q.date) || String(p.time||'').localeCompare(String(q.time||'')); });
+  var shifts = S.shifts.filter(function(s){ return inWeek(s.date); });
+  var risks = absenceRisks().map(function(r){
+    var on = days.filter(function(ymd){ return classesForDate(ymd).some(function(c){ return c.name === r.name && !c.off; }); });
+    return on.length ? { r:r, on:on } : null;
+  }).filter(Boolean);
+  var wx = [], dl = weather && weather.sanda && weather.sanda.daily;
+  if(dl && Array.isArray(dl.time)){
+    dl.time.forEach(function(t, j){
+      if(!inWeek(t)) return;
+      wx.push({ date:t, code:(dl.weather_code||[])[j], max:(dl.temperature_2m_max||[])[j], min:(dl.temperature_2m_min||[])[j], pop:(dl.precipitation_probability_max||[])[j] });
+    });
+  }
+  return { mon:mon, sun:sun, clsDays:clsDays, items:items, shifts:shifts, pay:sumBy(shifts, shiftPay), risks:risks, wx:wx };
+}
+function weekAheadHtml(w){
+  var md = function(ymd){ var b = ymd.split('-'); return (+b[1])+'/'+(+b[2])+'（'+WDAY[new Date(+b[0], +b[1]-1, +b[2]).getDay()]+'）'; };
+  var html = section('授業', w.clsDays.length ? w.clsDays.length+'日' : 'なし',
+    w.clsDays.length ? '<div class="s">'+w.clsDays.map(md).join('・')+'</div>' : '<div class="empty" style="padding:6px 0">来週は授業がありません。</div>');
+  html += section('試験・締切', w.items.length ? w.items.length+'件' : null,
+    w.items.length ? w.items.map(function(x){
+      return '<div class="evrow"><span class="cbar" style="background:'+itemColor(x)+'"></span>'+
+        '<span class="grow"><span class="t">'+esc(x.src === 'task' ? x.title : examName(x))+'</span>'+
+        '<span class="s">'+esc(x.src === 'task' ? '締切' : kindOf(x.src).name)+'・'+md(x.date)+(x.time?' '+esc(x.time):'')+(x.src === 'task' && x.sub ? '・'+esc(x.sub) : '')+'</span></span></div>';
+    }).join('') : '<div class="empty" style="padding:6px 0">試験や締切はありません。</div>');
+  html += section('バイト', w.shifts.length ? w.shifts.length+'回' : 'なし',
+    w.shifts.length ? '<div class="row"><div class="grow s">見込みのバイト代（交通費こみ）</div><div class="amt num">'+yen(w.pay)+'</div></div>'+
+      '<div class="s">'+w.shifts.slice().sort(function(p,q){ return String(p.date).localeCompare(String(q.date)); })
+        .map(function(s){ return md(s.date)+' '+esc(s.start||'')+'〜'+esc(s.end||''); }).join('<br>')+'</div>'
+      : '<div class="empty" style="padding:6px 0">来週のシフトはありません。</div>');
+  if(w.risks.length){
+    html += section('欠席に注意', w.risks.length+'科目', w.risks.map(function(x){
+      return '<div class="bn '+(x.r.rest <= 0 ? 'red' : 'amber')+'"><span class="ic">!</span><span class="grow"><b>'+esc(shortName(x.r.name))+'</b>　'+
+        (x.r.rest <= 0 ? '上限に達しています' : 'あと1回で上限')+'（欠席'+x.r.at.ab+'／'+x.r.at.limit+'回）<br>来週は '+x.on.map(md).join('・')+' にあります</span></div>';
+    }).join(''));
+  }
+  if(w.wx.length){
+    html += section('天気', '三田', w.wx.map(function(x){
+      return '<div class="row"><div class="grow s">'+md(x.date)+'</div><div class="t">'+esc(typeof weatherWord === 'function' ? weatherWord(x.code) : '')+
+        (x.max != null ? '　'+Math.round(x.max)+'℃／'+Math.round(x.min)+'℃' : '')+(x.pop != null ? '　降水'+x.pop+'%' : '')+'</div></div>';
+    }).join('') + '<p class="note">予報が出ている日だけです。</p>');
+  }
+  return html;
+}
+function openWeekAhead(){
+  var w = weekAheadData();
+  var sh = document.getElementById('detail');
+  if(!sh) return;
+  var md = function(ymd){ var b = ymd.split('-'); return (+b[1])+'/'+(+b[2]); };
+  sh.querySelector('.sheet-hd h3').textContent = '来週のまとめ（'+md(w.mon)+'〜'+md(w.sun)+'）';
+  sh.querySelector('.sheet-bd').innerHTML = weekAheadHtml(w);
+  document.getElementById('veil').classList.add('on');
+  sh.classList.add('on');
 }

@@ -797,6 +797,7 @@ function openDetail(src, id){
       '<button class="btn ghost" style="margin-top:8px" data-act="share-item" data-src="'+src+'" data-id="'+id+'">共有する</button>'+
     '</div>';
   var sh = document.getElementById('detail');
+  sh.querySelector('.sheet-hd h3').textContent = '予定の詳細';     /* 「来週のまとめ」でも同じシートを使うので、見出しをもどす */
   sh.querySelector('.sheet-bd').innerHTML = body;
   document.getElementById('veil').classList.add('on');
   sh.classList.add('on');
