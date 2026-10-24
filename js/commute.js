@@ -44,6 +44,26 @@ function departureFor(period){
   return { leave: hhmmOf(start - total), start: hhmmOf(start), total: total,
            prevDay: (start - total) < 0 };   /* 通学が長すぎて前日にまわる場合 */
 }
+/* その日に家を出る時刻（朝のまとめ・目覚まし・通知で同じものを使う）
+   通学タブと同じく「鳴尾に開始30分前（雨なら45分前）」に着く便のおすすめから。便が無いときは概算（departureFor） */
+function departurePlanFor(ymd){
+  var cls = schoolClassesForDate(ymd);
+  if(!cls.length) return null;
+  var first = cls[0];
+  var startMin = minutesOf(S.commute.periods[first.period-1]);
+  if(startMin == null) return null;
+  var rain = (ymd === today()) ? umbrellaInfo() : (ymd === shiftDate(today(),1) ? tomorrowRain() : null);
+  var early = !!(rain && rain.need);
+  var best = goPlans(startMin - 30 - (early ? 15 : 0), startMin)[0];
+  if(best && best.bus){
+    return { leaveMin: best.bus.d - toNum(S.commute.walk), exact:true, period:first.period, startMin:startMin,
+             text: 'バス ' + best.bus.dep + '発 → 電車 三ノ宮 ' + best.train.dep + '発 → 鳴尾 ' + best.train.arr + '着' + (early ? '（雨なので15分早め）' : '') };
+  }
+  var dep = departureFor(first.period);
+  if(!dep) return null;
+  return { leaveMin: startMin - dep.total, exact:false, period:first.period, startMin:startMin,
+           text: '概算（家から大学まで' + dep.total + '分）' };
+}
 
 /* ============================== 天気 ============================== */
 var SANDA = { lat:34.8883, lon:135.2264, name:'三田' };
