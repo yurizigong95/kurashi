@@ -1,11 +1,12 @@
-// ぜんぶ入り（all/）：3つのアプリがちゃんと出るかを調べる（GitHub Actions で動く）
+// ぜんぶ入り（all/）：4つのアプリがちゃんと出るかを調べる（GitHub Actions で動く）
 import { chromium } from 'playwright';
 
 const base = process.env.TEST_URL || 'http://127.0.0.1:8080/all/index.html';
 const WANT = [
   { tab: 'くらし',   title: 'くらしの手帳' },
   { tab: 'もんだい', title: 'もんだいメーカー' },
-  { tab: 'ゲーム',   title: 'ゲーム道場' }
+  { tab: 'ゲーム',   title: 'ゲーム道場' },
+  { tab: 'かんご',   title: 'かんご実習メーカー' }
 ];
 
 const browser = await chromium.launch();
@@ -41,19 +42,22 @@ for (let i = 0; i < WANT.length; i++) {
 await page.goto(base, { waitUntil: 'load' });
 await page.waitForTimeout(1500);
 const sel = await page.$$eval('#tabs button', (bs) => (bs.find((b) => b.getAttribute('aria-selected') === 'true') || {}).textContent || '');
-say((sel || '').trim() === 'ゲーム', `開き直したときに覚えている：${sel}`);
+say((sel || '').trim() === WANT[WANT.length - 1].tab, `開き直したときに覚えている：${sel}`);
 
 // タブの並び・出す／出さない（⇅）
 await page.click('#edit');
 say(await page.isVisible('#pane'), 'タブの並び・表示を開ける');
 await page.click('#pane button[data-z="down"][data-id="kurashi"]');
 let names = await page.$$eval('#tabs button', (bs) => bs.map((b) => b.textContent.trim()));
-say(names.join(',') === 'もんだい,くらし,ゲーム', `並べかえ：${names.join(' / ')}`);
+say(names.join(',') === 'もんだい,くらし,ゲーム,かんご', `並べかえ：${names.join(' / ')}`);
+await page.click('#pane button[data-z="tg"][data-id="care"]');
+names = await page.$$eval('#tabs button', (bs) => bs.map((b) => b.textContent.trim()));
+say(names.join(',') === 'もんだい,くらし,ゲーム', `かんごを出さない：${names.join(' / ')}`);
+const selNow = await page.$$eval('#tabs button', (bs) => (bs.find((b) => b.getAttribute('aria-selected') === 'true') || {}).textContent || '');
+say(selNow.trim() === 'もんだい', `見ていたアプリをかくしたら、出ているうちの最初へ：${selNow}`);
 await page.click('#pane button[data-z="tg"][data-id="game"]');
 names = await page.$$eval('#tabs button', (bs) => bs.map((b) => b.textContent.trim()));
 say(names.join(',') === 'もんだい,くらし', `ゲームを出さない：${names.join(' / ')}`);
-const selNow = await page.$$eval('#tabs button', (bs) => (bs.find((b) => b.getAttribute('aria-selected') === 'true') || {}).textContent || '');
-say(selNow.trim() === 'もんだい', `見ていたアプリをかくしたら、出ているうちの最初へ：${selNow}`);
 await page.click('#pane button[data-z="tg"][data-id="kurashi"]');
 const last = await page.$eval('#pane button[data-z="tg"][data-id="study"]', (b) => b.disabled);
 say(last, '最後の1つはかくせない');
