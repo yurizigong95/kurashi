@@ -135,6 +135,20 @@ function calItemsForGoogle(){
       add('pay-'+pair[0]+'-'+m, 'pay', ACCOUNTS[pair[0]].bank+' 引落 '+yen(amt), m+'-'+pad(toNum(pair[1])), '', 0, '', '前日までに入金');
     });
   });
+  /* 授業（休講・隔週・補講・休みは classesForDate のとおり）。数が多くなりすぎないよう、先は8週間ぶんまで。
+     同じ日・同じ時刻・同じ名前の予定がもうあれば足さない */
+  var have = {};
+  items.forEach(function(it){ have[it.date+'|'+it.time+'|'+it.title] = 1; });
+  for(var cd = from, clTo = shiftDate(today(), 56); cd <= clTo; cd = shiftDate(cd, 1)){
+    classesForDate(cd).forEach(function(c){
+      if(c.off) return;
+      var st = S.commute.periods[c.period-1], en = S.commute.ends[c.period-1];
+      if(minutesOf(st) == null || have[cd+'|'+hhmmOf(minutesOf(st))+'|'+String(c.name).slice(0, 120)]) return;
+      var mins = (minutesOf(en) != null && minutesOf(en) > minutesOf(st)) ? minutesOf(en) - minutesOf(st) : 90;
+      add('cl-'+cd+'-'+c.period+'-'+hash53(c.name).slice(0, 6), 'class', c.name, cd, st, mins, '',
+          c.period+'限 '+st+(en ? '〜'+en : '')+(c.room ? '\n教室：'+c.room : '')+(c.web || c.online ? '\n遠隔（家で受講）' : '')+(c.makeup ? '\n補講' : ''));
+    });
+  }
   return items;
 }
 /* 予定が変わったら、少し待ってからカレンダーへ（何度も送らないように） */
