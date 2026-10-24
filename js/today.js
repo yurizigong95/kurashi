@@ -259,6 +259,7 @@ function absenceAlert(ymd){
 function viewDay(ymd, pageKey){
   var a = ymd.split('-'), d = new Date(+a[0], +a[1]-1, +a[2]);
   var dch = WDAY[d.getDay()], isToday = (ymd === today());
+  if(isToday && typeof ensureExamStudyTasks === 'function') ensureExamStudyTasks();
   var hh = new Date().getHours();
   var greet = isToday ? (hh < 5 ? 'おそくまでおつかれさま' : hh < 11 ? 'おはようございます' : hh < 18 ? 'こんにちは' : 'おつかれさま') : '明日の予定';
   var chHero = (isToday && typeof charaHero === 'function') ? charaHero() : '';
