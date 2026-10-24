@@ -269,6 +269,7 @@ function viewDay(ymd, pageKey){
   /* 欠席があと1回で上限の授業（いちばん上に出す） */
   html += absenceAlert(ymd);
   if(isToday) html += examStrip();          /* 次の試験が7日以内なら、小さな帯（並べ替えの外・いつも同じ場所） */
+  if(isToday && typeof jhStrip === 'function') html += jhStrip();   /* 実習期間の日は、実習の帯（js/m-jisshu.js） */
   if(isToday && typeof placeCard === 'function') html += placeCard();
 
   var parts = {};
