@@ -1,6 +1,6 @@
 {
-  "build": "2026-10-24a",
-  "made": "2026-10-24 14:53",
+  "build": "2026-10-24c",
+  "made": "2026-10-24 17:38",
   "files": [
     {
       "path": "css/app.css",
@@ -47,12 +47,12 @@
       "sha256": "a774576db0daeea9"
     },
     {
-      "path": "gas/appsscript.json",
-      "sha256": "d7f2fb582b3baefb"
-    },
-    {
       "path": "gas/Code.gs",
       "sha256": "b3be18767aa809d0"
+    },
+    {
+      "path": "gas/appsscript.json",
+      "sha256": "d7f2fb582b3baefb"
     },
     {
       "path": "icon-180.png"
@@ -68,6 +68,10 @@
       "sha256": "18fc43c88dcebdb8"
     },
     {
+      "path": "js/ai-plus.js",
+      "sha256": "88666c3aee3069c6"
+    },
+    {
       "path": "js/ai.js",
       "sha256": "f7b9433cc1be5822"
     },
@@ -76,20 +80,12 @@
       "sha256": "df9fc78b9e2ac5ab"
     },
     {
-      "path": "js/ai-plus.js",
-      "sha256": "88666c3aee3069c6"
-    },
-    {
       "path": "js/anki.js",
-      "sha256": "a192dbd4eff2aac1"
+      "sha256": "61bdb57d3bbd887b"
     },
     {
       "path": "js/calendar.js",
       "sha256": "258361c8d74b9e67"
-    },
-    {
-      "path": "js/chara.js",
-      "sha256": "bc687e6448faaac6"
     },
     {
       "path": "js/chara-art.js",
@@ -108,6 +104,10 @@
       "sha256": "621718f62a73c020"
     },
     {
+      "path": "js/chara.js",
+      "sha256": "bc687e6448faaac6"
+    },
+    {
       "path": "js/chat.js",
       "sha256": "7253cce4a3d1ecc3"
     },
@@ -117,11 +117,11 @@
     },
     {
       "path": "js/commute.js",
-      "sha256": "a0e23cd62bc690f1"
+      "sha256": "07810f55e806ef0f"
     },
     {
       "path": "js/core.js",
-      "sha256": "de57ed86232e444c"
+      "sha256": "137edd9fbf5cdb69"
     },
     {
       "path": "js/data.js",
@@ -137,7 +137,7 @@
     },
     {
       "path": "js/google.js",
-      "sha256": "09e67bf255e4fe70"
+      "sha256": "cc52668c5d47f615"
     },
     {
       "path": "js/hooks.js",
@@ -149,11 +149,7 @@
     },
     {
       "path": "js/links.js",
-      "sha256": "12711a4b8e4daf6b"
-    },
-    {
-      "path": "js/main.js",
-      "sha256": "afece8acd6dbf3ef"
+      "sha256": "93737dd85072ffba"
     },
     {
       "path": "js/m-anki2.js",
@@ -184,10 +180,6 @@
       "sha256": "b2c4722f4707d76f"
     },
     {
-      "path": "js/money.js",
-      "sha256": "989ca5663b732418"
-    },
-    {
       "path": "js/m-petplus.js",
       "sha256": "5f508e5d98f0ef4d"
     },
@@ -196,8 +188,16 @@
       "sha256": "d1524770956fefc9"
     },
     {
+      "path": "js/main.js",
+      "sha256": "afece8acd6dbf3ef"
+    },
+    {
+      "path": "js/money.js",
+      "sha256": "d7870a5b4836f899"
+    },
+    {
       "path": "js/notify.js",
-      "sha256": "ad99181eb9a231bc"
+      "sha256": "5303aa09ee6acb75"
     },
     {
       "path": "js/ops.js",
@@ -209,11 +209,11 @@
     },
     {
       "path": "js/review.js",
-      "sha256": "c92389bcc3365197"
+      "sha256": "9dd4754a66e94970"
     },
     {
       "path": "js/risyu.js",
-      "sha256": "3740ef8cbb93e2f9"
+      "sha256": "4a745db50ff844b9"
     },
     {
       "path": "js/settings.js",
@@ -229,15 +229,15 @@
     },
     {
       "path": "js/today.js",
-      "sha256": "9cdd2d6be5f17226"
+      "sha256": "1384a11b99c11940"
     },
     {
       "path": "js/todo.js",
-      "sha256": "79c443cae967b4db"
+      "sha256": "1bc7d0590c4eadc5"
     },
     {
       "path": "js/whatsnew.js",
-      "sha256": "1202f235e0344f31"
+      "sha256": "d0dca03d9b607a28"
     },
     {
       "path": "js/wx-plus.js",
@@ -253,7 +253,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "d1aa16300d1382c0"
+      "sha256": "55cfc91efda794ad"
     }
   ]
 }
