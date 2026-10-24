@@ -32,7 +32,29 @@ function taskRow(t){
     }).join('')+'</div>' : '')+
     '</div>';
 }
+/* テスト範囲の計画（js/m-anki2.js）の「今日やる分」を、ToDoに1件ずつ入れる
+   idは決まった形（examstudy_テストid_日付）なので、2台で作っても1件になる。完了・削除したものは作り直さない */
+function ensureExamStudyTasks(){
+  if(typeof ak2Upcoming !== 'function') return;
+  var td = today(), dead = {}, made = 0;
+  (S.deleted || []).forEach(function(id){ dead[id] = 1; });
+  Object.keys(S.delAt || {}).forEach(function(id){ dead[id] = 1; });
+  var ups = [];
+  try{ ups = ak2Upcoming(td); }catch(e){ return; }
+  ups.forEach(function(x){
+    if(!x.calc || x.left < 1) return;
+    var id = 'examstudy_' + x.ex.id + '_' + td;
+    if(dead[id] || S.tasks.some(function(t){ return t.id === id; })) return;
+    var parts = x.calc.items.filter(function(i){ return i.q > 0; }).map(function(i){ return i.name + ' ' + i.q + (i.deck ? '枚' : (i.unit || '')); });
+    if(!parts.length) return;
+    S.tasks.push({ id:id, plain:1, pri:1, title:(x.ex.subject ? shortName(x.ex.subject) + ' ' : '') + 'テスト勉強：' + parts.join('・'),
+      subject:x.ex.subject || '', due:td, time:'', done:0, memo:'テスト範囲の計画から（' + ymdLabel(x.ex.date) + 'のテスト）', subs:[], photos:[], mt:Date.now() });
+    made++;
+  });
+  if(made){ persist(); pushRemote(); }
+}
 function viewTodo(){
+  ensureExamStudyTasks();
   var all = S.tasks.slice()
     .map(function(t){ return Object.assign({}, t, {left: isYmd(t.due) ? daysFromToday(t.due) : null}); })
     .sort(function(a,b){
