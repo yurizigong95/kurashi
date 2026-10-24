@@ -1,0 +1,233 @@
+/* かんご実習メーカー：見た目
+   スマホ（せまい画面）を先に考えて作っています。もとの形は もんだいメーカー（study/css/app.css）。 */
+
+:root{
+  --bg:#F7F3F4; --card:#FFFFFF; --ink:#3A2A30; --sub:#76626A; --line:#E8DDE1;
+  --main:#A8506A; --main-d:#7F3A50; --main-l:#F6E7EC;
+  --acc:#E9A23B; --ok:#3E8E5A; --ng:#C4483C; --amber:#8A6100; --amber-bg:#FFF6E2;
+  --hi:#C4483C; --mid:#D08A1E; --lo:#4E86B8;
+  --r:16px; --shadow:0 2px 10px rgba(58,42,48,.07);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1A1416; --card:#251C1F; --ink:#F0E8EB; --sub:#B8A3AB; --line:#3A2D32;
+    --main:#E08AA2; --main-d:#F2B3C4; --main-l:#3A2830;
+    --acc:#F2B544; --ok:#68C08A; --ng:#F08C80; --amber:#F2C97A; --amber-bg:#2E2617;
+    --hi:#F08C80; --mid:#F2B544; --lo:#8CB8E0;
+    --shadow:0 2px 10px rgba(0,0,0,.3);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+  font-size:16px; line-height:1.6; -webkit-text-size-adjust:100%;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom));
+}
+header{
+  position:sticky; top:0; z-index:20; background:var(--bg);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 8px;
+  border-bottom:1px solid var(--line);
+}
+header .hrow{display:flex; align-items:center; gap:10px}
+header h1{margin:0; font-size:19px; letter-spacing:.02em}
+/* いつも出しておく注意 */
+#fictional{
+  margin-top:6px; padding:6px 10px; border-radius:10px; background:var(--amber-bg); color:var(--amber);
+  font-size:12px; font-weight:700; line-height:1.5;
+}
+
+/* ===== 同期のようす（上の表示・設定） ===== */
+#synctag{margin-left:auto; display:inline-flex; align-items:center; gap:6px; max-width:52%;
+  font-family:inherit; font-size:12px; font-weight:600; line-height:1.2; color:var(--sub); background:var(--card); border:1px solid var(--line);
+  border-radius:999px; padding:5px 10px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+#synctag:empty{display:none}
+#synctag::before, .syst .dot, .syrow .dot{content:""; width:8px; height:8px; border-radius:50%; background:var(--sub); flex:none}
+#synctag.st-ok::before, .syst.st-ok .dot{background:var(--ok)}
+#synctag.st-busy::before, .syst.st-busy .dot{background:var(--acc); animation:stpulse 1s ease-in-out infinite}
+#synctag.st-wait::before, .syst.st-wait .dot{background:var(--acc)}
+#synctag.st-ng{color:var(--ng); border-color:var(--ng)}
+#synctag.st-ng::before, .syst.st-ng .dot{background:var(--ng)}
+#synctag.st-test{color:var(--main)}
+@keyframes stpulse{0%,100%{opacity:1} 50%{opacity:.3}}
+@media (prefers-reduced-motion: reduce){ #synctag.st-busy::before, .syst.st-busy .dot{animation:none} }
+.syst{display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:12px; background:var(--main-l); margin:0 0 8px}
+.syst .dot{margin-top:7px}
+.syst.st-ng{background:var(--amber-bg)}
+.kv{display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px}
+.kv span{color:var(--sub)}
+.kv b{text-align:right; font-weight:600; overflow-wrap:anywhere}
+.sylist{border:1px solid var(--line); border-radius:12px; overflow:hidden}
+.syrow{display:flex; align-items:flex-start; gap:10px; padding:9px 12px; border-top:1px solid var(--line)}
+.syrow:first-child{border-top:0}
+.syrow .dot{margin-top:7px; background:var(--ok)}
+.syrow .dot.me{background:var(--main)}
+.syrow .bd{flex:1; min-width:0}
+.syrow .bd b{font-size:14px}
+.syrow .bd b.bad{color:var(--ng); font-size:12px}
+.syrow .tagme{margin-left:6px; font-size:11px; padding:1px 7px; border-radius:999px; background:var(--main-l); color:var(--main-d)}
+.syrow .ar{width:22px; text-align:center; font-size:14px; line-height:1.6}
+.syrow .ar.in{color:var(--main)}
+.syrow .ar.out{color:var(--ok)}
+.syrow .when{flex:none; white-space:nowrap}
+#sy-sec{scroll-margin-top:110px}
+main{padding:12px 16px 20px; max-width:720px; margin:0 auto}
+
+/* ===== カード ===== */
+.card{
+  background:var(--card); border-radius:var(--r); padding:14px;
+  margin:0 0 12px; box-shadow:var(--shadow); border:1px solid var(--line);
+}
+.card .hd{display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:0 0 10px}
+.card h2{margin:0; font-size:16px}
+.card .rt{font-size:13px; color:var(--sub)}
+.s{font-size:13px; color:var(--sub); line-height:1.6}
+.note{margin:10px 0 0; font-size:12.5px; color:var(--sub); line-height:1.7}
+.empty{padding:22px 10px; text-align:center; color:var(--sub); font-size:14px}
+.warn{
+  background:var(--amber-bg); color:var(--amber); border-radius:12px;
+  padding:10px 12px; font-size:13px; line-height:1.7; margin:10px 0;
+}
+pre{white-space:pre-wrap; word-break:break-word; font-size:12px; background:var(--bg); padding:10px; border-radius:10px; max-height:300px; overflow:auto; margin:0}
+
+/* ===== ボタン ===== */
+.btn{
+  appearance:none; border:1px solid var(--main); background:var(--card); color:var(--main);
+  border-radius:999px; padding:12px 14px; font:inherit; font-size:15px; font-weight:600; width:100%;
+  cursor:pointer; min-height:46px;
+}
+.pair .btn{padding:12px 8px; font-size:14.5px}
+.btn.main{background:var(--main); color:#fff}
+.btn.ghost{border-color:var(--line); color:var(--ink); background:var(--card)}
+.btn:disabled{opacity:.45}
+.btn + .btn{margin-top:8px}
+.pair{display:flex; gap:8px; align-items:stretch}
+.pair > *{flex:1; margin-top:0 !important}
+.topact{margin-bottom:12px}
+button.link{
+  appearance:none; background:none; border:0; color:var(--main); font:inherit;
+  text-decoration:underline; cursor:pointer; padding:4px 0; font-size:13px;
+}
+.minirow{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+.minirow button{
+  appearance:none; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:999px; padding:7px 12px; font:inherit; font-size:13px; cursor:pointer;
+}
+.minirow button.danger{color:var(--ng); border-color:var(--ng)}
+.minirow button:disabled{opacity:.45}
+
+/* ===== チップ ===== */
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0}
+.chips button{
+  appearance:none; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:999px; padding:8px 14px; font:inherit; font-size:13.5px; cursor:pointer;
+}
+.chips button.on{background:var(--main); border-color:var(--main); color:#fff}
+.segrow{display:flex; gap:4px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:4px; margin:0 0 12px}
+.segrow button{
+  appearance:none; border:0; background:none; color:var(--sub); font:inherit; font-size:13.5px;
+  padding:9px 2px; border-radius:9px; flex:1; cursor:pointer; white-space:nowrap;
+}
+.segrow button.on{background:var(--main); color:#fff; font-weight:700}
+
+/* ===== 入力 ===== */
+label.f{display:block; font-size:12.5px; color:var(--sub); margin:12px 0 4px; font-weight:600}
+input,textarea,select{
+  width:100%; font:inherit; font-size:16px; color:var(--ink); background:var(--card);
+  border:1px solid var(--line); border-radius:12px; padding:11px 12px;
+}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--main); outline-offset:1px}
+textarea{resize:vertical; line-height:1.7}
+input.search{margin-bottom:12px}
+
+/* ===== 数字のならび ===== */
+.stats{display:flex; gap:8px; margin:0 0 8px}
+.stat{flex:1; background:var(--bg); border-radius:12px; padding:10px 8px; text-align:center}
+.stat .s{font-size:11.5px}
+.stat .v{font-size:20px; font-weight:700; font-variant-numeric:tabular-nums}
+
+/* ===== 事例ライブラリ ===== */
+.card.case{padding:12px 14px}
+.card.case.cur{border-color:var(--main)}
+.casehd{appearance:none; background:none; border:0; font:inherit; color:var(--ink); text-align:left; width:100%; padding:0; cursor:pointer;
+  display:flex; flex-direction:column; gap:2px}
+.casehd b{font-size:16px}
+.casehd .memo{font-size:12.5px}
+.casehd .prog{display:flex; flex-wrap:wrap; gap:4px; margin-top:6px}
+.casehd .prog i{font-style:normal; font-size:11px; padding:2px 8px; border-radius:999px; background:var(--bg); color:var(--sub); border:1px solid var(--line)}
+.casehd .prog i.on{background:var(--main-l); color:var(--main-d); border-color:transparent; font-weight:700}
+
+/* ===== 看護過程 ===== */
+.casepick{margin:0 0 10px}
+.casepick select{font-weight:700}
+.card.sum{padding:10px 14px}
+.card.sum summary{cursor:pointer; display:flex; flex-direction:column; gap:2px; list-style:none}
+.card.sum summary::-webkit-details-marker{display:none}
+.card.sum summary::after{content:'▼ くわしく'; font-size:11.5px; color:var(--main); margin-top:2px}
+.card.sum details[open] summary::after{content:'▲ とじる'}
+.card.sum .memo{margin-top:8px; font-size:14px; line-height:1.8; background:var(--bg); border-radius:10px; padding:10px}
+.card.blk{padding:12px}
+.blkhd{display:flex; align-items:center; gap:6px; margin:0 0 8px}
+.blkhd input{flex:1; min-width:0; font-weight:700; padding:8px 10px}
+.blkhd .no{font-weight:800; color:var(--main)}
+.mv{display:flex; gap:4px; margin-left:auto; flex:none}
+.mv button{appearance:none; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:8px; width:34px; height:34px; font:inherit; cursor:pointer}
+.mv button:disabled{opacity:.35; cursor:default}
+.card.prob{border-left:5px solid var(--mid)}
+.card.prob.pr-hi{border-left-color:var(--hi)}
+.card.prob.pr-lo{border-left-color:var(--lo)}
+.prtag{font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; background:var(--bg); color:var(--sub); border:1px solid var(--line); flex:none}
+.pr-hi .prtag{color:var(--hi); border-color:var(--hi)}
+.pr-mid .prtag{color:var(--mid); border-color:var(--mid)}
+.pr-lo .prtag{color:var(--lo); border-color:var(--lo)}
+.planhd{display:flex; align-items:baseline; gap:8px}
+.planhd b{flex:1; min-width:0; overflow-wrap:anywhere}
+
+/* ===== AI壁打ち ===== */
+.chatlog{display:flex; flex-direction:column; gap:8px; margin:0 0 10px}
+.msg{display:flex}
+.msg.me{justify-content:flex-end}
+.msg .bub{max-width:88%; padding:10px 12px; border-radius:16px; font-size:14.5px; line-height:1.75; overflow-wrap:anywhere;
+  background:var(--card); border:1px solid var(--line); box-shadow:var(--shadow)}
+.msg.me .bub{background:var(--main); color:#fff; border-color:var(--main); border-bottom-right-radius:6px}
+.msg.ai .bub{border-bottom-left-radius:6px}
+.msg.err .bub{background:var(--amber-bg); color:var(--amber)}
+.msg .bub .mh{display:inline-block; margin-top:4px; color:var(--main-d)}
+.msg.me .bub .mh{color:#fff}
+.msg .bub .li{display:inline-block; padding-left:1em; text-indent:-1em}
+.bub.wait{color:var(--sub)}
+.dots{display:inline-flex; gap:3px; vertical-align:middle}
+.dots i{width:6px; height:6px; border-radius:50%; background:var(--main); animation:stpulse 1s ease-in-out infinite}
+.dots i:nth-child(2){animation-delay:.2s}
+.dots i:nth-child(3){animation-delay:.4s}
+.asks{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px}
+.asks button{appearance:none; border:1px solid var(--main); background:var(--main-l); color:var(--main-d); border-radius:999px;
+  padding:7px 12px; font:inherit; font-size:13px; cursor:pointer}
+.asks button:disabled{opacity:.45}
+.chatin{display:flex; gap:8px; align-items:flex-end}
+.chatin textarea{flex:1}
+.chatin .btn{width:auto; flex:none; padding:12px 18px}
+
+/* ===== 下のタブ ===== */
+nav{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  display:flex; background:var(--card); border-top:1px solid var(--line);
+  padding:4px 4px calc(4px + env(safe-area-inset-bottom));
+}
+.navb{
+  appearance:none; background:none; border:0; flex:1; color:var(--sub); font:inherit;
+  display:flex; flex-direction:column; align-items:center; gap:2px; padding:7px 0; cursor:pointer;
+}
+.navb .ic{font-size:19px; line-height:1}
+.navb .tx{font-size:11px}
+.navb.on{color:var(--main); font-weight:700}
+
+/* ===== おしらせ ===== */
+#toast{
+  position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); transform:translate(-50%,14px);
+  z-index:50; background:var(--ink); color:var(--bg); border-radius:12px; padding:11px 15px;
+  font-size:13.5px; max-width:88%; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+}
+#toast.on{opacity:1; transform:translate(-50%,0)}
+#toast.bad{background:var(--ng); color:#fff}
