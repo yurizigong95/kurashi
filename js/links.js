@@ -104,12 +104,12 @@ function alarmPlan(){
     var free = /^\d{1,2}:\d{2}$/.test(p.alarmFree || '') ? p.alarmFree : '';
     return { date:d, time:free, label:free ? '授業のない日' : '', hour:free ? toNum(free.split(':')[0]) : null, minute:free ? toNum(free.split(':')[1]) : null };
   }
-  var dep = departureFor(cls[0].period);
-  var leave = dep ? minutesOf(dep.leave) : null;
+  var dep = departurePlanFor(d);
+  var leave = dep ? dep.leaveMin : null;
   if(leave == null) return { date:d, time:'', label:'' };
   var wake = Math.max(0, leave - (toNum(p.prep) || 60));
   return { date:d, time:hhmmOf(wake), hour:Math.floor(wake / 60), minute:wake % 60,
-           label:cls[0].period + '限 ' + shortName(cls[0].name) + '（' + dep.leave + 'に出発）' };
+           label:cls[0].period + '限 ' + shortName(cls[0].name) + '（' + hhmmOf(leave) + 'に出発）' };
 }
 function buildSummary(){
   var td = today(), now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
