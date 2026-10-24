@@ -1,0 +1,34 @@
+/* くらしの手帳：実習タブ の見た目（担当 jisshu・クラスは jh- ではじめる） */
+.jh-nav{margin-bottom:12px}
+.jh-form{margin:10px 0; padding:12px; border-radius:16px; background:var(--soft); border:1px solid var(--rule)}
+.jh-form .grid2, .jh-form .grid3, .jh-form .field{margin-bottom:10px}
+.jh-form .pillrow{margin-bottom:8px}
+.jh-form textarea{min-height:64px}
+.jh-hd{display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px}
+.jh-leave{margin:0 0 10px; font-size:.92em}
+.jh-leave b{font-size:1.25em; margin:0 4px}
+.jh-leave .s{margin-left:4px}
+.jh-ckhd{margin:12px 0 4px}
+.jh-cks{display:flex; flex-direction:column; gap:6px}
+.jh-ck{display:flex; align-items:center; gap:8px; font-size:.88em; cursor:pointer}
+.jh-ck input[type="checkbox"]{width:auto; margin:0; flex:none}
+.jh-ck input:checked + span{text-decoration:line-through; color:var(--sub)}
+.jh-items{display:flex; flex-direction:column; gap:6px; margin-bottom:6px}
+.jh-itrow input{padding:8px 12px; border-radius:12px}
+.jh-warn{color:var(--rakuten)}
+.jh-carewarn{margin-bottom:6px}
+.jh-label{margin-bottom:8px}
+.jh-star{color:var(--accent); letter-spacing:1px}
+.jh-stars button{letter-spacing:1px}
+.jh-sum{margin-bottom:8px}
+.jh-sk{padding:8px 0; border-bottom:1px solid var(--rule)}
+.jh-sk .t{font-size:.9em; margin-bottom:6px}
+.jh-skp{margin-bottom:0}
+.jh-skp button{padding:5px 11px}
+.jh-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:10px}
+.jh-tbl{width:100%; border-collapse:collapse; font-size:.84em; white-space:nowrap}
+.jh-tbl th, .jh-tbl td{padding:7px 8px; border-bottom:1px solid var(--rule); text-align:left}
+.jh-tbl th{color:var(--sub); font-weight:700; font-size:.92em}
+.jh-tbl tbody tr{cursor:pointer}
+.jh-tbl td.jh-out{color:var(--rakuten); font-weight:700}
+body[data-theme="dark"] .jh-form{background:rgba(255,255,255,.06)}
