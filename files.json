@@ -1,6 +1,6 @@
 {
   "build": "2026-10-24f",
-  "made": "2026-10-24 18:39",
+  "made": "2026-10-24 21:20",
   "files": [
     {
       "path": "css/app.css",
@@ -269,7 +269,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "bd21a41eecddfed4"
+      "sha256": "2960a4f4dfcae6ba"
     }
   ]
 }
