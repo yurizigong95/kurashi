@@ -786,14 +786,15 @@ function yearPayTotal(y){
 function fuyouCard(){
   var y = new Date().getFullYear();
   var total = yearPayTotal(y);
-  var walls = [[1030000,'103万'],[1300000,'130万']];
+  var walls = [[1030000,'103万'],[1230000,'123万'],[1300000,'130万'],[1500000,'150万']];
   var limit = toNum(S.settings.fuyouLimit) || 1030000;
+    var wallName = (walls.filter(function(w){ return w[0]===limit; })[0] || walls[0])[1];
   var pct = Math.min(100, Math.round(total/limit*100));
   var rest = limit - total;
   var cls = pct>=90 ? 'over' : pct>=75 ? '' : 'done';
   var msg = rest > 0
-    ? 'あと '+yen(rest)+' で '+(limit===1030000?'103万':'130万')+' に届きます。'
-    : '<b>'+(limit===1030000?'103万':'130万')+'を超えています。</b>おうちの人に相談してください。';
+    ? 'あと '+yen(rest)+' で '+wallName+' に届きます。'
+    : '<b>'+wallName+'を超えています。</b>おうちの人に相談してください。';
   return section('扶養の壁', y+'年の見込み '+yen(total),
     '<div class="bar" style="margin-bottom:8px"><i class="'+cls+'" style="width:'+pct+'%"></i></div>'+
     '<div class="msg '+(pct>=90?'ng':'ok')+'" style="margin-bottom:12px">'+msg+'</div>'+
