@@ -1,0 +1,24 @@
+/* くらしの手帳：キャリアタブ の見た目（担当 career・クラスは cr- ではじめる） */
+.cr-nav{margin-bottom:12px}
+.cr-form{margin:10px 0; padding:12px; border-radius:16px; background:var(--soft); border:1px solid var(--rule)}
+.cr-form .grid2, .cr-form .field{margin-bottom:10px}
+.cr-form .pillrow{margin-bottom:8px}
+.cr-form textarea{min-height:56px}
+.cr-year{padding:6px 0 10px; border-bottom:1px solid var(--rule)}
+.cr-year:last-of-type{border-bottom:0}
+.cr-yhd{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:4px}
+.cr-ms{display:flex; align-items:center; gap:8px; padding:4px 0}
+.cr-ck{flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:8px; font-size:.88em; cursor:pointer}
+.cr-ck input[type="checkbox"]{width:auto; margin:0; flex:none}
+.cr-done{text-decoration:line-through; color:var(--sub)}
+.cr-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:10px}
+.cr-tbl{border-collapse:collapse; font-size:.82em; min-width:100%}
+.cr-tbl th, .cr-tbl td{padding:7px 8px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top}
+.cr-tbl thead th{color:var(--sub); font-weight:700; white-space:nowrap}
+.cr-tbl tbody th{white-space:nowrap}
+.cr-tbl td{min-width:6em; max-width:14em; white-space:pre-wrap; word-break:break-word}
+.cr-tbl tbody tr{cursor:pointer}
+.cr-st{flex:none; font-size:.76em; padding:3px 10px; border-radius:999px; border:1px solid var(--edge); color:var(--sub)}
+.cr-st.cr-study{color:var(--accent); border-color:var(--accent)}
+.cr-st.cr-done{color:#fff; background:var(--accent); border-color:var(--accent); text-decoration:none}
+body[data-theme="dark"] .cr-form{background:rgba(255,255,255,.06)}
