@@ -14,13 +14,32 @@ function ankiCards(){ return Array.isArray(S.cards) ? S.cards : []; }
 function ankiIsNew(c){ return !c.last; }
 function ankiIsDue(c, ymd){ return !ankiIsNew(c) && String(c.due || '') <= (ymd || today()); }
 function ankiNewToday(){ var td = today(); return ankiCards().filter(function(c){ return c.first === td; }).length; }
+/* 仕上げ：7日以内（当日も）にテストがある科目のカードは、新しいカードを出さない（復習だけ）
+   ただし、テスト範囲の計画（js/m-anki2.js）に入れたカードの科目は、計画どおり進められるように止めない */
+function ankiExamStop(ymd){
+  ymd = ymd || today();
+  var stop = {}, exams = (S.exams || []).filter(function(x){ var n = x && x.subject ? daysBetween(ymd, x.date) : null; return n != null && n >= 0 && n <= 7; });
+  if(!exams.length) return stop;
+  var planned = {};
+  exams.forEach(function(x){
+    var p = (S.examPlan && typeof S.examPlan === 'object') ? S.examPlan[x.id] : null;
+    if(p && !p.del && Array.isArray(p.items)) p.items.forEach(function(i){ if(i && i.deck) planned[i.deck] = 1; });
+  });
+  ankiCards().forEach(function(c){
+    var d = c.deck || '';
+    if(stop[d] || planned[d] || !d) return;
+    if(exams.some(function(x){ return sameSubject(d, x.subject); })) stop[d] = 1;
+  });
+  return stop;
+}
 /* 今日出すカード（復習が先、新しいカードはあとで1日の数まで） */
 function ankiDueList(deck, ymd){
   var list = ankiCards().filter(function(c){ return !deck || c.deck === deck; });
   var due = list.filter(function(c){ return ankiIsDue(c, ymd); })
     .sort(function(a, b){ return String(a.due).localeCompare(String(b.due)) || (toNum(a.mt) - toNum(b.mt)); });
   var room = Math.max(0, ANKI_NEW_PER_DAY - ankiNewToday());
-  var fresh = list.filter(ankiIsNew).sort(function(a, b){ return toNum(a.mt) - toNum(b.mt); }).slice(0, room);
+  var stop = ankiExamStop(ymd);
+  var fresh = list.filter(function(c){ return ankiIsNew(c) && !stop[c.deck || '']; }).sort(function(a, b){ return toNum(a.mt) - toNum(b.mt); }).slice(0, room);
   return due.concat(fresh);
 }
 /* 科目ごとのまとまり */
@@ -222,7 +241,9 @@ function viewAnki(){
   }
   var all = ankiCards(), due = ankiDueList(''), td = ankiCountOn(today());
   var nDue = due.filter(function(c){ return !ankiIsNew(c); }).length, nNew = due.length - nDue;
+  var stopD = Object.keys(ankiExamStop());
   h += section('今日の暗記', null,
+    (stopD.length ? '<p class="note" style="margin-top:0">試験直前のため新規は停止中（' + esc(stopD.map(function(d){ return typeof shortName === 'function' ? shortName(d) : d; }).join('・')) + '）。復習だけ出します。</p>' : '') +
     '<div class="grid3 keep3">' +
       '<div class="stat"><div class="s">復習</div><div class="v num">' + nDue + '</div></div>' +
       '<div class="stat"><div class="s">新しい</div><div class="v num">' + nNew + '</div></div>' +
