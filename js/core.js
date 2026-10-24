@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-09-29b';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-10-24a';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -500,6 +500,19 @@ function backPlans(departAfterMin){
 /* ===== 学期と科目 ===== */
 function termsAll(){
   if(!S.termsList) S.termsList = TERMS_DEFAULT.map(function(t){ return { id:t.id, year:t.year, label:t.label, courses:t.courses.slice() }; });
+  /* 前期（2026-1）が無ければ先頭に補う（同じidが2つあれば、はじめの1つだけ残す） */
+  var seenT = {}, dupT = false;
+  S.termsList.forEach(function(t){ if(t && seenT[t.id]) dupT = true; if(t) seenT[t.id] = 1; });
+  if(dupT){ seenT = {}; S.termsList = S.termsList.filter(function(t){ if(!t || seenT[t.id]) return false; seenT[t.id] = 1; return true; }); }
+  if(!seenT['2026-1']){
+    var t1 = TERMS_DEFAULT.filter(function(t){ return t.id === '2026-1'; })[0];
+    if(t1) S.termsList.unshift({ id:t1.id, year:t1.year, label:t1.label, courses:t1.courses.slice() });
+  }
+  /* 英語コミュニケーションⅡ(7) は今学期の履修に無い（MUSESで確認）ので、保存済みの時間割からも外す */
+  S.termsList.forEach(function(t){
+    if(t && t.id === '2026-2' && Array.isArray(t.courses))
+      t.courses = t.courses.filter(function(c){ return !(c && (c.code === '10241' || c.name === '英語コミュニケーションⅡ(7)')); });
+  });
   return S.termsList;
 }
 function termOf(id){ return termsAll().filter(function(t){ return t.id===id; })[0] || termsAll()[0]; }
@@ -580,10 +593,14 @@ function schoolClassesForDate(ymd){
 
 /* 出欠（日付つき） */
 function attendOf(name){
+  seedMusesAttend();
   var log = S.attendLog[name] || [];
-  var abRaw = log.filter(function(x){ return x.st==='欠'; }).length;
-  var late = log.filter(function(x){ return x.st==='遅'; }).length;
-  var pres = log.filter(function(x){ return x.st==='出'; }).length;
+  /* MUSESの記録がある科目は、その日より後の記録だけを数えて足す（それより前はMUSESが正）。テストでは合算しない */
+  var mu = (typeof TEST_MODE !== 'undefined' && TEST_MODE) ? null : (MUSES_ATTEND[name] || null);
+  var cnt = mu ? log.filter(function(x){ return String(x.date) > mu.asOf; }) : log;
+  var abRaw = cnt.filter(function(x){ return x.st==='欠'; }).length + (mu ? mu.ab : 0);
+  var late = cnt.filter(function(x){ return x.st==='遅'; }).length + (mu ? mu.late : 0);
+  var pres = cnt.filter(function(x){ return x.st==='出'; }).length + (mu ? mu.pres : 0);
   var cm = S.courseMeta[name] || {};
   var base = ATTEND_BASE[name] || {};
   var total = toNum(cm.total) || toNum(base.total) || 15;
@@ -592,7 +609,7 @@ function attendOf(name){
   /* 遅刻・早退3回で欠席1回として数える */
   var ab = abRaw + Math.floor(late / 3);
   return { ab:ab, abRaw:abRaw, late:late, pres:pres, total:total, limit:limit, log:log,
-           fromBase: !toNum(cm.evalAbsent) && !!base.limit };
+           fromBase: !toNum(cm.evalAbsent) && !!base.limit, muses:mu };
 }
 function setAttend(name, ymd, st){
   var log = S.attendLog[name] || [];
@@ -796,6 +813,7 @@ function sameSubject(a, b){
   return ka === kb;
 }
 /* 学務システムの「全授業回数」と「判定基準欠席回数」 */
+/* 下の5科目（スポーツ実技〜データリテラシー）の評価不可欠席回数は、MUSESの出欠画面の値（2026-10-24確認） */
 var ATTEND_BASE = {
   '臨床病態栄養学':        { total:15, limit:4 },
   '初期演習Ⅱ（生活と看護）': { total:15, limit:4 },
@@ -805,8 +823,154 @@ var ATTEND_BASE = {
   '基礎看護技術演習Ⅰ':     { total:32, limit:7 },
   '基礎看護技術演習Ⅱ':     { total:30, limit:7 },
   '看護応用統計学':        { total:15, limit:4 },
-  '小児看護学概論':        { total:8,  limit:2 }
+  '小児看護学概論':        { total:8,  limit:2 },
+  'スポーツ実技（バレーボール）(2)':  { limit:5 },
+  'ヒロシマ 被爆体験伝承者の挑戦(2)': { total:14, limit:5 },
+  '大学生活入門(2)':                  { limit:5 },
+  'プレゼンテーションの第一歩':       { limit:5 },
+  'データリテラシー・ＡＩの基礎':     { limit:5 }
 };
+/* MUSESの出欠画面（2026-10-24時点）の確定分。空白＝未確認は数えない。
+   演習2科目は時限ごとに数えるため、日付ごとの記録には入れず、ここで合算する
+   （この日までの記録はMUSESを正とし、アプリの記録はこれより後の日だけを足す）。
+   講義科目は MUSES_SEED_BATCHES のほうを、日付ごとの記録として取り込む */
+var MUSES_ATTEND = {
+  '基礎看護技術演習Ⅰ':                { asOf:'2026-10-24', pres:10, ab:0, late:0 },
+  '基礎看護技術演習Ⅱ':                { asOf:'2026-10-24', pres:2,  ab:6, late:0 }
+};
+/* MUSESの出欠（講義科目・日付ごと）。バッチごとに1回だけ、出欠の記録に取り込む
+   （自動同期で新しい記録が見つかるたびに、末尾にバッチを足していく）
+   同じ日にもう記録があれば、その記録を正として取り込まない。母性の09-25は早退→「遅」で入れる */
+var MUSES_SEED_BATCHES = [
+{ id:'20261024', data:{
+  'スポーツ実技（バレーボール）(2)':  [['2026-09-21','出'],['2026-09-28','欠'],['2026-10-05','欠'],['2026-10-12','欠']],
+  'ヒロシマ 被爆体験伝承者の挑戦(2)': [['2026-09-21','出'],['2026-09-28','欠'],['2026-10-05','出'],['2026-10-12','欠'],['2026-10-19','欠']],
+  '大学生活入門(2)':                  [['2026-09-21','出'],['2026-09-28','出'],['2026-10-05','欠'],['2026-10-12','欠']],
+  '臨床病態栄養学':                   [['2026-09-22','出'],['2026-09-29','出'],['2026-10-06','出'],['2026-10-13','欠'],['2026-10-20','欠']],
+  '初期演習Ⅱ（生活と看護）':          [['2026-09-22','出'],['2026-09-29','出'],['2026-10-06','出'],['2026-10-13','欠'],['2026-10-20','欠']],
+  '成人看護学概論':                   [['2026-09-22','出'],['2026-09-29','出'],['2026-10-06','出'],['2026-10-13','出'],['2026-10-20','出']],
+  '医学英語':                         [['2026-10-13','出'],['2026-10-20','出']],
+  '母性看護学概論':                   [['2026-09-16','出'],['2026-09-25','遅'],['2026-10-07','出'],['2026-10-21','出']],
+  'プレゼンテーションの第一歩':       [['2026-09-16','出'],['2026-09-30','出'],['2026-10-07','欠']],
+  'データリテラシー・ＡＩの基礎':     [['2026-09-17','出'],['2026-09-24','出'],['2026-10-01','出'],['2026-10-08','出']],
+  '看護応用統計学':                   [['2026-09-18','出'],['2026-09-25','出'],['2026-10-02','出'],['2026-10-09','出'],['2026-10-23','欠']],
+  '小児看護学概論':                   [['2026-09-18','出'],['2026-09-25','出'],['2026-10-02','出'],['2026-10-09','出'],['2026-10-23','欠']]
+} }
+];
+var musesSeedDone = false;
+function seedMusesAttend(){
+  if(musesSeedDone) return;
+  musesSeedDone = true;
+  if(typeof TEST_MODE !== 'undefined' && TEST_MODE) return;   /* テストでは実データを取り込まない */
+  try{
+    if(!SYNC_LOCAL.applied) SYNC_LOCAL.applied = {};
+    var changed = false;
+    MUSES_SEED_BATCHES.forEach(function(batch){
+      var flag = 'musesAttend' + batch.id;
+      if(SYNC_LOCAL.applied[flag]) return;
+      Object.keys(batch.data).forEach(function(name){
+        var log = S.attendLog[name] || (S.attendLog[name] = []);
+        var have = {};
+        log.forEach(function(x){ have[x.date] = 1; });
+        batch.data[name].forEach(function(e){
+          if(have[e[0]]) return;
+          log.push({ date:e[0], st:e[1] }); have[e[0]] = 1; changed = true;
+        });
+        log.sort(function(a, b){ return String(a.date).localeCompare(String(b.date)); });
+      });
+      SYNC_LOCAL.applied[flag] = 1;
+    });
+    saveSyncLocal();
+    if(changed){ touch('attendLog'); if(typeof persist === 'function') persist(); }
+  }catch(e){}
+}
+/* 前期の成績の基準値（テストでは使わない） */
+function gradeBase(name){
+  if(typeof TEST_MODE !== 'undefined' && TEST_MODE) return null;
+  return GRADES_BASE[name] || null;
+}
+/* MUSESの前期の成績（2026-10-24確認）
+   不合格4科目は追・再試験の採点中で未確定。本人が成績を入れればそちらが優先 */
+var GRADES_BASE = {
+  '建築と歴史':                 { grade:'C',  score:61 },
+  'キャリアビジョンと人物評価': { grade:'B',  score:75 },
+  '大学 学び発見ゼミ':          { grade:'B',  score:74 },
+  '留学準備演習':               { grade:'B',  score:74 },
+  '中国語Ⅰ':                    { grade:'C',  score:65 },
+  '初期演習Ⅰ':                  { grade:'A',  score:83 },
+  '情報活用の基礎':             { grade:'B',  score:72 },
+  '微生物学と感染防御':         { grade:'C',  score:60 },
+  '看護学概論':                 { grade:'C',  score:60 },
+  '解剖生理学Ⅰ':                { grade:'不可', score:39 },
+  '解剖生理学Ⅱ':                { grade:'不可', score:29 },
+  '栄養代謝学':                 { grade:'不可', score:30 },
+  '疾病治療概論':               { grade:'不可', score:25 }
+};
+/* MUSESのシラバスの基準値（本人が保存したシラバス S.syllabus が優先） */
+var SYLLABUS_BASE = {
+  'スポーツ実技（バレーボール）(2)': { teacher:'足立 学',
+    items:[{name:'共同性', pct:30, kind:'other'}, {name:'積極性', pct:20, kind:'other'}, {name:'実技テスト', pct:30, kind:'exam'}, {name:'技術点', pct:20, kind:'other'}],
+    memo:'', text:'バレーボールの基本技術・ルール・審判方法を学び、仲間と楽しみながらゲームを体験する授業。毎回、運動のできる服装と体育館シューズが必要。第1回で班分けを行う。' },
+  'ヒロシマ 被爆体験伝承者の挑戦(2)': { teacher:'小国 美弥子',
+    items:[{name:'コメントシート', pct:70, kind:'attend'}, {name:'レポート', pct:25, kind:'report'}, {name:'文章表現力課題', pct:5, kind:'report'}],
+    memo:'', text:'被爆の実相を伝える「伝承者」との学びを通して、自身の未来と結びつけて考える授業。生成AIの出力を成果物・提出物として用いないこと。コメントシートが評価の中心（5点×14回）。' },
+  '大学生活入門(2)': { teacher:'寺井 朋子（ほか 岡崎 州祐・岸本 三香子・競 和佳）',
+    items:[{name:'小テスト・小レポート', pct:50, kind:'quiz'}, {name:'授業課題', pct:50, kind:'report'}],
+    memo:'', text:'学生生活を有意義に、安全かつ快適に過ごし、社会人として健全な生活を送るための基本知識を学ぶ1年生対象のオムニバス授業。授業ごとに小テスト・小レポート等が累積して評価される。' },
+  '臨床病態栄養学': { teacher:'師岡 友紀（ほか 浅野 浩子・天野 功士・梶原 友美・菅 彩香・種村 智香・深山 華織・藤田 優一）',
+    items:[{name:'各回の課題への取り組み', pct:100, kind:'report'}],
+    memo:'', text:'各疾病の病態や病期を踏まえた栄養・食事療法の基礎知識を学ぶ授業。評価は各回の課題への取り組み（6〜8点×15回）のみ。課題は期限厳守で提出すること。' },
+  '初期演習Ⅱ（生活と看護）': { teacher:'藤田 優一',
+    items:[{name:'課題レポート', pct:60, kind:'report'}, {name:'プレゼンテーション', pct:20, kind:'other'}, {name:'授業への積極的参加度', pct:20, kind:'attend'}],
+    memo:'', text:'看護学部で学ぶための基礎的能力（アカデミックスキルズ）と、看護の対象となる生活者を理解するための基礎知識を身につけ、看護専門職者としてのキャリアデザインの基盤を作る授業。' },
+  '成人看護学概論': { teacher:'布谷 麻耶',
+    items:[{name:'復習クイズ', pct:60, kind:'quiz'}, {name:'中間テスト', pct:20, kind:'exam'}, {name:'まとめテスト', pct:20, kind:'exam'}],
+    memo:'2回以上欠席すると成績評価対象外（4/5以上の出席が必要）',
+    text:'成人看護学各論への導入として、「成人」「成人をとりまく健康課題」「看護展開のための理論と概念」「健康状態に応じた看護」を理解し、成人看護実践の基盤とする授業。毎回の復習クイズが評価の中心。' },
+  '医学英語': { teacher:'山添 光芳',
+    items:[{name:'試験', pct:70, kind:'exam'}, {name:'授業内小テスト・課題', pct:30, kind:'quiz'}],
+    memo:'オンデマンド課題：期限内提出＝出席、1日遅れ＝遅刻（50点満点）、2日以上遅れ＝欠席（採点対象外）',
+    text:'患者の身体各部や解剖学・生理学に関連する医学英語を理解し、接頭語・接尾語から語句の意味を予測できるようになることを目指す授業。やむを得ない欠席で申請が認められれば代替対応がある（代替課題はない）。' },
+  '母性看護学概論': { teacher:'本間 裕子',
+    items:[{name:'試験', pct:70, kind:'exam'}, {name:'予習課題', pct:10, kind:'report'}, {name:'リアクションペーパー', pct:10, kind:'report'}, {name:'個人ワーク', pct:10, kind:'other'}],
+    memo:'欠席の連絡はClassroomの欠席届（Googleフォーム）で。メールでは対応しない',
+    text:'母性看護の対象となる親・子ども（胎児を含む）・家族を理解するための概念・理論を学び、社会的変化や法律を踏まえた健康課題・ニーズと母性看護の基本を学ぶ授業。' },
+  'プレゼンテーションの第一歩': { teacher:'橋本（外部専門講師）',
+    items:[{name:'コメントシート', pct:60, kind:'attend'}, {name:'中間課題', pct:10, kind:'report'}, {name:'総合課題', pct:30, kind:'report'}],
+    memo:'単位取得には毎回の課題の提出が必要',
+    text:'「画面の向こう側にいる他者」を意識し、時間や場所の制約を越えて思考を共有する力を磨くWEB授業。ロジカル・クリティカルシンキングとプレゼンテーション技法を学ぶ。' },
+  '基礎看護技術演習Ⅰ': { teacher:'山口 舞子（ほか 片山 恵・清水 佐知子・髙橋 良弘・寺岡 春菜・山口 晴美）',
+    items:[{name:'確認テスト', pct:10, kind:'quiz'}, {name:'レポート', pct:20, kind:'report'}, {name:'筆記テスト', pct:50, kind:'exam'}, {name:'実技テスト', pct:20, kind:'exam'}],
+    memo:'単位認定には、筆記・実技テストとも60％以上の合格水準＋平常点60点以上が必要。原則として遅刻者の参加を認めない',
+    text:'看護行為に共通する基本技術を、講義と演習を統合させながら修得する授業。グループ学習中心で、遅刻すると参加できないことがある。' },
+  '基礎看護技術演習Ⅱ': { teacher:'清水 佐知子（ほか 片山 恵・髙橋 良弘・寺岡 春菜・山口 晴美・山口 舞子）',
+    items:[{name:'確認テスト', pct:10, kind:'quiz'}, {name:'レポート', pct:20, kind:'report'}, {name:'筆記テスト', pct:50, kind:'exam'}, {name:'実技テスト', pct:20, kind:'exam'}],
+    memo:'単位認定には、筆記・実技テストとも60％以上の合格水準が必要。原則として遅刻者の参加を認めない',
+    text:'基礎看護技術演習Ⅰを基盤として、患者の日常生活行動に焦点をあてた援助技術の習得を目指す授業。グループ学習中心で、遅刻すると参加できないことがある。' },
+  'データリテラシー・ＡＩの基礎': { teacher:'長谷川 裕紀（ほか 榎並 直子）',
+    items:[{name:'確認テスト', pct:100, kind:'quiz'}],
+    memo:'第7回〜第12回は確認テスト7点のうち3点分がExcel演習課題から出題。必ずパソコンで取り組み、第7回以降のExcel演習はWindows前提',
+    text:'AI・データサイエンスの知識・技能（新たな読み書きそろばん）を身につけ、日常や仕事で使いこなせるようになるWEB授業。評価は確認テストのみ（第1〜5回は6点×5回、第6〜15回は7点×10回）。' },
+  '看護応用統計学': { teacher:'山西 八郎',
+    items:[{name:'試験', pct:90, kind:'exam'}, {name:'授業への積極的参加度', pct:10, kind:'attend'}],
+    memo:'', text:'保健医療分野で用いられる統計手法（基本統計分析から推測統計の初歩）の意味と手法についての基礎知識を修得する授業。復習を欠かさないこと。' },
+  '小児看護学概論': { teacher:'藤田 優一',
+    items:[{name:'期末試験', pct:40, kind:'exam'}, {name:'小テスト', pct:40, kind:'quiz'}, {name:'グループワークのレポート', pct:20, kind:'report'}],
+    memo:'グループワークではメンバーとしての役割があるので欠席しないこと',
+    text:'小児の成長発達と家族の役割を理解し、小児看護に関する変遷を踏まえた小児看護の機能と役割、社会の子どもに対する対応について学ぶ授業。看護学概論と連動している。' }
+};
+/* シラバス：本人の保存データ（S.syllabus）を優先し、空いているところだけMUSESの基準値で補う */
+function syllabusOf(name){
+  if(typeof TEST_MODE !== 'undefined' && TEST_MODE) return S.syllabus[name] || {};   /* テストでは基準値を使わない */
+  var b = SYLLABUS_BASE[name] || {}, sy = S.syllabus[name] || {};
+  var o = Object.assign({}, sy);
+  var str = function(v){ return (typeof v === 'string' && v.trim()) ? v : ''; };
+  ['text', 'teacher', 'memo'].forEach(function(k){ o[k] = str(sy[k]) || b[k] || ''; });
+  /* 評価の割合は、本人が項目か前の形の割合を入れていれば、基準値は使わない */
+  var own = (Array.isArray(sy.items) && sy.items.length) || ['exam', 'rep', 'att', 'other'].some(function(k){ return sy[k] != null && String(sy[k]) !== ''; });
+  if(!own && Array.isArray(b.items)) o.items = b.items.map(function(x){ return { name:x.name, pct:x.pct, kind:x.kind }; });
+  return o;
+}
 
 /* ===== メモ ===== */
 function memoOf(k){

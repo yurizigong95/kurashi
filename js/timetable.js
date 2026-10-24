@@ -352,7 +352,8 @@ function courseDetail(name){
   var imps = S.events.filter(function(e){ return sameSubject(e.subject, name); })
     .sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
   var notes = S.notes.filter(function(n){ return n.link && n.link.type==='course' && n.link.id===name; });
-  var gr = S.grades[name] || {};
+  var gr = S.grades[name] || gradeBase(name) || {};
+  var sy = syllabusOf(name);
   var todayCls = classesForDate(td).some(function(x){ return x.name===name && !x.off; });
 
   var backLabel = courseTemp ? '‹ 時間割にもどる'
@@ -368,7 +369,7 @@ function courseDetail(name){
       '<button data-act="course-req" data-name="'+esc(name)+'" class="'+(!courseReq(name)?'on':'')+'" style="'+(!courseReq(name)?'background:#0D2B7A;border-color:#0D2B7A;color:#fff':'')+'">選択</button>'+
       '<button data-act="course-room" data-name="'+esc(name)+'">教室を直す</button>'+
       '<button data-act="course-alias" data-name="'+esc(name)+'">略称</button>'+
-      (syllabusSaved(S.syllabus[name]) ? '<button data-act="syl-view" data-name="'+esc(name)+'">📄 シラバス</button>' : '')+
+      (syllabusSaved(sy) ? '<button data-act="syl-view" data-name="'+esc(name)+'">📄 シラバス</button>' : '')+
       '<button data-act="course-sort" class="'+(courseSortOpen?'on':'')+'" aria-expanded="'+(courseSortOpen?'true':'false')+'">⇅ 並べ替え</button>'+
     '</div>'+
     (c.bi ? '<div class="pair" style="margin-top:10px"><div>'+mdPicker('bw_'+name, S.biweek[name]||'', '隔週の基準日（授業がある日を1回選ぶ）', true)+'</div>'+
@@ -378,7 +379,6 @@ function courseDetail(name){
 
   /* 並べ替え（すべての授業で同じ並び。設定の「タブと画面の並び・表示」でも変えられる） */
   if(courseSortOpen) h += courseSortBox();
-  var sy = S.syllabus[name] || {};
   var rowT = function(t){
     var n = isYmd(t.due) ? daysFromToday(t.due) : null;
     return '<div class="evrow"><span class="cbar" style="background:'+kindHex('task')+'"></span>'+
@@ -505,6 +505,7 @@ function attendSection(name, at, td, todayCls){
         '<div><label class="f">単位不可になる欠席</label><input id="cm_limit" inputmode="numeric" value="' + at.limit + '"></div>' +
         '<button class="btn ghost" data-act="course-meta-save" data-name="' + esc(name) + '">保存</button></div>' +
       (at.fromBase ? '<p class="note">欠席の上限は、学務システムの基準です。</p>' : '') +
+      (at.muses ? '<p class="note">MUSESの記録（' + Number(at.muses.asOf.slice(5, 7)) + '月' + Number(at.muses.asOf.slice(8, 10)) + '日まで：欠席' + at.muses.ab + '回・出席' + at.muses.pres + '回・遅刻' + at.muses.late + '回）も合わせています。それより前の記録はMUSESのほうが正です。</p>' : '') +
     '</div>';
   }
   return section('出欠', '出' + at.pres + '・欠' + at.abRaw + '・遅' + at.late + '／全' + at.total + '回', h);
@@ -552,7 +553,7 @@ function sylViewClose(){
   document.documentElement.classList.remove('sylview-on');
 }
 function sylViewOpen(name, focusPid){
-  var sy = S.syllabus[name] || {};
+  var sy = syllabusOf(name);
   var more = syllabusMore(sy);
   docViewOpen({ label:'シラバス', title:name, text:String(sy.text || '').trim(), textCap:'文章', files:syllabusFiles(sy), focus:focusPid,
     extra:(sy.url ? '<div class="sv-blk"><div class="sv-cap">前に入れたリンク</div><a class="mini" href="' + esc(sy.url) + '" target="_blank" rel="noopener">シラバスのページをひらく</a></div>' : '') + more,
@@ -739,7 +740,7 @@ function evalPct(v){
   return isNaN(n) ? 0 : Math.max(0, Math.min(100, Math.round(n * 10) / 10));
 }
 function evalItemsNow(name){
-  return (evalDraft && evalDraft.name === name) ? evalDraft.items : syllabusItems(S.syllabus[name]);
+  return (evalDraft && evalDraft.name === name) ? evalDraft.items : syllabusItems(syllabusOf(name));
 }
 /* 画面の入力らんから、書きかけの項目を読む */
 function evalFromForm(name){
@@ -850,7 +851,7 @@ function gpaOf(termIds){
   termIds.forEach(function(id){
     var t = termOf(id);
     (t.courses||[]).forEach(function(c){
-      var g = S.grades[c.name];
+      var g = S.grades[c.name] || gradeBase(c.name);
       if(!g || !(g.grade || g.score)) return;
       var p;
       if(typeof cpGpOf === 'function'){ var o = cpGpOf(g.grade || g.score); p = o.key ? o.gp : null; if(o.pass && o.gp == null){ earned += (Number(c.cr)||0); return; } }

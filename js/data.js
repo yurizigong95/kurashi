@@ -5,7 +5,7 @@
 var REAL_COURSES = [
   {code:'10488', slots:'月1',    name:'スポーツ実技（バレーボール）(2)', cr:1, room:'G1-42-2', cat:'実技',     req:0},
   {code:'10064', slots:'月2',    name:'ヒロシマ 被爆体験伝承者の挑戦(2)', cr:2, room:'L1-403',          cat:'社会',     req:0},
-  {code:'10241', slots:'月3,水3', name:'英語コミュニケーションⅡ(7)',      cr:2, room:'S-31',            cat:'言語',     req:0, en:true},
+  /* 英語コミュニケーションⅡ(7) は外した：MUSESの後期履修は14科目・23単位で、この科目は含まれていない（2026-10-24確認） */
   {code:'10127', slots:'月6',    name:'大学生活入門(2)',                  cr:2, room:'WEB', web:1, cat:'トピック', req:0},
   {code:'67010', slots:'火1',    name:'臨床病態栄養学',                   cr:2, room:'N-204', cat:'',         req:1},
   {code:'67003', slots:'火2',    name:'初期演習Ⅱ（生活と看護）',          cr:1, room:'N-204', cat:'',         req:1},
@@ -74,6 +74,22 @@ var BUS_WORK = [
 ];
 /* 学期の定義（年次・学期ごとに時間割を持てる） */
 var TERMS_DEFAULT = [
+  /* 前期：MUSESの成績より（2026-10-24確認） */
+  { id:'2026-1', year:1, label:'1年 前期（2026年 1学期）', courses:[
+    {name:'建築と歴史',                 cr:2, req:0, slots:'', cat:''},
+    {name:'キャリアビジョンと人物評価', cr:2, req:0, slots:'', cat:''},
+    {name:'大学 学び発見ゼミ',          cr:2, req:0, slots:'', cat:''},
+    {name:'留学準備演習',               cr:1, req:0, slots:'', cat:''},
+    {name:'中国語Ⅰ',                    cr:2, req:0, slots:'', cat:''},
+    {name:'初期演習Ⅰ',                  cr:1, req:1, slots:'', cat:''},
+    {name:'情報活用の基礎',             cr:2, req:1, slots:'', cat:''},
+    {name:'微生物学と感染防御',         cr:2, req:1, slots:'', cat:''},
+    {name:'看護学概論',                 cr:2, req:1, slots:'', cat:''},
+    {name:'解剖生理学Ⅰ',                cr:2, req:1, slots:'', cat:''},
+    {name:'解剖生理学Ⅱ',                cr:2, req:1, slots:'', cat:''},
+    {name:'栄養代謝学',                 cr:2, req:1, slots:'', cat:''},
+    {name:'疾病治療概論',               cr:2, req:1, slots:'', cat:''}
+  ]},
   { id:'2026-2', year:1, label:'1年 後期（2026年 2学期）', courses: REAL_COURSES }
 ];
 /*DATA2-END*/

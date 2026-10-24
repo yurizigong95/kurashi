@@ -190,7 +190,7 @@ function cpGpa(){
       if(!c || !c.name || seen[c.name]) return;
       seen[c.name] = 1;
       var cr = cpNum(c.cr), kind = cpReq(c) ? 'req' : 'elec';
-      var g = S.grades[c.name] || {}, gv = g.grade || g.score;
+      var g = S.grades[c.name] || gradeBase(c.name) || {}, gv = g.grade || g.score;
       var r = gv ? cpGpOf(gv) : null;
       if(!r || !r.key){
         if(gv) out.unknown.push(c.name);
