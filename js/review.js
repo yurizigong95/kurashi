@@ -181,6 +181,16 @@ function reviewWords(sc){
   return hard ? '今日は予定なし。こういう日にこそ進めておこう。'
               : '今日はゆっくりできましたか。明日にそなえて休んでください。';
 }
+/* 今日の勉強（暗記カードと国試ドリル）を1行で。どちらも無ければ出さない */
+function c9StudyLine(ymd){
+  var an = (typeof ankiCountOn === 'function') ? ankiCountOn(ymd) : 0;
+  var kq = (typeof kqDayCount === 'function') ? kqDayCount(ymd) : { n:0, ok:0 };
+  if(!an && !kq.n) return '';
+  var parts = [];
+  if(an) parts.push('暗記 ' + an + '枚');
+  if(kq.n) parts.push('国試ドリル ' + kq.n + '問（正解' + kq.ok + '）');
+  return '<div class="s2" style="margin:8px 0">📚 今日の勉強：' + esc(parts.join('・')) + (an && kq.n ? '　合わせて <b>' + (an + kq.n) + '</b>' : '') + '</div>';
+}
 var reviewOpen = false;
 function nightReviewCard(){
   if(S.ui.nightReview === 0) return '';
@@ -193,6 +203,7 @@ function nightReviewCard(){
           '<span class="grow"><span class="t">'+esc(gradeNote(rec.grade))+'</span>'+
           (rec.memo?'<span class="s">'+esc(rec.memo)+'</span>':'')+'</span></div>'
         : '<div class="s2" style="margin-bottom:10px">ボタンを押すと、今日を S〜E で評価します。</div>')+
+      c9StudyLine(td)+
       '<div class="pair" style="margin-top:10px">'+
         '<button class="btn" data-act="rev-judge">'+(rec.grade?'もう一度評価する':'今日を評価する')+'</button>'+
         '<button class="btn ghost" style="flex:0 0 auto;padding:13px 16px" data-act="rev-hist">これまで</button></div>');
@@ -205,6 +216,7 @@ function nightReviewCard(){
       '<span class="s">'+jd.point+'点</span></span></div>'+
     '<div class="bar" style="margin:10px 0"><i class="'+(jd.point>=64?'done':jd.point>=50?'':'over')+'" style="width:'+jd.point+'%"></i></div>'+
     c9ItemsHtml(jd.items)+
+    c9StudyLine(td)+
     (sc.late ? '<div class="s2" style="margin-bottom:10px"><b style="color:var(--rakuten)">期限切れ '+sc.late+'件</b></div>' : '')+
     '<div class="field"><label class="f">ひとこと（任意）</label><input id="rev_memo" value="'+esc(rec.memo||'')+'" placeholder="例：レポート終わった"></div>'+
     (rec.ai ? '<div class="msg '+(jd.point>=64?'ok':'ng')+'" style="margin-bottom:10px">'+esc(rec.ai).replace(/\n/g,'<br>')+'</div>' : '')+
@@ -289,7 +301,8 @@ function morningBriefCard(){
   var lines = [];
   if(cls.length){
     var st = S.commute.periods[cls[0].period-1];
-    var leave = minutesOf(st) != null ? hhmmOf(minutesOf(st) - 30 - 80) : null;
+    var dp = departurePlanFor(td);
+    var leave = dp ? hhmmOf(dp.leaveMin) : null;
     lines.push('きょうは' + cls.length + 'コマ。' + cls[0].period + '限 ' + st + '開始。' +
       (leave ? '<b>' + leave + 'ごろ家を出る</b>と間に合います。' : ''));
   }else{
