@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-10-24e';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-10-24f';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -1035,7 +1035,7 @@ var COMMUTE_DEFAULT = {
   ends:    PERIOD_DEFAULT.map(function(x){ return x[1]; })
 };
 var TAB_DEFS = [
-  ['today','今日'],['tt','時間割'],['course','授業'],['cal','予定'],['todo','ToDo'],['anki','暗記'],['study','勉強'],['exam','試験'],
+  ['today','今日'],['tt','時間割'],['course','授業'],['cal','予定'],['todo','ToDo'],['anki','暗記'],['study','勉強'],['exam','試験'],['jisshu','実習'],['career','キャリア'],
   ['money','お金'],['chat','相談'],['notes','メモ'],['pet','おせわ'],['news','お知らせ'],['risyu','履修'],['set','⚙']
 ];
 var TODAY_SECTIONS = [
@@ -1115,7 +1115,7 @@ function pageHidden(page, id){
 var EXTRA_LISTS = ['kqs','books','vaccines','abbrs','annivs','anatomy','papers','kmItems'];
 var EXTRA_MAPS = ['kqLog','healthLog','examPlan','kmData'];
 var UI_DEFAULT = { theme:'pink', fs:'m', weather:1,
-  tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['anki',1],['study',1],['exam',1],['money',1],['chat',1],['notes',1],['pet',1],['news',0],['risyu',0],['set',1]],
+  tabs:[['today',1],['tt',1],['course',1],['cal',1],['todo',1],['anki',1],['study',1],['exam',1],['jisshu',1],['career',1],['money',1],['chat',1],['notes',1],['pet',1],['news',0],['risyu',0],['set',1]],
   todayOrder: TODAY_SECTIONS.map(function(x){ return x[0]; }),
   todayClosed: {}, pageOrder:{}, pageHide:{}, subOrder:{}, subHide:{}, setOpen:{}, customColor:'#E8C8E8', autoClean:1 };
 var S = {
@@ -1312,8 +1312,8 @@ try{
     S.suggests = Array.isArray(d0.suggests) ? d0.suggests : [];
     if(!Array.isArray(S.ui.tabs)) S.ui.tabs = UI_DEFAULT.tabs.map(function(x){ return x.slice(); });
     TAB_DEFS.forEach(function(t){ if(!S.ui.tabs.some(function(x){ return x[0]===t[0]; })) S.ui.tabs.push([t[0], t[0]==='news'||t[0]==='risyu' ? 0 : 1]); });
-    /* 暗記・勉強・試験タブは、ToDoのうしろに入れる（あとから足した人も、⚙のうしろにならないように） */
-    [['anki','todo'],['study','anki'],['exam','study']].forEach(function(pr){
+    /* 暗記・勉強・試験・実習・キャリアタブは、ToDoのうしろに入れる（あとから足した人も、⚙のうしろにならないように） */
+    [['anki','todo'],['study','anki'],['exam','study'],['jisshu','exam'],['career','jisshu']].forEach(function(pr){
       var i = S.ui.tabs.findIndex(function(x){ return x[0]===pr[0]; });
       var j = S.ui.tabs.findIndex(function(x){ return x[0]==='set'; });
       if(i > j && j >= 0){
