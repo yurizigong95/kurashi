@@ -12,6 +12,8 @@ header h1{font-size:min(1em, 17.5px)}
   #apps[data-n="13"] button{font-size:.54em}
   #apps[data-n="14"] button{font-size:.5em}
   #apps[data-n="15"] button{font-size:.47em}
+  #apps[data-n="16"] button{font-size:.44em}
+  #apps[data-n="17"] button{font-size:.42em}
 }
 /* 固定の大きさで書かれていた大事な文字も、文字の大きさに合わせる */
 pre.rules{font-size:.8em}
