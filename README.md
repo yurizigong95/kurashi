@@ -3,16 +3,17 @@
 支払い・履修・時間割・予定・バイト・相談をひとつにまとめた、自分用のアプリです。
 GitHub Pages（https://yurizigong95.github.io/kurashi/ ）で動かします。
 
-## 4つのアプリ
+## 5つのアプリ
 
-この1つのフォルダから、4つのアプリを公開しています。どれもスマホのホーム画面に置けます。
+この1つのフォルダから、5つのアプリを公開しています。どれもスマホのホーム画面に置けます。
 
 | アプリ | 場所 | 開く | 中身 |
 |---|---|---|---|
 | くらしの手帳 | `/`（このフォルダ） | https://yurizigong95.github.io/kurashi/ | 支払い・履修・時間割・予定・バイト・相談 |
 | もんだいメーカー | `study/` | https://yurizigong95.github.io/kurashi/study/ | 授業の写真・スライド・配布資料から問題を作って解く勉強アプリ |
 | ゲーム道場 | `game/` | https://yurizigong95.github.io/kurashi/game/ | チェス・ゲームセンター（58種）・パーティーのすごろく（HTML1枚＋3Dの素材） |
-| ぜんぶ入り | `all/` | https://yurizigong95.github.io/kurashi/all/ | 上の3つを、上の切りかえバーで行き来できる1つのアプリ |
+| かんご実習メーカー | `care/` | https://yurizigong95.github.io/kurashi/care/ | 学習用の架空の事例（ペーパーペイシェント）で看護過程を練習するアプリ（実在の患者さんの情報は入れない） |
+| ぜんぶ入り | `all/` | https://yurizigong95.github.io/kurashi/all/ | 上の4つを、上の切りかえバーで行き来できる1つのアプリ |
 
 - 3つのアプリはそれぞれ独立していて、コードも保存場所も別です（かたほうを直しても、もう一方は影響を受けません）。
 - 「ぜんぶ入り」は入れ物だけで、中身は本物の3つのアプリをそのまま出しています。保存したものは、どちらから開いても同じです。
@@ -60,6 +61,7 @@ GitHub Pages（https://yurizigong95.github.io/kurashi/ ）で動かします。
 | `tests/` | 自動テスト（本物のデータには触れません） |
 | `sw.js` / `manifest.json` / `icon-*.png` | ホーム画面に置いたときのための設定 |
 | `study/` | もんだいメーカー（別のアプリ。1つで完結） |
+| `care/` | かんご実習メーカー（別のアプリ。1つで完結。同期の置き場所は `合言葉__care_…`） |
 | `game/index.html` | ゲーム道場（HTML1枚のゲーム集。Claude で作った版に、Gemini・Firebase のつなぎを足したもの） |
 | `game/assets3d/` | ゲーム道場の3Dの模型と地面の模様（どれも CC0。出どころは `CREDITS.md`） |
 | `all/` | ぜんぶ入り（3つを行き来する入れ物。index.html・sw.js・manifest.json・アイコン） |
