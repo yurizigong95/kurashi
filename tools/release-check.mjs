@@ -2,6 +2,7 @@
 // ① js/core.js の APP_BUILD と sw.js の CACHE を表示する（2つはセットで上げる）
 // ② sw.js の FILES と、実際にあるファイル（js/*.js・css/*.css・index.html など）を照らし合わせる。
 //    もんだいメーカー（study/）は study/sw.js の FILES と study/js/*.js などを照らし合わせる。
+//    かんご実習メーカー（care/）も、care/sw.js の FILES と care/js/*.js などを同じように照らし合わせる。
 //    抜け・余りがあれば終了コード 1
 // ③ すべての JS を node --check で構文チェックする
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -52,9 +53,16 @@ if (existsSync('study/sw.js')) {
     ...list('study/js', '.js'), ...list('study/css', '.css'), ...htmlRefs('study')
   ]);
 }
+if (existsSync('care/sw.js')) {
+  compare('かんご実習メーカー', 'care', 'sw.js', [
+    'care/index.html', 'care/manifest.json', 'care/icon-180.png', 'care/icon-192.png', 'care/icon-512.png',
+    ...list('care/js', '.js'), ...list('care/css', '.css'), ...htmlRefs('care')
+  ]);
+}
 
 // ③ 構文チェック
-const js = [...list('js', '.js'), ...list('study/js', '.js'), 'sw.js', ...(existsSync('study/sw.js') ? ['study/sw.js'] : []), ...list('tools', '.mjs')];
+const js = [...list('js', '.js'), ...list('study/js', '.js'), ...list('care/js', '.js'), 'sw.js',
+  ...(existsSync('study/sw.js') ? ['study/sw.js'] : []), ...(existsSync('care/sw.js') ? ['care/sw.js'] : []), ...list('tools', '.mjs')];
 let ng = 0;
 for (const f of js) {
   try { execFileSync(process.execPath, ['--check', f], { stdio: 'pipe' }); }
