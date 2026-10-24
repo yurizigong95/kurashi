@@ -1,5 +1,6 @@
 /* くらしの手帳：オフライン用・通知の受け取り・前の版にもどす */
-var CACHE = 'kurashi-v27';
+/* 版を出すときは js/core.js の APP_BUILD とセットで上げる（tools/release-check.mjs で両方を表示して確かめる） */
+var CACHE = 'kurashi-v28';
 var PREV = 'kurashi-prev';      /* ひとつ前の版のファイル（「前の版にもどす」で使う） */
 var FLAGS = 'kurashi-flags';    /* 前の版を使っているかの印 */
 var FILES = [
