@@ -278,8 +278,10 @@ test('同期：Bで直した中身がAにもどる', async function(){
 
 test('同期：2台で同時に足しても、両方残る', async function(){
   var A = frames.A, B = frames.B;
-  A.S.tasks.push(J(A, { id:'tk_a', title:'Aの課題', subject:'', due:'2026-09-22', done:0, subs:[], photos:[], mt:Date.now() }));
-  B.S.tasks.push(J(B, { id:'tk_b', title:'Bの課題', subject:'', due:'2026-09-23', done:0, subs:[], photos:[], mt:Date.now() }));
+  var dueA = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
+  var dueB = new Date(Date.now() - 9 * 86400000).toISOString().slice(0, 10);
+  A.S.tasks.push(J(A, { id:'tk_a', title:'Aの課題', subject:'', due:dueA, done:0, subs:[], photos:[], mt:Date.now() }));
+  B.S.tasks.push(J(B, { id:'tk_b', title:'Bの課題', subject:'', due:dueB, done:0, subs:[], photos:[], mt:Date.now() }));
   A.persist(); B.persist();
   A.pushRemote(true); B.pushRemote(true);
   await until(function(){
