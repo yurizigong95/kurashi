@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-10-24f';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-10-26a';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -1030,7 +1030,7 @@ var PERIOD_DEFAULT = [
   ['14:50','16:20'], ['16:30','18:00'], ['18:10','19:40']
 ];
 var COMMUTE_DEFAULT = {
-  walk:8, bus:45, change:15, train:35, toSchool:10, buffer:10,
+  walk:8, bus:51, change:15, train:35, toSchool:10, buffer:10,
   periods: PERIOD_DEFAULT.map(function(x){ return x[0]; }),
   ends:    PERIOD_DEFAULT.map(function(x){ return x[1]; })
 };
