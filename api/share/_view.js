@@ -8,7 +8,7 @@
 'use strict';
 const { sendJson } = require('../_fb');
 const D = require('../_digest');
-const { loadShares, ALPHABET } = require('./create');
+const { loadShares, ALPHABET } = require('./_create');
 
 const MAX_TASKS = 20;
 const CODE_RE = new RegExp('^[' + ALPHABET + ']{12}$');

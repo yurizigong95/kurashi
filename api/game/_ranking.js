@@ -6,7 +6,7 @@
 'use strict';
 const { sendJson, checkAppKey } = require('../_fb');
 const { loadGameField } = require('../_hub');
-const { topOf } = require('./score');
+const { topOf } = require('./_score');
 
 async function handler(req, res) {
   if (req.method === 'OPTIONS') return sendJson(res, 200, {});

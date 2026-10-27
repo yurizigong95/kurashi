@@ -12,7 +12,7 @@ const { sendJson, fsGetDoc, CONFIG_DOC } = require('./_fb');
 const { resolveModels } = require('./_models');
 const { publicPrompts } = require('./_prompts');
 const { loadRules } = require('./_money');
-const { loadTransit } = require('./transit');
+const { loadTransit } = require('./_transit');
 
 /* 秘書APIの目録（#200） */
 const ENDPOINTS = [

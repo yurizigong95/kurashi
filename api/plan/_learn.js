@@ -9,7 +9,7 @@
 'use strict';
 const { sendJson, checkAppKey } = require('../_fb');
 const D = require('../_digest');
-const { loadArrivals } = require('../attend/arrive');
+const { loadArrivals } = require('../attend/_arrive');
 
 const MIN_SAMPLES = 3;
 const MAX_MARGIN = 120;

@@ -11,7 +11,7 @@
 'use strict';
 const { sendJson, readBody, checkAppKey, fsGetDoc, fsSetDoc, HEALTH_DOC } = require('../_fb');
 const AI = require('../_ai');
-const { extractPdfText } = require('../pdf');
+const { extractPdfText } = require('../_pdf');
 
 const MAX_REPORTS = 20;
 const SUMMARY_INPUT = 12000;

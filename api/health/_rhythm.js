@@ -9,7 +9,7 @@
 'use strict';
 const { sendJson, checkAppKey, fsGetDoc, LOG_DOC } = require('../_fb');
 const D = require('../_digest');
-const { loadArrivals } = require('../attend/arrive');
+const { loadArrivals } = require('../attend/_arrive');
 
 const LOOKBACK_DAYS = 14;
 const SD_FLAG = 45;
