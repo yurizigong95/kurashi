@@ -1,5 +1,5 @@
 {
-  "build": "2026-10-28c",
+  "build": "2026-10-28d",
   "made": "2026-10-27 15:56",
   "files": [
     {
@@ -77,11 +77,11 @@
     },
     {
       "path": "js/ai-plus.js",
-      "sha256": "5e5749a4a62f4baa"
+      "sha256": "55931300fadae93e"
     },
     {
       "path": "js/ai.js",
-      "sha256": "d1b30889c716bb9f"
+      "sha256": "cc14fdad090fd6a6"
     },
     {
       "path": "js/aidata.js",
@@ -117,7 +117,7 @@
     },
     {
       "path": "js/chat.js",
-      "sha256": "c61a5bee1276392c"
+      "sha256": "8988270f8e1d6bcb"
     },
     {
       "path": "js/common.js",
@@ -129,7 +129,7 @@
     },
     {
       "path": "js/core.js",
-      "sha256": "579abb513fbe6aa7"
+      "sha256": "2d4b442f6865044e"
     },
     {
       "path": "js/data.js",
@@ -253,7 +253,7 @@
     },
     {
       "path": "js/whatsnew.js",
-      "sha256": "33234d735c8b89bd"
+      "sha256": "6a484765e23d4da3"
     },
     {
       "path": "js/wx-plus.js",
@@ -269,7 +269,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "263cfca603f21769"
+      "sha256": "136e3ac678404ea5"
     }
   ]
 }
