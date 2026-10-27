@@ -1,6 +1,6 @@
 {
-  "build": "2026-10-28a",
-  "made": "2026-10-27 22:03",
+  "build": "2026-10-28b",
+  "made": "2026-10-27 15:47",
   "files": [
     {
       "path": "css/app.css",
@@ -93,7 +93,7 @@
     },
     {
       "path": "js/calendar.js",
-      "sha256": "7243b7d8ea2a13eb"
+      "sha256": "e68b0b07b079de48"
     },
     {
       "path": "js/chara-art.js",
@@ -121,7 +121,7 @@
     },
     {
       "path": "js/common.js",
-      "sha256": "0ef3dcec2a044f10"
+      "sha256": "6e0ee7d238e02ea7"
     },
     {
       "path": "js/commute.js",
@@ -129,7 +129,7 @@
     },
     {
       "path": "js/core.js",
-      "sha256": "04bda9fb5f9b6e89"
+      "sha256": "bc49b8371a1c62e6"
     },
     {
       "path": "js/data.js",
@@ -145,7 +145,7 @@
     },
     {
       "path": "js/google.js",
-      "sha256": "cc52668c5d47f615"
+      "sha256": "8f1a57a56188948e"
     },
     {
       "path": "js/hooks.js",
@@ -209,7 +209,7 @@
     },
     {
       "path": "js/money.js",
-      "sha256": "bafe9b89acf032b1"
+      "sha256": "f3f33c46e35a69c5"
     },
     {
       "path": "js/notify.js",
@@ -233,11 +233,11 @@
     },
     {
       "path": "js/settings.js",
-      "sha256": "946e0c758486ce3e"
+      "sha256": "0f07827bbcdb1777"
     },
     {
       "path": "js/sync.js",
-      "sha256": "46748beaefb31bac"
+      "sha256": "9a33a0de02880d9a"
     },
     {
       "path": "js/timetable.js",
@@ -245,7 +245,7 @@
     },
     {
       "path": "js/today.js",
-      "sha256": "3eac3ec9951e1264"
+      "sha256": "fcb32aaee125292c"
     },
     {
       "path": "js/todo.js",
@@ -269,7 +269,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "206946acd8ad86e7"
+      "sha256": "4489ec27f8f75ec1"
     }
   ]
 }
