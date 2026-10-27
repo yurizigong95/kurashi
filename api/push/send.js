@@ -1,10 +1,10 @@
 /* 通知の即時送信（テスト送信・手動送信）
-   POST /api/push/send { title, body, url?, device? }
-   device を省略すると登録済みの全端末へ送ります。
+   POST /api/push/send { title, body, url?, device?, cat? }
+   device を省略すると登録済みの全端末へ送ります。cat を付けると、その種類を「知らせない」にした端末へは送りません。
    送信には Vercel の環境変数 FIREBASE_SERVICE_ACCOUNT（Firebase のサービスアカウントJSON）が必要です。
    未設定のときは 501 と登録端末数を返します（登録までは動いていることが分かります）。 */
 'use strict';
-const { sendJson, readBody, loadDevices, saveDevices, serviceAccount, fcmSendTo } = require('../_fb');
+const { sendJson, readBody, loadDevices, saveDevices, serviceAccount, sendToDevices } = require('../_fb');
 
 module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return sendJson(res, 200, {});
@@ -25,19 +25,22 @@ module.exports = async function handler(req, res) {
         devices: Object.keys(devices).length,
       });
     }
+    const targets = {};
+    for (const id of ids) if (devices[id]) targets[id] = devices[id];
+    const job = { title: b.title, body: b.body, url: b.url };
+    if (b.cat) job.cat = String(b.cat).slice(0, 20);
+    const out = await sendToDevices(targets, job);
     const results = [];
     let changed = false;
-    for (const id of ids) {
-      const d = devices[id];
-      if (!d || !d.token) continue;
-      const r = await fcmSendTo(d.token, b.title, b.body, b.url);
-      results.push({ device: id, ok: r.ok, code: r.code });
+    for (const r of out.results) {
+      if (r.skipped) { results.push({ device: r.device, skipped: r.skipped }); continue; }
+      results.push({ device: r.device, ok: r.ok, code: r.code });
       if (!r.ok && (r.code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(r.body || ''))) {
-        delete devices[id]; changed = true;
+        delete devices[r.device]; changed = true;
       }
     }
     if (changed) await saveDevices(devices);
-    sendJson(res, 200, { ok: true, sent: results.filter((x) => x.ok).length, results });
+    sendJson(res, 200, { ok: true, sent: out.sent, results });
   } catch (e) {
     sendJson(res, 500, { error: e.message });
   }

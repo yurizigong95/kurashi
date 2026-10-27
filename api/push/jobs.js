@@ -21,6 +21,8 @@ module.exports = async function handler(req, res) {
       title: String(j.title || 'くらしの手帳').slice(0, 80),
       body: String(j.body || '').slice(0, 300),
       url: String(j.url || './').slice(0, 200),
+      cat: String(j.cat || '').slice(0, 20),     // 通知の種類（端末ごとの「知らせない」に使う）
+      kind: String(j.kind || '').slice(0, 20),
       sent: 0,
     })).filter((j) => j.id && j.at);
     await saveJobs(clean);
