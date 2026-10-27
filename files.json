@@ -1,6 +1,6 @@
 {
-  "build": "2026-10-27v",
-  "made": "2026-10-27 19:30",
+  "build": "2026-10-28a",
+  "made": "2026-10-27 22:03",
   "files": [
     {
       "path": "css/app.css",
@@ -56,7 +56,7 @@
     },
     {
       "path": "gas/Code.gs",
-      "sha256": "b3be18767aa809d0"
+      "sha256": "c084737b8993f825"
     },
     {
       "path": "gas/appsscript.json",
@@ -125,11 +125,11 @@
     },
     {
       "path": "js/commute.js",
-      "sha256": "e40eb9f95bcd0fb9"
+      "sha256": "5446b299fa3e7294"
     },
     {
       "path": "js/core.js",
-      "sha256": "8273ce8f052dec35"
+      "sha256": "04bda9fb5f9b6e89"
     },
     {
       "path": "js/data.js",
@@ -153,11 +153,11 @@
     },
     {
       "path": "js/kakeibo.js",
-      "sha256": "02d6f1d603fbd7e1"
+      "sha256": "296b3b5f823e236d"
     },
     {
       "path": "js/links.js",
-      "sha256": "93737dd85072ffba"
+      "sha256": "773d77eb802e746d"
     },
     {
       "path": "js/m-anki2.js",
@@ -205,15 +205,15 @@
     },
     {
       "path": "js/main.js",
-      "sha256": "b2b10e99c8bcdcdf"
+      "sha256": "908297a60c09e923"
     },
     {
       "path": "js/money.js",
-      "sha256": "ce4d22dee822c93f"
+      "sha256": "bafe9b89acf032b1"
     },
     {
       "path": "js/notify.js",
-      "sha256": "5d07432190ed0f66"
+      "sha256": "1b8138d7eccb790d"
     },
     {
       "path": "js/ops.js",
@@ -269,7 +269,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "d31f6db49dce5491"
+      "sha256": "206946acd8ad86e7"
     }
   ]
 }
