@@ -1,6 +1,6 @@
 {
-  "build": "2026-10-28b",
-  "made": "2026-10-27 15:47",
+  "build": "2026-10-28c",
+  "made": "2026-10-27 15:56",
   "files": [
     {
       "path": "css/app.css",
@@ -117,7 +117,7 @@
     },
     {
       "path": "js/chat.js",
-      "sha256": "45d965ce2d0a6a42"
+      "sha256": "c61a5bee1276392c"
     },
     {
       "path": "js/common.js",
@@ -125,15 +125,15 @@
     },
     {
       "path": "js/commute.js",
-      "sha256": "5446b299fa3e7294"
+      "sha256": "767587688438b43d"
     },
     {
       "path": "js/core.js",
-      "sha256": "bc49b8371a1c62e6"
+      "sha256": "579abb513fbe6aa7"
     },
     {
       "path": "js/data.js",
-      "sha256": "fdbe826468883803"
+      "sha256": "d9dea5f6b3d09395"
     },
     {
       "path": "js/decor.js",
@@ -233,7 +233,7 @@
     },
     {
       "path": "js/settings.js",
-      "sha256": "0f07827bbcdb1777"
+      "sha256": "3c622b218c51b940"
     },
     {
       "path": "js/sync.js",
@@ -269,7 +269,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "4489ec27f8f75ec1"
+      "sha256": "263cfca603f21769"
     }
   ]
 }
