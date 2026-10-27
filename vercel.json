@@ -7,10 +7,7 @@
     }
   ],
   "functions": {
-    "api/health/report.js": {
-      "includeFiles": "node_modules/pdfjs-dist/{legacy/build,standard_fonts,cmaps}/**"
-    },
-    "api/pdf.js": {
+    "api/app.js": {
       "includeFiles": "node_modules/pdfjs-dist/{legacy/build,standard_fonts,cmaps}/**"
     }
   },
@@ -67,5 +64,35 @@
       ],
       "source": "/all/sw.js"
     }
+  ],
+  "rewrites": [
+    { "source": "/api/push/:op", "destination": "/api/push?op=:op" },
+    { "source": "/api/money/:name", "destination": "/api/app?area=money&name=:name" },
+    { "source": "/api/plan/:name", "destination": "/api/app?area=plan&name=:name" },
+    { "source": "/api/study/:name", "destination": "/api/app?area=study&name=:name" },
+    { "source": "/api/game/:name", "destination": "/api/app?area=game&name=:name" },
+    { "source": "/api/health/:name", "destination": "/api/app?area=health&name=:name" },
+    { "source": "/api/notify/:name", "destination": "/api/app?area=notify&name=:name" },
+    { "source": "/api/attend/:name", "destination": "/api/app?area=attend&name=:name" },
+    { "source": "/api/share/:name", "destination": "/api/app?area=share&name=:name" },
+    { "source": "/api/photo/:name", "destination": "/api/app?area=photo&name=:name" },
+    { "source": "/api/sync/:name", "destination": "/api/app?area=sync&name=:name" },
+    { "source": "/api/log", "destination": "/api/app?name=log" },
+    { "source": "/api/fetch", "destination": "/api/app?name=fetch" },
+    { "source": "/api/hook", "destination": "/api/app?name=hook" },
+    { "source": "/api/pdf", "destination": "/api/app?name=pdf" },
+    { "source": "/api/ocr", "destination": "/api/app?name=ocr" },
+    { "source": "/api/translate", "destination": "/api/app?name=translate" },
+    { "source": "/api/voice", "destination": "/api/app?name=voice" },
+    { "source": "/api/wx", "destination": "/api/app?name=wx" },
+    { "source": "/api/maps", "destination": "/api/app?name=maps" },
+    { "source": "/api/mail", "destination": "/api/app?name=mail" },
+    { "source": "/api/search", "destination": "/api/app?name=search" },
+    { "source": "/api/settings", "destination": "/api/app?name=settings" },
+    { "source": "/api/export", "destination": "/api/app?name=export" },
+    { "source": "/api/transfer", "destination": "/api/app?name=transfer" },
+    { "source": "/api/transit", "destination": "/api/app?name=transit" },
+    { "source": "/api/calendar", "destination": "/api/app?name=calendar" },
+    { "source": "/api/health", "destination": "/api/app?name=health" }
   ]
 }
