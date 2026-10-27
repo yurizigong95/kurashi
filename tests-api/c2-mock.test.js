@@ -298,8 +298,8 @@ async function call(handler, method, url, body, headers) {
     seedSync(baseData());
 
     /* 時刻表 → 終電 */
-    const transit = require('../api/transit');
-    const last = require('../api/plan/lasttrain');
+    const transit = require('../api/_transit');
+    const last = require('../api/plan/_lasttrain');
     let r = await call(last, 'GET', '/api/plan/lasttrain');
     ok(r.statusCode === 200 && r.json().enough === false && /未登録/.test(r.json().reason), 'lasttrain 時刻表なし → enough:false');
     r = await call(transit, 'GET', '/api/transit');
@@ -326,7 +326,7 @@ async function call(handler, method, url, body, headers) {
     ok(r.json().transit && r.json().transit.source === 'server' && r.json().transit.tables.trainBack.length === 2, '/api/config で時刻表を配信');
 
     /* 到着記録 */
-    const arrive = require('../api/attend/arrive');
+    const arrive = require('../api/attend/_arrive');
     r = await call(arrive, 'POST', '/api/attend/arrive', { date: today, time: '8:50', place: '学校'.repeat(30) });
     ok(r.statusCode === 200 && r.json().ok === true, 'arrive POST');
     r = await call(arrive, 'POST', '/api/attend/arrive', { date: 'x', time: '8:50' });
@@ -336,7 +336,7 @@ async function call(handler, method, url, body, headers) {
     ok(aj.entries.length === 1 && aj.entries[0].time === '08:50' && aj.entries[0].place.length === 40, 'arrive GET で返る（時刻の整形・場所40字）');
 
     /* 学習（#57） */
-    const learn = require('../api/plan/learn');
+    const learn = require('../api/plan/_learn');
     r = await call(learn, 'GET', '/api/plan/learn');
     ok(r.json().enough === false && r.json().reason === '学習データ不足', 'learn 記録3件未満 → enough:false');
     const dataNow = await D.loadData();
@@ -358,8 +358,8 @@ async function call(handler, method, url, body, headers) {
     ok(Object.keys(lnj.byWeekday).reduce((a, k) => a + lnj.byWeekday[k].n, 0) === 3, 'learn 曜日別の件数');
 
     /* 共有（#49） */
-    const create = require('../api/share/create');
-    const view = require('../api/share/view');
+    const create = require('../api/share/_create');
+    const view = require('../api/share/_view');
     r = await call(create, 'POST', '/api/share/create');
     const code = r.json().code;
     ok(r.statusCode === 200 && /^[A-HJ-NP-Z2-9]{12}$/.test(code), 'share create 12文字（0/O/1/I なし）');
@@ -376,7 +376,7 @@ async function call(handler, method, url, body, headers) {
     ok(r.statusCode === 404, 'share view 期限切れは 404');
 
     /* 学習計画（#47） */
-    const sp = require('../api/study/plan');
+    const sp = require('../api/study/_plan');
     r = await call(sp, 'GET', '/api/study/plan');
     ok(r.statusCode === 200 && r.json().exams[0].id === 'ex1', 'study/plan GET 試験一覧');
     r = await call(sp, 'POST', '/api/study/plan', {});
@@ -394,7 +394,7 @@ async function call(handler, method, url, body, headers) {
   {
     delete store[FB.WATCH_DOC];
     seedSync(baseData());
-    const cron = require('../api/push/cron');
+    const cron = require('../api/push/_cron');
     const r1 = await call(cron, 'POST', '/api/push/cron');
     const j1 = r1.json();
     ok((r1.statusCode === 200 || r1.statusCode === 501) && j1 && j1.watch && typeof j1.watch.events === 'number', 'cron 1回目 200/501 と watch の集計');

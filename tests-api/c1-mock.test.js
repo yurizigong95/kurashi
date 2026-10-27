@@ -161,7 +161,7 @@ async function call(handler, method, url, body, headers) {
     });
     process.env.CRON_SECRET = 's3cret';
     seedSync(); seedSnap(); seedDevices();
-    const cron = require('../api/push/cron');
+    const cron = require('../api/push/_cron');
     const auth = { authorization: 'Bearer s3cret' };
     if (quiet) {
       skipped('cron 本体（静かな時間帯のため生成系が止まる）');
@@ -192,7 +192,7 @@ async function call(handler, method, url, body, headers) {
 
   console.log('== ハンドラー ==');
   {
-    const imp = require('../api/money/import');
+    const imp = require('../api/money/_import');
     let r = await call(imp, 'POST', '/api/money/import', {
       balance: 30000,
       debits: [{ date: today, amount: 5000, label: 'テスト引落' }],
@@ -203,13 +203,13 @@ async function call(handler, method, url, body, headers) {
     r = await call(imp, 'GET', '/api/money/import');
     ok(r.statusCode === 200 && r.json().snap.balance === 30000, '#31 import GET 最新を返す');
 
-    const sum = require('../api/money/summary');
+    const sum = require('../api/money/_summary');
     r = await call(sum, 'GET', '/api/money/summary');
     const sj = r.json();
     ok(r.statusCode === 200 && sj.income.total === 60000 && sj.income.enough === true, '#35 summary 年収累計（payApplied）');
     ok(sj.month.out === 800 && sj.month.source === 'sync', '#37 summary 今月の支出（同期の spends）');
 
-    const rules = require('../api/money/rules');
+    const rules = require('../api/money/_rules');
     r = await call(rules, 'POST', '/api/money/rules', { rules: [{ cat: 'food', keywords: ['テスト食堂'] }] });
     ok(r.statusCode === 200, '#36 rules POST 差し替え');
     r = await call(rules, 'GET', '/api/money/rules');
@@ -218,7 +218,7 @@ async function call(handler, method, url, body, headers) {
     r = await call(cfg, 'GET', '/api/config');
     ok(r.json().classRules && r.json().classRules.source === 'server', '#36 /api/config で配信');
 
-    const cal = require('../api/calendar');
+    const cal = require('../api/_calendar');
     r = await call(cal, 'POST', '/api/calendar', {
       from: today, to: in3,
       items: [{ id: 'g1', title: '共有ミーティング', cal: '共有カレンダー', allDay: 0, start: today + 'T15:30', end: today + 'T16:30', where: '' }],
@@ -227,19 +227,19 @@ async function call(handler, method, url, body, headers) {
     r = await call(cal, 'GET', '/api/calendar');
     ok(r.statusCode === 200 && r.json().items.length === 1 && r.json().stale === false, '#71 calendar GET キャッシュ配信');
 
-    const chk = require('../api/plan/check');
+    const chk = require('../api/plan/_check');
     r = await call(chk, 'GET', '/api/plan/check');
     const cj = r.json();
     ok(r.statusCode === 200 && cj.commuteMin === 119, '#72 check 通学時間は設定から（119分）');
     ok(cj.warnings.some((w) => w.type === 'overlap'), '#72 check 重なりあり');
     ok(cj.warnings.some((w) => (w.a.shared || w.b.shared) && (w.a.cal === '共有カレンダー' || w.b.cal === '共有カレンダー')), '#78 check 共有予定を区別表示');
 
-    const gaps = require('../api/plan/gaps');
+    const gaps = require('../api/plan/_gaps');
     r = await call(gaps, 'GET', '/api/plan/gaps?date=' + today);
     const gj = r.json();
     ok(r.statusCode === 200 && gj.gaps.length > 0 && gj.suggestions.some((s) => s.taskId === 'tk1'), '#76 gaps 空き時間＋課題の候補');
 
-    const next = require('../api/plan/next');
+    const next = require('../api/plan/_next');
     r = await call(next, 'GET', '/api/plan/next');
     const nj = r.json();
     ok(r.statusCode === 200 && nj.items.some((i) => i.kind === 'exam' && i.daysLeft === 3), '#80 next 試験まで3日');
@@ -249,12 +249,12 @@ async function call(handler, method, url, body, headers) {
     const gens = await M.loadGenerations();
     const older = { at: new Date(now - 86400000).toISOString(), ymd: D.addDaysYmd(today, -1), balance: 5000, balanceSource: 'sync', txCount: 0, txSource: 'sync', txKeys: [], planCounts: { events: 0, tasks: 0, exams: 0 }, planHash: 'x' };
     await M.saveGenerations([older].concat(gens));
-    const hist = require('../api/plan/history');
+    const hist = require('../api/plan/_history');
     r = await call(hist, 'GET', '/api/plan/history');
     const hj = r.json();
     ok(r.statusCode === 200 && hj.diff.enough === true && hj.diff.balance.delta === 5000, '#79 history 前回との差分（残高+5000）');
 
-    const ics = require('../api/plan/ics');
+    const ics = require('../api/plan/_ics');
     delete process.env.PLAN_ICS_KEY; delete process.env.APP_API_SECRET;
     r = await call(ics, 'GET', '/api/plan/ics');
     ok(r.statusCode === 403 && r.json().code === 'NO_KEY', '#74 ics 合言葉未設定では配らない');

@@ -199,7 +199,7 @@ function makePdf(text) {
 
   console.log('== settings（#88・#81） ==');
   {
-    const h = require('../api/settings');
+    const h = require('../api/_settings');
     let r = await call(h, 'POST', '/api/settings', { common: { theme: 'pink' } });
     ok(r.statusCode === 200 && r.json().rev === 1, '共通設定を保存（rev 1）');
     r = await call(h, 'POST', '/api/settings', { deviceId: 'dev1', device: { theme: 'blue' }, baseRev: 1 });
@@ -213,7 +213,7 @@ function makePdf(text) {
 
   console.log('== sync queue（#89） ==');
   {
-    const h = require('../api/sync/queue');
+    const h = require('../api/sync/_queue');
     let r = await call(h, 'POST', '/api/sync/queue', { ops: [{ op: 'task.add', payload: { title: 'a' } }, { op: 'task.done', payload: { id: 1 } }] });
     ok(r.statusCode === 200 && r.json().accepted === 2 && r.json().lastSeq === 2, 'キューに連番で2件');
     r = await call(h, 'GET', '/api/sync/queue');
@@ -223,7 +223,7 @@ function makePdf(text) {
 
   console.log('== transfer（#90・#199） ==');
   {
-    const h = require('../api/transfer');
+    const h = require('../api/_transfer');
     let r = await call(h, 'POST', '/api/transfer', { action: 'issue' });
     const code = r.json() && r.json().code;
     ok(r.statusCode === 200 && /^[A-Z2-9]{12}$/.test(code || ''), '移行コード発行');
@@ -235,7 +235,7 @@ function makePdf(text) {
 
   console.log('== study/time（#65） ==');
   {
-    const h = require('../api/study/time');
+    const h = require('../api/study/_time');
     let r = await call(h, 'POST', '/api/study/time', { date: today, minutes: 45, subject: '解剖学' });
     ok(r.statusCode === 200, '勉強時間を記録');
     r = await call(h, 'POST', '/api/study/time', { date: today, minutes: 30, subject: '英語' });
@@ -248,7 +248,7 @@ function makePdf(text) {
 
   console.log('== study/generate（#61） ==');
   {
-    const h = require('../api/study/generate');
+    const h = require('../api/study/_generate');
     let r = await call(h, 'POST', '/api/study/generate', { topic: '循環器', count: 5, level: 2 });
     const j = r.json();
     ok(r.statusCode === 200 && j.ok === true && j.items.length === 2, 'AI生成＋形の悪い問題は捨てる（4件中2件）');
@@ -262,7 +262,7 @@ function makePdf(text) {
 
   console.log('== study/summarize（#66）・transcribe（#67） ==');
   {
-    const h = require('../api/study/summarize');
+    const h = require('../api/study/_summarize');
     geminiText = '要点その1。要点その2。';
     let r = await call(h, 'POST', '/api/study/summarize', { text: '短い文章です。' });
     ok(r.json().ok === true && r.json().chunks === 1, '短文は1かたまりで要約');
@@ -270,7 +270,7 @@ function makePdf(text) {
     ok(r.json().ok === true && r.json().chunks === 2, '長文は分割して要約');
     r = await call(h, 'POST', '/api/study/summarize', { text: 'あ'.repeat(60001) });
     ok(r.statusCode === 413, '上限超えは 413');
-    const t = require('../api/study/transcribe');
+    const t = require('../api/study/_transcribe');
     const b64 = Buffer.from('fakeaudio').toString('base64');
     r = await call(t, 'POST', '/api/study/transcribe', { audioBase64: b64, mime: 'audio/wav' });
     ok(r.json().ok === true && r.json().text.indexOf('文字起こし') >= 0, '音声の文字起こし');
@@ -280,7 +280,7 @@ function makePdf(text) {
 
   console.log('== study/questions（#197） ==');
   {
-    const h = require('../api/study/questions');
+    const h = require('../api/study/_questions');
     let r = await call(h, 'GET', '/api/study/questions');
     ok(r.json().ok === true && r.json().empty === true && r.json().sets.length === 0, '問題セットが無ければ empty');
     store[FB.CONFIG_DOC] = Object.assign({}, store[FB.CONFIG_DOC], {
@@ -292,7 +292,7 @@ function makePdf(text) {
 
   console.log('== translate（#68） ==');
   {
-    const h = require('../api/translate');
+    const h = require('../api/_translate');
     let r = await call(h, 'POST', '/api/translate', { text: 'こんにちは', to: 'en' });
     ok(r.json().ok === true && r.json().via === 'gemini', 'DeepL鍵が無ければ Gemini で翻訳');
     process.env.DEEPL_API_KEY = 'dummy:fx';
@@ -303,13 +303,13 @@ function makePdf(text) {
 
   console.log('== ocr（#146）・photo/hash（#147） ==');
   {
-    const h = require('../api/ocr');
+    const h = require('../api/_ocr');
     const b64 = Buffer.from('fakeimage').toString('base64');
     let r = await call(h, 'POST', '/api/ocr', { imageBase64: 'data:image/png;base64,' + b64 });
     ok(r.json().ok === true && r.json().text.indexOf('OCR') >= 0, '画像の文字起こし（data URL 形式）');
     r = await call(h, 'POST', '/api/ocr', { imageBase64: b64, mime: 'image/tiff' });
     ok(r.statusCode === 415, '対応外の画像形式は 415');
-    const ph = require('../api/photo/hash');
+    const ph = require('../api/photo/_hash');
     r = await call(ph, 'POST', '/api/photo/hash', { hash: 'abcdef0123456789' });
     ok(r.json().duplicate === false, '初めての指紋は登録');
     r = await call(ph, 'POST', '/api/photo/hash', { hash: 'abcdef0123456789' });
@@ -318,7 +318,7 @@ function makePdf(text) {
 
   console.log('== voice（#191） ==');
   {
-    const h = require('../api/voice');
+    const h = require('../api/_voice');
     geminiText = '大丈夫、少しずつ進めばいいよ。';
     const r = await call(h, 'POST', '/api/voice', { text: '勉強が不安です' });
     ok(r.json().ok === true && r.json().reply === geminiText && /文章だけ/.test(r.json().note), '文章の返事＋TTSなしの明示');
@@ -326,18 +326,18 @@ function makePdf(text) {
 
   console.log('== health（#84・#182・#188・#190） ==');
   {
-    const h = require('../api/health');
+    const h = require('../api/_health');
     let r = await call(h, 'GET', '/api/health');
     const j = r.json();
     ok(j.ok === true && j.checks.firestore === 'ok' && j.checks.geminiKey === true && !!j.checks.model, '自己点検が状態を返す');
 
     seedSync(baseData());
-    const cyc = require('../api/health/cycle');
+    const cyc = require('../api/health/_cycle');
     r = await call(cyc, 'GET', '/api/health/cycle');
     const cj = r.json();
     ok(cj.enough === false && cj.syncedPeriodItems === 2 && /Apple Health/.test(cj.note), '周期は件数だけ（内容は解読しない・予測はしない）');
 
-    const rep = require('../api/health/report');
+    const rep = require('../api/health/_report');
     r = await call(rep, 'POST', '/api/health/report', { pdfBase64: makePdf('Hb 13.5 g/dL') });
     const rj = r.json();
     ok(rj.ok === true && rj.saved === true && rj.pages === 1 && /Hb/.test(rj.summary), '健診PDFを抽出＋要約＋保存');
@@ -356,7 +356,7 @@ function makePdf(text) {
       { at: new Date(now - 2 * 86400000).toISOString(), level: 'error', msg: 'x', ctx: '' },
       { at: new Date(now).toISOString(), level: 'perf', msg: 'pageview', ctx: '' },
     ])), updatedAt: S(new Date().toISOString()) };
-    const rhy = require('../api/health/rhythm');
+    const rhy = require('../api/health/_rhythm');
     r = await call(rhy, 'GET', '/api/health/rhythm');
     const yj = r.json();
     ok(yj.enough === true && yj.arrivals.days === 3 && yj.arrivals.mean === 8 * 60 + 38, '到着時刻の平均とばらつき（睡眠データなしの明示つき）');
@@ -365,12 +365,12 @@ function makePdf(text) {
   console.log('== export（#86）・search（#87/#194） ==');
   {
     seedSync(baseData());
-    const h = require('../api/export');
+    const h = require('../api/_export');
     let r = await call(h, 'GET', '/api/export?kind=money&format=csv');
     ok(r.statusCode === 200 && r.body.indexOf('date,io,amount,title,cat') === 0 && r.body.indexOf('ローソン') > 0, 'お金の CSV 書き出し');
     r = await call(h, 'GET', '/api/export?kind=plan&format=json');
     ok(r.json().plan.tasks.length === 2 && r.json().plan.exams.length === 1, '予定の JSON 書き出し');
-    const s = require('../api/search');
+    const s = require('../api/_search');
     r = await call(s, 'GET', '/api/search?q=' + encodeURIComponent('レポート'));
     ok(r.json().total === 1 && r.json().hits.tasks[0].title === '解剖学レポート', '課題を横断検索');
     r = await call(s, 'GET', '/api/search?q=' + encodeURIComponent('ローソン'));
@@ -381,7 +381,7 @@ function makePdf(text) {
 
   console.log('== game（#151〜#160） ==');
   {
-    const score = require('../api/game/score');
+    const score = require('../api/game/_score');
     let r = await call(score, 'POST', '/api/game/score', { game: 'chess', name: 'ゆり', score: 1200 });
     ok(r.statusCode === 200 && r.json().record.score === 1200, 'スコア登録');
     r = await call(score, 'POST', '/api/game/score', { game: 'chess', name: 'あきら', score: 1500 });
@@ -389,11 +389,11 @@ function makePdf(text) {
     ok(r.statusCode === 400, '負のスコアは 400（範囲検証）');
     r = await call(score, 'GET', '/api/game/score?game=chess');
     ok(r.json().top[0].score === 1500 && r.json().top.length === 2, 'ランキング順に返る');
-    const ranking = require('../api/game/ranking');
+    const ranking = require('../api/game/_ranking');
     r = await call(ranking, 'GET', '/api/game/ranking?game=chess');
     ok(r.json().allTime.length === 2 && r.json().weekly === null, '週間集計が無ければ weekly:null');
 
-    const save = require('../api/game/save');
+    const save = require('../api/game/_save');
     r = await call(save, 'POST', '/api/game/save', { game: 'chess', data: { board: 'start', turn: 3 } });
     const code = r.json() && r.json().code;
     ok(r.statusCode === 200 && /^[A-Z2-9]{8}$/.test(code || ''), 'セーブコード発行');
@@ -402,19 +402,19 @@ function makePdf(text) {
     r = await call(save, 'GET', '/api/game/save?code=ZZZZZZZZ');
     ok(r.statusCode === 404, '無いコードは 404');
 
-    const daily = require('../api/game/daily');
+    const daily = require('../api/game/_daily');
     const r1 = await call(daily, 'GET', '/api/game/daily');
     const r2 = await call(daily, 'GET', '/api/game/daily');
     ok(r1.json().date === today && r1.json().missions.length === 3 && JSON.stringify(r1.json().missions) === JSON.stringify(r2.json().missions), 'デイリーはサーバー日付で全端末同じ');
 
-    const record = require('../api/game/record');
+    const record = require('../api/game/_record');
     r = await call(record, 'POST', '/api/game/record', { game: 'chess', kind: 'move', data: { from: 'a1', to: 'a2' } });
     ok(r.json().seq === 1, '記録に連番（ポーリング用）');
     r = await call(record, 'POST', '/api/game/record', { game: 'chess', kind: 'move', data: { from: 'b1', to: 'b2' } });
     r = await call(record, 'GET', '/api/game/record?game=chess&kind=move&since=1');
     ok(r.json().records.length === 1 && r.json().records[0].seq === 2 && r.json().lastSeq === 2, 'since で差分だけ引ける（#151 ポーリング）');
 
-    const pet = require('../api/game/pet');
+    const pet = require('../api/game/_pet');
     r = await call(pet, 'POST', '/api/game/pet', { key: 'momo', name: 'モモ' });
     ok(r.json().pet.stage === 'たまご' && r.json().pet.mood === 'げんき', 'ペット登録（生まれたて）');
     const pets = JSON.parse(store[FB.GAME_DOC].pets.stringValue);
@@ -424,7 +424,7 @@ function makePdf(text) {
     r = await call(pet, 'GET', '/api/game/pet?key=momo');
     ok(r.json().pet.stage === 'わかば' && r.json().pet.mood === 'すねてる' && r.json().pet.ageDays === 10, '経過日数で成長と機嫌を判定（端末を閉じていても進む）');
 
-    const talk = require('../api/game/talk');
+    const talk = require('../api/game/_talk');
     r = await call(talk, 'POST', '/api/game/talk', { game: 'chess', char: '先生', situation: '対局開始' });
     ok(r.json().ok === true && r.json().source === 'ai', 'セリフを生成');
     r = await call(talk, 'POST', '/api/game/talk', { game: 'chess', char: '先生', situation: '対局開始' });
@@ -433,7 +433,7 @@ function makePdf(text) {
 
   console.log('== notify / mail / maps / wx（#161〜#165・#163） ==');
   {
-    const dc = require('../api/notify/discord');
+    const dc = require('../api/notify/_discord');
     let r = await call(dc, 'POST', '/api/notify/discord', { text: 'テスト' });
     ok(r.statusCode === 501 && r.json().code === 'NO_HOOK', 'Discord 未設定は 501 NO_HOOK');
     process.env.DISCORD_WEBHOOK_URL = 'https://discord.test/hook';
@@ -441,11 +441,11 @@ function makePdf(text) {
     ok(r.statusCode === 200 && r.json().ok === true, 'Discord に送信');
     delete process.env.DISCORD_WEBHOOK_URL;
 
-    const line = require('../api/notify/line');
+    const line = require('../api/notify/_line');
     r = await call(line, 'POST', '/api/notify/line', { text: 'テスト' });
     ok(r.statusCode === 501 && r.json().code === 'NO_ENV', 'LINE 未設定は 501 NO_ENV');
 
-    const mail = require('../api/mail');
+    const mail = require('../api/_mailapi');
     r = await call(mail, 'POST', '/api/mail', { subject: '週次レポート', body: '本文です', kind: 'weekly' });
     ok(r.json().ok === false && r.json().queued === true && r.json().reason === 'NO_BRIDGE', 'ブリッジが無ければ送信箱へ（送ったことにしない）');
     r = await call(mail, 'GET', '/api/mail');
@@ -457,7 +457,7 @@ function makePdf(text) {
     delete process.env.GAS_MAIL_URL;
     delete process.env.GAS_MAIL_SECRET;
 
-    const maps = require('../api/maps');
+    const maps = require('../api/_maps');
     r = await call(maps, 'GET', '/api/maps?mode=geocode&q=' + encodeURIComponent('西宮市'));
     ok(r.statusCode === 501 && r.json().code === 'NO_KEY', 'Maps 未設定は 501 NO_KEY');
     process.env.GOOGLE_MAPS_KEY = 'dummy';
@@ -468,7 +468,7 @@ function makePdf(text) {
     delete process.env.GOOGLE_MAPS_KEY;
 
     forecastFixture = [{ timeSeries: [{ timeDefines: [today + 'T00:00:00+09:00', tomorrow + 'T00:00:00+09:00'], areas: [{ area: { code: '280010' }, pops: ['50', '20'] }] }] }];
-    const wx = require('../api/wx');
+    const wx = require('../api/_wxapi');
     r = await call(wx, 'GET', '/api/wx');
     ok(r.json().ok === true && r.json().source === 'live' && r.json().today.pop === 50, '天気を取得（#165）');
     r = await call(wx, 'GET', '/api/wx');
@@ -486,7 +486,7 @@ function makePdf(text) {
     r = await call(cfg, 'GET', '/api/config');
     ok(Array.isArray(r.json().events) && r.json().events[0].id === 'ev1', '設定docのイベントを配信（#154）');
 
-    const imp = require('../api/money/import');
+    const imp = require('../api/money/_import');
     r = await call(imp, 'POST', '/api/money/import', { balance: 5000, balances: [{ name: '銀行', amount: 5000 }] });
     const upd = r.json() && r.json().updatedAt;
     ok(r.statusCode === 200 && !!upd, 'スナップショット取り込み');
@@ -502,7 +502,7 @@ function makePdf(text) {
     cd.plan.tasks.push({ id: 'tk9', title: '追加の課題', subject: '', due: tomorrow, done: 0, mt: 0 });
     seedSync(cd);
     delete store[FB.SNAPSHOTS_DOC];   /* その日の世代はまだ無い状態から cron を回す */
-    const cron = require('../api/push/cron');
+    const cron = require('../api/push/_cron');
     const r = await call(cron, 'GET', '/api/push/cron');
     ok(r.statusCode === 501, '送信鍵なしでは 501（従来どおり）');
     const j = r.json();
