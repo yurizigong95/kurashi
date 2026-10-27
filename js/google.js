@@ -129,7 +129,7 @@ function calItemsForGoogle(){
   });
   var d = derive(), cur = thisYm();
   d.months.filter(function(m){ return m >= cur; }).forEach(function(m){
-    [['smbc',S.settings.smbcDay],['rakuten',S.settings.rakutenDay]].forEach(function(pair){
+    [['smbc',S.settings.smbcDay],['olive',S.settings.oliveDay],['rakuten',S.settings.rakutenDay]].forEach(function(pair){
       var g = d.byMonth[m] && d.byMonth[m][pair[0]]; if(!g) return;
       var amt = g.plan + g.stmt; if(amt <= 0) return;
       add('pay-'+pair[0]+'-'+m, 'pay', ACCOUNTS[pair[0]].bank+' 引落 '+yen(amt), m+'-'+pad(toNum(pair[1])), '', 0, '', '前日までに入金');

@@ -96,7 +96,7 @@ function makeIcs(){
   });
   var d = derive(), cur = thisYm();
   d.months.filter(function(m){ return m>=cur; }).forEach(function(m){
-    [['smbc',S.settings.smbcDay],['rakuten',S.settings.rakutenDay]].forEach(function(pair){
+    [['smbc',S.settings.smbcDay],['olive',S.settings.oliveDay],['rakuten',S.settings.rakutenDay]].forEach(function(pair){
       var g=d.byMonth[m][pair[0]], amt=g.plan+g.stmt; if(amt<=0) return;
       ev(pair[0]+'-'+m, ACCOUNTS[pair[0]].bank+' 引落 '+yen(amt), m+'-'+pad(pair[1]), '', 0, '', '前日までに入金');
     });

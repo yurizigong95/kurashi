@@ -125,6 +125,9 @@ function viewSettings(){
       '<div><label class="f">三井住友の引落日</label><input id="sy_smbc" inputmode="numeric" value="'+S.settings.smbcDay+'"></div>'+
       '<div><label class="f">楽天の引落日</label><input id="sy_rakuten" inputmode="numeric" value="'+S.settings.rakutenDay+'"></div></div>'+
     '<div class="pair" style="margin-bottom:11px">'+
+      '<div><label class="f">Oliveの引落日</label><input id="sy_olive" inputmode="numeric" value="'+(S.settings.oliveDay||26)+'"></div>'+
+      '<div></div></div>'+
+    '<div class="pair" style="margin-bottom:11px">'+
       '<div><label class="f">平日の分給（円）</label><input id="st_min1" inputmode="decimal" value="'+(Number(S.settings.minWeekday)||0)+'"></div>'+
       '<div><label class="f">土日の分給（円）</label><input id="st_min2" inputmode="decimal" value="'+(Number(S.settings.minWeekend)||0)+'"></div></div>'+
     '<div class="pair" style="margin-bottom:11px">'+
@@ -515,6 +518,7 @@ function settingsAction(act, t){
   if(act==='save-days'){
     S.settings.smbcDay = Math.min(31, Math.max(1, toNum(val('sy_smbc'))||27));
     S.settings.rakutenDay = Math.min(31, Math.max(1, toNum(val('sy_rakuten'))||27));
+    S.settings.oliveDay = Math.min(31, Math.max(1, toNum(val('sy_olive'))||26));
     var rg = val('st_reg'); S.settings.regDeadline = isYmd(rg) ? rg : '';
     S.settings.minWeekday = Math.max(0, Number(val('st_min1'))||0);
     S.settings.minWeekend = Math.max(0, Number(val('st_min2'))||0);

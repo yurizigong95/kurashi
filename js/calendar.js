@@ -59,7 +59,7 @@ function normItemsRaw(){
 }
 function payItemsOn(ymd){
   var out = [], d = derive(), ym = ymd.slice(0,7), day = Number(ymd.slice(8,10));
-  [['smbc',S.settings.smbcDay],['rakuten',S.settings.rakutenDay]].forEach(function(p){
+  [['smbc',S.settings.smbcDay],['olive',S.settings.oliveDay],['rakuten',S.settings.rakutenDay]].forEach(function(p){
     if(day !== Number(p[1])) return;
     var g = d.byMonth[ym] ? d.byMonth[ym][p[0]] : null;
     if(!g) return;

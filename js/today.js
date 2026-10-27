@@ -7,7 +7,7 @@ function banners(){
   if(weather.alert) out.push({c:'amber', ic:'⚠', t:weather.alert});
 
   /* 支払い前日・当日 */
-  [['smbc',S.settings.smbcDay],['rakuten',S.settings.rakutenDay]].forEach(function(p){
+  [['smbc',S.settings.smbcDay],['olive',S.settings.oliveDay],['rakuten',S.settings.rakutenDay]].forEach(function(p){
     var g = d.byMonth[cur] ? d.byMonth[cur][p[0]] : null;
     if(!g) return;
     var amt = g.plan + g.stmt; if(amt <= 0) return;
@@ -58,7 +58,7 @@ function banners(){
   });
 
   /* 引き落とし前日：口座に足りるか */
-  [['smbc',S.settings.smbcDay],['rakuten',S.settings.rakutenDay]].forEach(function(p){
+  [['smbc',S.settings.smbcDay],['olive',S.settings.oliveDay],['rakuten',S.settings.rakutenDay]].forEach(function(p){
     var n = daysUntil(p[1]); if(n !== 1) return;
     var g = d.byMonth[cur] ? d.byMonth[cur][p[0]] : null; if(!g) return;
     var amt = g.plan + g.stmt; if(amt <= 0) return;

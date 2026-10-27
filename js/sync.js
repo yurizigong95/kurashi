@@ -233,7 +233,7 @@ var MAP_KEYS = ['attend','courseMeta','memos','payApplied','attendLog','grades',
                 'studyLog','petDays'].concat(EXTRA_MAPS);
 var LOG_KEYS = ['transitLog','aiFeedback','aiMemo','trash'];
 /* APIキー・Googleの合言葉は送らない（大事な鍵なので、端末ごとに入れる） */
-var SET_KEYS = ['smbcDay','rakutenDay','geminiModel','aiTone','aiLen','aiStyle',
+var SET_KEYS = ['smbcDay','rakutenDay','oliveDay','geminiModel','aiTone','aiLen','aiStyle',
                 'regDeadline','minWeekday','minWeekend','fare','shop','payBankId','wage','classOnHoliday','shiftName','fuyouLimit'];
 /* 同期のために時刻を見るキーぜんぶ */
 var META_KEYS = WHOLE_KEYS.concat(MAP_KEYS, LOG_KEYS, ['settings','chat','chatRooms']);

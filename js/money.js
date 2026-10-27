@@ -17,8 +17,10 @@ function flowData(){
   var b = budget(), d = derive(), cur = thisYm(), g = d.byMonth[cur];
   var cards = [];
   if(g){
-    if(g.smbc.plan + g.smbc.stmt > 0) cards.push({ name:ACCOUNTS.smbc.bank + '（' + ACCOUNTS.smbc.card + '）', amount:g.smbc.plan + g.smbc.stmt });
-    if(g.rakuten.plan + g.rakuten.stmt > 0) cards.push({ name:ACCOUNTS.rakuten.bank + '（' + ACCOUNTS.rakuten.card + '）', amount:g.rakuten.plan + g.rakuten.stmt });
+    Object.keys(ACCOUNTS).forEach(function(k){
+      var amt = g[k].plan + g[k].stmt;
+      if(amt > 0) cards.push({ name:ACCOUNTS[k].bank + '（' + ACCOUNTS[k].card + '）', amount:amt });
+    });
   }
   var fixed = S.fixed.map(function(x){ return { name:x.name || '固定費', amount:toNum(x.amount) }; }).filter(function(x){ return x.amount > 0; });
   var srcs = S.balances.map(function(x){ return { name:(x.name || '口座') + '（残高）', amount:toNum(x.amount) }; })
@@ -250,7 +252,7 @@ function shiftOcrAdd(){
 }
 function viewHome(d){
   var cur=thisYm(), g=d.byMonth[cur];
-  var smbc=g.smbc.plan+g.smbc.stmt, rakuten=g.rakuten.plan+g.rakuten.stmt;
+  var smbc=g.smbc.plan+g.smbc.stmt, olive=g.olive.plan+g.olive.stmt, rakuten=g.rakuten.plan+g.rakuten.stmt;
   var peak=null;
   d.months.forEach(function(m){ if(m<cur) return; var t=d.monthTotal(m); if(!peak||t>peak.t) peak={m:m,t:t}; });
   var remain = S.plans.reduce(function(a,p){ return a.concat(planRows(p)); },[])
@@ -260,11 +262,12 @@ function viewHome(d){
   var b = budget();
 
   var partsM = {};
-  partsM.ready = function(){ return section(ymLabel(cur)+'のご用意額', (g.smbc.stmt+g.rakuten.stmt)>0?'明細ぶん加算済み':null,
+  partsM.ready = function(){ return section(ymLabel(cur)+'のご用意額', (g.smbc.stmt+g.olive.stmt+g.rakuten.stmt)>0?'明細ぶん加算済み':null,
     '<div style="padding-bottom:12px;border-bottom:1px solid var(--rule)">'+
-      '<div class="big num">'+yen(smbc+rakuten)+'</div>'+
-      '<div class="s" style="margin-top:4px">2口座の合計</div></div>'+
+      '<div class="big num">'+yen(smbc+olive+rakuten)+'</div>'+
+      '<div class="s" style="margin-top:4px">3口座の合計</div></div>'+
     accRow('smbc', smbc, 'オリコ引落・'+S.settings.smbcDay+'日 / あと'+daysUntil(S.settings.smbcDay)+'日')+
+    accRow('olive', olive, 'Olive引落・'+(S.settings.oliveDay||26)+'日 / あと'+daysUntil(S.settings.oliveDay||26)+'日')+
     accRow('rakuten', rakuten, '楽天カード引落・'+S.settings.rakutenDay+'日 / あと'+daysUntil(S.settings.rakutenDay)+'日')+
     '<div class="pair" style="margin-top:12px">'+
       '<button class="btn" data-act="go" data-app="money" data-tab="stmt">明細を追加</button>'+
@@ -324,13 +327,13 @@ function eomOutlook(){
   [cur, nxt].forEach(function(ym){
     var isCur = ym === cur;
     /* カードの引き落とし */
-    [['smbc', S.settings.smbcDay], ['rakuten', S.settings.rakutenDay]].forEach(function(p){
+    [['smbc', S.settings.smbcDay], ['olive', S.settings.oliveDay], ['rakuten', S.settings.rakutenDay]].forEach(function(p){
       var day = toNum(p[1]), g = d.byMonth[ym] ? d.byMonth[ym][p[0]] : null;
       if(!day || !g) return;
       var date = eomYmd(ym, day);
       if(date < td) return;
       var amt = sumBy(g.rows.filter(function(r){ return !isPaid(r.planId + ':' + r.month); }), function(r){ return r.amount; }) + g.stmt;
-      if(amt > 0) ev.push({ date:date, amount:-amt, label:ACCOUNTS[p[0]].bank + ' 引き落とし', kind:'card' });
+      if(amt > 0) ev.push({ date:date, amount:-amt, label:ACCOUNTS[p[0]].bank + ' 引き落とし（' + ACCOUNTS[p[0]].card + '）', kind:'card' });
     });
     /* バイト代（その月の25日払い） */
     var pp = payPeriod(ym), pay = periodPay(ym);
@@ -360,6 +363,24 @@ function eomOutlook(){
       if(date >= td) ev.push({ date:date, amount:-amt, label:x.name || '固定費', kind:'fixed' });
     });
   });
+  /* SBI証券の積立（銀行引落。次回予定の日＋毎週月曜。同日は二重にしない） */
+  var sbiCfgO = (typeof sbiCfg === 'function') ? sbiCfg() : null;
+  if(sbiCfgO){
+    var sbiSeen = {}, wkO = sbiWeekly(sbiCfgO);
+    if(isYmd(sbiCfgO.nextDate) && sbiCfgO.nextDate >= td && sbiCfgO.nextDate <= nextEnd && toNum(sbiCfgO.nextAmount) > 0){
+      ev.push({ date:sbiCfgO.nextDate, amount:-toNum(sbiCfgO.nextAmount), label:'SBI証券 積立', kind:'sbi' });
+      sbiSeen[sbiCfgO.nextDate] = 1;
+    }
+    if(wkO > 0){
+      var a0 = td.split('-'), dd = new Date(+a0[0], +a0[1]-1, +a0[2]);
+      dd.setDate(dd.getDate() + (8 - dd.getDay()) % 7);
+      while(toYmd(dd) <= nextEnd){
+        var md = toYmd(dd);
+        if(!sbiSeen[md]) ev.push({ date:md, amount:-wkO, label:'SBI証券 積立', kind:'sbi' });
+        dd.setDate(dd.getDate() + 7);
+      }
+    }
+  }
   if(skipped.length) notes.push('バイト代はシフトから計算しているので、収入の「' + skipped.join('・') + '」は数えていません。');
   if(ev.some(function(e){ return e.kind === 'fixed' && /引落日未設定/.test(e.label); })) notes.push('引落日が未設定の固定費は、月末に払うものとして数えました。');
   /* 同じ日は、入るお金を先に */
@@ -372,10 +393,10 @@ function eomOutlook(){
   var nextShifts = S.shifts.filter(function(s){ return isYmd(s.date) && s.date.slice(0, 7) === cur && closeYmOf(s.date) === nxt; });
   return {
     hasBal:hasBal, balance:balance, approx:approx, notes:notes, monthEnd:monthEnd,
-    inPay:sumOf(['pay']), inOther:sumOf(['income']), outCard:-sumOf(['card']), outFixed:-sumOf(['fixed']),
+    inPay:sumOf(['pay']), inOther:sumOf(['income']), outCard:-sumOf(['card']), outFixed:-sumOf(['fixed']), outSbi:-sumOf(['sbi']),
     eom:balance + sumBy(thisMonth, function(e){ return e.amount; }),
     nextCard:ev.filter(function(e){ return e.kind === 'card' && e.date <= nextEnd; })[0] || null,
-    big:ev.filter(function(e){ return e.kind === 'card' || e.kind === 'pay'; }).slice(0, 6),
+    big:ev.filter(function(e){ return e.kind === 'card' || e.kind === 'pay' || e.kind === 'sbi'; }).slice(0, 10),
     nextIncome:{ amount:sumBy(nextShifts, shiftPay), n:nextShifts.length, payDay:payPeriod(nxt).payDay }
   };
 }
@@ -390,6 +411,7 @@ function eomCard(){
     row('月末までに入る：バイト代', o.inPay, '＋') +
     row('月末までに入る：毎月の収入', o.inOther, '＋') +
     row('月末までに出る：カードの引き落とし', o.outCard, '−') +
+    (o.outSbi > 0 ? row('月末までに出る：SBI証券の積立', o.outSbi, '−') : '') +
     row('月末までに出る：固定費・サブスク', o.outFixed, '−');
   if(o.nextIncome.n) h += '<div class="row"><div class="grow s">来月の収入（' + ymdLabel(o.nextIncome.payDay) + '払い・今月16日からのシフト' + o.nextIncome.n + '回）<br>月末の残高には入れていません</div><div class="amt num">' + yen(o.nextIncome.amount) + '</div></div>';
   if(o.nextCard && o.hasBal){
@@ -427,11 +449,11 @@ function viewSchedule(d){
 
   (hidePast?d.months.filter(function(m){ return m>=cur; }):d.months).forEach(function(m){
     var total=d.monthTotal(m); if(total===0) return;
-    var inner = ['smbc','rakuten'].map(function(acc){
+    var inner = Object.keys(ACCOUNTS).map(function(acc){
       var g=d.byMonth[m][acc], sum=g.plan+g.stmt; if(sum===0) return '';
       var a=ACCOUNTS[acc];
       return '<div style="margin-bottom:10px">'+
-        '<div class="accbar bg-'+a.cls+' '+a.cls+'"><span>'+a.bank+'</span><span class="num">'+yen(sum)+'</span></div>'+
+        '<div class="accbar bg-'+a.cls+' '+a.cls+'"><span>'+a.bank+'（'+a.card+'）</span><span class="num">'+yen(sum)+'</span></div>'+
         g.rows.map(function(r){
           var k=r.planId+':'+r.month, on=isPaid(k);
           return '<button class="row '+(on?'done':'')+'" data-act="paid" data-key="'+k+'">'+
@@ -471,7 +493,7 @@ function planForm(){
 function viewChart(d){
   var cur=thisYm(), future=d.months.filter(function(m){ return m>=cur; });
   var use = chartRange===0?d.months:future.slice(0,chartRange);
-  var data = use.map(function(m){ var g=d.byMonth[m]; return { m:m, a:g.smbc.plan+g.smbc.stmt, b:g.rakuten.plan+g.rakuten.stmt }; });
+  var data = use.map(function(m){ var g=d.byMonth[m]; return { m:m, a:(g.smbc.plan+g.smbc.stmt)+(g.olive.plan+g.olive.stmt), b:g.rakuten.plan+g.rakuten.stmt }; });
   var max = Math.max(1, Math.max.apply(null, data.map(function(x){ return x.a+x.b; })));
   var W=340, H=190, bottom=H-24, top=8, gap=3;
   var bw = Math.max(4, (W-8)/data.length - gap);
@@ -499,9 +521,9 @@ function viewChart(d){
       return '<button data-act="range" data-v="'+v[0]+'" class="'+(chartRange===v[0]?'on':'')+'">'+v[1]+'</button>'; }).join('')+'</div>'+
     '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto">'+grid+bars+'</svg>'+
     '<div class="s" style="margin-top:6px"><span class="dot" style="background:var(--smbc)"></span>三井住友　<span class="dot" style="background:var(--rakuten)"></span>楽天</div>')
-  + section('口座ごとの残り総額', null, ['smbc','rakuten'].map(function(acc){
+  + section('口座ごとの残り総額', null, Object.keys(ACCOUNTS).map(function(acc){
       var sum = future.reduce(function(s,m){ return s+d.byMonth[m][acc].plan+d.byMonth[m][acc].stmt; },0);
-      return accRow(acc, sum, '今月以降の合計');
+      return accRow(acc, sum, '今月以降の合計', ACCOUNTS[acc].bank+'（'+ACCOUNTS[acc].card+'）');
     }).join(''));
 }
 

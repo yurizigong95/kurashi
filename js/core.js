@@ -2,6 +2,7 @@
 /* ============================== 定数 ============================== */
 var ACCOUNTS = {
   smbc:    { id:'smbc',    bank:'三井住友銀行', card:'オリコ',     cls:'smbc' },
+  olive:   { id:'olive',   bank:'三井住友銀行', card:'Olive',      cls:'smbc' },
   rakuten: { id:'rakuten', bank:'楽天銀行',     card:'楽天カード', cls:'rakuten' }
 };
 var SEED = [
@@ -25,7 +26,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-10-28a';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-10-28b';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -1147,7 +1148,7 @@ var S = {
   ui: JSON.parse(JSON.stringify(UI_DEFAULT)),
   meta: { attend:0, terms:0, commute:0, ui:0, courseMeta:0, memos:0, transit:0, payApplied:0, attendLog:0, grades:0, biweek:0, termsList:0, termsDone:0, progress:0, transitLog:0, taskLog:0, syllabus:0 },
   ver: DATA_VER,
-  settings: { smbcDay:27, rakutenDay:27, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', geminiKey:'', geminiModel:'', aiTone:'friendly', aiLen:'normal', aiStyle:'bullet', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }
+  settings: { smbcDay:27, rakutenDay:27, oliveDay:26, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', geminiKey:'', geminiModel:'', aiTone:'friendly', aiLen:'normal', aiStyle:'bullet', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1040, shop:'デリフランス', payBankId:'' }
 };
 var appId='today', payTab='home', risyuTab='tt', calTab='cal';
 var draft=null, notice=null, showPlanForm=false, hidePast=true, chartRange=12;
@@ -1263,7 +1264,7 @@ try{
   if(raw){
     var d0 = JSON.parse(raw);
     S = Object.assign({}, S, d0);
-    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', geminiKey:'', geminiModel:'', aiTone:'friendly', aiLen:'normal', aiStyle:'bullet', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1280, shop:'デリフランス', payBankId:'' }, d0.settings||{});
+    S.settings = Object.assign({ smbcDay:27, rakutenDay:27, oliveDay:26, room:DEFAULT_ROOM, fbConfig:DEFAULT_FB, apiKey:'', geminiKey:'', geminiModel:'', aiTone:'friendly', aiLen:'normal', aiStyle:'bullet', regDeadline:'', minWeekday:18.6, minWeekend:23.3, fare:1040, shop:'デリフランス', payBankId:'' }, d0.settings||{});
     S.risyu = Object.assign(JSON.parse(JSON.stringify(RISYU_DEFAULT)), d0.risyu||{});
     S.risyu.earned = Object.assign({ kyoyo:0, topic:0, lang:0, langEn:0, info:0, health:0, pe:0 }, (d0.risyu&&d0.risyu.earned)||{});
     if(!Array.isArray(S.risyu.selected)) S.risyu.selected = [];
@@ -1611,10 +1612,13 @@ function derive(){
   set[thisYm()]=1;
   var months = Object.keys(set).sort();
   var byMonth = {};
-  months.forEach(function(m){ byMonth[m] = { smbc:{plan:0,stmt:0,rows:[],stmts:[]}, rakuten:{plan:0,stmt:0,rows:[],stmts:[]} }; });
+  months.forEach(function(m){
+    byMonth[m] = {};
+    Object.keys(ACCOUNTS).forEach(function(k){ byMonth[m][k] = {plan:0,stmt:0,rows:[],stmts:[]}; });
+  });
   rows.forEach(function(r){ var g=byMonth[r.month]; if(!g||!g[r.accountId]) return; g[r.accountId].plan+=r.amount; g[r.accountId].rows.push(r); });
   S.statements.forEach(function(s){ var g=byMonth[s.billingMonth]; if(!g||!g[s.accountId]) return; g[s.accountId].stmt += Number(s.amount)||0; g[s.accountId].stmts.push(s); });
-  var monthTotal = function(m){ var g=byMonth[m]; if(!g) return 0; return g.smbc.plan+g.smbc.stmt+g.rakuten.plan+g.rakuten.stmt; };
+  var monthTotal = function(m){ var g=byMonth[m]; if(!g) return 0; return Object.keys(ACCOUNTS).reduce(function(a,k){ return a + g[k].plan + g[k].stmt; }, 0); };
   return { rows:rows, months:months, byMonth:byMonth, monthTotal:monthTotal };
 }
 function sumBy(arr, f){ return (arr||[]).reduce(function(a,x){ return a + (Number(f(x))||0); }, 0); }
