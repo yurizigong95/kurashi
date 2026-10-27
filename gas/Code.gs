@@ -1889,3 +1889,22 @@ function route_(req){
            dep:hm(leg.departure_time), arr:hm(leg.arrival_time), transfers:Math.max(0, rides - 1), legs:steps,
            summary:clip_(d.routes[0].summary || '', 80) };
 }
+
+/* ===== Vercel版の通知を5分ごとに動かす（任意） =====
+   Vercel の無料プランのタイマー（Vercel Cron）は1日1回しか動かないので、
+   この橋わたしから5分ごとに Vercel の /api/push/cron を呼んで、朝のまとめ・締切などを時刻どおりに送らせる。
+   手作業の手順:
+   1. Apps Script の「プロジェクトの設定」→「スクリプト プロパティ」に次の2つを足す
+      ・VERCEL_CRON_SECRET … Vercel の環境変数 CRON_SECRET と同じ文字（必須）
+      ・VERCEL_CRON_URL    … 呼ぶ URL（省略すると https://kurashi-rust.vercel.app/api/push/cron）
+   2. 「トリガー」→「トリガーを追加」で、関数 tickVercel・時間主導型・分ベースのタイマー・5分おき を選んで保存
+   VERCEL_CRON_SECRET が無いときは何もしない（無効）。いつもの tick とは別の関数なので、tick の動きは変わらない。 */
+function tickVercel(){
+  try{
+    var p = props_();
+    var secret = p.getProperty('VERCEL_CRON_SECRET');
+    if(!secret) return;
+    var url = p.getProperty('VERCEL_CRON_URL') || 'https://kurashi-rust.vercel.app/api/push/cron';
+    UrlFetchApp.fetch(url, { method:'get', headers:{ Authorization:'Bearer ' + secret }, muteHttpExceptions:true });
+  }catch(e){}
+}
