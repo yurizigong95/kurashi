@@ -1,10 +1,10 @@
 {
-  "build": "2026-10-26a",
-  "made": "2026-10-24 21:20",
+  "build": "2026-10-27v",
+  "made": "2026-10-27 19:30",
   "files": [
     {
       "path": "css/app.css",
-      "sha256": "dbfd703ab6513107"
+      "sha256": "53b443b78400fe0b"
     },
     {
       "path": "css/m-anki2.css",
@@ -129,7 +129,7 @@
     },
     {
       "path": "js/core.js",
-      "sha256": "cec520f2129750b3"
+      "sha256": "a6a6889ae0e85755"
     },
     {
       "path": "js/data.js",
@@ -205,7 +205,7 @@
     },
     {
       "path": "js/main.js",
-      "sha256": "30d603f3f45079a6"
+      "sha256": "b2b10e99c8bcdcdf"
     },
     {
       "path": "js/money.js",
@@ -213,7 +213,7 @@
     },
     {
       "path": "js/notify.js",
-      "sha256": "90431ffebb9b3b66"
+      "sha256": "5d07432190ed0f66"
     },
     {
       "path": "js/ops.js",
@@ -269,7 +269,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "2960a4f4dfcae6ba"
+      "sha256": "d31f6db49dce5491"
     }
   ]
 }
