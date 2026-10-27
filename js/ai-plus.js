@@ -272,12 +272,13 @@ async function ttsGeminiAudio(text){
   var voice = ttsVoice(), k = hash53(voice + '|' + text);
   if(tts.cache[k]) return tts.cache[k];
   var key = aiKey();
-  if(!key) throw new Error('APIキーがありません');
+  if(!key && aiServerKey === null) await aiServerCheck();
+  if(!key && !aiServerKey) throw new Error('APIキーがありません');
   var lastErr = '', models = [];
   ((await aiTtsModelIds()) || []).concat(TTS_MODELS).forEach(function(m){ if(models.indexOf(m) < 0) models.push(m); });
   for(var i = 0; i < models.length; i++){
-    var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
-      method:'POST', headers:{ 'Content-Type':'application/json', 'x-goog-api-key':key },
+    var res = await fetch(key ? ('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent') : '/api/gemini', {
+      method:'POST', headers: key ? { 'Content-Type':'application/json', 'x-goog-api-key':key } : { 'Content-Type':'application/json', 'x-kurashi-model':models[i] },
       body: JSON.stringify({
         contents:[{ parts:[{ text:'やさしく、明るく、聞き取りやすく読んでください：\n' + text }] }],
         generationConfig:{ responseModalities:['AUDIO'], speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName:voice } } } }

@@ -361,7 +361,7 @@ function chatSuggest(){
 
 function viewChat(){
   var msgs = roomMsgs();
-  var hasKey = !!(S.settings.geminiKey || '').trim();
+  var hasKey = aiReady() || !!(S.settings.geminiKey || '').trim();
   var h = '';
   if(!hasKey){
     h += '<div class="bn amber"><span class="ic">!</span><span>' +

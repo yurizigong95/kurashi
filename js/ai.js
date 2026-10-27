@@ -9,7 +9,26 @@ function aiFake(){
   return null;
 }
 function aiKey(){ return String(S.settings.geminiKey || '').trim(); }
-function aiReady(){ return TEST_MODE ? !!aiFake() : !!aiKey(); }
+/* サーバー側の鍵（Vercel の /api/gemini）があるときは、端末に鍵を入れなくてもAIが使える。
+   置き場所にAPIが無いとき（GitHub Pages など）は、今までどおり端末の鍵だけになる */
+var aiServerKey = null;   /* null=まだ分からない */
+var aiServerBusy = null;
+function aiServerCheck(){
+  if(TEST_MODE){ aiServerKey = false; return Promise.resolve(false); }
+  if(aiServerKey !== null) return Promise.resolve(aiServerKey);
+  if(!aiServerBusy){
+    aiServerBusy = fetch('/api/gemini').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+      aiServerBusy = null;
+      aiServerKey = !!(j && j.serverKey);
+      /* 「鍵を登録してください」の帯が出ている相談の画面だけ、新しい状態で描き直す */
+      if(aiServerKey && !aiKey() && typeof render === 'function' && typeof appId !== 'undefined' && appId === 'chat'){ try{ render(); }catch(e){} }
+      return aiServerKey;
+    }).catch(function(){ aiServerBusy = null; aiServerKey = false; return false; });
+  }
+  return aiServerBusy;
+}
+function aiReady(){ return TEST_MODE ? !!aiFake() : (!!aiKey() || aiServerKey === true); }
+aiServerCheck();
 /* ---------- 使うモデルを、Gemini のモデル一覧から自動で決める ----------
    新しいモデルが出たら、アプリを更新しなくてもそちらを使う。一覧は1日1回だけ取りに行く。
    一覧が取れないとき（キーなし・オフラインなど）は AI_FALLBACK_MODELS を使う。 */
@@ -150,6 +169,44 @@ async function aiCall(opt){
   }
   return r;
 }
+/* サーバー中継（/api/gemini）で生成する。応答の形は直接のときと同じで、モデルは中継側が自動で選ぶ。
+   中継が使えない（501＝中継側にも鍵が無い）ときは null を返し、直接の呼び出しにまかせる */
+async function aiCallViaServer(opt, body, picked){
+  var res;
+  try{
+    res = await fetch('/api/gemini', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-kurashi-model': picked || '' },
+      body: JSON.stringify(body),
+      signal: opt.signal
+    });
+  }catch(e){
+    if(opt.signal && opt.signal.aborted) throw e;
+    return null;
+  }
+  if(res.status === 501) return null;
+  var j = null;
+  try{ j = await res.json(); }catch(e){}
+  if(res.ok && j){
+    var served = j.servedModel || picked || '';
+    if(served && S.settings.aiLastModel !== served){ S.settings.aiLastModel = served; persist(); }
+    aiCountAdd();
+    var c = (j.candidates || [])[0] || {};
+    var parts = (c.content || {}).parts || [];
+    return { text:aiTextOf(parts), parts:parts, content:c.content || { role:'model', parts:parts },
+             calls:parts.filter(function(p){ return p.functionCall; }).map(function(p){ return p.functionCall; }),
+             grounding:c.groundingMetadata || null, urlMeta:c.urlContextMetadata || c.url_context_metadata || null,
+             cut:c.finishReason === 'MAX_TOKENS' };
+  }
+  var msg = (j && j.error) ? (j.error.message || String(j.error)) : ('エラー ' + res.status);
+  /* 道具が使えないと言われたら、道具なしでもう一度（直接のときと同じ扱い） */
+  if(body.tools && opt.toolFallback !== false && /tool|function|google_search|url_context|grounding|not supported|unsupported/i.test(msg)){
+    var b2 = Object.assign({}, body);
+    delete b2.tools;
+    return aiCallViaServer(opt, b2, picked);
+  }
+  throw new Error(aiErrText(msg));
+}
 async function aiCallOnce(opt){
   if(TEST_MODE){
     var f = aiFake();
@@ -166,8 +223,6 @@ async function aiCallOnce(opt){
     var s = String(t == null ? '' : t);
     return { text:s, parts:[{ text:s }], calls:[], grounding:null, urlMeta:null, content:{ role:'model', parts:[{ text:s }] }, cut:false };
   }
-  var key = aiKey();
-  if(!key) throw new Error('先に設定タブでGemini APIキーを登録してください');
   var body = {
     contents: opt.contents || [],
     generationConfig: { temperature: opt.temperature == null ? 0.3 : opt.temperature, maxOutputTokens: opt.maxTokens || 2048 }
@@ -176,6 +231,14 @@ async function aiCallOnce(opt){
   if(opt.json) body.generationConfig.responseMimeType = 'application/json';
   if(opt.tools && opt.tools.length) body.tools = opt.tools;
   var picked = S.ui.aiModel || S.settings.geminiModel;
+  /* サーバー側の鍵があれば中継で呼ぶ（中継が無い・鍵が無いときは、下の直接の呼び出しに落ちる） */
+  if(aiServerKey === null) await aiServerCheck();
+  if(aiServerKey){
+    var via = await aiCallViaServer(opt, body, picked);
+    if(via) return via;
+  }
+  var key = aiKey();
+  if(!key) throw new Error('先に設定タブでGemini APIキーを登録してください');
   var models = aiModelOrder(picked, await aiModelCandidates());
   var lastErr = '', tried = [], relisted = false;
   for(var i = 0; i < models.length; i++){
