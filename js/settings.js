@@ -623,7 +623,7 @@ function todaySettings(){
     }).join('')+'<p class="note">枠の見出しをタップすると折りたためます。</p>');
 }
 function diaSettings(){
-  var names = { busGo:'行き：フラワータウンセンター→三ノ宮（バス）', trainGo:'行き：三ノ宮→鳴尾（電車）', trainBack:'帰り：鳴尾→三ノ宮（電車）', busBack:'帰り：三ノ宮→フラワータウンセンター（バス）', busWork:'バイト：三ノ宮→イオンモール神戸北（バス）' };
+  var names = { busGo:'行き：弥生ヶ丘五丁目→三ノ宮（バス）', trainGo:'行き：三ノ宮→鳴尾（電車）', trainBack:'帰り：鳴尾→三ノ宮（電車）', busBack:'帰り：三ノ宮→弥生ヶ丘五丁目（バス）', busWork:'バイト：三ノ宮→イオンモール神戸北（バス）' };
   var cu = S.transit.custom || {};
   var fav = S.transit.fav || [];
   return foldSection('diaSettings', 'ダイヤの追加・お気に入り', null,

@@ -288,7 +288,7 @@ function transitBody(ymd){
       ? '<span class="trtag'+(p.ok?'':' ng')+'">'+esc(p.tag)+'</span>'
       : '<span class="trtag'+(p.tag==='ちょうど'?' on':'')+'">'+esc(p.tag)+'</span>';
     var rows = kind==='go'
-      ? '<div class="trline"><span class="trk">バス</span><span>フラワータウンセンター '+busTxt+'</span></div>'+
+      ? '<div class="trline"><span class="trk">バス</span><span>弥生ヶ丘五丁目 '+busTxt+'</span></div>'+
         '<div class="trline"><span class="trk">電車</span><span>三ノ宮 '+p.train.dep+' 発 → 鳴尾 '+p.train.arr+' 着</span></div>'
       : '<div class="trline"><span class="trk">電車</span><span>鳴尾 '+p.train.dep+' 発 → 三ノ宮 '+p.train.arr+' 着</span></div>'+
         '<div class="trline"><span class="trk">バス</span><span>三ノ宮 '+busTxt+'</span></div>';
@@ -350,7 +350,7 @@ function transitBody(ymd){
 
 /* ===== 時刻を決めて調べる（寄り道・自由な行き先） ===== */
 var findFrom = 'home', findTo = 'univ', findTime = '', findMode = 'dep', findDate = '';
-var PLACES = { home:'家（フラワータウンセンター）', sannomiya:'三ノ宮', univ:'鳴尾・武庫川女子大前', work:'イオンモール神戸北' };
+var PLACES = { home:'家（弥生ヶ丘五丁目）', sannomiya:'三ノ宮', univ:'鳴尾・武庫川女子大前', work:'イオンモール神戸北' };
 function findCard(){
   tsLoadServerTransit();
   var now = new Date();
@@ -457,15 +457,15 @@ function findRoute(from, to, hhmm, mode){
 function routeLegs(from, to, ymd){
   /* ymd … その日のダイヤで（なければ「時間を決めて調べる」で選んだ日） */
   var T = function(k){ return tbl(k, ymd || findDate || today()).map(function(p){ return { dep:p[0], arr:p[1], kind:p[2]||'' }; }); };
-  if(from==='home' && to==='univ')      return [{kind:'バス', name:'フラワータウンセンター→三ノ宮', table:T('busGo')},   {kind:'電車', name:'三ノ宮→鳴尾', table:T('trainGo')}];
-  if(from==='univ' && to==='home')      return [{kind:'電車', name:'鳴尾→三ノ宮', table:T('trainBack')},        {kind:'バス', name:'三ノ宮→フラワータウンセンター', table:T('busBack')}];
-  if(from==='home' && to==='sannomiya') return [{kind:'バス', name:'フラワータウンセンター→三ノ宮', table:T('busGo')}];
-  if(from==='sannomiya' && to==='home') return [{kind:'バス', name:'三ノ宮→フラワータウンセンター', table:T('busBack')}];
+  if(from==='home' && to==='univ')      return [{kind:'バス', name:'弥生ヶ丘五丁目→三ノ宮', table:T('busGo')},   {kind:'電車', name:'三ノ宮→鳴尾', table:T('trainGo')}];
+  if(from==='univ' && to==='home')      return [{kind:'電車', name:'鳴尾→三ノ宮', table:T('trainBack')},        {kind:'バス', name:'三ノ宮→弥生ヶ丘五丁目', table:T('busBack')}];
+  if(from==='home' && to==='sannomiya') return [{kind:'バス', name:'弥生ヶ丘五丁目→三ノ宮', table:T('busGo')}];
+  if(from==='sannomiya' && to==='home') return [{kind:'バス', name:'三ノ宮→弥生ヶ丘五丁目', table:T('busBack')}];
   if(from==='sannomiya' && to==='univ') return [{kind:'電車', name:'三ノ宮→鳴尾', table:T('trainGo')}];
   if(from==='univ' && to==='sannomiya') return [{kind:'電車', name:'鳴尾→三ノ宮', table:T('trainBack')}];
   if(from==='sannomiya' && to==='work') return [{kind:'バス', name:'三ノ宮→イオンモール神戸北', table:T('busWork')}];
   if(from==='univ' && to==='work')      return [{kind:'電車', name:'鳴尾→三ノ宮', table:T('trainBack')},        {kind:'バス', name:'三ノ宮→イオンモール神戸北', table:T('busWork')}];
-  if(from==='home' && to==='work')      return [{kind:'バス', name:'フラワータウンセンター→三ノ宮', table:T('busGo')},   {kind:'バス', name:'三ノ宮→イオンモール神戸北', table:T('busWork')}];
+  if(from==='home' && to==='work')      return [{kind:'バス', name:'弥生ヶ丘五丁目→三ノ宮', table:T('busGo')},   {kind:'バス', name:'三ノ宮→イオンモール神戸北', table:T('busWork')}];
   return null;
 }
 /* 探した時刻から離れすぎている便は出さない（実データのない時間帯を見分ける） */
