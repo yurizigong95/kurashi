@@ -1,1 +1,71 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","crons":[{"path":"/api/push/cron","schedule":"30 22 * * *"}],"functions":{"api/health/report.js":{"includeFiles":["node_modules/pdfjs-dist/legacy/build/**","node_modules/pdfjs-dist/standard_fonts/**","node_modules/pdfjs-dist/cmaps/**"]},"api/pdf.js":{"includeFiles":["node_modules/pdfjs-dist/legacy/build/**","node_modules/pdfjs-dist/standard_fonts/**","node_modules/pdfjs-dist/cmaps/**"]}},"headers":[{"headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"},{"key":"Service-Worker-Allowed","value":"/"}],"source":"/sw.js"},{"headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"},{"key":"Service-Worker-Allowed","value":"/study/"}],"source":"/study/sw.js"},{"headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"},{"key":"Service-Worker-Allowed","value":"/care/"}],"source":"/care/sw.js"},{"headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"},{"key":"Service-Worker-Allowed","value":"/all/"}],"source":"/all/sw.js"}]}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/push/cron",
+      "schedule": "30 22 * * *"
+    }
+  ],
+  "functions": {
+    "api/health/report.js": {
+      "includeFiles": "node_modules/pdfjs-dist/{legacy/build,standard_fonts,cmaps}/**"
+    },
+    "api/pdf.js": {
+      "includeFiles": "node_modules/pdfjs-dist/{legacy/build,standard_fonts,cmaps}/**"
+    }
+  },
+  "headers": [
+    {
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ],
+      "source": "/sw.js"
+    },
+    {
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/study/"
+        }
+      ],
+      "source": "/study/sw.js"
+    },
+    {
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/care/"
+        }
+      ],
+      "source": "/care/sw.js"
+    },
+    {
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/all/"
+        }
+      ],
+      "source": "/all/sw.js"
+    }
+  ]
+}
