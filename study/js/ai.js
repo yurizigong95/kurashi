@@ -203,7 +203,11 @@ async function aiCall(opt){
              meta:(t && typeof t === 'object' && t.meta) || null };
   }
   var key = aiKey();
-  if(!key) throw new Error('先に「設定」で、GeminiのAPIキーを入れてください');
+  /* Vercel版（vercel.app）では、端末にキーが無くてもサーバーの中継（/api/gemini）で作れる（#61）。
+     中継にもキーが無いときは 501 が返るので、その旨を伝える。GitHub Pages では従来どおり。
+     資料の預け入れ（aiUpload）には端末のキーが要るので、そちらは従来どおり。 */
+  var viaServer = !key && /(^|\.)vercel\.app$/.test(location.hostname);
+  if(!key && !viaServer) throw new Error('先に「設定」で、GeminiのAPIキーを入れてください');
   var body = {
     contents: opt.contents || [],
     generationConfig: { temperature: opt.temperature == null ? 0.2 : opt.temperature, maxOutputTokens: opt.maxTokens || 4096 }
@@ -216,9 +220,11 @@ async function aiCall(opt){
   for(var i = 0; i < models.length; i++){
     var res = null;
     try{
-      res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
+      res = await fetch(viaServer ? '/api/gemini'
+        : 'https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent', {
         method:'POST',
-        headers:{ 'Content-Type':'application/json', 'x-goog-api-key':key },
+        headers: viaServer ? { 'Content-Type':'application/json', 'x-kurashi-model':models[i] }
+                           : { 'Content-Type':'application/json', 'x-goog-api-key':key },
         body:JSON.stringify(body),
         signal:opt.signal
       });
@@ -238,6 +244,7 @@ async function aiCall(opt){
                   .map(function(p){ return p.text; }).join(''),
                meta:c.urlContextMetadata || c.url_context_metadata || null };
     }
+    if(viaServer && res.status === 501) throw new Error('サーバーにGeminiのキーが設定されていません');
     lastErr = (j && j.error && j.error.message) ? j.error.message : ('エラー ' + res.status);
     /* このモデルの枠がいっぱい（429）・混んでいる（500・503）ときは、次のモデルで（枠はモデルごとなので） */
     if(res.status === 429 || res.status >= 500) continue;
