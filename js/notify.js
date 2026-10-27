@@ -271,7 +271,8 @@ function notifyJobs(){
   return out.slice(0, 300);
 }
 async function notifyPush(force){
-  if(!gasReady() || NOTIFY.busy) return;
+  var onVercel = /vercel\.app$/.test(location.hostname);
+  if((!gasReady() && !onVercel) || NOTIFY.busy) return;
   var p = notifyPrefs();
   if(!p.push && !p.discord && !force) return;
   var jobs = notifyJobs();
@@ -279,7 +280,11 @@ async function notifyPush(force){
   if(!force && sig === NOTIFY.sig && Date.now() - NOTIFY.at < 6 * 3600000) return;
   NOTIFY.busy = true;
   try{
-    await gasCall('jobsPut', { jobs:jobs });
+    if(gasReady()) await gasCall('jobsPut', { jobs:jobs });
+    /* Vercel版では、送信予定をVercel側のAPIにも預ける */
+    if(onVercel){
+      try{ await fetch('/api/push/jobs', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ jobs:jobs }) }); }catch(e){}
+    }
     NOTIFY.sig = sig; NOTIFY.at = Date.now(); NOTIFY.msg = ''; NOTIFY.n = jobs.length;
     try{ localStorage.setItem(KEY + ':notifyAt', JSON.stringify({ at:NOTIFY.at, n:jobs.length })); }catch(e){}
   }catch(e){
@@ -329,7 +334,8 @@ async function pushEnable(){
   }
   var p = notifyPrefs();
   if(!p.vapid){ toast('先に「ウェブプッシュ証明書の鍵」を貼ってください', true); return; }
-  if(!gasReady()){ toast('先にGoogle連携をつないでください', true); return; }
+  var onVercel = /vercel\.app$/.test(location.hostname);
+  if(!gasReady() && !onVercel){ toast('先にGoogle連携をつないでください', true); return; }
   try{
     var perm = await Notification.requestPermission();
     if(perm !== 'granted') throw new Error('通知が許可されませんでした（端末の設定で許可してください）');
@@ -337,8 +343,12 @@ async function pushEnable(){
     var m = await loadMessaging();
     var token = await m.fm.getToken(m.messaging, { vapidKey:p.vapid, serviceWorkerRegistration:reg });
     if(!token) throw new Error('通知の鍵をもらえませんでした');
-    await gasCall('pushRegister', { device:DEV.id, pushToken:token, name:DEV.name || '' });
+    if(gasReady()) await gasCall('pushRegister', { device:DEV.id, pushToken:token, name:DEV.name || '' });
     PUSH.token = token; PUSH.at = Date.now(); PUSH.err = ''; savePush();
+    /* Vercel版では、Vercel側のAPIにも登録する（通知の送り元をVercelへ移すため） */
+    if(onVercel){
+      try{ await fetch('/api/push/register', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ device:DEV.id, token:token, name:DEV.name || '' }) }); }catch(e){}
+    }
     await notifyPush(true);
     toast('この端末で通知を受け取れるようにしました');
   }catch(e){
@@ -351,6 +361,9 @@ async function pushEnable(){
 async function pushDisable(){
   try{
     if(gasReady()) await gasCall('pushRemove', { device:DEV.id });
+    if(/vercel\.app$/.test(location.hostname)){
+      try{ await fetch('/api/push/remove', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ device:DEV.id }) }); }catch(e){}
+    }
     if(PUSH.token && !TEST_MODE){
       try{ var m = await loadMessaging(); await m.fm.deleteToken(m.messaging); }catch(e){}
     }

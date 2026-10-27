@@ -12,6 +12,8 @@ var RISYU_TABS = [['tt','抽選シミュ'],['plans','履修案']];
 var TODAY_TABS = [['today','今日'],['tomo','明日'],['week','今週'],['life','くらし']];
 var CAL_TABS = [['cal','カレンダー'],['add','追加'],['imp','重要'],['health','健康']];
 var TITLES = { today:'今日', tt:'時間割', course:'授業', money:'お金', chat:'相談', pet:'おせわ', risyu:'履修（抽選）', cal:'予定', todo:'ToDo', anki:'暗記', study:'勉強', exam:'試験', jisshu:'実習', career:'キャリア', notes:'メモ', news:'お知らせ', set:'設定', c9search:'検索' };
+/* 上部バーのアイコン（受験管理アプリ風：アイコン＋文字でゆったり表示） */
+var APP_ICONS = { today:'🏠', tt:'🗓️', course:'🎓', cal:'📅', todo:'✅', anki:'🃏', study:'📖', exam:'📝', jisshu:'🏥', career:'💼', money:'💰', chat:'💬', notes:'🗒️', pet:'🐾', news:'📰', risyu:'🎲', set:'⚙️' };
 /* タブに出していない画面を、検索などから一時的に開いているとき（その画面の id） */
 var c9TempApp = '';
 var FOOTS = {
@@ -56,7 +58,7 @@ function renderInner(){
   if(c9TempApp && appId !== c9TempApp) c9TempApp = '';
   document.getElementById('apps').setAttribute('data-n', String(APPS.length));
   document.getElementById('apps').innerHTML = '<span class="pill"></span>' + APPS.map(function(a){
-    return '<button data-app="'+a[0]+'" class="'+(appId===a[0]?'on':'')+(a[0]==='set'?' ico':'')+'">'+a[1]+'</button>';
+    return '<button data-app="'+a[0]+'" class="'+(appId===a[0]?'on':'')+(a[0]==='set'?' ico':'')+'">'+(APP_ICONS[a[0]] && a[0]!=='set' ? '<span class="app-ic">'+APP_ICONS[a[0]]+'</span>' : '')+a[1]+'</button>';
   }).join('');
 
   var nav = document.getElementById('nav');
@@ -157,6 +159,13 @@ function movePill(box){
   if(!pill || !on){ if(pill) pill.style.width = '0px'; return; }
   pill.style.width = on.offsetWidth + 'px';
   pill.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+  /* 横スクロール式のバーでは、選ばれているタブが見える位置まで滑らせる */
+  if(box.scrollWidth > box.clientWidth + 4){
+    var bl = on.offsetLeft, br = bl + on.offsetWidth;
+    if(bl < box.scrollLeft + 2 || br > box.scrollLeft + box.clientWidth - 2){
+      box.scrollTo({ left: Math.max(0, bl - 14), behavior:'smooth' });
+    }
+  }
 }
 function movePills(){
   movePill(document.getElementById('apps'));
