@@ -18,7 +18,35 @@ var KB_GUESS = [
   ['health', /病院|クリニック|医院|歯科|薬局/i],
   ['phone', /ドコモ|docomo|au |KDDI|ソフトバンク|SoftBank|楽天モバイル|ahamo|povo|LINEMO|UQ|ワイモバイル/i]
 ];
+/* サーバーで一括管理する分類ルール（#36）。Vercel版のときだけ /api/config から読み、
+   内蔵の KB_GUESS より先に当てる。GitHub Pages 版・読み込み前・失敗時は従来どおり */
+var KB_SERVER_RULES = null;
+function kbLoadServerRules(){
+  if(KB_SERVER_RULES !== null) return;
+  KB_SERVER_RULES = [];
+  try{
+    if(!/vercel\.app$/.test(location.hostname) || !window.fetch) return;
+    fetch('/api/config').then(function(r){ return r.json(); }).then(function(j){
+      var rs = j && j.classRules && j.classRules.rules;
+      if(Array.isArray(rs) && rs.length) KB_SERVER_RULES = rs;
+    }).catch(function(){});
+  }catch(e){}
+}
+function kbServerCat(title){
+  if(!KB_SERVER_RULES || !KB_SERVER_RULES.length) return '';
+  var t = String(title || '').toLowerCase();
+  for(var i = 0; i < KB_SERVER_RULES.length; i++){
+    var kws = KB_SERVER_RULES[i].keywords || [];
+    for(var j = 0; j < kws.length; j++){
+      if(kws[j] && t.indexOf(String(kws[j]).toLowerCase()) >= 0) return KB_SERVER_RULES[i].cat;
+    }
+  }
+  return '';
+}
 function kbGuessCat(title){
+  kbLoadServerRules();
+  var s = kbServerCat(title);
+  if(s) return s;
   var t = String(title || '');
   for(var i = 0; i < KB_GUESS.length; i++){ if(KB_GUESS[i][1].test(t)) return KB_GUESS[i][0]; }
   return 'other';

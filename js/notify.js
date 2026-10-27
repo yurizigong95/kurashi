@@ -8,9 +8,17 @@ var PUSH_KEY = KEY + ':push';
 var PUSH = (function(){
   var o = null;
   try{ o = JSON.parse(localStorage.getItem(PUSH_KEY) || 'null'); }catch(e){}
-  return Object.assign({ token:'', at:0, err:'' }, o || {});
+  return Object.assign({ token:'', at:0, err:'', prefs:{} }, o || {});
 })();
 function savePush(){ try{ localStorage.setItem(PUSH_KEY, JSON.stringify(PUSH)); }catch(e){} }
+/* Vercel版では、この端末をVercel側のAPIにも登録する（端末だけの設定 prefs もいっしょに。失敗しても気にしない） */
+function vercelRegister(){
+  if(!/vercel\.app$/.test(location.hostname) || !PUSH.token) return;
+  try{
+    fetch('/api/push/register', { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ device:DEV.id, token:PUSH.token, name:DEV.name || '', prefs:PUSH.prefs || {} }) })['catch'](function(){});
+  }catch(e){}
+}
 function notifyPrefs(){
   var p = Object.assign({ push:1, discord:0, dl3:1, dl1:1, dl0:1, dlTime:'20:00', dlMorning:'07:30',
     exam:1, exam3:1, cls:1, clsLead:10, quiet:1, vapid:'', am:1, amTime:'07:30', pet:1,
@@ -346,9 +354,7 @@ async function pushEnable(){
     if(gasReady()) await gasCall('pushRegister', { device:DEV.id, pushToken:token, name:DEV.name || '' });
     PUSH.token = token; PUSH.at = Date.now(); PUSH.err = ''; savePush();
     /* Vercel版では、Vercel側のAPIにも登録する（通知の送り元をVercelへ移すため） */
-    if(onVercel){
-      try{ await fetch('/api/push/register', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ device:DEV.id, token:token, name:DEV.name || '' }) }); }catch(e){}
-    }
+    vercelRegister();
     await notifyPush(true);
     toast('この端末で通知を受け取れるようにしました');
   }catch(e){
@@ -374,6 +380,19 @@ async function pushDisable(){
 }
 
 /* ===== 設定画面 ===== */
+/* この端末だけの設定（Vercel版の通知だけに効く。音・バッジ・種類ごとに知らせない） */
+var NT_DEV_CATS = [['today','今日・授業・出発'],['due','締切'],['exam','テスト'],['work','バイト'],['pet','おせわ']];
+function notifyDevPrefsHtml(){
+  if(!/vercel\.app$/.test(location.hostname)) return '';
+  var dp = PUSH.prefs || {}, muted = Array.isArray(dp.mutedCats) ? dp.mutedCats : [];
+  return '<label class="f" style="margin-top:8px">この端末だけの設定（Vercel版の通知）</label><div class="pillrow">'+
+    '<button data-act="nt-dev" data-k="silent" class="'+(dp.silent === true?'on':'')+'">音を鳴らさない</button>'+
+    '<button data-act="nt-dev" data-k="badge" class="'+(dp.badge !== false?'on':'')+'">バッジを付ける</button></div>'+
+    '<div class="pillrow">'+NT_DEV_CATS.map(function(o){
+      var m = muted.indexOf(o[0]) >= 0;
+      return '<button data-act="nt-dev-cat" data-v="'+o[0]+'" class="'+(m?'':'on')+'">'+o[1]+(m ? '：知らせない' : '')+'</button>';
+    }).join('')+'</div>';
+}
 function notifySettings(){
   var p = notifyPrefs(), st = {};
   try{ st = JSON.parse(localStorage.getItem(KEY + ':notifyAt') || '{}') || {}; }catch(e){}
@@ -433,6 +452,7 @@ function notifySettings(){
     h += '<div class="row"><div class="grow"><div class="t">'+(PUSH.token && perm === 'granted' ? '受け取っています' : '受け取っていません')+'</div>'+
       '<div class="s">通知の許可：'+({granted:'許可済み',denied:'許可されていません（端末の設定で許可）','default':'まだ'}[perm] || perm)+'</div></div>'+
       (PUSH.token ? '<button class="mini" data-act="nt-off">やめる</button>' : '')+'</div>'+
+      notifyDevPrefsHtml()+
       (PUSH.err ? '<div class="msg ng">'+esc(PUSH.err)+'</div>' : '')+
       '<button class="btn" data-act="nt-on">'+(PUSH.token ? '登録し直す' : 'この端末で通知を受け取る')+'</button>';
   }
@@ -483,6 +503,18 @@ function notifyAction(act, t){
     var v = val('nt_vapid').trim();
     if(v && !/^[A-Za-z0-9_-]{60,120}$/.test(v)){ toast('鍵の形がちがうようです', true); return true; }
     notifySet({ vapid:v }); commit(); toast('保存しました'); return true;
+  }
+  if(act === 'nt-dev' || act === 'nt-dev-cat'){
+    var dp = Object.assign({}, PUSH.prefs || {});
+    if(act === 'nt-dev'){
+      if(t.dataset.k === 'silent') dp.silent = dp.silent !== true;
+      else if(t.dataset.k === 'badge') dp.badge = dp.badge === false;
+    }else{
+      var mc = Array.isArray(dp.mutedCats) ? dp.mutedCats.slice() : [], ci = mc.indexOf(t.dataset.v);
+      if(ci >= 0) mc.splice(ci, 1); else mc.push(t.dataset.v);
+      dp.mutedCats = mc;
+    }
+    PUSH.prefs = dp; savePush(); vercelRegister(); render(); return true;
   }
   if(act === 'nt-on'){ pushEnable(); return true; }
   if(act === 'nt-off'){ pushDisable(); return true; }

@@ -85,7 +85,7 @@ function renderInner(){
     html += viewToday();
   }else if(appId==='money'){
     var d = derive();
-    html += ({ home:viewHome, kakeibo:viewKakeibo, schedule:viewSchedule, chart:viewChart, stmt:viewStmt, in:viewIncome, work:viewShifts })[payTab](d);
+    html += ({ home:viewHome, kakeibo:viewKakeibo, schedule:viewSchedule, chart:viewChart, stmt:viewStmt, in:viewIncome, work:viewShifts, sbi:viewSbi })[payTab](d);
   }else if(appId==='risyu'){
     html += ({ tt:viewRisyuTt, plans:viewRisyuPlans })[risyuTab==='plans'?'plans':'tt']();
   }else if(appId==='tt'){ html += viewTT(); }

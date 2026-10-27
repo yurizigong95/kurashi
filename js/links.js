@@ -92,6 +92,15 @@ function arriveAttend(ymd, min){
     setAttend(c.name, ymd, st2);
     marked.push(c.period + '限' + (st2 === '遅' ? '（遅刻）' : ''));
   });
+  /* Vercel 版だけ、着いた時刻をサーバーにも送る（/api/plan/learn の学習用。応答は待たず、失敗しても何もしない） */
+  if(marked.length){
+    try{
+      if(/vercel\.app$/.test(location.hostname) && window.fetch){
+        fetch('/api/attend/arrive', { method:'POST', headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ date:ymd, time:hhmmOf(min), place:'学校' }) }).catch(function(){});
+      }
+    }catch(e){}
+  }
   return marked.length ? '出席を記録：' + marked.join('・') : '';
 }
 

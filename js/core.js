@@ -25,7 +25,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-10-27v';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-10-28a';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -458,6 +458,12 @@ function tbl(name, ymd){
         busBack:(typeof BUS_BACK_WD!=='undefined'?BUS_BACK_WD:null),
         busWork:(typeof BUS_WORK_WD!=='undefined'?BUS_WORK_WD:null) }[name];
   var base = pick || ({ busGo:BUS_GO, trainGo:TRAIN_GO, trainBack:TRAIN_BACK, busBack:BUS_BACK, busWork:BUS_WORK }[name] || []);
+  /* サーバー配信の時刻表（Vercel 版の /api/config。js/commute.js が入れる）に同じ名前の表があれば、それを最優先。
+     休日ダイヤ（TRANSIT_SERVER_HOLIDAY）があれば、休みの日はそちらを使う */
+  var srv = (typeof TRANSIT_SERVER !== 'undefined' && TRANSIT_SERVER) ? TRANSIT_SERVER[name] : null;
+  if(holiday && typeof TRANSIT_SERVER_HOLIDAY !== 'undefined' && TRANSIT_SERVER_HOLIDAY &&
+     Array.isArray(TRANSIT_SERVER_HOLIDAY[name]) && TRANSIT_SERVER_HOLIDAY[name].length) srv = TRANSIT_SERVER_HOLIDAY[name];
+  if(Array.isArray(srv) && srv.length) base = srv;
   var extra = ((S.transit.custom||{})[name]) || [];
   /* 自分で足した便もまぜて、出る時刻の順にならべる（次の便さがしが正しく動くように） */
   return base.concat(extra.filter(function(p){ return p && minutesOf(p[0])!=null && minutesOf(p[1])!=null; }))
@@ -855,11 +861,6 @@ var MUSES_SEED_BATCHES = [
   'データリテラシー・ＡＩの基礎':     [['2026-09-17','出'],['2026-09-24','出'],['2026-10-01','出'],['2026-10-08','出']],
   '看護応用統計学':                   [['2026-09-18','出'],['2026-09-25','出'],['2026-10-02','出'],['2026-10-09','出'],['2026-10-23','欠']],
   '小児看護学概論':                   [['2026-09-18','出'],['2026-09-25','出'],['2026-10-02','出'],['2026-10-09','出'],['2026-10-23','欠']]
-} },
-{ id:'20261027', data:{
-  'ヒロシマ 被爆体験伝承者の挑戦(2)': [['2026-10-26','欠']],
-  '臨床病態栄養学':                   [['2026-10-27','出']],
-  '成人看護学概論':                   [['2026-10-27','出']]
 } }
 ];
 var musesSeedDone = false;
@@ -1175,6 +1176,21 @@ function logErr(where, msg){
     if(a.length > 100) a = a.slice(-100);
     localStorage.setItem(ERRLOG_KEY, JSON.stringify(a));
   }catch(e){}
+  /* Vercel版ではサーバーの集約（/api/log）にも送る（#20）。GitHub Pages では送らない。
+     同じエラーは60秒に1回まで。送信に失敗しても何もしない（ループ防止） */
+  try{
+    if(/vercel\.app$/.test(location.hostname) && window.fetch){
+      var mm = (typeof m === 'string') ? m : '';
+      var sk = String(where || '') + '|' + mm;
+      var sent = logErr._sent || (logErr._sent = {});
+      if(!sent[sk] || Date.now() - sent[sk] > 60 * 1000){
+        sent[sk] = Date.now();
+        fetch('/api/log', { method:'POST', headers:{ 'Content-Type':'application/json' }, keepalive:true,
+          body: JSON.stringify({ level:'error', msg: String(where || '') + ': ' + mm, ctx:{ build:APP_BUILD, url:String(location.pathname || '') } })
+        }).catch(function(){});
+      }
+    }
+  }catch(e){}
   try{ if(window.console) console.warn('[' + where + '] ' + msg); }catch(e){}
 }
 window.addEventListener('error', function(ev){
@@ -1185,6 +1201,26 @@ window.addEventListener('unhandledrejection', function(ev){
   var r = ev && ev.reason;
   logErr('画面', '処理の失敗：' + (r && r.message || r || ''));
 });
+
+/* ===== 表示速度の自己申告（#100。Vercel版だけ・1セッションに1回だけ） =====
+   ページの読みこみにかかった時間を /api/log に送る（サーバー側で集計して眺める用）。
+   GitHub Pages では送らない。失敗しても何もしない。 */
+try{
+  if(/vercel\.app$/.test(location.hostname) && window.fetch && window.performance){
+    window.addEventListener('load', function(){
+      try{
+        if(sessionStorage.getItem(KEY + ':perf')) return;
+        sessionStorage.setItem(KEY + ':perf', '1');
+        var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation') || [])[0];
+        if(!nav) return;
+        fetch('/api/log', { method:'POST', headers:{ 'Content-Type':'application/json' }, keepalive:true,
+          body: JSON.stringify({ level:'perf', msg:'pageview', ctx:{ build:APP_BUILD, url:String(location.pathname || ''),
+            ttfb:Math.round(nav.responseStart || 0), dom:Math.round(nav.domContentLoadedEventEnd || 0), load:Math.round(nav.loadEventEnd || 0) } })
+        }).catch(function(){});
+      }catch(e){}
+    });
+  }
+}catch(e){}
 
 /* ===== この端末の名前と、同期の記録（この端末だけに置く） ===== */
 function guessDeviceName(){

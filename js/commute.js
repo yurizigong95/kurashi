@@ -217,6 +217,36 @@ function nextSchoolDay(){
   }
   return null;
 }
+/* サーバー配信の時刻表（Vercel 版だけ。/api/config の transit.tables）。読めたら window.TRANSIT_SERVER に入れ、
+   js/core.js の tbl が同じ名前の表を内蔵のダイヤより優先して使う。失敗したときは何もしない（従来どおり） */
+var TRANSIT_SERVER_LOADING = false;
+function tsLoadServerTransit(){
+  if(TRANSIT_SERVER_LOADING) return;
+  TRANSIT_SERVER_LOADING = true;
+  try{
+    if(!/vercel\.app$/.test(location.hostname) || !window.fetch) return;
+    fetch('/api/config').then(function(r){ return r.json(); }).then(function(j){
+      var tr = j && j.transit;
+      var t = tr && tr.tables;
+      if(!t || typeof t !== 'object') return;
+      var norm = function(src){
+        var out = {}, n = 0;
+        if(!src || typeof src !== 'object') return null;
+        Object.keys(src).forEach(function(k){
+          if(!Array.isArray(src[k])) return;
+          var rows = src[k].filter(function(p){ return Array.isArray(p) && p.length >= 2; })
+            .map(function(p){ return [String(p[0]), String(p[1])]; });
+          if(rows.length){ out[k] = rows; n++; }
+        });
+        return n ? out : null;
+      };
+      var out = norm(t);
+      if(out) window.TRANSIT_SERVER = out;
+      var hol = norm(tr.holiday);
+      if(hol) window.TRANSIT_SERVER_HOLIDAY = hol;
+    }).catch(function(){});
+  }catch(e){}
+}
 function transitFor(ymd){
   if(schoolClassesForDate(ymd).length) return transitBody(ymd);
   if(ymd !== today()) return '';
@@ -224,6 +254,7 @@ function transitFor(ymd){
   return nx ? transitBody(nx.date) : '';
 }
 function transitCard(){
+  tsLoadServerTransit();
   var td = today();
   var cls = schoolClassesForDate(td);
   var header = '';
@@ -321,6 +352,7 @@ function transitBody(ymd){
 var findFrom = 'home', findTo = 'univ', findTime = '', findMode = 'dep', findDate = '';
 var PLACES = { home:'家（フラワータウンセンター）', sannomiya:'三ノ宮', univ:'鳴尾・武庫川女子大前', work:'イオンモール神戸北' };
 function findCard(){
+  tsLoadServerTransit();
   var now = new Date();
   var tm = findTime || '';   /* 最初は空のまま */
   var pick = function(id, cur, act){
