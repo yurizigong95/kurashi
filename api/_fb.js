@@ -18,6 +18,36 @@ function keyParamAmp() { return FB.apiKey ? '&key=' + FB.apiKey : ''; }
 const ROOM = '8b7f4e6et9jhxded';
 const DEVICES_DOC = ROOM + '__notify_v1';
 const JOBS_DOC = ROOM + '__notify_jobs_v1';
+/* AI まわりの設定・記録（いずれも部屋IDで始まる文書なので既存ルールの範囲内） */
+const CONFIG_DOC = ROOM + '__config_v1';   // モデル自動解決の結果
+const LOG_DOC = ROOM + '__log_v1';         // 動作ログ
+const INBOX_DOC = ROOM + '__inbox_v1';     // 受信箱
+const USAGE_DOC = ROOM + '__usage_v1';     // Gemini の利用回数・トークン数
+/* サーバー側で作る通知（api/push/cron.js）の記録 */
+const SENT_DOC = ROOM + '__notify_sent_v1';  // 送信済みの記録（同じ通知を2回送らない）
+const CRONLOG_DOC = ROOM + '__cronlog_v1';   // cron の実行ログ
+const MONEYSNAP_DOC = ROOM + '__moneysnap_v1'; // 残高スナップショット（同期データが読めないときの予備）
+/* バッチC1（お金・予定の自動化） */
+const SNAPSHOTS_DOC = ROOM + '__snapshots_v1'; // 世代スナップショット（#40。moneysnap＋予定の要約だけを日次で最大12世代）
+const RULES_DOC = ROOM + '__rules_v1';         // 家計簿の自動分類ルール（#36）
+const GCAL_DOC = ROOM + '__gcal_v1';           // Googleカレンダーの読み取り結果のキャッシュ（#71）
+/* バッチC2（差分検知・通学・共有） */
+const WATCH_DOC = ROOM + '__watch_v1';         // 差分検知の前回状態＋前回のサブスク監査の指紋（#41〜#45・#50・#127）
+const ARRIVE_DOC = ROOM + '__arrive_v1';       // 学校に着いた記録（#60）
+const TRANSIT_DOC = ROOM + '__transit_v1';     // サーバー配信の時刻表（#51）
+const SHARE_DOC = ROOM + '__share_v1';         // 時間割・課題の共有コード（#49）
+/* バッチD（勉強・同期・ゲーム・連携・健康） */
+const SETTINGS_DOC = ROOM + '__settings_v1';   // 端末別設定（共通＋端末別の上書き。#88）
+const TRANSFER_DOC = ROOM + '__transfer_v1';   // データ移行のワンタイムコード（#90・#199）
+const QUEUE_DOC = ROOM + '__queue_v1';         // オフライン変更キュー（保留のまま置く。#89）
+const OUTBOX_DOC = ROOM + '__outbox_v1';       // 送れなかったメールの送信箱（#163・#140）
+const STUDYTIME_DOC = ROOM + '__studytime_v1'; // 勉強時間の確定記録（#65）
+const PHOTOHASH_DOC = ROOM + '__photohash_v1'; // 写真の指紋の台帳（#147）
+const GAME_DOC = ROOM + '__game_v1';           // ゲーム道場のサーバー記録（スコア・セーブ・記録・ペット。#151〜#160）
+const TALK_DOC = ROOM + '__gametalk_v1';       // ゲームのセリフ生成のキャッシュ（#158）
+const HEALTH_DOC = ROOM + '__health_v1';       // 健診レポートの要約の保存（#188）
+const ARCHIVE_DOC = ROOM + '__archive_v1';     // 年度アーカイブ（#195）
+const SITE_DOC = ROOM + '__sitewatch_v1';      // 外部サイトの更新チェックの前回ハッシュ（#166）
 
 const FS_BASE = 'https://firestore.googleapis.com/v1/projects/' + FB.projectId + '/databases/(default)/documents';
 
@@ -25,9 +55,17 @@ function sendJson(res, code, obj) {
   res.statusCode = code;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-goog-api-key, x-kurashi-model');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-goog-api-key, x-kurashi-model, x-kurashi-task, x-app-key');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.end(JSON.stringify(obj));
+}
+
+/* アプリ用の合言葉の確認。APP_API_SECRET が未設定なら常に通す（従来互換） */
+function checkAppKey(req) {
+  const secret = process.env.APP_API_SECRET || '';
+  if (!secret) return true;
+  const given = (req && req.headers && req.headers['x-app-key']) || '';
+  return given === secret;
 }
 
 async function readBody(req) {
@@ -99,6 +137,46 @@ async function loadJobs() {
 async function saveJobs(jobs) {
   await fsSetDoc(JOBS_DOC, { jobs: JSON.stringify(jobs), updatedAt: new Date().toISOString() });
 }
+/* 送信済みの記録 { key: 送った時刻(ミリ秒) }。8日より古いものと、800件を超えた古いものは捨てる */
+const SENT_KEEP_MS = 8 * 24 * 60 * 60 * 1000;
+const SENT_MAX = 800;
+async function loadSent() {
+  const doc = await fsGetDoc(SENT_DOC);
+  if (!doc || !doc.sent) return {};
+  try {
+    const o = JSON.parse(doc.sent);
+    return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
+  } catch (e) { return {}; }
+}
+async function saveSent(map) {
+  const limit = Date.now() - SENT_KEEP_MS;
+  let list = Object.keys(map || {})
+    .map((k) => [k, Number(map[k]) || 0])
+    .filter((x) => x[1] >= limit)
+    .sort((a, b) => a[1] - b[1]);
+  if (list.length > SENT_MAX) list = list.slice(list.length - SENT_MAX);
+  const out = {};
+  for (const x of list) out[x[0]] = x[1];
+  await fsSetDoc(SENT_DOC, { sent: JSON.stringify(out), updatedAt: new Date().toISOString() });
+  return out;
+}
+/* cron の実行ログ（古い順・最大60件） */
+const CRONLOG_MAX = 60;
+async function loadCronLog() {
+  const doc = await fsGetDoc(CRONLOG_DOC);
+  if (!doc || !doc.entries) return [];
+  try {
+    const arr = JSON.parse(doc.entries);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+async function appendCronLog(entry) {
+  const entries = await loadCronLog();
+  entries.push(entry);
+  while (entries.length > CRONLOG_MAX) entries.shift();
+  await fsSetDoc(CRONLOG_DOC, { entries: JSON.stringify(entries), updatedAt: new Date().toISOString() });
+  return entries.length;
+}
 
 /* --- FCM 送信（サービスアカウント） --- */
 function serviceAccount() {
@@ -134,10 +212,27 @@ async function fcmAccessToken(sa) {
   tokenCache = { at: Date.now(), token: j.access_token };
   return tokenCache.token;
 }
-async function fcmSendTo(token, title, body, url) {
+/* opts（任意）: { tag, prefs }
+   tag … 同じ tag の通知は端末側で上書きされる。prefs … 端末ごとの設定（api/push/register.js）
+   どちらも無いときは、従来とまったく同じ内容で送る */
+async function fcmSendTo(token, title, body, url, opts) {
   const sa = serviceAccount();
   if (!sa) return { ok: false, code: 'NO_SA', error: 'FIREBASE_SERVICE_ACCOUNT が未設定です' };
   const access = await fcmAccessToken(sa);
+  const webpush = { fcm_options: { link: url || './' } };
+  const o = opts || {};
+  const prefs = o.prefs && typeof o.prefs === 'object' ? o.prefs : null;
+  /* tag は data にも入れる（アプリの sw.js は data.tag を見て通知を上書きする。GAS版と同じ） */
+  const data = { title: title || 'くらしの手帳', body: body || '', url: url || './' };
+  if (o.tag) data.tag = String(o.tag);
+  if (o.tag || prefs) {
+    const n = {};
+    if (o.tag) n.tag = String(o.tag);
+    if (prefs && prefs.silent === true) n.silent = true;
+    if (prefs && prefs.icon !== false) n.icon = '/icon-192.png';
+    if (prefs && prefs.badge !== false) n.badge = '/icon-192.png';
+    webpush.notification = n;
+  }
   const r = await fetch('https://fcm.googleapis.com/v1/projects/' + FB.projectId + '/messages:send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + access },
@@ -145,8 +240,8 @@ async function fcmSendTo(token, title, body, url) {
       message: {
         token,
         notification: { title: title || 'くらしの手帳', body: body || '' },
-        data: { title: title || 'くらしの手帳', body: body || '', url: url || './' },
-        webpush: { fcm_options: { link: url || './' } },
+        data,
+        webpush,
       },
     }),
   });
@@ -154,10 +249,47 @@ async function fcmSendTo(token, title, body, url) {
   return { ok: r.ok, code: r.status, body: text.slice(0, 300) };
 }
 
+/* 端末ごとの「種類ごとに知らせない」設定に当たるか */
+function deviceAllows(dev, job) {
+  const muted = dev && dev.prefs && dev.prefs.mutedCats;
+  if (Array.isArray(muted) && job && job.cat && muted.indexOf(job.cat) >= 0) return false;
+  return true;
+}
+/* 登録済みの端末へまとめて送る。job = { id?, title, body, url?, cat? }
+   鍵が無いときは例外にせず noSender を返す */
+async function sendToDevices(devices, job) {
+  if (!serviceAccount()) return { results: [], sent: 0, dead: [], noSender: true };
+  const results = [];
+  const dead = [];
+  let sent = 0;
+  for (const id of Object.keys(devices || {})) {
+    const d = devices[id];
+    if (!d || !d.token) continue;
+    if (!deviceAllows(d, job)) { results.push({ device: id, skipped: 'muted' }); continue; }
+    let r;
+    try {
+      r = await fcmSendTo(d.token, job.title, job.body, job.url, { tag: job.id, prefs: d.prefs });
+    } catch (e) {
+      r = { ok: false, code: 0, body: String((e && e.message) || e).slice(0, 300) };
+    }
+    results.push({ device: id, ok: r.ok, code: r.code, body: r.body });
+    if (r.ok) sent++;
+    else if (r.code === 404 || /UNREGISTERED/.test(r.body || '')) dead.push(id);
+  }
+  return { results, sent, dead };
+}
+
 module.exports = {
   FB, ROOM, DEVICES_DOC, JOBS_DOC,
-  sendJson, readBody,
+  CONFIG_DOC, LOG_DOC, INBOX_DOC, USAGE_DOC,
+  SENT_DOC, CRONLOG_DOC, MONEYSNAP_DOC,
+  SNAPSHOTS_DOC, RULES_DOC, GCAL_DOC,
+  WATCH_DOC, ARRIVE_DOC, TRANSIT_DOC, SHARE_DOC,
+  SETTINGS_DOC, TRANSFER_DOC, QUEUE_DOC, OUTBOX_DOC, STUDYTIME_DOC, PHOTOHASH_DOC,
+  GAME_DOC, TALK_DOC, HEALTH_DOC, ARCHIVE_DOC, SITE_DOC,
+  sendJson, readBody, checkAppKey,
   fsGetDoc, fsSetDoc,
   loadDevices, saveDevices, loadJobs, saveJobs,
-  serviceAccount, fcmSendTo,
+  loadSent, saveSent, loadCronLog, appendCronLog,
+  serviceAccount, fcmSendTo, deviceAllows, sendToDevices,
 };
