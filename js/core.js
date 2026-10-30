@@ -26,7 +26,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-10-28d';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-10-31a';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -1638,8 +1638,16 @@ function derive(){
   return { rows:rows, months:months, byMonth:byMonth, monthTotal:monthTotal };
 }
 function sumBy(arr, f){ return (arr||[]).reduce(function(a,x){ return a + (Number(f(x))||0); }, 0); }
+/* お金の集計の対象月：今月のカード引落日（いちばん遅い日）を過ぎたら、引落は終わったものとして翌月分に切りかえる。
+   残高は引落後の金額に更新されているので、今月分を出しつづけると二重に引いてしまうため。 */
+function moneyYm(){
+  var cur = thisYm();
+  var days = [toNum(S.settings.smbcDay) || 27, toNum(S.settings.oliveDay) || 26, toNum(S.settings.rakutenDay) || 27];
+  var lastDay = Math.max.apply(null, days);
+  return (toNum(today().slice(8, 10)) > lastDay) ? addMonths(cur, 1) : cur;
+}
 function budget(){
-  var d = derive(), cur = thisYm();
+  var d = derive(), cur = moneyYm();
   var pay = d.monthTotal(cur);
   var fx  = sumBy(S.fixed, function(x){ return x.amount; });
   var inc = sumBy(S.income, function(x){ return x.amount; });
@@ -1650,7 +1658,7 @@ function budget(){
   var rate = have > 0 ? free / have : (free >= 0 ? 1 : -1);
   var level, word;
   if(have === 0){ level='none'; word='口座残高か収入を登録すると判定できます'; }
-  else if(free < 0){ level='bad';  word='今月は足りません'; }
+  else if(free < 0){ level='bad';  word=(cur === thisYm() ? '今月は足りません' : '翌月分は足りません'); }
   else if(rate < .12){ level='warn'; word='かなりギリギリです'; }
   else if(rate < .3){ level='ok';   word='やりくりすれば大丈夫'; }
   else { level='good'; word='余裕があります'; }

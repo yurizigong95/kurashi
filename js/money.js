@@ -14,7 +14,7 @@ function accRow(acc, amount, sub, label){
 var flowOpen = false;
 function flowPct(v, total){ return total > 0 ? Math.round(v / total * 100) : 0; }
 function flowData(){
-  var b = budget(), d = derive(), cur = thisYm(), g = d.byMonth[cur];
+  var b = budget(), d = derive(), cur = moneyYm(), g = d.byMonth[cur];
   var cards = [];
   if(g){
     Object.keys(ACCOUNTS).forEach(function(k){
@@ -24,16 +24,16 @@ function flowData(){
   }
   var fixed = S.fixed.map(function(x){ return { name:x.name || '固定費', amount:toNum(x.amount) }; }).filter(function(x){ return x.amount > 0; });
   var srcs = S.balances.map(function(x){ return { name:(x.name || '口座') + '（残高）', amount:toNum(x.amount) }; })
-    .concat(S.income.map(function(x){ return { name:(x.name || '収入') + '（今月の収入）', amount:toNum(x.amount) }; }))
+    .concat(S.income.map(function(x){ return { name:(x.name || '収入') + '（' + ymLabel(cur) + 'の収入）', amount:toNum(x.amount) }; }))
     .filter(function(x){ return x.amount > 0; });
   var sum = function(a){ return a.reduce(function(s, x){ return s + x.amount; }, 0); };
-  return { b:b, have:b.have, out:b.pay + b.fixed, card:sum(cards), fix:sum(fixed), free:b.free,
+  return { b:b, cur:cur, have:b.have, out:b.pay + b.fixed, card:sum(cards), fix:sum(fixed), free:b.free,
            cards:cards, fixed:fixed, srcs:srcs };
 }
 function flowCard(){
   var f = flowData();
   if(!f.have && !f.out){
-    return section('今月のお金の流れ', ymLabel(thisYm()),
+    return section('お金の流れ', ymLabel(moneyYm()),
       '<div class="empty">口座の残高・収入・固定費を入れると、ここにまとめが出ます。</div>'+
       '<button class="btn ghost" style="margin-top:8px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>');
   }
@@ -49,7 +49,7 @@ function flowCard(){
   /* 3つの数字 */
   var h = '<div class="mf2">'+
     '<div class="mf-kpis">'+
-      '<div class="mf-kpi"><div class="k">あるお金</div><div class="v">'+yen(f.have)+'</div><div class="s">口座＋今月の収入</div></div>'+
+      '<div class="mf-kpi"><div class="k">あるお金</div><div class="v">'+yen(f.have)+'</div><div class="s">口座＋'+ymLabel(f.cur)+'の収入</div></div>'+
       '<div class="mf-kpi"><div class="k">出ていく</div><div class="v">'+yen(f.out)+'</div><div class="s">引落＋固定費</div></div>'+
       (short
         ? '<div class="mf-kpi hero bad"><div class="k"><span class="mf-alert" aria-hidden="true">!</span>足りない</div><div class="v">'+yen(-f.free)+'</div><div class="s">引き落としまでに入金を</div></div>'
@@ -91,7 +91,7 @@ function flowCard(){
     '</details></div>';
 
   h += '<button class="btn ghost" style="margin-top:10px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>';
-  return section('今月のお金の流れ', ymLabel(thisYm()), h);
+  return section('お金の流れ', ymLabel(f.cur), h);
 }
 
 /* ===== シフト表の写真から、シフトをまとめて登録 =====
@@ -251,7 +251,7 @@ function shiftOcrAdd(){
   toast(n + '件のシフトを登録しました' + (fixed ? '（' + fixed + '件の時間を直しました）' : '')); commit();
 }
 function viewHome(d){
-  var cur=thisYm(), g=d.byMonth[cur];
+  var cur=moneyYm(), g=d.byMonth[cur] || { smbc:{plan:0,stmt:0,rows:[],stmts:[]}, olive:{plan:0,stmt:0,rows:[],stmts:[]}, rakuten:{plan:0,stmt:0,rows:[],stmts:[]} };
   var smbc=g.smbc.plan+g.smbc.stmt, olive=g.olive.plan+g.olive.stmt, rakuten=g.rakuten.plan+g.rakuten.stmt;
   var peak=null;
   d.months.forEach(function(m){ if(m<cur) return; var t=d.monthTotal(m); if(!peak||t>peak.t) peak={m:m,t:t}; });
@@ -262,7 +262,7 @@ function viewHome(d){
   var b = budget();
 
   var partsM = {};
-  partsM.ready = function(){ return section(ymLabel(cur)+'のご用意額', (g.smbc.stmt+g.olive.stmt+g.rakuten.stmt)>0?'明細ぶん加算済み':null,
+  partsM.ready = function(){ return section(ymLabel(cur)+'のご用意額', (cur!==thisYm()?'今月の引落は終わったので翌月分を表示中・':'')+((g.smbc.stmt+g.olive.stmt+g.rakuten.stmt)>0?'明細ぶん加算済み':''),
     '<div style="padding-bottom:12px;border-bottom:1px solid var(--rule)">'+
       '<div class="big num">'+yen(smbc+olive+rakuten)+'</div>'+
       '<div class="s" style="margin-top:4px">3口座の合計</div></div>'+
@@ -277,7 +277,7 @@ function viewHome(d){
     '<div class="s" style="margin:4px 0 12px">口座 '+yen(b.balance)+' ＋ 収入 '+yen(b.income)+' − 支払い '+yen(b.pay)+' − 固定費 '+yen(b.fixed)+'</div>'+
     '<div class="grid2">'+
       '<div class="stat"><div class="k">口座残高の合計</div><div class="v num">'+yen(b.balance)+'</div></div>'+
-      '<div class="stat"><div class="k">今月の収入</div><div class="v num">'+yen(b.income)+'</div></div>'+
+      '<div class="stat"><div class="k">'+ymLabel(b.month)+'の収入</div><div class="v num">'+yen(b.income)+'</div></div>'+
     '</div>'+
     '<button class="btn ghost" style="margin-top:12px" data-act="go" data-app="money" data-tab="in">収入・固定費・残高を入力</button>'); };
   partsM.eom = function(){ return eomCard(); };
@@ -315,12 +315,12 @@ function eomDone(x, io, ym){
   });
 }
 function eomOutlook(){
-  var td = today(), cur = thisYm(), nxt = addMonths(cur, 1), d = derive();
+  var td = today(), cur = moneyYm(), nxt = addMonths(cur, 1), d = derive();
   var monthEnd = shiftDate(nxt + '-01', -1), nextEnd = shiftDate(addMonths(cur, 2) + '-01', -1);
   var ev = [], notes = [], approx = false;
   var hasBal = S.balances.length > 0, balance = sumBy(S.balances, function(x){ return x.amount; });
   if(!hasBal){ approx = true; notes.push('口座の残高が未登録なので、月末の残高は出せません（「収支」から入れられます）。'); }
-  else if(S.balances.some(function(x){ return !x.mt || toYm(new Date(x.mt)) !== cur; })){
+  else if(S.balances.some(function(x){ return !x.mt || toYm(new Date(x.mt)) !== thisYm(); })){
     approx = true; notes.push('今月まだ残高を更新していない口座があります。今の残高がずれていると、見通しもずれます。');
   }
   var shiftIncome = S.shifts.length > 0, skipped = [];
@@ -363,22 +363,17 @@ function eomOutlook(){
       if(date >= td) ev.push({ date:date, amount:-amt, label:x.name || '固定費', kind:'fixed' });
     });
   });
-  /* SBI証券の積立（銀行引落。次回予定の日＋毎週月曜。同日は二重にしない） */
+  /* SBI証券の積立（銀行引落・月1回）。入金済みの月は数えない。次回予定があれば、その月の分は予定日・金額を優先する */
   var sbiCfgO = (typeof sbiCfg === 'function') ? sbiCfg() : null;
   if(sbiCfgO){
-    var sbiSeen = {}, wkO = sbiWeekly(sbiCfgO);
-    if(isYmd(sbiCfgO.nextDate) && sbiCfgO.nextDate >= td && sbiCfgO.nextDate <= nextEnd && toNum(sbiCfgO.nextAmount) > 0){
-      ev.push({ date:sbiCfgO.nextDate, amount:-toNum(sbiCfgO.nextAmount), label:'SBI証券 積立', kind:'sbi' });
-      sbiSeen[sbiCfgO.nextDate] = 1;
-    }
-    if(wkO > 0){
-      var a0 = td.split('-'), dd = new Date(+a0[0], +a0[1]-1, +a0[2]);
-      dd.setDate(dd.getDate() + (8 - dd.getDay()) % 7);
-      while(toYmd(dd) <= nextEnd){
-        var md = toYmd(dd);
-        if(!sbiSeen[md]) ev.push({ date:md, amount:-wkO, label:'SBI証券 積立', kind:'sbi' });
-        dd.setDate(dd.getDate() + 7);
-      }
+    var moO = (typeof sbiMonthly === 'function') ? sbiMonthly(sbiCfgO) : 0;
+    if(moO > 0){
+      [cur, nxt].forEach(function(ym){
+        if(sbiCfgO.paidYm === ym) return;
+        var date = eomYmd(ym, toNum(sbiCfgO.debitDay) || 27), amt = moO;
+        if(isYmd(sbiCfgO.nextDate) && sbiCfgO.nextDate.slice(0, 7) === ym && toNum(sbiCfgO.nextAmount) > 0){ date = sbiCfgO.nextDate; amt = toNum(sbiCfgO.nextAmount); }
+        if(date >= td && date <= nextEnd) ev.push({ date:date, amount:-amt, label:'SBI証券 積立', kind:'sbi' });
+      });
     }
   }
   if(skipped.length) notes.push('バイト代はシフトから計算しているので、収入の「' + skipped.join('・') + '」は数えていません。');
@@ -428,7 +423,7 @@ function eomCard(){
     }).join('') + '</div>';
   }
   if(o.notes.length) h += '<p class="note">※ 概算です。' + o.notes.map(esc).join('<br>') + '</p>';
-  return section('月末までの見通し', o.approx ? '概算' : null, h);
+  return section(ymLabel(o.monthEnd.slice(0, 7)) + '末までの見通し', o.approx ? '概算' : null, h);
 }
 
 /* ============================== お金：予定 ============================== */
@@ -696,10 +691,14 @@ function moneyAction(act, t){
   if(act==='sbi-save-funds'){
     var cfF = sbiCfg();
     cfF.funds.forEach(function(f){
-      if(!document.getElementById('sbi_w_'+f.id)) return;
-      var w = toNum(val('sbi_w_'+f.id));
-      if(w >= 0) f.weekly = w;
+      var el = document.getElementById('sbi_m_'+f.id) || document.getElementById('sbi_w_'+f.id);
+      if(!el) return;
+      var w = toNum(val(el.id));
+      if(w >= 0){ f.monthly = w; delete f.weekly; }
     });
+    cfF.monthly = cfF.funds.reduce(function(a, f){ return a + toNum(f.monthly); }, 0);
+    cfF.plan = { monthly:cfF.monthly, course:cfF.course, applied:true, appliedAt:cfF.appliedAt || Date.now(),
+      funds:cfF.funds.map(function(f){ return { id:f.id, amount:toNum(f.monthly) }; }) };
     sbiSaveCfg(cfF); toast('積立の金額を更新しました'); commit();
     return true;
   }
@@ -710,22 +709,9 @@ function moneyAction(act, t){
     sbiSaveCfg(cfN); toast('次回の注文予定を更新しました'); commit();
     return true;
   }
-  if(act==='sbi-save-plan'){
-    var cfP = sbiCfg();
-    cfP.plan.funds.forEach(function(p){
-      if(!document.getElementById('sbi_p_'+p.id)) return;
-      var a = toNum(val('sbi_p_'+p.id));
-      if(a >= 0) p.amount = a;
-    });
-    sbiSaveCfg(cfP); toast('減額プランの配分を更新しました'); commit();
-    return true;
-  }
-  if(act==='sbi-plan-done' || act==='sbi-plan-undone'){
-    var cfD = sbiCfg();
-    cfD.plan.applied = act==='sbi-plan-done';
-    cfD.plan.appliedAt = cfD.plan.applied ? Date.now() : 0;
-    sbiSaveCfg(cfD);
-    toast(cfD.plan.applied ? '減額プランを手続き済みにしました' : '減額プランを未確認に戻しました'); commit();
+  if(act==='sbi-save-plan' || act==='sbi-plan-done' || act==='sbi-plan-undone'){
+    /* 旧「減額プラン」用のボタン（古い画面が残っている端末から押されたとき用）。月2万円は実施済みの設定になったので、金額は上の「銘柄ごとの内訳」で直す */
+    toast('月2万円の設定は実施済みです。金額は「銘柄ごとの内訳」で直せます'); render();
     return true;
   }
   if(act==='sbi-add-hist'){
@@ -1030,16 +1016,20 @@ function balanceChart(){
     '<div class="s2">いま '+yen(vals[vals.length-1])+'</div>');
 }
 
-/* ===== SBI証券の積立（設定は S.kmData 'sbi:config'。金額は手入力で直す）===== */
+/* ===== SBI証券の積立（設定は S.kmData 'sbi:config'。金額は手入力で直す）=====
+   2026-10-31に本人が設定変更済み：毎週月曜14,000円 → 月1回・月20,000円。
+   2026年10月分は20,000円が入金済み（paidYm）。翌月から毎月27日に20,000円が引き落とされる。 */
 function sbiDefault(){
   return {
     funds:[
-      { id:'gold', name:'ゴールド', weekly:2800, course:'毎週月曜' },
-      { id:'sp500', name:'S&P500', weekly:5600, course:'毎週月曜' },
-      { id:'allcountry', name:'オルカン（全世界株式）', weekly:5600, course:'毎週月曜' }
+      { id:'gold', name:'ゴールド', monthly:4000, course:'月1回（毎月）' },
+      { id:'sp500', name:'S&P500', monthly:8000, course:'月1回（毎月）' },
+      { id:'allcountry', name:'オルカン（全世界株式）', monthly:8000, course:'月1回（毎月）' }
     ],
-    bank:'三井住友銀行（普通・三田支店）', nextDate:'2026-10-31', nextAmount:14000,
-    plan:{ monthly:20000, course:'月1回（毎月）', applied:false, appliedAt:0,
+    bank:'三井住友銀行（普通・三田支店）', course:'月1回（毎月）', monthly:20000, debitDay:27,
+    nextDate:'2026-11-27', nextAmount:20000,
+    paidYm:'2026-10', paidAmount:20000, applied:true, appliedAt:1793372400000,
+    plan:{ monthly:20000, course:'月1回（毎月）', applied:true, appliedAt:1793372400000,
       funds:[{ id:'gold', amount:4000 }, { id:'sp500', amount:8000 }, { id:'allcountry', amount:8000 }] },
     mt:0
   };
@@ -1050,6 +1040,17 @@ function sbiCfg(){
   if(!sv || typeof sv !== 'object') return def;
   var c = Object.assign({}, def, JSON.parse(JSON.stringify(sv)));
   c.funds = Array.isArray(c.funds) ? c.funds : def.funds;
+  /* 旧形式（毎週・weekly）で保存された設定が残っていたら、月額プランの配分で月1回に読みかえる */
+  if(c.funds.some(function(f){ return f && f.weekly != null && f.monthly == null; })){
+    var pf = (c.plan && Array.isArray(c.plan.funds)) ? c.plan.funds : def.plan.funds;
+    c.funds = def.funds.map(function(df){
+      var p = pf.filter(function(x){ return x.id === df.id; })[0];
+      return { id:df.id, name:df.name, monthly:p ? toNum(p.amount) : df.monthly, course:def.course };
+    });
+    c.monthly = def.monthly; c.debitDay = def.debitDay; c.course = def.course;
+    c.nextDate = def.nextDate; c.nextAmount = def.nextAmount;
+    c.paidYm = def.paidYm; c.paidAmount = def.paidAmount; c.applied = true;
+  }
   c.plan = Object.assign({}, def.plan, (c.plan && typeof c.plan === 'object') ? c.plan : {});
   c.plan.funds = Array.isArray(c.plan.funds) ? c.plan.funds : def.plan.funds;
   return c;
@@ -1060,7 +1061,12 @@ function sbiSaveCfg(cfg){
   S.kmData['sbi:config'] = cfg;
   touch('kmData');
 }
-function sbiWeekly(cfg){ return cfg.funds.reduce(function(a, f){ return a + toNum(f.weekly); }, 0); }
+function sbiMonthly(cfg){
+  var sum = cfg.funds.reduce(function(a, f){ return a + toNum(f.monthly); }, 0);
+  return sum > 0 ? sum : toNum(cfg.monthly);
+}
+/* 旧コード互換（週額は廃止） */
+function sbiWeekly(cfg){ return 0; }
 function sbiFundName(cfg, id){
   var f = cfg.funds.filter(function(x){ return x.id === id; })[0];
   return f ? f.name : id;
@@ -1071,57 +1077,60 @@ function sbiHist(){
   return list.filter(function(x){ return x && /SBI|ショウケン|証券/.test(String(x.title || '')); })
     .sort(function(a, b){ return String(b.date || '').localeCompare(String(a.date || '')); });
 }
-/* 今日以降の月曜を n 回ぶん */
-function sbiMondays(n){
-  var a = today().split('-'), d = new Date(+a[0], +a[1]-1, +a[2]), out = [];
-  d.setDate(d.getDate() + (8 - d.getDay()) % 7);
-  while(out.length < n){ out.push(toYmd(d)); d.setDate(d.getDate() + 7); }
+/* 今日以降の引落日（毎月 debitDay 日）を n 回ぶん。入金済みの月は飛ばす */
+function sbiNextDebits(cfg, n){
+  var day = toNum(cfg.debitDay) || 27, out = [], ym = thisYm(), guard = 0;
+  while(out.length < n && guard++ < 36){
+    var date = eomYmd(ym, day);
+    if(date >= today() && cfg.paidYm !== ym) out.push(date);
+    ym = addMonths(ym, 1);
+  }
   return out;
 }
 function viewSbi(d){
-  var cfg = sbiCfg(), wk = sbiWeekly(cfg);
+  var cfg = sbiCfg(), mo = sbiMonthly(cfg);
   var row = function(k, v){ return '<div class="row"><div class="grow s">' + k + '</div><div class="amt num">' + v + '</div></div>'; };
   var h = '';
+  var paidNote = cfg.paidYm ? '<div class="bn green" style="margin-bottom:12px"><span class="ic">✓</span><span>' +
+    esc(ymLabel(cfg.paidYm)) + '分 ' + yen(toNum(cfg.paidAmount) || mo) + ' は入金済みです。次の引落は ' +
+    esc(ymdLabel(cfg.nextDate)) + ' の ' + yen(toNum(cfg.nextAmount) || mo) + ' です。</span></div>' : '';
 
-  h += section('SBI証券の積立', '毎週月曜',
-    '<div class="big num">' + yen(wk) + '</div>' +
-    '<div class="s" style="margin-top:4px">1週間の合計（' + cfg.funds.length + '銘柄）</div>' +
+  h += section('SBI証券の積立', '月1回・毎月' + (toNum(cfg.debitDay) || 27) + '日',
+    paidNote +
+    '<div class="big num">' + yen(mo) + '</div>' +
+    '<div class="s" style="margin-top:4px">1か月の合計（' + cfg.funds.length + '銘柄）</div>' +
     '<div style="margin-top:10px">' +
-      '<div class="row"><div class="grow"><div class="t">コース</div><div class="s">毎週月曜</div></div></div>' +
-      '<div class="row"><div class="grow"><div class="t">引落</div><div class="s">' + esc(cfg.bank) + 'から銀行引落</div></div></div>' +
+      '<div class="row"><div class="grow"><div class="t">コース</div><div class="s">月1回（毎月）</div></div></div>' +
+      '<div class="row"><div class="grow"><div class="t">引落</div><div class="s">' + esc(cfg.bank) + 'から、毎月' + (toNum(cfg.debitDay) || 27) + '日に銀行引落</div></div></div>' +
       '<div class="row"><div class="grow"><div class="t">支払い方法</div><div class="s">全額現金</div></div></div>' +
+      '<div class="row"><div class="grow"><div class="t">変更前の設定</div><div class="s">毎週月曜 14,000円（月56,000〜70,000円）→ 月20,000円に変更済み</div></div></div>' +
     '</div>' +
-    '<div class="grid2" style="margin-top:10px">' +
-      '<div class="stat"><div class="k">月曜4回の月</div><div class="v num">' + yen(wk * 4) + '</div></div>' +
-      '<div class="stat"><div class="k">月曜5回の月</div><div class="v num">' + yen(wk * 5) + '</div></div>' +
-    '</div>' +
-    '<p class="note">月の金額は、その月に月曜が何回あるかで変わります（月曜4回の月は ' + yen(wk * 4) + '／5回の月は ' + yen(wk * 5) + '）。</p>' +
-    row('年額の見込み', yen(wk * 52) + '（週' + yen(wk) + ' × 52週）') +
+    row('年額の見込み', yen(mo * 12) + '（月' + yen(mo) + ' × 12か月）') +
     '<p class="note">NISAの成長投資枠・つみたて投資枠を使う設定です（SBIアプリの表示ベース）。枠ごとの金額配分は未確定のため、ここには出しません。</p>');
 
   h += section('銘柄ごとの内訳', cfg.funds.length + '銘柄',
     cfg.funds.map(function(f){
-      return '<div class="row"><div class="grow"><div class="t">' + esc(f.name) + '</div><div class="s">' + esc(f.course || '') + '</div></div>' +
-        '<div class="amt num">' + yen(f.weekly) + '</div></div>';
+      return '<div class="row"><div class="grow"><div class="t">' + esc(f.name) + '</div><div class="s">' + esc(f.course || cfg.course || '') + '</div></div>' +
+        '<div class="amt num">' + yen(f.monthly) + '</div></div>';
     }).join('') +
-    row('週の合計', yen(wk)) +
+    row('月の合計', yen(mo)) +
     '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--rule)">' +
       cfg.funds.map(function(f){
-        return '<div class="field"><label class="f">' + esc(f.name) + '（週の金額・円）</label>' +
-          '<input id="sbi_w_' + esc(f.id) + '" inputmode="numeric" value="' + toNum(f.weekly) + '"></div>';
+        return '<div class="field"><label class="f">' + esc(f.name) + '（月の金額・円）</label>' +
+          '<input id="sbi_m_' + esc(f.id) + '" inputmode="numeric" value="' + toNum(f.monthly) + '"></div>';
       }).join('') +
       '<button class="btn" data-act="sbi-save-funds">金額を保存する</button></div>');
 
-  h += section('引き落としの予定', '毎週月曜',
-    '<div class="s">毎週月曜に、' + esc(cfg.bank) + 'から週の合計 ' + yen(wk) + ' が引き落とされます。</div>' +
-    row('次回注文予定　' + esc(ymdLabel(cfg.nextDate)), yen(cfg.nextAmount)) +
-    '<p class="note">次回注文予定は、旧設定時点のSBIアプリの表示です</p>' +
-    '<div class="pair" style="margin-bottom:11px">' +
+  h += section('引き落としの予定', '月1回',
+    '<div class="s">毎月' + (toNum(cfg.debitDay) || 27) + '日に、' + esc(cfg.bank) + 'から ' + yen(mo) + ' が引き落とされます。</div>' +
+    (cfg.paidYm ? '<div class="s" style="margin-top:6px">' + esc(ymLabel(cfg.paidYm)) + '分は入金済みなので、この月の引落はありません。</div>' : '') +
+    row('次回引落予定　' + esc(ymdLabel(cfg.nextDate)), yen(cfg.nextAmount)) +
+    '<div class="pair" style="margin:11px 0">' +
       '<div><label class="f">次回の日付</label><input id="sbi_next_date" type="date" value="' + esc(isYmd(cfg.nextDate) ? cfg.nextDate : '') + '"></div>' +
       '<div><label class="f">金額（円）</label><input id="sbi_next_amt" inputmode="numeric" value="' + toNum(cfg.nextAmount) + '"></div></div>' +
     '<button class="btn ghost" data-act="sbi-save-next">次回の予定を保存する</button>' +
     '<div style="margin-top:12px">' +
-      sbiMondays(4).map(function(m){ return row(esc(ymdLabel(m)) + '　引落予定', yen(wk)); }).join('') +
+      sbiNextDebits(cfg, 4).map(function(m){ return row(esc(ymdLabel(m)) + '　引落予定', yen(mo)); }).join('') +
     '</div>');
 
   var hist = sbiHist();
@@ -1134,10 +1143,14 @@ function viewSbi(d){
   });
   if(!hasSeed){
     var seedRow = '<div class="row"><div class="grow"><div class="t">AP(SBIショウケン</div><div class="s">' + esc(ymdLabel(seed.date)) +
-      '　三井住友銀行　銀行明細で確認済み</div></div><div class="amt num">−' + yen(seed.amount) + '</div></div>';
+      '　三井住友銀行　銀行明細で確認済み（旧・毎週設定の分）</div></div><div class="amt num">−' + yen(seed.amount) + '</div></div>';
     var at = 0;
     while(at < hist.length && String(hist[at].date || '') > seed.date) at++;
     rows.splice(at, 0, seedRow);
+  }
+  if(cfg.paidYm){
+    rows.unshift('<div class="row"><div class="grow"><div class="t">積立（' + esc(ymLabel(cfg.paidYm)) + '分）</div><div class="s">' +
+      esc(ymLabel(cfg.paidYm)) + '　入金済み（本人が確認）</div></div><div class="amt num">' + yen(toNum(cfg.paidAmount) || mo) + '</div></div>');
   }
   h += section('引落の実績', rows.length ? rows.length + '件' : '',
     (rows.length ? rows.join('') : '<div class="empty">まだ引落の記録はありません。</div>') +
@@ -1145,33 +1158,14 @@ function viewSbi(d){
       '<div class="pair" style="margin-bottom:11px">' +
         '<div><label class="f">日付</label><input id="sbi_h_date" type="date" value="' + today() + '"></div>' +
         '<div><label class="f">出金額（円）</label><input id="sbi_h_amt" inputmode="numeric"></div></div>' +
-      '<div class="field"><label class="f">メモ</label><input id="sbi_h_memo" placeholder="例：10月の積立"></div>' +
+      '<div class="field"><label class="f">メモ</label><input id="sbi_h_memo" placeholder="例：11月の積立"></div>' +
       '<button class="btn" data-act="sbi-add-hist">記録を追加する</button></div>' +
     '<p class="note">マネーフォワードやCSVで取りこんだ明細に「AP(SBIショウケン」などがあれば、自動でここに出ます</p>');
 
-  var pl = cfg.plan;
-  var plTotal = pl.funds.reduce(function(a, p){ return a + toNum(p.amount); }, 0);
-  var doneAt = pl.appliedAt ? toYmd(new Date(pl.appliedAt)) : '';
-  h += section('減額プラン（月2万円）', pl.course,
-    '<div class="bn amber"><span class="ic">!</span><span>月2万円への減額と、毎週コースから月1回（毎月）コースへの変更は 2026年10月27日に決めました。手続きが完了したかは未確認です。</span></div>' +
-    '<div style="margin-top:10px">' +
-      pl.funds.map(function(p){ return row(esc(sbiFundName(cfg, p.id)), yen(p.amount)); }).join('') +
-      row('月の合計', yen(plTotal)) +
-    '</div>' +
-    '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--rule)">' +
-      pl.funds.map(function(p){
-        return '<div class="field"><label class="f">' + esc(sbiFundName(cfg, p.id)) + '（月の金額・円）</label>' +
-          '<input id="sbi_p_' + esc(p.id) + '" inputmode="numeric" value="' + toNum(p.amount) + '"></div>';
-      }).join('') +
-      '<button class="btn ghost" data-act="sbi-save-plan">配分を保存する</button></div>' +
-    (pl.applied
-      ? '<div class="row" style="margin-top:12px"><div class="grow s">手続き済み（' + esc(ymdLabel(doneAt)) + '）</div>' +
-        '<button class="mini" data-act="sbi-plan-undone">未確認に戻す</button></div>'
-      : '<button class="btn" style="margin-top:12px" data-act="sbi-plan-done">手続き済みにする</button>'));
-
-  h += '<p class="note">SBI証券への自動ログイン・自動取得はしていません（ログイン情報が分からないため、この端末のSBIアプリの生体認証だけが使える状態です）。金額はSBIアプリや銀行明細で見て、手入力で更新してください。</p>';
+  h += '<p class="note">SBI証券への自動ログイン・自動取得はしていません。金額はSBIアプリや銀行明細で見て、手入力で更新してください。</p>';
   return h;
 }
+
 /* お金タブに「SBI証券」を足す（SUBTAB_DEFS は core.js で先に読みこまれている） */
 if(typeof SUBTAB_DEFS !== 'undefined' && SUBTAB_DEFS && Array.isArray(SUBTAB_DEFS.money) &&
    !SUBTAB_DEFS.money.some(function(x){ return x[0] === 'sbi'; })){
