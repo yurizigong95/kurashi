@@ -1,6 +1,6 @@
 {
-  "build": "2026-10-28d",
-  "made": "2026-10-27 15:56",
+  "build": "2026-10-31a",
+  "made": "2026-10-31 00:12",
   "files": [
     {
       "path": "css/app.css",
@@ -129,7 +129,7 @@
     },
     {
       "path": "js/core.js",
-      "sha256": "53f881f3bda03d01"
+      "sha256": "fee34ce2cce41518"
     },
     {
       "path": "js/data.js",
@@ -209,7 +209,7 @@
     },
     {
       "path": "js/money.js",
-      "sha256": "f3f33c46e35a69c5"
+      "sha256": "fdec978431f5e26f"
     },
     {
       "path": "js/notify.js",
@@ -269,7 +269,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "136e3ac678404ea5"
+      "sha256": "63087c0d8abb2ac6"
     }
   ]
 }
