@@ -5,6 +5,10 @@
        はじめて直すまでは保存しない（初期値 DT_GOAL を出すだけ）
    ・体重の記録 … S.kmItems（mod:'diet', type:'weight'）{ date, kg }
    ・今日の3つの習慣 … S.kmData 'diet:habits' { 'YYYY-MM-DD': { drink, rice, walk, mt } }
+
+ ・ランの記録 … S.kmItems（mod:'diet', type:'run'）{ date, min, km?, src?, hid? }
+   src 'health' のものは Apple ヘルスケアのワークアウトから毎晩自動取込（run_sync.py）。
+   手入力（src なし）は1日1件にまとめ、ヘルスケア分とは別に足し合わせる。
    測り忘れ防止：
    ・毎朝 6:40 に「体重を測る」通知（kmJobs）
    ・その日の記録が無いときは 21:30 に「今日はまだ記録が無い」通知（kmJobs）
@@ -14,7 +18,9 @@
 var DT_GOAL = { startKg:58, startDate:'2026-11-03', targetKg:53, targetDate:'2026-12-31', kcal:1600 };
 var DT_TABS = [['home', 'ホーム'], ['log', '記録'], ['food', '食事の目安']];
 var DT_HABITS = [['drink', '🍵 飲み物は無糖にした'], ['rice', '🍚 夜ごはんは茶碗1杯まで'], ['walk', '👟 よく歩いた・少し歩いた']];
-var dtUi = { tab:'home', f:null, editGoal:false };
+var DT_RUN_GOAL = 30; /* 1日のランの目標（分） */
+
+var dtUi = { tab:'home', f:null, rf:null, editGoal:false };
 
 /* ============================== 共通 ============================== */
 function dtGoal(){
@@ -47,6 +53,43 @@ function dtWeekAvg(endYmd){
   var from = shiftDate(endYmd, -6);
   return dtAvg(dtWeights().filter(function(x){ return x.date >= from && x.date <= endYmd; }));
 }
+/* ============================== ラン ============================== */
+
+function dtRuns(){
+ return (S.kmItems || []).filter(function(x){ return x && x.mod === 'diet' && x.type === 'run' && isYmd(x.date) && isFinite(Number(x.min)) && Number(x.min) > 0; })
+  .slice().sort(function(a, b){ return String(a.date).localeCompare(String(b.date)) || (a.mt || 0) - (b.mt || 0); });
+}
+
+function dtRunMin(ymd){ return dtRuns().filter(function(x){ return x.date === ymd; }).reduce(function(a, x){ return a + Number(x.min); }, 0); }
+
+function dtRunKm(ymd){ return Math.round(dtRuns().filter(function(x){ return x.date === ymd; }).reduce(function(a, x){ return a + (Number(x.km) || 0); }, 0) * 100) / 100; }
+
+function dtManualRun(ymd){ return dtRuns().filter(function(x){ return x.date === ymd && x.src !== 'health'; })[0] || null; }
+
+/* 手入力は1日1件にまとめる（ヘルスケア分には触らない）。id 指定時はその記録を直す */
+function dtPutRun(date, min, km, id){
+ if(!Array.isArray(S.kmItems)) S.kmItems = [];
+ var rec = null;
+ if(id) (S.kmItems).forEach(function(x){ if(x && x.id === id) rec = x; });
+ if(!rec) rec = dtManualRun(date);
+ if(!rec){ rec = { id:uid('dtr'), mod:'diet', type:'run' }; S.kmItems.push(rec); }
+ rec.date = date; rec.min = Math.max(1, Math.round(Number(min)));
+ if(Number(km) > 0) rec.km = Math.round(Number(km) * 100) / 100; else delete rec.km;
+ rec.mt = Date.now();
+ return rec.id;
+}
+
+/* ランの消費カロリー目安：58kgで ゆっくり走って 1分≒10kcal */
+function dtRunKcal(min){ return Math.round((Number(min) || 0) * 10); }
+
+/* 走った日が続いているか（今日か昨日から数える） */
+function dtRunStreak(){
+ var days = {}; dtRuns().forEach(function(x){ days[x.date] = 1; });
+ var cur = today(); if(!days[cur]) cur = shiftDate(cur, -1);
+ var n = 0; while(days[cur]){ n++; cur = shiftDate(cur, -1); }
+ return n;
+}
+
 function dtHabits(){
   var d = (S.kmData || {})['diet:habits'];
   return (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
@@ -128,6 +171,51 @@ function dtHomeHtml(){
   return section('ダイエットの進み具合', ymdLabel(g.targetDate) + ' 目標', h);
 }
 
+/* ランのホーム（今日の30分・今週の合計・記録リスト） */
+function dtRunHtml(){
+ var td = today(), min = dtRunMin(td), km = dtRunKm(td), rf = dtUi.rf;
+ var pct = Math.max(0, Math.min(100, Math.round(min / DT_RUN_GOAL * 100)));
+ var h = '';
+ if(min >= DT_RUN_GOAL) h += '<div class="dt-ok">🎉 今日のラン ' + min + '分、目標クリア！' + (km ? ' 約' + km + 'km、' : '') + '消費は約' + dtRunKcal(min) + 'kcalの目安だよ。</div>';
+ else if(min > 0) h += '<div class="dt-ok">🏃 今日のランは ' + min + '分（あと' + (DT_RUN_GOAL - min) + '分で目標）。消費は約' + dtRunKcal(min) + 'kcalの目安。</div>';
+ else h += '<div class="dt-alert"><b>🏃 今日はまだ走っていません</b><div class="s">目標は1日' + DT_RUN_GOAL + '分。最初のうちは、歩きをはさんでもOKだよ。</div></div>';
+ h += '<div class="dt-bar"><i style="width:' + pct + '%"></i></div><div class="dt-nums"><span>今日 ' + min + '分</span><span>目標 ' + DT_RUN_GOAL + '分</span></div>';
+
+ if(!rf){
+  h += '<div class="row" style="margin-top:10px">';
+  if(min < DT_RUN_GOAL) h += '<button type="button" class="btn" data-act="dt-run30">🏃 30分走った</button>';
+  h += '<button type="button" class="btn ghost" data-act="dt-run-new">分数を入れて記録</button></div>';
+ }else{
+  h += '<div class="dt-form"><div class="grid2"><label class="field"><span>日付</span><input type="date" class="dt-rin2" data-k="date" value="' + esc(rf.date) + '"></label>'
+   + '<label class="field"><span>走った時間（分）</span><input type="number" class="dt-rin2" data-k="min" inputmode="numeric" min="1" max="600" value="' + esc(rf.min) + '"></label></div>'
+   + '<label class="field"><span>距離（km・分かれば）</span><input type="number" class="dt-rin2" data-k="km" inputmode="decimal" step="0.1" min="0" value="' + esc(rf.km) + '"></label>'
+   + '<div class="row"><button type="button" class="btn" data-act="dt-run-save">' + (rf.id ? '直す' : '記録する') + '</button>'
+   + '<button type="button" class="btn ghost" data-act="dt-run-cancel">やめる</button>'
+   + (rf.id ? '<button type="button" class="btn danger" data-act="dt-run-del" data-id="' + esc(rf.id) + '" style="margin-left:auto">消す</button>' : '')
+   + '</div></div>';
+ }
+
+ /* 直近7日の合計 */
+ var tot = 0, days = 0;
+ for(var i = 6; i >= 0; i--){ var m2 = dtRunMin(shiftDate(td, -i)); tot += m2; if(m2 > 0) days++; }
+ h += '<p class="s" style="margin-top:10px">直近7日：合計 ' + tot + '分・走った日 ' + days + '日' + (dtRunStreak() > 1 ? '・' + dtRunStreak() + '日連続🔥' : '') + '（消費 約' + dtRunKcal(tot) + 'kcalの目安）</p>';
+
+ var steps = ((S.healthLog || {})[td] || {}).steps;
+ if(steps) h += '<p class="s">今日の歩数 ' + Number(steps).toLocaleString('ja-JP') + '歩（ヘルスケア連動）</p>';
+
+ var list = dtRuns().slice(-7).reverse();
+ if(list.length){
+  h += list.map(function(x){
+   return '<div class="item"><div class="grow"><div class="t">' + Number(x.min) + '分' + (Number(x.km) > 0 ? '・約' + x.km + 'km' : '') + (x.src === 'health' ? ' <span class="dt-badge">ヘルスケア</span>' : '') + '</div>'
+    + '<div class="s">' + ymdLabel(x.date) + (x.date === td ? '（今日）' : '') + '・約' + dtRunKcal(x.min) + 'kcal</div></div>'
+    + (x.src === 'health' ? '' : '<button type="button" class="mini" data-act="dt-run-edit" data-id="' + esc(x.id) + '">直す</button>')
+    + '</div>';
+  }).join('');
+ }
+ h += '<p class="s" style="margin-top:8px">Apple ヘルスケアの「ワークアウト（ランニング）」は、毎晩まとめて自動で取り込みます。iPhoneかApple Watchでワークアウトを開始して走ると、記録し忘れても翌日には入っています。</p>';
+ return section('今日のラン', '目標 ' + DT_RUN_GOAL + '分／日', h);
+}
+
 /* ============================== 記録 ============================== */
 function dtLogHtml(){
   var w = dtWeights().slice().reverse(), f = dtUi.f;
@@ -185,6 +273,7 @@ function dtView(){
     return '<button data-act="dt-tab" data-v="' + t[0] + '" class="' + (dtUi.tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>';
   }).join('') + '</div>';
   if(dtUi.tab === 'log') return h + dtLogHtml();
+ if(dtUi.tab === 'home') return h + dtHomeHtml() + dtRunHtml();
   if(dtUi.tab === 'food') return h + dtFoodHtml();
   return h + dtHomeHtml();
 }
@@ -242,7 +331,29 @@ kmAction(function(act, t){
       dtGoalSave({ startKg:Math.round(sk * 10) / 10, startDate:d.startDate, targetKg:Math.round(tk * 10) / 10, targetDate:d.targetDate, kcal:kc >= 800 && kc <= 4000 ? kc : 1600 });
       dtUi.editGoal = false; toast('目標を保存しました'); commit(); return true;
     }
-    case 'dt-new': dtUi.f = { id:'', date:today(), kg:'' }; render(); return true;
+    case 'dt-run30': {
+  var td3 = today(), need = DT_RUN_GOAL - dtRunMin(td3);
+  if(need > 0){ var man = dtManualRun(td3); dtPutRun(td3, (man ? Number(man.min) : 0) + need, man ? man.km : ''); }
+  toast('30分で記録しました'); commit(); return true;
+ }
+ case 'dt-run-new': dtUi.rf = { id:'', date:today(), min:'30', km:'' }; render(); return true;
+ case 'dt-run-edit': {
+  var rrec = (S.kmItems || []).filter(function(x){ return x && x.id === id; })[0]; if(!rrec) return true;
+  dtUi.rf = { id:rrec.id, date:rrec.date, min:String(rrec.min), km:rrec.km ? String(rrec.km) : '' }; render(); return true;
+ }
+ case 'dt-run-cancel': dtUi.rf = null; render(); return true;
+ case 'dt-run-save': {
+  var rf2 = dtUi.rf; if(!rf2) return true;
+  var mn = parseInt(rf2.min, 10);
+  if(!isYmd(rf2.date)){ toast('日付を確認してください', true); return true; }
+  if(!(mn >= 1 && mn <= 600)){ toast('分数を入れてください', true); return true; }
+  dtPutRun(rf2.date, mn, rf2.km, rf2.id || '');
+  dtUi.rf = null; toast('記録しました'); commit(); return true;
+ }
+ case 'dt-run-del': if(!confirm('この記録を消しますか？')) return true;
+  removeItem('kmItems', id); dtUi.rf = null; toast('消しました'); commit(); return true;
+
+ case 'dt-new': dtUi.f = { id:'', date:today(), kg:'' }; render(); return true;
     case 'dt-edit': {
       var rec = (S.kmItems || []).filter(function(x){ return x && x.id === id; })[0]; if(!rec) return true;
       dtUi.tab = 'log'; dtUi.f = { id:rec.id, date:rec.date, kg:rec.kg }; render(); return true;
@@ -266,6 +377,7 @@ document.addEventListener('input', function(e){
   var t = e.target;
   if(!t || !t.classList) return;
   if(t.classList.contains('dt-in2') && dtUi.f) dtUi.f[t.dataset.k] = t.value;
+  if(t.classList.contains('dt-rin2') && dtUi.rf) dtUi.rf[t.dataset.k] = t.value;
   if(t.classList.contains('dt-gin')){ dtUi.goalDraft = dtUi.goalDraft || dtGoal(); dtUi.goalDraft[t.dataset.k] = t.value; }
 });
 document.addEventListener('change', function(e){
