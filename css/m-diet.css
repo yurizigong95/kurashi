@@ -1,0 +1,29 @@
+/* くらしの手帳：ダイエットタブ の見た目（担当 diet・クラスは dt- ではじめる） */
+.dt-nav{margin-bottom:12px}
+.dt-alert{margin:0 0 12px; padding:12px; border-radius:16px; background:#fdf0d5; border:1px solid #e3b341; color:#5c4303}
+.dt-alert .s{margin-top:4px}
+.dt-ok{margin:0 0 12px; padding:10px 12px; border-radius:14px; background:var(--soft); border:1px solid var(--rule)}
+.dt-seed{margin:0 0 12px; font-size:.9em}
+.dt-seed .mini{margin-left:8px}
+.dt-quick{display:flex; gap:8px; margin-top:10px}
+.dt-quick .dt-in{flex:1 1 auto; min-width:0}
+.dt-quick .btn{flex:0 0 auto}
+.dt-big{display:flex; align-items:baseline; gap:12px; margin:2px 0 8px}
+.dt-now{font-size:2em; font-weight:800; line-height:1}
+.dt-bar{height:12px; border-radius:999px; background:var(--soft); border:1px solid var(--rule); overflow:hidden}
+.dt-bar i{display:block; height:100%; background:var(--accent); border-radius:999px}
+.dt-nums{display:flex; justify-content:space-between; gap:8px; margin-top:6px; font-size:.78em; color:var(--sub); flex-wrap:wrap}
+.dt-habits{margin-top:14px; padding:12px; border-radius:16px; background:var(--soft); border:1px solid var(--rule)}
+.dt-hab{display:flex; align-items:center; gap:8px; padding:6px 0; font-size:.92em; cursor:pointer}
+.dt-hab input[type="checkbox"]{width:auto; margin:0; flex:none}
+.dt-form{margin:10px 0; padding:12px; border-radius:16px; background:var(--soft); border:1px solid var(--rule)}
+.dt-form .grid2, .dt-form .field{margin-bottom:10px}
+.dt-chart{display:flex; align-items:flex-end; gap:6px; margin:14px 0 6px; overflow-x:auto; padding-top:16px}
+.dt-col{flex:1 0 34px; display:flex; flex-direction:column; align-items:center; gap:3px}
+.dt-col i{display:block; width:70%; min-height:8px; background:var(--accent); border-radius:6px 6px 0 0}
+.dt-cv{font-size:.68em; color:var(--sub)}
+.dt-cd{font-size:.68em; color:var(--sub)}
+.dt-tbl{border-collapse:collapse; font-size:.88em; width:100%}
+.dt-tbl th, .dt-tbl td{padding:8px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top}
+.dt-tbl th{white-space:nowrap; color:var(--sub)}
+body[data-theme="dark"] .dt-alert{background:rgba(227,179,65,.16); color:#f3d489}
