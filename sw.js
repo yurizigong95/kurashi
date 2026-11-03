@@ -1,18 +1,18 @@
 /* くらしの手帳：オフライン用・通知の受け取り・前の版にもどす */
 /* 版を出すときは js/core.js の APP_BUILD とセットで上げる（tools/release-check.mjs で両方を表示して確かめる） */
-var CACHE = 'kurashi-v41';
+var CACHE = 'kurashi-v42';
 var PREV = 'kurashi-prev';      /* ひとつ前の版のファイル（「前の版にもどす」で使う） */
 var FLAGS = 'kurashi-flags';    /* 前の版を使っているかの印 */
 var FILES = [
   './', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png', './files.json',
   './css/app.css', './css/styles.css',
-  './css/m-kokushi.css', './css/m-research.css', './css/m-anki2.css', './css/m-campus.css', './css/m-life.css', './css/m-petplus.css', './css/m-chara2.css', './css/m-links2.css', './css/m-core2.css', './css/m-jisshu.css', './css/m-career.css',
+  './css/m-kokushi.css', './css/m-research.css', './css/m-anki2.css', './css/m-campus.css', './css/m-life.css', './css/m-petplus.css', './css/m-chara2.css', './css/m-links2.css', './css/m-core2.css', './css/m-jisshu.css', './css/m-career.css', './css/m-diet.css',
   './js/data.js', './js/core.js', './js/hooks.js', './js/aidata.js', './js/sync.js', './js/ai.js', './js/common.js', './js/zoom.js', './js/decor.js',
   './js/chara-data.js', './js/chara-art.js', './js/chara.js', './js/chara-make.js', './js/chara-talk.js', './js/pet.js',
   './js/commute.js', './js/today.js', './js/money.js', './js/kakeibo.js', './js/risyu.js', './js/calendar.js',
   './js/settings.js', './js/google.js', './js/links.js', './js/notify.js', './js/wx-plus.js', './js/timetable.js',
   './js/todo.js', './js/chat.js', './js/ai-plus.js', './js/anki.js', './js/gasplus.js',
-  './js/m-kokushi.js', './js/m-research.js', './js/m-anki2.js', './js/m-campus.js', './js/m-life.js', './js/m-petplus.js', './js/m-chara2.js', './js/m-links2.js', './js/m-core2.js', './js/m-jisshu.js', './js/m-career.js', './js/review.js', './js/whatsnew.js', './js/ops.js', './js/main.js',
+  './js/m-kokushi.js', './js/m-research.js', './js/m-anki2.js', './js/m-campus.js', './js/m-life.js', './js/m-petplus.js', './js/m-chara2.js', './js/m-links2.js', './js/m-core2.js', './js/m-jisshu.js', './js/m-career.js', './js/m-diet.js', './js/review.js', './js/whatsnew.js', './js/ops.js', './js/main.js',
   './gas/Code.gs', './gas/appsscript.json'
 ];
 var usePrev = null;

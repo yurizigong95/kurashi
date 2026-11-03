@@ -1,6 +1,6 @@
 {
-  "build": "2026-10-31a",
-  "made": "2026-10-31 00:12",
+  "build": "2026-11-03a",
+  "made": "2026-11-03 09:10",
   "files": [
     {
       "path": "css/app.css",
@@ -25,6 +25,10 @@
     {
       "path": "css/m-core2.css",
       "sha256": "58e656cbc30bd6d7"
+    },
+    {
+      "path": "css/m-diet.css",
+      "sha256": "42245bae0e4e8079"
     },
     {
       "path": "css/m-jisshu.css",
@@ -73,7 +77,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "37b00c0390769b45"
+      "sha256": "c8bbbc0ed3a0098e"
     },
     {
       "path": "js/ai-plus.js",
@@ -129,7 +133,7 @@
     },
     {
       "path": "js/core.js",
-      "sha256": "fee34ce2cce41518"
+      "sha256": "bb2cfcd581296827"
     },
     {
       "path": "js/data.js",
@@ -180,6 +184,10 @@
       "sha256": "b6f327b5a8f274b1"
     },
     {
+      "path": "js/m-diet.js",
+      "sha256": "7cb0fa744d8868d2"
+    },
+    {
       "path": "js/m-jisshu.js",
       "sha256": "b3349f8ec5d1d770"
     },
@@ -205,7 +213,7 @@
     },
     {
       "path": "js/main.js",
-      "sha256": "908297a60c09e923"
+      "sha256": "deee27dfde8d4e54"
     },
     {
       "path": "js/money.js",
@@ -253,7 +261,7 @@
     },
     {
       "path": "js/whatsnew.js",
-      "sha256": "6a484765e23d4da3"
+      "sha256": "d48826499ce9f0ea"
     },
     {
       "path": "js/wx-plus.js",
@@ -269,7 +277,7 @@
     },
     {
       "path": "sw.js",
-      "sha256": "63087c0d8abb2ac6"
+      "sha256": "83265b28cbfc3d31"
     }
   ]
 }
