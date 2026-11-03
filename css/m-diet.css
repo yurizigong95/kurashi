@@ -27,3 +27,4 @@
 .dt-tbl th, .dt-tbl td{padding:8px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top}
 .dt-tbl th{white-space:nowrap; color:var(--sub)}
 body[data-theme="dark"] .dt-alert{background:rgba(227,179,65,.16); color:#f3d489}
+.dt-badge{display:inline-block; padding:1px 8px; border-radius:999px; background:var(--soft); border:1px solid var(--rule); font-size:.72em; color:var(--sub); vertical-align:middle}
