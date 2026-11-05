@@ -26,7 +26,7 @@ var TEST_MODE = (function(){
 var TEST_DEV = (function(){ try{ var m = String(location.search).match(/[?&]dev=([A-Za-z0-9_-]{1,20})/); return m ? m[1] : ''; }catch(e){ return ''; } })();
 var KEY = TEST_MODE ? 'shiharai:v1:test' + (TEST_DEV ? ':' + TEST_DEV : '') : 'shiharai:v1';
 var DATA_VER = 17;
-var APP_BUILD = '2026-11-04a';   /* 端末ごとの版を見分けるための番号 */
+var APP_BUILD = '2026-11-06a';   /* 端末ごとの版を見分けるための番号 */
 /* 同期の初期設定（設定タブからいつでも変えられます） */
 var DEFAULT_ROOM = TEST_MODE ? 'test-room' : '8b7f4e6et9jhxded';
 var DEFAULT_FB = '{"apiKey":"AIzaSyAdXfCOY2Fk4wDXr38j4ompBHaBLEPRWww","authDomain":"kurashi-59562.firebaseapp.com","projectId":"kurashi-59562","storageBucket":"kurashi-59562.firebasestorage.app","messagingSenderId":"203275210981","appId":"1:203275210981:web:327cf32ad4aa6ebc6b040c"}';
@@ -584,6 +584,20 @@ function classesForDate(ymd){
     out.push({ period:p, name:c.name, room:courseRoom(c.name), web:web, req:courseReq(c.name), bi:c.bi, off:off,
                online: isOnlineOn(c.name, ymd) ? 1 : 0 });
   });
+  /* 基礎看護技術演習は、授業予定表（日ごと）の科目・時限を優先する */
+  var epRow = (typeof ENSHU_PLAN !== 'undefined') ? ENSHU_PLAN.filter(function(r){ return r[0]===ymd; })[0] : null;
+  if(epRow){
+    var epMap = {};
+    epRow[1].split('').forEach(function(ch, i){ if(ENSHU_NAMES[ch]) epMap[i+1] = ENSHU_NAMES[ch]; });
+    out = out.filter(function(x){ return !isEnshu(x.name) && !epMap[x.period]; });
+    Object.keys(epMap).forEach(function(k){
+      var nmE = epMap[k];
+      out.push({ period:+k, name:nmE, room:courseRoom(nmE), web:0, req:courseReq(nmE), bi:0,
+                 off: isHol ? 'holiday' : (isCancelled(nmE, ymd) ? 'cancel' : ''),
+                 online: isOnlineOn(nmE, ymd) ? 1 : 0 });
+    });
+    out.sort(function(a,b){ return a.period-b.period; });
+  }
   /* 補講はその日に足す */
   makeupsOn(ymd).forEach(function(h){
     var pd = toNum(h.period) || 1;
@@ -618,12 +632,37 @@ function attendOf(name){
   return { ab:ab, abRaw:abRaw, late:late, pres:pres, total:total, limit:limit, log:log,
            fromBase: !toNum(cm.evalAbsent) && !!base.limit, muses:mu };
 }
-function setAttend(name, ymd, st){
+/* 基礎看護技術演習（Ⅰ・Ⅱ）はコマごとに記録する（1日休む＝その日のコマ数ぶんの欠席） */
+function isEnshu(name){ return name==='基礎看護技術演習Ⅰ' || name==='基礎看護技術演習Ⅱ'; }
+function attendPeriodsOf(name, ymd){
+  return classesForDate(ymd).filter(function(c){ return c.name===name && !c.off; }).map(function(c){ return c.period; });
+}
+function sortAttendLog(log){
+  log.sort(function(a,b){ var d = String(a.date).localeCompare(String(b.date)); return d || ((a.p||0) - (b.p||0)); });
+  return log;
+}
+function setAttend(name, ymd, st, p){
   var log = S.attendLog[name] || [];
+  if(isEnshu(name)){
+    var pds = attendPeriodsOf(name, ymd);
+    if(p){
+      /* コマ指定：日単位の記録が残っていたら、ほかのコマに広げてから、そのコマだけ差し替える */
+      var dayE = log.filter(function(x){ return x.date===ymd && !x.p; })[0];
+      log = log.filter(function(x){ return !(x.date===ymd && (!x.p || x.p===p)); });
+      if(dayE) pds.forEach(function(pd){ if(pd!==p) log.push({ date:ymd, p:pd, st:dayE.st }); });
+      if(st) log.push({ date:ymd, p:p, st:st });
+      S.attendLog[name] = sortAttendLog(log); touch('attendLog'); return;
+    }
+    if(pds.length){
+      /* 日単位の指定は、その日のその科目の全コマに広げる */
+      log = log.filter(function(x){ return x.date!==ymd; });
+      if(st) pds.forEach(function(pd){ log.push({ date:ymd, p:pd, st:st }); });
+      S.attendLog[name] = sortAttendLog(log); touch('attendLog'); return;
+    }
+  }
   log = log.filter(function(x){ return x.date!==ymd; });
   if(st) log.push({ date:ymd, st:st });
-  log.sort(function(a,b){ return a.date.localeCompare(b.date); });
-  S.attendLog[name] = log; touch('attendLog');
+  S.attendLog[name] = sortAttendLog(log); touch('attendLog');
 }
 
 /* 削除の取り消し */

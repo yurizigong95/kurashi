@@ -481,7 +481,18 @@ function attendSection(name, at, td, todayCls){
       '<span class="attc-sub">欠席' + at.ab + '/' + at.limit + '・出席率' + (rate == null ? '—' : rate + '%') + (at.late ? '・遅刻' + at.late + (at.late >= 3 ? '（欠席' + Math.floor(at.late / 3) + '回ぶん）' : '') : '') + '</span></div>' +
     '<div class="attc-bar" role="img" aria-label="欠席' + at.ab + '回（上限' + at.limit + '回）"><i style="width:' + Math.min(100, Math.round(at.ab / Math.max(1, at.limit) * 100)) + '%"></i></div>' +
   '</div>';
-  if(todayCls){
+  if(todayCls && isEnshu(name)){
+    /* 演習はコマごとに記録する */
+    classesForDate(td).filter(function(x){ return x.name===name && !x.off; }).forEach(function(x){
+      var curP = (S.attendLog[name] || []).filter(function(y){ return y.date===td && (y.p===x.period || !y.p); })[0];
+      h += '<div class="attc-today"><span class="attc-lb">今日 ' + x.period + '限</span>' +
+        ['出', '欠', '遅'].map(function(st){
+          var on = curP && curP.st === st;
+          return '<button data-act="att-set" data-name="' + esc(name) + '" data-date="' + td + '" data-p="' + x.period + '" data-st="' + (on ? '' : st) + '" class="attc-b attc-' + ({出:'p',欠:'a',遅:'l'})[st] + (on ? ' on' : '') + '"' +
+            ' aria-pressed="' + (on ? 'true' : 'false') + '">' + ({出:'出席', 欠:'欠席', 遅:'遅刻'})[st] + '</button>';
+        }).join('') + '</div>';
+    });
+  } else if(todayCls){
     h += '<div class="attc-today"><span class="attc-lb">今日</span>' +
       ['出', '欠', '遅'].map(function(st){
         var on = cur && cur.st === st;
@@ -497,8 +508,8 @@ function attendSection(name, at, td, todayCls){
         '<select id="atst_' + esc(name) + '" aria-label="出欠"><option value="出">出席</option><option value="欠">欠席</option><option value="遅">遅刻</option></select>' +
         '<button class="btn ghost" data-act="att-set-date" data-name="' + esc(name) + '">記録</button></div>' +
       (at.log.length ? '<div class="attc-log">' + at.log.slice().reverse().slice(0, 40).map(function(x){
-        return '<button class="attc-chip attc-' + ({出:'p',欠:'a',遅:'l'})[x.st] + '" data-act="att-log-del" data-name="' + esc(name) + '" data-date="' + x.date + '" title="消す">' +
-          esc(x.date.slice(5).replace('-', '/')) + ' ' + esc(x.st) + ' <span aria-hidden="true">×</span></button>';
+        return '<button class="attc-chip attc-' + ({出:'p',欠:'a',遅:'l'})[x.st] + '" data-act="att-log-del" data-name="' + esc(name) + '" data-date="' + x.date + (x.p ? '" data-p="' + x.p : '') + '" title="消す">' +
+          esc(x.date.slice(5).replace('-', '/')) + (x.p ? ' ' + x.p + '限' : '') + ' ' + esc(x.st) + ' <span aria-hidden="true">×</span></button>';
       }).join('') + '</div>' : '<div class="s2">まだ記録がありません。</div>') +
       '<div class="attc-row" style="margin-top:8px">' +
         '<div><label class="f">授業の回数</label><input id="cm_total" inputmode="numeric" value="' + at.total + '"></div>' +
@@ -914,7 +925,7 @@ function ttAction(act, t, ev){
     if(d4) S.biweek[nm4] = d4; else delete S.biweek[nm4];
     touch('biweek'); toast(d4?'基準日を保存しました':'基準日を消しました'); commit(); return true;
   }
-  if(act==='att-set'){ if(courseView) courseKeepAll(t.dataset.name); setAttend(t.dataset.name, t.dataset.date, t.dataset.st); commit(); return true; }
+  if(act==='att-set'){ if(courseView) courseKeepAll(t.dataset.name); setAttend(t.dataset.name, t.dataset.date, t.dataset.st, t.dataset.p ? +t.dataset.p : undefined); commit(); return true; }
   if(act==='att-set-date'){
     courseKeepAll(t.dataset.name);
     var nm5 = t.dataset.name, d5 = readMd('at_'+nm5), st5 = val('atst_'+nm5);
@@ -1020,9 +1031,9 @@ function ttAction(act, t, ev){
   /* 出欠：くわしい記録をひらく・記録を消す */
   if(act==='att-more'){ courseKeepAll(t.dataset.name); attMore[t.dataset.name] = !attMore[t.dataset.name]; render(); return true; }
   if(act==='att-log-del'){
-    if(!confirm(ymdLabel(t.dataset.date) + ' の記録を消しますか？')) return true;
+    if(!confirm(ymdLabel(t.dataset.date) + (t.dataset.p ? ' ' + t.dataset.p + '限' : '') + ' の記録を消しますか？')) return true;
     courseKeepAll(t.dataset.name);
-    setAttend(t.dataset.name, t.dataset.date, ''); commit(); return true;
+    setAttend(t.dataset.name, t.dataset.date, '', t.dataset.p ? +t.dataset.p : undefined); commit(); return true;
   }
   if(act==='grade-save'){
     courseKeepAll(t.dataset.name);
