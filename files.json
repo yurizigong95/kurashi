@@ -133,11 +133,11 @@
     },
     {
       "path": "js/core.js",
-      "sha256": "63dc8bcc110bdfd5"
+      "sha256": "9c5573aa5f95ca10"
     },
     {
       "path": "js/data.js",
-      "sha256": "7b6b760a0a23e6c0"
+      "sha256": "b2f91e3e6bb830dc"
     },
     {
       "path": "js/decor.js",
@@ -261,7 +261,7 @@
     },
     {
       "path": "js/whatsnew.js",
-      "sha256": "5f82c1d22b04febb"
+      "sha256": "8a8fad607b640369"
     },
     {
       "path": "js/wx-plus.js",
