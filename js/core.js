@@ -567,6 +567,12 @@ function biweekOn(name, ymd){
   var w = Math.floor(d / 7);
   return ((w % 2) + 2) % 2 === 0;
 }
+/* 授業が終わった科目か（最終回の日付より後なら、その科目はもう無い） */
+function courseEnded(name, ymd){
+  if(typeof COURSE_END === 'undefined') return false;
+  var row = COURSE_END.filter(function(r){ return r[0]===name; })[0];
+  return !!row && ymd > row[1];
+}
 /* その日に実際にある授業（休講・隔週を考慮） */
 function classesForDate(ymd){
   if(!isYmd(ymd)) return [];
@@ -579,6 +585,7 @@ function classesForDate(ymd){
   var isHol = (!!holidayName(ymd) || inBreak) && !S.settings.classOnHoliday && !holOn;
   PERIODS.forEach(function(p){
     var c = map[dch+p]; if(!c) return;
+    if(courseEnded(c.name, ymd)) return;   /* すでに最終回を過ぎた科目は出さない */
     var off = isHol ? 'holiday' : isCancelled(c.name, ymd) ? 'cancel' : (!biweekOn(c.name, ymd) ? 'biweek' : '');
     var web = c.web || (isOnlineOn(c.name, ymd) ? 1 : 0);
     out.push({ period:p, name:c.name, room:courseRoom(c.name), web:web, req:courseReq(c.name), bi:c.bi, off:off,
