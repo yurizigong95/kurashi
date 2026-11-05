@@ -1,5 +1,5 @@
 {
-  "build": "2026-11-03b",
+  "build": "2026-11-06a",
   "made": "2026-11-03 09:20",
   "files": [
     {
@@ -133,11 +133,11 @@
     },
     {
       "path": "js/core.js",
-      "sha256": "fc5003d69e03e6c1"
+      "sha256": "63dc8bcc110bdfd5"
     },
     {
       "path": "js/data.js",
-      "sha256": "1e8e24a3c1088c1e"
+      "sha256": "7b6b760a0a23e6c0"
     },
     {
       "path": "js/decor.js",
@@ -249,7 +249,7 @@
     },
     {
       "path": "js/timetable.js",
-      "sha256": "3ce53740c2e94057"
+      "sha256": "a426fd7eb8d23352"
     },
     {
       "path": "js/today.js",
@@ -261,7 +261,7 @@
     },
     {
       "path": "js/whatsnew.js",
-      "sha256": "e5e61edad4364aa2"
+      "sha256": "5f82c1d22b04febb"
     },
     {
       "path": "js/wx-plus.js",
