@@ -205,7 +205,9 @@ KT.test('生活＋：周期の同期（AIが戻せない形・前の形も読め
   ok(mine.every(function(x){ var raw = ''; try{ raw = A.atob(x.enc.slice(3)); }catch(e){} return raw.indexOf('start') < 0 && raw.indexOf(A.shiftDate(td, -30)) < 0; }),
     'base64 を戻しただけでは読めない');
   var more = JSON.stringify(A.aiSectionData('more'));
-  ok(more.indexOf(A.shiftDate(td, -30)) < 0 && more.indexOf('lfひみつ') < 0, '「AIに見せない」のとき、手帳全体を読む道具でも中身が出ない');
+  /* 日付そのものは、ほかの機能の記録（大学メールの休講候補の日付など）にも出ることがあるので、
+     周期の記録が戻せる形（"start":"日付"）では出ていないことと、メモの中身が出ていないことを確かめる */
+  ok(more.indexOf('"start":"' + A.shiftDate(td, -60)) < 0 && more.indexOf('"start":"' + A.shiftDate(td, -30)) < 0 && more.indexOf('lfひみつ') < 0, '「AIに見せない」のとき、手帳全体を読む道具でも中身が出ない');
   ok(A.aiSectionData('health').lfPeriod.hidden, 'AIの数字も出さない');
   /* 前の形（b1）も読めて、新しい形に置きかえる */
   A.S.kmItems.push(J(A, { id:'lfp_old1', mt:Date.now(), mod:'life', type:'period', enc:'b1:' + A.btoa('{"start":"' + A.shiftDate(td, -90) + '"}') }));
