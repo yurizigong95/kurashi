@@ -63,7 +63,7 @@
             6:document.getElementById('n6'),9:document.getElementById('n9')},
       stage=document.getElementById('stage');
   var tickLines=[], i, l, night=false;
-  for(i=0;i<60;i++){ l=document.createElementNS(NS,'line'); l.setAttribute('stroke', night?(hr?'#c9342a':'#7e241d'):(hr?'#e9e9e9':'#8e8e93')); l.setAttribute('stroke-linecap','round'); ticks.appendChild(l); tickLines.push(l); }
+  for(i=0;i<60;i++){ l=document.createElementNS(NS,'line'); l.setAttribute('stroke', '#8e8e93'); l.setAttribute('stroke-linecap','round'); ticks.appendChild(l); tickLines.push(l); }
   var CX=0, CY=0, RX=100, RY=100;
   function layout(){
     var w=window.innerWidth, h=window.innerHeight, m=Math.max(10, Math.min(w,h)*0.02);
@@ -82,6 +82,7 @@
       l=tickLines[i];
       l.setAttribute('x1', CX+sa*RX*k); l.setAttribute('y1', CY-ca*RY*k);
       l.setAttribute('x2', CX+sa*RX);   l.setAttribute('y2', CY-ca*RY);
+      l.setAttribute('stroke', night?(hr?'#c9342a':'#7e241d'):(hr?'#e9e9e9':'#8e8e93'));
       l.setAttribute('stroke-width', hr?Math.max(2.5,RY*0.011):Math.max(1.5,RY*0.008));
       l.setAttribute('opacity', hr?0.95:0.55);
     }
