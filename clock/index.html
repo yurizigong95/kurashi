@@ -64,36 +64,38 @@
       stage=document.getElementById('stage');
   var tickLines=[], i, l;
   for(i=0;i<60;i++){ l=document.createElementNS(NS,'line'); l.setAttribute('stroke','#fff'); l.setAttribute('stroke-linecap','round'); ticks.appendChild(l); tickLines.push(l); }
-  var CX=0, CY=0, R=100;
+  var CX=0, CY=0, RX=100, RY=100;
   function layout(){
-    var w=window.innerWidth, h=window.innerHeight;
+    var w=window.innerWidth, h=window.innerHeight, m=Math.max(10, Math.min(w,h)*0.02);
     svg.setAttribute('viewBox','0 0 '+w+' '+h);
     CX=w/2; CY=h/2;
-    if(w>=h){ R=Math.min(h*0.74, w*0.44); } else { R=w*0.44; }
-    var d=R*0.76, fs=R*0.24;
-    place(nums[12], CX, CY-d, fs); place(nums[6], CX, CY+d, fs);
-    place(nums[3], CX+d, CY, fs);  place(nums[9], CX-d, CY, fs);
-    dateEl.setAttribute('x', CX+R*0.44); dateEl.setAttribute('y', CY);
-    dateEl.setAttribute('font-size', Math.max(13, R*0.095));
+    if(w>=h){ RX=w/2-m; RY=h/2-m; }        // 横向き: 画面いっぱいの楕円。数字は内側に収めて切らない
+    else { RX=RY=w/2-m; }                  // 縦向き: 横幅に収まる正円
+    var fs=Math.min(RY*0.30, RX*0.17);
+    var dy=RY-fs*0.62, dx=RX-fs*0.40;
+    place(nums[12], CX, CY-dy, fs); place(nums[6], CX, CY+dy, fs);
+    place(nums[3], CX+dx, CY, fs);  place(nums[9], CX-dx, CY, fs);
+    dateEl.setAttribute('x', CX+RX*0.44); dateEl.setAttribute('y', CY);
+    dateEl.setAttribute('font-size', Math.max(13, Math.min(RY*0.115, 46)));
     for(i=0;i<60;i++){
-      var a=i*Math.PI/30, hr=i%5===0, r1=hr?R*0.90:R*0.945;
+      var a=i*Math.PI/30, hr=i%5===0, k=hr?0.895:0.945, sa=Math.sin(a), ca=Math.cos(a);
       l=tickLines[i];
-      l.setAttribute('x1', CX+Math.sin(a)*r1); l.setAttribute('y1', CY-Math.cos(a)*r1);
-      l.setAttribute('x2', CX+Math.sin(a)*R);  l.setAttribute('y2', CY-Math.cos(a)*R);
-      l.setAttribute('stroke-width', hr?Math.max(3,R*0.014):Math.max(1.5,R*0.007));
+      l.setAttribute('x1', CX+sa*RX*k); l.setAttribute('y1', CY-ca*RY*k);
+      l.setAttribute('x2', CX+sa*RX);   l.setAttribute('y2', CY-ca*RY);
+      l.setAttribute('stroke-width', hr?Math.max(3,RY*0.016):Math.max(1.5,RY*0.008));
       l.setAttribute('opacity', hr?0.95:0.55);
     }
-    hourEl.setAttribute('stroke-width', Math.max(7, R*0.045));
-    minEl.setAttribute('stroke-width', Math.max(5, R*0.034));
-    secEl.setAttribute('stroke-width', Math.max(2, R*0.010));
+    hourEl.setAttribute('stroke-width', Math.max(7, RY*0.052));
+    minEl.setAttribute('stroke-width', Math.max(5, RY*0.040));
+    secEl.setAttribute('stroke-width', Math.max(2, RY*0.011));
     pin.setAttribute('cx',CX); pin.setAttribute('cy',CY);
-    pin.setAttribute('r', Math.max(5, R*0.028)); pin.setAttribute('stroke-width', Math.max(2.5, R*0.012));
+    pin.setAttribute('r', Math.max(5, RY*0.032)); pin.setAttribute('stroke-width', Math.max(2.5, RY*0.013));
   }
   function place(el,x,y,fs){ el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('font-size',fs); }
-  function setHand(el,deg,len){
-    var a=deg*Math.PI/180, tail=len*0.16;
-    el.setAttribute('x1', CX-Math.sin(a)*tail); el.setAttribute('y1', CY+Math.cos(a)*tail);
-    el.setAttribute('x2', CX+Math.sin(a)*len);  el.setAttribute('y2', CY-Math.cos(a)*len);
+  function setHand(el,deg,fx,fy){
+    var a=deg*Math.PI/180, sa=Math.sin(a), ca=Math.cos(a), tx=fx*0.16, ty=fy*0.16;
+    el.setAttribute('x1', CX-sa*RX*tx); el.setAttribute('y1', CY+ca*RY*ty);
+    el.setAttribute('x2', CX+sa*RX*fx); el.setAttribute('y2', CY-ca*RY*fy);
   }
   layout();
   window.addEventListener('resize', layout);
@@ -102,7 +104,7 @@
   function frame(){
     var now=new Date(), ms=now.getMilliseconds();
     var s=now.getSeconds()+ms/1000, m=now.getMinutes()+s/60, h=(now.getHours()%12)+m/60;
-    setHand(secEl, s*6, R*0.88); setHand(minEl, m*6, R*0.78); setHand(hourEl, h*30, R*0.52);
+    setHand(secEl, s*6, 0.90, 0.90); setHand(minEl, m*6, 0.80, 0.80); setHand(hourEl, h*30, 0.50, 0.50);
     var key=now.getDate()+'-'+now.getDay();
     if(key!==lastDate){ lastDate=key; dateEl.textContent='日月火水木金土'[now.getDay()]+' '+now.getDate(); }
     requestAnimationFrame(frame);
@@ -121,7 +123,9 @@
     var el=document.documentElement;
     if(!document.fullscreenElement && el.requestFullscreen){ el.requestFullscreen().catch(function(){}); }
   });
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(function(){}); }
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){ reg.update(); }).catch(function(){});
+  }
 })();
 </script>
 </body>
