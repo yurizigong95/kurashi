@@ -103,7 +103,33 @@ const QUESTIONS = [
   "translation": "私はふつう8時ごろに家を出る。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "leave",
+    "meaning": "（家を）出る、出発する",
+    "verdict": "correct",
+    "reason": "usually「ふつう」があるので、繰り返される現在の習慣を表す現在形が正解。習慣は現在形で表すのが基本。"
+   },
+   {
+    "t": "am leaving",
+    "meaning": "出発しているところだ／出発する予定だ",
+    "verdict": "wrong",
+    "reason": "現在進行形は「今まさに～している」か「近い未来の予定」を表す形。usually の表す習慣とは合わない。"
+   },
+   {
+    "t": "was leaving",
+    "meaning": "出発しようとしていた／出発しているところだった",
+    "verdict": "wrong",
+    "reason": "過去進行形で、過去のある時点で進行中だった動作を表す。文に過去の基準点がなく、現在の習慣の話なので不可。"
+   },
+   {
+    "t": "will be leaving",
+    "meaning": "出発しているだろう（未来のある時点で）",
+    "verdict": "wrong",
+    "reason": "未来進行形は未来のある時点で進行中の動作を表す。現在の習慣を述べる文にはならない。"
+   }
+  ]
  },
  {
   "answer": 1,
@@ -123,7 +149,33 @@ const QUESTIONS = [
   "chapter": 1,
   "chapterTitle": "時制",
   "type": "mcq",
-  "extra": "水が100℃で沸騰するのはいつでも成り立つ「不変の真理」なので、過去や未来の話でも現在形 boils を使う。進行形や used to は「今だけ・昔はそうだった」という限定が入るため不可。"
+  "extra": "不変の真理が現在形になる代表例は、地球・科学の法則やことわざ（The earth goes around the sun. など）。「今も昔もこれからも変わらないこと」は、話題が過去の文脈でも現在形のまま使われることがある。",
+  "choiceNotes": [
+   {
+    "t": "boils",
+    "meaning": "沸騰する",
+    "verdict": "correct",
+    "reason": "水が100℃で沸騰するのはいつでも成り立つ「不変の真理」。真理・法則は今の話でも過去の話でも現在形で表す。"
+   },
+   {
+    "t": "is boiling",
+    "meaning": "沸騰しているところだ",
+    "verdict": "wrong",
+    "reason": "現在進行形だと「今この瞬間沸いている」という一時的な状態になり、「いつもそうなる」という法則の意味にならない。"
+   },
+   {
+    "t": "was boiling",
+    "meaning": "沸騰しているところだった",
+    "verdict": "wrong",
+    "reason": "過去進行形は過去の一時点での進行中の動作。普遍的な法則を述べる文では使わない。"
+   },
+   {
+    "t": "used to boil",
+    "meaning": "以前は沸騰したものだ",
+    "verdict": "wrong",
+    "reason": "used to は「以前は～だった（今は違う）」という過去の習慣・状態を表す。今も成り立つ事実には使えない。"
+   }
+  ]
  },
  {
   "answer": 3,
@@ -142,7 +194,33 @@ const QUESTIONS = [
   "translation": "急ぎなさい。みんなが君を待っているんだ。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "waited",
+    "meaning": "待った",
+    "verdict": "wrong",
+    "reason": "過去形は「待った」という完結した過去の動作。Hurry up.「急いで」と急かす理由にはならず、今待っているという状況が伝わらない。"
+   },
+   {
+    "t": "waits",
+    "meaning": "待つ（習慣・一般論として）",
+    "verdict": "wrong",
+    "reason": "現在形は習慣や一般的な事実を表す。「みんなはいつも君を待つ」という意味になり、今の状況説明にはならない。"
+   },
+   {
+    "t": "is waiting",
+    "meaning": "待っている（今まさに）",
+    "verdict": "correct",
+    "reason": "主語 Everybody は単数扱いなので is が合う。今まさに進行中の動作なので現在進行形。だからこそ「急いで」と言える。"
+   },
+   {
+    "t": "has waited",
+    "meaning": "待った（今までに）／待ってきた",
+    "verdict": "wrong",
+    "reason": "現在完了は「今までに待ったことがある・待ってしまった」という完了・経験寄りの意味。for ～のような期間の句もなく、今も待っている最中だという進行の意味にはならない。"
+   }
+  ]
  },
  {
   "answer": 1,
@@ -161,7 +239,34 @@ const QUESTIONS = [
   "translation": "その5匹の犬は私のおじさんが飼っているものです。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "belong",
+    "meaning": "属する、（人の）所有物である",
+    "verdict": "correct",
+    "reason": "belong to ～ は状態動詞で進行形にできない。しかも主語 The five dogs は複数なので、原形 belong がそのまま入る。"
+   },
+   {
+    "t": "belongs",
+    "meaning": "属する（三人称単数現在形）",
+    "verdict": "wrong",
+    "reason": "-s は三人称単数の主語用。主語は The five dogs（複数）なので文法的に合わない。犬を飼っているおじさんの方に引っ張られないこと。"
+   },
+   {
+    "t": "are belonging",
+    "meaning": "属しているところだ",
+    "verdict": "wrong",
+    "reason": "belong は「動作」ではなく「状態」を表す動詞なので進行形にできない。日本語が「飼っている」と進行形っぽくても英語では状態として扱う。"
+   },
+   {
+    "t": "have been belonging",
+    "meaning": "属し続けている",
+    "verdict": "wrong",
+    "reason": "現在完了進行形も進行形の一種なので、状態動詞 belong には使えない。継続を表したい場合も現在形 belong to で十分。"
+   }
+  ],
+  "extra": "この問題は2か所で引っかける作りになっている。① belong は状態動詞 → 進行形の③④を消す。② 主語は five dogs で複数 → -s の付いた②を消す。残った①が正解という消去法でも解ける。"
  },
  {
   "answer": 2,
@@ -179,7 +284,27 @@ const QUESTIONS = [
   "translation": "①ジョンは昼食を食べている。③ジョンは楽しい時間を過ごしている。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "lunch",
+    "meaning": "昼食",
+    "verdict": "wrong",
+    "reason": "have lunch の have は「食べる」という動作動詞なので is having lunch「昼食を食べている」と進行形にできる。つまり適切な語句であり、「不適切なものを選ぶ」本問の答えにはならない。"
+   },
+   {
+    "t": "a good car",
+    "meaning": "よい車",
+    "verdict": "correct",
+    "reason": "have a car の have は「持っている」という状態動詞で、進行形にできない（正しくは John has a good car.）。進行形の文に入れられない不適切な語句なので、これが答え。"
+   },
+   {
+    "t": "a good time",
+    "meaning": "楽しい時間",
+    "verdict": "wrong",
+    "reason": "have a good time の have は「（時間を）過ごす」という動作動詞なので、is having a good time「楽しい時間を過ごしている」と進行形にできる。適切な語句なので答えにはならない。"
+   }
+  ]
  },
  {
   "answer": 4,
@@ -198,7 +323,34 @@ const QUESTIONS = [
   "translation": "マハトマ・ガンジーは1869年に生まれた。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "has been born",
+    "meaning": "生まれてきた（現在完了）",
+    "verdict": "wrong",
+    "reason": "in 1869 という特定の過去を示す句がある文では現在完了形は使えない。過去の出来事は「いつ」と結びついたら過去形にするのが絶対ルール。"
+   },
+   {
+    "t": "is born",
+    "meaning": "生まれる（現在形）",
+    "verdict": "wrong",
+    "reason": "現在形では「（いつも）生まれる」という一般論や予定の意味になる。1869年に起きた一回の出来事にはならない。"
+   },
+   {
+    "t": "had been born",
+    "meaning": "生まれていた（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了は「過去のある時点よりさらに前」を表す形で、比べる相手となる過去の出来事が文にない。単独の過去の事実には使わない。"
+   },
+   {
+    "t": "was born",
+    "meaning": "生まれた",
+    "verdict": "correct",
+    "reason": "be born は「生まれる」という意味の決まった形。その過去形 was born が、in 1869 という過去の時点と結びつく。"
+   }
+  ],
+  "extra": "生まれた年を言う文は was born in 年 が定型。had been born が使えるのは When I met him, he had been born in India. のように、別の過去の出来事を基準にして「それより前に生まれていた」と言う場合だけ。"
  },
  {
   "answer": 2,
@@ -217,7 +369,34 @@ const QUESTIONS = [
   "translation": "マーサがタワーブリッジを横断中にタイヤがパンクした。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "crossed",
+    "meaning": "横断した",
+    "verdict": "wrong",
+    "reason": "過去形だと「横断した」という完結した動作になり、パンクした瞬間に横断がちょうど終わったような意味になる。橋を渡るのは時間がかかる動作なので、背景として進行形で表す。"
+   },
+   {
+    "t": "was crossing",
+    "meaning": "横断しているところだった",
+    "verdict": "correct",
+    "reason": "「タイヤがパンクした」という短い出来事が起きたとき、より長い動作「橋を横断中」が背景として進行していた、という組み合わせ。過去進行形が入る。"
+   },
+   {
+    "t": "has been crossing",
+    "meaning": "横断し続けている（現在完了進行形）",
+    "verdict": "wrong",
+    "reason": "現在完了進行形は「今までずっと～している」と現在に接続する形。主節が過去の話なので時間がずれている。"
+   },
+   {
+    "t": "had been crossing",
+    "meaning": "横断し続けていた（過去完了進行形）",
+    "verdict": "wrong",
+    "reason": "過去完了進行形は「過去のある時点までずっと～していた」と、その時点より前からの継続を表す。ここではパンクと同時進行の動作なので、時点をさかのぼる完了形は不適。"
+   }
+  ],
+  "extra": "過去形と過去進行形の組み合わせは「長い動作（進行形）の中に短い出来事（過去形）が割り込む」構図が基本。while の後ろは長い方の動作が来やすい。逆に when の後ろには短い出来事が来ることが多い。"
  },
  {
   "answer": 2,
@@ -236,7 +415,34 @@ const QUESTIONS = [
   "translation": "これらの植物は枯れかけている。少し水をやってくれる？",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "are dead",
+    "meaning": "死んでいる（状態）",
+    "verdict": "wrong",
+    "reason": "dead は形容詞で「死んでいる状態」。すでに枯れてしまっているなら水をやっても無駄で、後ろの「水をやってくれる？」と話が合わない。"
+   },
+   {
+    "t": "are dying",
+    "meaning": "死にかけている、枯れかけている",
+    "verdict": "correct",
+    "reason": "die の進行形は「死んでいる」ではなく「死へ近づきつつある＝死にかけている」。まだ生きているから水をやる意味がある。"
+   },
+   {
+    "t": "had died",
+    "meaning": "死んでしまっていた（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了は別の過去の出来事より前を表す形。比べる過去の基準もなく、すでに死んでいる意味にもなって文意に合わない。"
+   },
+   {
+    "t": "have died",
+    "meaning": "死んでしまった（現在完了）",
+    "verdict": "wrong",
+    "reason": "現在完了で「すでに死んでしまった」という完了の意味になる。これも水を頼む場面と矛盾する。"
+   }
+  ],
+  "extra": "die のように一瞬で終わる動作の動詞（arrive, come, leave など）の進行形は「～しかけている／～しつつある」という“完了直前”の意味になりやすい。例: The train is arriving.「電車が今にも到着する」。状態の be dead との区別が狙われている。"
  },
  {
   "answer": 3,
@@ -255,7 +461,34 @@ const QUESTIONS = [
   "translation": "ジェームズは明日パリ行きの早朝便に乗る予定だ。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "are going to take",
+    "meaning": "乗るつもりだ（be going to）",
+    "verdict": "wrong",
+    "reason": "意味は通りそうだが、主語 James は三人称単数なので are では主述が一致しない。is going to take なら可、という引っかけ。"
+   },
+   {
+    "t": "took",
+    "meaning": "乗った",
+    "verdict": "wrong",
+    "reason": "過去形。tomorrow「明日」の話なので時間帯が合わない。"
+   },
+   {
+    "t": "is taking",
+    "meaning": "乗る予定だ（現在進行形）",
+    "verdict": "correct",
+    "reason": "現在進行形は「すでに決まっている近い未来の予定」にも使える。take a flight のような手配済みの予定はこの形が自然。"
+   },
+   {
+    "t": "has taken",
+    "meaning": "乗ってしまった（現在完了）",
+    "verdict": "wrong",
+    "reason": "現在完了は「すでに乗った」という完了の意味。tomorrow の予定とは正反対になる。"
+   }
+  ],
+  "extra": "未来の予定を現在進行形で表せるのは、手配・準備が済んでいる個人的な予定のとき（leave, come, go, meet, take など移動・行動の動詞に多い）。単なる予測（雨が降る など）には使えず、be going to や will を使う。"
  },
  {
   "answer": 4,
@@ -274,7 +507,34 @@ const QUESTIONS = [
   "translation": "私はたった今，宿題を終えたので，くつろいで試合を見ることができる。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "once did",
+    "meaning": "かつてやった",
+    "verdict": "wrong",
+    "reason": "once「かつて」＋過去形は、現在と切り離された過去の話。今「くつろいで試合を見られる」という現在の状況につながらない。"
+   },
+   {
+    "t": "had just finished",
+    "meaning": "終えたところだった（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了は過去のある時点を基準にする形。文の後半は現在（can）の話なので、基準点がない過去完了は使えない。"
+   },
+   {
+    "t": "will finish",
+    "meaning": "終えるだろう",
+    "verdict": "wrong",
+    "reason": "未来形では「これから終える」ことになり、今試合を見られる理由にならない。so の前後で因果が逆になる。"
+   },
+   {
+    "t": "have just finished",
+    "meaning": "たった今終えたところだ",
+    "verdict": "correct",
+    "reason": "just「ちょうど今」は現在完了と結びつきやすい語。終えた結果が今に残っているので「だから今～できる」となる。"
+   }
+  ],
+  "extra": "just は have と過去分詞の間に置く（have just finished）。同じ位置に置く仲間に already「すでに」がある。逆に yet「まだ／もう」は文末に置き、否定文・疑問文で使う、とセットで整理すると混同しない。"
  },
  {
   "answer": 1,
@@ -293,7 +553,34 @@ const QUESTIONS = [
   "translation": "私たちは皆，雪にはうんざりだ。もう4週間も雪が降り続いている。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "has been snowing",
+    "meaning": "降り続いている（現在完了進行形）",
+    "verdict": "correct",
+    "reason": "snow は動作動詞。今も続いている動作の継続は現在完了進行形で表す。主語 It は三人称単数なので has になる。"
+   },
+   {
+    "t": "is snowing",
+    "meaning": "降っている（現在進行形）",
+    "verdict": "wrong",
+    "reason": "現在進行形だけでは「今この瞬間」の話にしかならず、for four weeks now「もう4週間も」という過去から続く期間を表せない。"
+   },
+   {
+    "t": "snowed",
+    "meaning": "降った",
+    "verdict": "wrong",
+    "reason": "過去形の for ～ は「（今とは切り離された過去に）～の間降った」という完結した期間になる。now や「うんざりしている」という現在の気持ちとつながらない。"
+   },
+   {
+    "t": "will have snowed",
+    "meaning": "降ってしまっているだろう（未来完了）",
+    "verdict": "wrong",
+    "reason": "未来完了は未来のある時点までの完了を表す形。現在の状況を述べる文にはならない。"
+   }
+  ],
+  "extra": "Q11とQ12は対の問題。動作動詞（snow のように動きのある動詞）の継続 → 現在完了進行形（have been V-ing）。状態動詞（know など）の継続 → 現在完了形（have V-ed）で進行形にはしない。この「動詞の種類で形が決まる」判断がこの単元の核心。"
  },
  {
   "answer": 3,
@@ -312,7 +599,34 @@ const QUESTIONS = [
   "translation": "マイクとテッドは親友だ。彼らは幼なじみである［子供のころからの知り合いである］。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "are knowing",
+    "meaning": "知っているところだ",
+    "verdict": "wrong",
+    "reason": "know は状態動詞で進行形にできない。日本語の「知っている」に引っ張られて進行形にしないこと。"
+   },
+   {
+    "t": "were known",
+    "meaning": "知られていた（受動態・過去）",
+    "verdict": "wrong",
+    "reason": "were known は「知られていた」という受動態の過去形。意味が「彼らが互いを知っている」からずれてしまううえ、since childhood の継続とも合わない。"
+   },
+   {
+    "t": "have known",
+    "meaning": "知り合ってきた／知っている（現在完了）",
+    "verdict": "correct",
+    "reason": "know は状態動詞なので、継続は現在完了形で表す。have known each other で「互いに知り合いである状態が続いている」という意味になる。"
+   },
+   {
+    "t": "have been knowing",
+    "meaning": "知り続けている（現在完了進行形）",
+    "verdict": "wrong",
+    "reason": "現在完了進行形も進行形の一種。状態動詞 know には使えない。継続の長さを強調したい場合でも形は変えられない。"
+   }
+  ],
+  "extra": "have known each other の each other「お互い」が付くと「知り合いである」という人間関係の状態を表す決まった言い方になる。友人関係・知り合い関係の継続はこの形で表すことが多い。"
  },
  {
   "answer": 2,
@@ -331,7 +645,34 @@ const QUESTIONS = [
   "translation": "私は①長い間／③1月から／④今日，彼に会っていない。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "for a long time",
+    "meaning": "長い間",
+    "verdict": "wrong",
+    "reason": "for ～「～の間」は期間を表し、現在完了の継続用法と一緒に使える適切な語句。だから「不適切なものを選ぶ」本問の答えにはならない。"
+   },
+   {
+    "t": "last week",
+    "meaning": "先週",
+    "verdict": "correct",
+    "reason": "last week は「先週」という特定の過去の時点を指す。現在完了は特定の過去の時点とは一緒に使えないので、これが不適切＝答え。"
+   },
+   {
+    "t": "since January",
+    "meaning": "1月以来",
+    "verdict": "wrong",
+    "reason": "since ～「～以来」は継続の起点を表し、現在完了と結びつく代表的な語句。適切なので答えにはならない。"
+   },
+   {
+    "t": "today",
+    "meaning": "今日",
+    "verdict": "wrong",
+    "reason": "today は「まだ終わっていない今日」という期間を指すので、現在完了と一緒に使える。特定の過去の時点ではないところが last week との違い。"
+   }
+  ],
+  "extra": "区別のコツは「その期間がもう終わっているか」。last week, yesterday, ～ ago は終わった過去 → 現在完了と不可。today, this week, this year はまだ続いている期間 → 現在完了と可。この線引きで多くの問題が解ける。"
  },
  {
   "answer": 3,
@@ -350,7 +691,34 @@ const QUESTIONS = [
   "translation": "あなたはいつ日本に来たのですか。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "has",
+    "meaning": "（三人称単数の助動詞）",
+    "verdict": "wrong",
+    "reason": "has の後ろは過去分詞が来る形だが、主語 you とも合わず、has you come という語順自体が成り立たない。"
+   },
+   {
+    "t": "have",
+    "meaning": "（現在完了の助動詞）",
+    "verdict": "wrong",
+    "reason": "When have you come? は「いつ来たのか」を現在完了で聞く形だが、when「いつ」は特定の過去の時点を聞く疑問詞で、現在完了とは一緒に使えない。"
+   },
+   {
+    "t": "did",
+    "meaning": "（過去の疑問文の助動詞）",
+    "verdict": "correct",
+    "reason": "「いつ日本に来たのか」という過去の一点を聞く文なので、過去形の疑問文を作る did が入る。When did you come to Japan? が定型。"
+   },
+   {
+    "t": "were",
+    "meaning": "（be動詞の過去形）",
+    "verdict": "wrong",
+    "reason": "were の後ろには -ing 形や過去分詞が来る必要があり、were you come という形は文法的に成り立たない。"
+   }
+  ],
+  "extra": "「いつ～したの？」は When did you ～? で聞くのが英語の決まり。経験を聞く Have you ever ～?「～したことがある？」とは聞き方がまったく違う。when を見たら過去形、と反射で選べるようにしておくとよい。"
  },
  {
   "answer": 3,
@@ -369,7 +737,34 @@ const QUESTIONS = [
   "translation": "「あなたはピラミッドを見に行ったことがありますか」「はい。カイロにいたとき，（1基）見に行きました」",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "had visited",
+    "meaning": "見に行っていた（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了は「別の過去よりさらに前」の出来事用。カイロにいたのとピラミッド見学は同時期の出来事なので、わざわざさかのぼる必要がない。"
+   },
+   {
+    "t": "have visited",
+    "meaning": "見に行ったことがある（現在完了）",
+    "verdict": "wrong",
+    "reason": "when I was in Cairo という特定の過去を表す節がある文では現在完了は使えない。前の質問文の Have you visited ～? の形につられて選ぶのが典型的なミス。"
+   },
+   {
+    "t": "visited",
+    "meaning": "見に行った",
+    "verdict": "correct",
+    "reason": "カイロにいたとき、という過去の枠の中の出来事なので単純に過去形。質問が現在完了でも、答えは出来事の起きた時間で時制を決める。"
+   },
+   {
+    "t": "have gone to",
+    "meaning": "行ってしまった（現在完了）",
+    "verdict": "wrong",
+    "reason": "現在完了である点で when 節と衝突するうえ、have gone to は「行ってしまってここにいない」という意味で、今ここで答えている人の発言としても合わない。"
+   }
+  ],
+  "extra": "この問題の仕掛けは「質問と答えで時制が違う」こと。質問は経験をたずねる現在完了（Have you visited ～?）だが、答えは『いつ・どこで』という具体的な過去の話に切り替わるので過去形になる。会話文ではこの切り替えが頻出。"
  },
  {
   "answer": 3,
@@ -388,7 +783,34 @@ const QUESTIONS = [
   "translation": "メアリは今日は留守だ。彼女は北海道に行ってしまった。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "comes",
+    "meaning": "来る（現在形）",
+    "verdict": "wrong",
+    "reason": "現在形では「（いつも）来る」という習慣の意味になる。「今日は留守だ」という今日だけの状況の説明にはならない。"
+   },
+   {
+    "t": "has been",
+    "meaning": "行ってきた／行ったことがある",
+    "verdict": "wrong",
+    "reason": "has been to Hokkaido は「北海道に行ってきた（もう戻っている）」か「行ったことがある」。どちらも今はここにいるはずで、「今日は留守だ」と矛盾する。"
+   },
+   {
+    "t": "has gone",
+    "meaning": "行ってしまった",
+    "verdict": "correct",
+    "reason": "has gone to ～ は「～へ行ってしまって、今ここにはいない」という結果を表す。前の文 absent「留守だ」と意味がつながる。"
+   },
+   {
+    "t": "has arrived",
+    "meaning": "到着した",
+    "verdict": "wrong",
+    "reason": "arrive の後ろに to は置けない（arrive in ～ 大きな場所／arrive at ～ 小さな場所）。前置詞の誤りで文法的に不可。"
+   }
+  ],
+  "extra": "have been to と have gone to の違いは「戻ってきたか」。been to = 行ってきた（今はここにいる）／経験。gone to = 行ってしまった（今はここにいない）。本問は absent というヒント語から gone を選ぶ問題で、このヒント探しが類題でも効く。"
  },
  {
   "answer": 3,
@@ -407,7 +829,33 @@ const QUESTIONS = [
   "translation": "「あなたはこれから銀行に行く予定ですか」「いや，銀行にはもう行ってきました」",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "yet gone",
+    "meaning": "まだ行った（語順違い）",
+    "verdict": "wrong",
+    "reason": "yet は文末に置く語で、肯定文では原則使わない。語順も意味も成り立たない。"
+   },
+   {
+    "t": "been yet",
+    "meaning": "行ってきた・まだ（語順違い）",
+    "verdict": "wrong",
+    "reason": "yet を been の後ろに置く形はなく、肯定文で yet を使うこともできない。I haven't ～ yet. や Have you ～ yet? の形で使う語。"
+   },
+   {
+    "t": "already been",
+    "meaning": "すでに行ってきた",
+    "verdict": "correct",
+    "reason": "already「すでに」は現在完了の肯定文で have と過去分詞の間に置く。I've already been to the bank. で「もう銀行には行ってきたところだ」となり、No という答えと合う。"
+   },
+   {
+    "t": "had gone",
+    "meaning": "行ってしまっていた（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了は過去のある時点を基準にして初めて使える形。この会話には過去の基準点がなく、今の話なので不可。"
+   }
+  ]
  },
  {
   "answer": 2,
@@ -426,7 +874,34 @@ const QUESTIONS = [
   "translation": "私が故郷を出てから10年が過ぎた。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "has passed",
+    "meaning": "過ぎた（現在完了）",
+    "verdict": "wrong",
+    "reason": "pass を使う型は Ten years have passed のように「時間そのもの」が主語になる形。主語が It の文には入らない。"
+   },
+   {
+    "t": "has been",
+    "meaning": "～になる／経つ（現在完了）",
+    "verdict": "correct",
+    "reason": "It has been X years since S＋過去形「Sが～してからX年になる」という定型表現。主語 It は時間を表す形式主語。"
+   },
+   {
+    "t": "was",
+    "meaning": "～だった",
+    "verdict": "wrong",
+    "reason": "過去形だと「（過去のある時点で）10年だった」という話になり、今を基準に「もう10年経った」という現在の感覚が表せない。"
+   },
+   {
+    "t": "passed",
+    "meaning": "過ぎた（過去形）",
+    "verdict": "wrong",
+    "reason": "has passed と同じく pass は時間主語の型で使う動詞。It passed ten years という言い方はしない。"
+   }
+  ],
+  "extra": "同じ意味の2つの型は主語で使い分ける。It has been X years since ～（It が主語）／ X years have passed since ～（X years が主語）。どちらを使うかは文の主語を見て決める。本問とQ19はこの型の問題で、主語チェックが最速の解き方。"
  },
  {
   "answer": 1,
@@ -445,7 +920,9 @@ const QUESTIONS = [
    "have passed",
    "dead"
   ],
-  "answerText": "have passed / dead"
+  "answerText": "have passed / dead",
+  "choiceNotes": [],
+  "extra": "正解は前半 Three years have passed since he died.、後半 He has been dead for three years.。ポイントは2つ。① 前半は「X years have passed since ～」の型で、主語が Three years だから have passed になる。② 後半は die をそのまま使えないこと。die は「死ぬ」という一瞬の動作で、現在完了 have died は「死んだ」という完了を表し、for three years のような期間とは結びつかない。そこで形容詞 dead「死んでいる」を使い、be dead の現在完了 has been dead で「死んでいる状態が3年続いている」と表す。間違えやすい形: has been died（die に受動態はない）、has been dying for three years（「3年間死にかけている」という意味になってしまう）。"
  },
  {
   "answer": 1,
@@ -464,7 +941,34 @@ const QUESTIONS = [
   "translation": "戦争が起こったとき，彼はパリに10年間住んでいた。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "had lived",
+    "meaning": "住んでいた（過去完了）",
+    "verdict": "correct",
+    "reason": "基準は「戦争が起こった」という過去の時点。その時点まで10年間続いていた状態を表すので、過去完了形になる。"
+   },
+   {
+    "t": "was living",
+    "meaning": "住んでいるところだった（過去進行形）",
+    "verdict": "wrong",
+    "reason": "過去進行形は過去のある瞬間に進行中だった一時的な動作を切り取る形。「10年間ずっと」という長い継続の積み重ねを表すには向かない。"
+   },
+   {
+    "t": "lived",
+    "meaning": "住んだ",
+    "verdict": "wrong",
+    "reason": "過去形だと「（戦争とは関係なく）10年間住んだ」という完結した過去の事実になる。『戦争が起きた時点まで続いていた』というつながりが表せない。"
+   },
+   {
+    "t": "has lived",
+    "meaning": "住んできた（現在完了）",
+    "verdict": "wrong",
+    "reason": "現在完了は「今まで」の継続で、基準が現在。ここでの基準は戦争勃発という過去の時点なので、時間を現在まで引っ張る形は合わない。"
+   }
+  ],
+  "extra": "過去完了は「現在完了の基準点を過去にずらしたもの」と考えると整理できる。現在完了 = 過去から『今』までの継続。過去完了 = 過去から『過去のある時点』までの継続。本問は for ten years（継続）＋ when the war broke out（過去の基準点）の組み合わせで、過去完了の典型パターン。"
  },
  {
   "answer": 2,
@@ -483,7 +987,33 @@ const QUESTIONS = [
   "translation": "子供のころ，私はニューヨークに3年間住んでいた。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "have once lived",
+    "meaning": "（今までに）一度住んだことがある（現在完了・経験）",
+    "verdict": "wrong",
+    "reason": "現在完了は「現在とつながる」形で、when I was a child という終わった過去の時期とは併用できない。住んでいた時期は子供のころと同時期の過去なので不適。"
+   },
+   {
+    "t": "lived",
+    "meaning": "住んでいた（過去形）",
+    "verdict": "correct",
+    "reason": "「ニューヨークに住んでいた」のは was a child「子供だった」のと同時期のこと。同時期の過去は過去形でそろえる。"
+   },
+   {
+    "t": "had lived",
+    "meaning": "（過去のある時点より前に）住んでいた（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了は「過去のある時点よりさらに前」を表す形。住んでいた時期は子供のころと重なっており、それより前ではないので使えない。"
+   },
+   {
+    "t": "have been living",
+    "meaning": "（今までずっと）住み続けている（現在完了進行形）",
+    "verdict": "wrong",
+    "reason": "現在完了進行形は今まで継続している意味になるが、子供のころの話はすでに終わった過去なので合わない。"
+   }
+  ]
  },
  {
   "answer": 1,
@@ -502,7 +1032,33 @@ const QUESTIONS = [
   "translation": "彼が部屋に入ってきたとき，私は1時間本を読んでいた。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "had been reading",
+    "meaning": "（その時点までずっと）読んでいた（過去完了進行形）",
+    "verdict": "correct",
+    "reason": "彼が部屋に入ってきた過去の時点までに、1時間ずっと読む動作が継続していた。過去の時点を基準にした継続は過去完了進行形で表す。"
+   },
+   {
+    "t": "had read",
+    "meaning": "読み終えていた（過去完了）",
+    "verdict": "wrong",
+    "reason": "had read は「読んでしまった」という完了の意味で、for an hour「1時間ずっと」という継続の表現とは一緒に使えない。"
+   },
+   {
+    "t": "have been reading",
+    "meaning": "（今までずっと）読み続けている（現在完了進行形）",
+    "verdict": "wrong",
+    "reason": "基準が「今」になってしまう。本問の基準は he entered という過去の時点なので、完了形も過去側にずらす必要がある。"
+   },
+   {
+    "t": "was reading",
+    "meaning": "（そのとき）読んでいた（過去進行形）",
+    "verdict": "wrong",
+    "reason": "過去進行形はその瞬間に進行中だったことだけを表し、for an hour が示す「その時点までの1時間の継続」を表しきれない。継続の長さがポイントの文では過去完了進行形を選ぶ。"
+   }
+  ]
  },
  {
   "answer": 4,
@@ -521,7 +1077,33 @@ const QUESTIONS = [
   "translation": "前日に雨が降ったので，道はぬかるんでいた。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "rains",
+    "meaning": "降る（現在形）",
+    "verdict": "wrong",
+    "reason": "現在形では「普段から降る」という意味になり、特定の前日の雨を表せない。文全体も過去の話である。"
+   },
+   {
+    "t": "rained",
+    "meaning": "降った（過去形）",
+    "verdict": "wrong",
+    "reason": "過去形は was muddy と同じ過去の段に置く形。雨が降ったのは「道がぬかるんでいた」時点よりさらに1日前なので、一段前の形が必要。"
+   },
+   {
+    "t": "has rained",
+    "meaning": "降った（現在完了・今につながる）",
+    "verdict": "wrong",
+    "reason": "現在完了は現在の時点を基準にする形で、the day before のような過去の特定の時とは使えない。基準も過去なので不適。"
+   },
+   {
+    "t": "had rained",
+    "meaning": "（それより前に）降っていた・降った（過去完了）",
+    "verdict": "correct",
+    "reason": "was muddy という過去よりさらに前の出来事＝「過去の過去（大過去）」なので、過去完了形 had rained を使う。"
+   }
+  ]
  },
  {
   "answer": 2,
@@ -540,7 +1122,33 @@ const QUESTIONS = [
   "translation": "3時間前に彼に会ったと彼女が言ったとき，私は彼女がうそをついていると思った。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "had met",
+    "meaning": "（言った時点より前に）彼に会っていた（過去完了）",
+    "verdict": "wrong",
+    "reason": "この部分自体は正しい。彼女が言った時点より前に会ったことなので過去完了で問題なく、誤りとして選ばない。"
+   },
+   {
+    "t": "ago",
+    "meaning": "〜前に（現在を基準にして）",
+    "verdict": "correct",
+    "reason": "ここが誤りで正解。ago は「現在から〜前」の意味で過去形専用。had met（過去完了）と使う場合は「過去の時点から〜前」を表す before が正しい形になる。"
+   },
+   {
+    "t": "thought",
+    "meaning": "思った（過去形）",
+    "verdict": "wrong",
+    "reason": "この部分自体は正しい。彼女が言ったのと同時の過去の出来事なので過去形で問題なく、誤りとして選ばない。"
+   },
+   {
+    "t": "was telling a lie",
+    "meaning": "うそをついていた（過去進行形）",
+    "verdict": "wrong",
+    "reason": "この部分自体は正しい。「言ったそのときにうそをついている最中だった」という同時進行を表す過去進行形で問題なく、誤りとして選ばない。"
+   }
+  ]
  },
  {
   "answer": 2,
@@ -559,7 +1167,33 @@ const QUESTIONS = [
   "translation": "来月でアリスと知り合って20年になる。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "know",
+    "meaning": "知っている（現在形）",
+    "verdict": "wrong",
+    "reason": "現在形では「来月で20年になる」という未来の時点までの継続を表せない。Next month という未来の基準点があるので未来側の形が必要。"
+   },
+   {
+    "t": "will have known",
+    "meaning": "（来月までに）知り合って〜年になっている（未来完了）",
+    "verdict": "correct",
+    "reason": "know は状態動詞。その状態が「来月」という未来の時点まで20年間継続することを表すので、未来完了形 will have known を使う。"
+   },
+   {
+    "t": "am knowing",
+    "meaning": "知りつつある（現在進行形）",
+    "verdict": "wrong",
+    "reason": "know は状態動詞で進行形にできない。意味の上でも「知り合いであり続ける」状態の継続なので進行形は不適。"
+   },
+   {
+    "t": "will have been knowing",
+    "meaning": "（未来完了進行形）",
+    "verdict": "wrong",
+    "reason": "状態動詞 know は進行形自体が不可で、未来完了進行形にはできない。状態の継続は未来完了形で代用するのが本書のルール。"
+   }
+  ]
  },
  {
   "answer": 1,
@@ -578,7 +1212,9 @@ const QUESTIONS = [
    "had",
    "been"
   ],
-  "answerText": "had, been"
+  "answerText": "had, been",
+  "choiceNotes": [],
+  "extra": "正解の形は had been（the party had really been a success）。もとの文の was は過去形だが、間接話法に書き換えると主節が told（過去形）なので、時制の一致で従属節の動詞は1段前へずれて過去完了形になる。be動詞の過去完了は had＋been の形なので、空所は had と been の2語になる。間違えやすい形：① was のままにする（時制の一致を忘れた形）、② had was（been でなく was を入れる誤り。had の後ろは過去分詞 been）、③ would be（条件法にしてしまう誤り。ここは推量ではなく時制の後退）。なお said to me は間接話法では told me に変わる点もセットで確認する。"
  },
  {
   "answer": 1,
@@ -598,7 +1234,33 @@ const QUESTIONS = [
   "chapter": 1,
   "chapterTitle": "時制",
   "type": "mcq",
-  "extra": "after は「時」を表す接続詞で、副詞節の中では未来のことでも will を使わず現在形で表すのがルール（時・条件の副詞節中の未来は現在形）。主節側は未来形のままでよい点とセットで覚える。"
+  "extra": "after は「時」を表す接続詞で、副詞節の中では未来のことでも will を使わず現在形で表すのがルール（時・条件の副詞節中の未来は現在形）。主節側（I'll phone you）は未来形のままでよい点とセットで覚える。注意したいのは「到着するのは未来の出来事だから will」と考えてしまうミスで、文法のルールが意味より優先される典型パターン。when, until, as soon as, before, by the time など時を表す接続詞はすべて同じ扱いになる。",
+  "choiceNotes": [
+   {
+    "t": "I arrive",
+    "meaning": "私が到着する（現在形）",
+    "verdict": "correct",
+    "reason": "after は時を表す接続詞で、その副詞節の中では未来のことでも will を使わず現在形で表す。到着はこれからでも I arrive が正しい形。"
+   },
+   {
+    "t": "I arrived",
+    "meaning": "私が到着した（過去形）",
+    "verdict": "wrong",
+    "reason": "過去形ではすでに到着した過去の話になってしまう。これから到着してから電話するという文意に合わない。"
+   },
+   {
+    "t": "I will arrive",
+    "meaning": "私が到着するだろう（未来形）",
+    "verdict": "wrong",
+    "reason": "意味は未来でも、時・条件の副詞節の中では will を使わないのがルール。ここがこの単元の最大の狙い目。"
+   },
+   {
+    "t": "I will have arrived",
+    "meaning": "私が到着しているだろう（未来完了）",
+    "verdict": "wrong",
+    "reason": "未来完了も will を含むので副詞節中では使えない。完了のニュアンスを出したい場合は現在完了形 I have arrived を使う。"
+   }
+  ]
  },
  {
   "answer": 2,
@@ -617,7 +1279,34 @@ const QUESTIONS = [
   "translation": "彼女がそこに到着するころまでに，ほとんど真っ暗になっているだろう。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "get",
+    "meaning": "着く（原形・Iやyouが主語の形）",
+    "verdict": "wrong",
+    "reason": "主語が she（3人称単数）なので現在形でも get のままではいけない。形の面で誤り。"
+   },
+   {
+    "t": "gets",
+    "meaning": "着く（3人称単数現在形）",
+    "verdict": "correct",
+    "reason": "by the time は時を表す接続詞で、副詞節中は未来のことでも現在形。さらに主語 she に合わせて3人称単数の gets になる。"
+   },
+   {
+    "t": "getting",
+    "meaning": "着きつつある（-ing形）",
+    "verdict": "wrong",
+    "reason": "-ing形だけでは文の動詞にならない（be動詞が必要）。時制を担う形としても不適。"
+   },
+   {
+    "t": "will get",
+    "meaning": "着くだろう（未来形）",
+    "verdict": "wrong",
+    "reason": "意味は未来だが、by the time の副詞節の中では will を使わないルールが優先される。"
+   }
+  ],
+  "extra": "この問題は2つのチェックが重なっている。①by the time の副詞節中は未来でも現在形、②主語が she なので3人称単数で gets。①だけで考えると get を選びやすいので、「副詞節中の時制」と「主語との一致」を別々に確認する癖をつけるとよい。"
  },
  {
   "answer": 3,
@@ -637,7 +1326,33 @@ const QUESTIONS = [
   "chapter": 1,
   "chapterTitle": "時制",
   "type": "mcq",
-  "extra": "as soon as の副詞節中で「未来に完了していること」を表すときは、will have V-ed の代わりに現在完了形 have V-ed を使う。本文は「～するとすぐに（完了した状態で）」という完了のニュアンスがあるため現在形ではなく現在完了形になる。"
+  "extra": "as soon as の副詞節中で「未来に完了していること」を表すときは、will have V-ed の代わりに現在完了形 have V-ed を使う。ポイントは do（現在形）との違いで、「終えたらすぐ知らせて」という文では、知らせる時点で宿題が『終わった状態』になっている必要があるため、単なる現在形 you do では完了の意味が足りず、現在完了形 have done を選ぶ。時・条件の副詞節では『未来→現在形、未来完了→現在完了形』という対応で置き換えると覚えるとよい。",
+  "choiceNotes": [
+   {
+    "t": "will have done",
+    "meaning": "終えているだろう（未来完了）",
+    "verdict": "wrong",
+    "reason": "will を含む形は時・条件の副詞節の中では使えない。完了の意味を出したいときは現在完了形に置き換える。"
+   },
+   {
+    "t": "will do",
+    "meaning": "するだろう（未来形）",
+    "verdict": "wrong",
+    "reason": "will が使えないことに加え、単なる未来形では「終えたらすぐ」という完了のニュアンスも表せない。"
+   },
+   {
+    "t": "have done",
+    "meaning": "終えた（現在完了）",
+    "verdict": "correct",
+    "reason": "as soon as の副詞節中で「未来に完了していること」は、未来完了の代わりに現在完了形 have done で表す。「宿題を終えたらすぐ教えて」という完了の意味にも合う。"
+   },
+   {
+    "t": "had done",
+    "meaning": "終えていた（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了は過去の時点を基準にする形。ここはこれからの話（命令文 Please tell me...）なので基準が合わない。"
+   }
+  ]
  },
  {
   "answer": 1,
@@ -656,7 +1371,34 @@ const QUESTIONS = [
   "translation": "彼女は私に6時ごろここに来ると言いました。とにかく，彼女が来たらあなたに伝えます。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "comes",
+    "meaning": "来る（現在形）",
+    "verdict": "correct",
+    "reason": "when she comes は I'll tell you にかかる「時」を表す副詞節。副詞節中は未来のことでも現在形で表すので comes が正しい。"
+   },
+   {
+    "t": "had come",
+    "meaning": "来ていた（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了にする根拠（基準になる過去の時点）がない。彼女が来るのはこれからのことなので不適。"
+   },
+   {
+    "t": "will come",
+    "meaning": "来るだろう（未来形）",
+    "verdict": "wrong",
+    "reason": "意味は未来でも、when の副詞節の中では will を使わないルールが優先される。"
+   },
+   {
+    "t": "would come",
+    "meaning": "来るだろう（would・過去の視点）",
+    "verdict": "wrong",
+    "reason": "前文の she would be here は伝達の時制の一致による would で、本問の when 節とは別物。when 節は副詞節なので would も使えない。"
+   }
+  ],
+  "extra": "ひっかけは前文の would。前文 She told me she would be here の would は「言った時点から見た未来」で、時制の一致によるもの。本問の when 節は I'll tell you にかかる副詞節なのでルールが違い、未来でも現在形 comes を使う。when の後ろが『〜したら（時）』なら副詞節＝現在形、とまず節の種類を見分けることが先決。"
  },
  {
   "answer": 3,
@@ -675,7 +1417,34 @@ const QUESTIONS = [
   "translation": "「ジョン，メアリはまだあなたのカメラを使っているの？」「うん，いつ返してくれるかなあ」",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "returns",
+    "meaning": "返す（現在形）",
+    "verdict": "wrong",
+    "reason": "この when 節は副詞節ではなく名詞節なので、「副詞節中は現在形」のルールは働かない。現在形では未来に返す意味を表せない。"
+   },
+   {
+    "t": "returned",
+    "meaning": "返した（過去形）",
+    "verdict": "wrong",
+    "reason": "過去形ではすでに返したことになるが、文脈は「まだ使っている」ので返却は未来のこと。意味が合わない。"
+   },
+   {
+    "t": "will return",
+    "meaning": "返してくれるだろう（未来形）",
+    "verdict": "correct",
+    "reason": "when she will return it 全体が wonder の目的語になる名詞節（『いつ返してくれるか』）。名詞節の中では未来を表す形をそのまま使う。"
+   },
+   {
+    "t": "has returned",
+    "meaning": "返した（現在完了）",
+    "verdict": "wrong",
+    "reason": "現在完了では返却済みの意味になる。「まだ使っている」という前文と矛盾する。"
+   }
+  ],
+  "extra": "Q30との対比が核心。when の節が動詞にかかる『〜したら』（副詞節）なら未来でも現在形、wonder・know などの目的語になる『いつ〜か』（名詞節）なら未来形のまま。見分け方は、節全体を『それ・そのこと』に置き換えて目的語として読めるかどうか。I wonder when she will return it = 『彼女がいつそれを返してくれるか（ということ）を疑問に思う』と読めれば名詞節。"
  },
  {
   "answer": 1,
@@ -694,7 +1463,34 @@ const QUESTIONS = [
   "translation": "彼に会うことがあったら，よろしくお伝えください。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "you happen",
+    "meaning": "あなたがたまたま〜する（現在形）",
+    "verdict": "correct",
+    "reason": "if は条件を表す接続詞で、副詞節中は未来のことでも現在形。happen to see him で『たまたま彼に会う』という意味になる。"
+   },
+   {
+    "t": "you will happen",
+    "meaning": "あなたがたまたま〜するだろう（未来形）",
+    "verdict": "wrong",
+    "reason": "条件の副詞節の中では will を使わないルールに反する。"
+   },
+   {
+    "t": "you had happened",
+    "meaning": "あなたがたまたま〜していた（過去完了）",
+    "verdict": "wrong",
+    "reason": "過去完了にする基準の過去がない。これから会うかもしれない話なので不適。"
+   },
+   {
+    "t": "should you happened",
+    "meaning": "（倒置のつもりの形）",
+    "verdict": "wrong",
+    "reason": "条件節の倒置は Should you happen to see him... のように should＋主語＋動詞の原形で作る。happened（過去形）では形が崩れており誤り。"
+   }
+  ],
+  "extra": "happen to V は『たまたまVする・偶然Vする』という重要表現で、if you happen to see him は『もし彼に会うことがあったら』という丁寧な言い方になる。また④のような倒置に惑わされないこと。正しい倒置形は Should you happen to see him, please give him my best regards. で、should の後ろは原形 happen。本問は主節が Please give... の命令文で、if 節は普通の語順の現在形が自然。"
  },
  {
   "answer": 4,
@@ -713,7 +1509,34 @@ const QUESTIONS = [
   "translation": "彼が再び日本に戻って来るかどうか，私たちにはわからない。",
   "chapter": 1,
   "chapterTitle": "時制",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "does come",
+    "meaning": "（強調の）来る（doによる強調・現在）",
+    "verdict": "wrong",
+    "reason": "does come は『本当に来る』という現在の強調で、これから戻ってくるかどうかという未来の疑問を表せない。"
+   },
+   {
+    "t": "comes",
+    "meaning": "来る（現在形）",
+    "verdict": "wrong",
+    "reason": "if 節が名詞節の場合、副詞節のルール（未来でも現在形）は適用されない。現在形では未来に戻ってくる意味にならない。"
+   },
+   {
+    "t": "would come",
+    "meaning": "来るだろう（would・過去の視点の未来）",
+    "verdict": "wrong",
+    "reason": "would は過去の視点や仮定法で使う形。主節 We don't know は現在形で、過去の視点がないので would は使えない。"
+   },
+   {
+    "t": "will come",
+    "meaning": "来るだろう（未来形）",
+    "verdict": "correct",
+    "reason": "この if は『〜かどうか』の意味で、if 節全体が don't know の目的語になる名詞節。名詞節の中では未来を表す形をそのまま使う。"
+   }
+  ],
+  "extra": "if の見分け方がポイント。『〜すれば』と読めれば条件の副詞節（未来でも現在形）、『〜かどうか』と読めれば名詞節（未来形のまま）。名詞節の if は whether に置き換えられる（We don't know whether he will come back...）ことも確認方法になる。Q32（副詞節）と並べて覚えるとよい。"
  },
  {
   "answer": 4,
@@ -732,7 +1555,33 @@ const QUESTIONS = [
   "translation": "「コンサートに行くつもりなの？」「わからない。行くかもしれない」",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "mustn't",
+    "meaning": "〜してはいけない（禁止）",
+    "verdict": "wrong",
+    "reason": "mustn't は禁止の意味で、「行くかもしれない」という推量の文にはならない。I mustn't go では『行ってはいけない』になってしまう。"
+   },
+   {
+    "t": "will",
+    "meaning": "〜するつもりだ・〜するだろう（意志・未来）",
+    "verdict": "wrong",
+    "reason": "will は意志や確定的な未来を表し、「わからない」と言っている話者の迷いと合わない。"
+   },
+   {
+    "t": "won't",
+    "meaning": "〜しないつもりだ（意志の否定）",
+    "verdict": "wrong",
+    "reason": "行かないと決めている意味になり、I'm not sure『はっきりしない』という前置きと矛盾する。"
+   },
+   {
+    "t": "may",
+    "meaning": "〜かもしれない（弱い推量）",
+    "verdict": "correct",
+    "reason": "I'm not sure と言っている通り確信度は低く、may『（行く）かもしれない』という弱い推量（確信度50％程度）が合う。"
+   }
+  ]
  },
  {
   "answer": 4,
@@ -751,7 +1600,33 @@ const QUESTIONS = [
   "translation": "(a)彼はきっと病気だろう。(b)彼は病気にちがいない。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "may",
+    "meaning": "〜かもしれない（弱い推量）",
+    "verdict": "wrong",
+    "reason": "may は確信度50％程度の弱い推量。(a) の I am sure『きっと』という強い確信と釣り合わない。"
+   },
+   {
+    "t": "can",
+    "meaning": "〜することがある・〜しうる（可能性）",
+    "verdict": "wrong",
+    "reason": "can be は『〜であることがある』という一般的な可能性で、『彼は病気にちがいない』という特定の人物への強い断定にはならない。"
+   },
+   {
+    "t": "will",
+    "meaning": "〜だろう（予測・意志）",
+    "verdict": "wrong",
+    "reason": "will は未来の予測や意志を表す形で、現在の状態（病気であること）への強い確信を表す言い換えにはならない。"
+   },
+   {
+    "t": "must",
+    "meaning": "〜にちがいない（強い推量）",
+    "verdict": "correct",
+    "reason": "must V は『〜にちがいない』という強い推量を表し、I am sure that he is sick の言い換えとして一致する。"
+   }
+  ]
  },
  {
   "answer": 3,
@@ -770,7 +1645,33 @@ const QUESTIONS = [
   "translation": "「お菓子を食べていい？腹ペコなんだ」「腹ペコなはずはない。昼食を食べたばかりだ」",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "should",
+    "meaning": "〜するべきだ・〜のはずだ（義務・当然）",
+    "verdict": "wrong",
+    "reason": "should be hungry では『空腹なはずだ・空腹であるべきだ』となり、『昼食を食べたばかりだから空腹なはずがない』という否定の推量にならない。"
+   },
+   {
+    "t": "may",
+    "meaning": "〜かもしれない（弱い推量）",
+    "verdict": "wrong",
+    "reason": "may be hungry は『空腹かもしれない』という肯定の推量で、昼食を食べたばかりという根拠から導かれる結論と逆になる。"
+   },
+   {
+    "t": "can't",
+    "meaning": "〜はずがない（否定の強い推量）",
+    "verdict": "correct",
+    "reason": "『昼食を食べたばかり』という根拠から『空腹なはずがない』と結論づける否定の推量は can't be で表す。must の反対側の表現。"
+   },
+   {
+    "t": "must",
+    "meaning": "〜にちがいない（強い推量）",
+    "verdict": "wrong",
+    "reason": "must be hungry は『空腹にちがいない』という肯定の断定になり、文意と正反対になる。"
+   }
+  ]
  },
  {
   "answer": [
@@ -791,7 +1692,27 @@ const QUESTIONS = [
   "translation": "玄関に出てくれない？郵便屋さんかもしれない。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "multi"
+  "type": "multi",
+  "choiceNotes": [
+   {
+    "t": "might",
+    "meaning": "（ひょっとしたら）〜かもしれない（弱い推量）",
+    "verdict": "correct",
+    "reason": "might は may の過去形の形だが、現在・未来への推量にも使い、may よりさらに確信度が低い『ひょっとしたら〜かもしれない』。郵便屋さんかどうか確証がない場面に合い、正解の1つ。"
+   },
+   {
+    "t": "could",
+    "meaning": "（ひょっとしたら）〜かもしれない（弱い推量）",
+    "verdict": "correct",
+    "reason": "could も can の過去形の形で現在の弱い推量を表し、might とほぼ同じ意味。会話では弱い推量に could が特によく使われるため、might と並んで正解になる。指示文が『1つとはかぎらない』なので両方選ぶ。"
+   },
+   {
+    "t": "shall",
+    "meaning": "〜しましょうか（相手の意志を聞く）／〜するだろう",
+    "verdict": "wrong",
+    "reason": "shall は Shall I...?『〜しましょうか』のように相手の意志を聞く用法が中心で、推量『〜かもしれない』の意味は持たない。"
+   }
+  ]
  },
  {
   "answer": 4,
@@ -810,7 +1731,34 @@ const QUESTIONS = [
   "translation": "あなたが長生きして、最期は幸せでありますように。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "Should",
+    "meaning": "〜すべきだ（義務）／もし〜なら（条件の倒置）",
+    "verdict": "wrong",
+    "reason": "文頭の Should は義務や条件の倒置になるが、後ろが you live long... と感嘆符で終わる祈願の文にはならない。"
+   },
+   {
+    "t": "Would",
+    "meaning": "〜したい・〜だろう（意志・推量の過去形）",
+    "verdict": "wrong",
+    "reason": "would は意志や仮定の意味で、『〜でありますように』という祈願文を作る働きはない。"
+   },
+   {
+    "t": "Can",
+    "meaning": "〜できる（能力・可能）",
+    "verdict": "wrong",
+    "reason": "Can you...? では能力を尋ねる疑問文になってしまい、文末の感嘆符とも合わない。"
+   },
+   {
+    "t": "May",
+    "meaning": "〜しますように（祈願）",
+    "verdict": "correct",
+    "reason": "May＋主語＋動詞の原形＋! で『〜しますように』という祈願文になる。May you live long and die happy!『長生きして、幸せな最期でありますように』。"
+   }
+  ],
+  "extra": "祈願文は May＋主語＋動詞の原形 の語順が特徴で、ふつうの文（主語＋助動詞）とは順序が逆になる点に注意。May you succeed!『成功しますように』のように、文語的・決まり文句的な表現として覚える。日常の『〜でありますように』は I hope... で言うことが多いが、入試ではこの May の祈願文が狙われる。"
  },
  {
   "answer": 3,
@@ -829,7 +1777,34 @@ const QUESTIONS = [
   "translation": "車が故障したので、私たちはタクシーに乗らなければならなかった。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "must have gotten",
+    "meaning": "乗ったにちがいない（過去への強い推量）",
+    "verdict": "wrong",
+    "reason": "must have V-ed は『〜したにちがいない』という過去への推量。車が故障して『乗らなければならなかった』という必要の意味にはならない。"
+   },
+   {
+    "t": "have to get",
+    "meaning": "乗らなければならない（現在の必要）",
+    "verdict": "wrong",
+    "reason": "have to は現在の必要を表す形。主節 The car broke down が過去形で、話全体が過去のことなので時制が合わない。"
+   },
+   {
+    "t": "had to get",
+    "meaning": "乗らなければならなかった（過去の必要）",
+    "verdict": "correct",
+    "reason": "過去の義務・必要は had to V で表す。must には過去形がないため、過去の『〜しなければならなかった』は had to で表すのがルール。"
+   },
+   {
+    "t": "must get",
+    "meaning": "乗らなければならない（現在・未来の義務）",
+    "verdict": "wrong",
+    "reason": "must は現在・未来の義務に使う形で、過去の出来事には使えない。過去形の代わりは had to。"
+   }
+  ],
+  "extra": "must と have to の時制の違いがポイント。must は形が1つしかなく過去に使えないので、過去の義務は had to V で表す（否定は didn't have to『〜する必要がなかった』）。①の must have gotten は形が似ているが『乗ったにちがいない』という推量で、意味の系統がまったく違うので混同しないこと。"
  },
  {
   "answer": 2,
@@ -849,7 +1824,33 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "mcq",
-  "extra": "must not は「強い禁止（～してはいけない）」。これと混同しやすい need not / don't have to は「～しなくてよい（禁止ではなく不要）」で意味が正反対に近いので注意。"
+  "extra": "must not は「強い禁止（～してはいけない）」。これと混同しやすい need not / don't have to は「～しなくてよい（禁止ではなく不要）」で意味が正反対に近いので注意。覚え方として、mustn't＝『禁止』、needn't / don't have to＝『やらなくてOK』と対で整理する。なお haven't to のような形はなく、have to の否定・疑問は do を使って作る（don't have to / Do we have to...?）。",
+  "choiceNotes": [
+   {
+    "t": "needn't",
+    "meaning": "〜しなくてよい（不要）",
+    "verdict": "wrong",
+    "reason": "needn't be late は『遅れる必要はない』という不要の意味で、『遅れてはいけない』という禁止にはならない。意味が反対側になる代表的なひっかけ。"
+   },
+   {
+    "t": "mustn't",
+    "meaning": "〜してはいけない（強い禁止）",
+    "verdict": "correct",
+    "reason": "『7時に開演する』という事情から『遅れてはいけない』という強い禁止が求められ、must not（mustn't）が正しい。"
+   },
+   {
+    "t": "don't have to",
+    "meaning": "〜しなくてよい（不要）",
+    "verdict": "wrong",
+    "reason": "don't have to も needn't と同じ『不要』の意味。禁止を表したい場面では使えない。"
+   },
+   {
+    "t": "haven't to",
+    "meaning": "（誤った形）",
+    "verdict": "wrong",
+    "reason": "have to の否定は don't have to で、haven't to という形は存在しない。形そのものが誤り。"
+   }
+  ]
  },
  {
   "answer": 3,
@@ -868,7 +1869,34 @@ const QUESTIONS = [
   "translation": "私たちは急がなくてもよい。列車が出るまでにまだ30分ある。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "must not",
+    "meaning": "〜してはいけない（強い禁止）",
+    "verdict": "wrong",
+    "reason": "禁止の意味になる。「まだ30分ある」ので必要なのは『急ぐ必要はない』であり、急ぐことを禁じているのではない。"
+   },
+   {
+    "t": "may not",
+    "meaning": "〜してはいけない／〜しないかもしれない",
+    "verdict": "wrong",
+    "reason": "許可の否定で『〜することは許されない』という意味になる。must notより弱い禁止であり、『しなくてもよい』にはならない。"
+   },
+   {
+    "t": "don't have to",
+    "meaning": "〜しなくてもよい",
+    "verdict": "correct",
+    "reason": "have to「〜しなければならない」の否定で『する必要がない』を表す。列車まで30分あるという状況に合う。"
+   },
+   {
+    "t": "have not to",
+    "meaning": "（この形はない）",
+    "verdict": "wrong",
+    "reason": "have toの否定は don't have to とするのが正しく、have not to という形は存在しない。"
+   }
+  ],
+  "extra": "must の否定は意味がずれる代表例。must not は『禁止』、don't have to は『不要』で、肯定の must（義務）の単純な否定にはならない。ここは『禁止』か『不要』かを見分ける問題。"
  },
  {
   "answer": "need",
@@ -883,7 +1911,9 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "fill",
-  "answerText": "need"
+  "answerText": "need",
+  "choiceNotes": [],
+  "extra": "正解は need。need not V（原形）で『Vする必要がない、Vしなくてもよい』という意味で、don't have to V と同義。助動詞としての need は否定文・疑問文で使われ、後ろは原形、not の前に to は入らない（need not to とはしない）。間違えやすい形：本動詞の need を使うと don't need to V となり、こちらは to が必要。意味は同じでも形が違う。また mustn't『〜してはいけない（禁止）』とは正反対に近いので混同注意。"
  },
  {
   "answer": 3,
@@ -902,7 +1932,34 @@ const QUESTIONS = [
   "translation": "時間を守りたいなら、11時までにそこに到着すべきだ。（have toの場合は「到着しなければならない」）",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "should",
+    "meaning": "〜すべきだ",
+    "verdict": "wrong",
+    "reason": "義務を表し『11時までに着くべきだ』で文意に合うため、不適切ではない（＝この問題の答えにはならない）。ought to とほぼ同義。"
+   },
+   {
+    "t": "have to",
+    "meaning": "〜しなければならない",
+    "verdict": "wrong",
+    "reason": "客観的な必要・義務を表し文意に合うため、不適切ではない。should より『しなければならない』という外からの必然性が強い。"
+   },
+   {
+    "t": "might",
+    "meaning": "〜かもしれない",
+    "verdict": "correct",
+    "reason": "これが不適切な選択肢（＝正解）。might は可能性・推量を表すだけで義務の意味はなく、『11時までに着くべきだ／着かなければならない』という文意を作れない。"
+   },
+   {
+    "t": "ought to",
+    "meaning": "〜すべきだ",
+    "verdict": "wrong",
+    "reason": "should とほぼ同義の義務を表し文意に合うため、不適切ではない。"
+   }
+  ],
+  "extra": "『不適切なものを選ぶ』問題では、正解の選択肢だけ意味がずれている。should / ought to（〜すべきだ）と have to（〜しなければならない）はどちらも義務のグループ、might だけが推量のグループ、という分類で見分けると速い。"
  },
  {
   "answer": "not to",
@@ -917,7 +1974,9 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "fill",
-  "answerText": "not to"
+  "answerText": "not to",
+  "choiceNotes": [],
+  "extra": "正解は not to。ought to V の否定は ought not to V『Vするべきではない』で、not は ought と to の間に入る。ought to not V とはしないのが本書の押さえる頻出ポイント。同義の shouldn't miss it でも言える。もし to の後ろの miss だけを見て ought to miss（欠席すべきだ）と読むと意味が逆になるので、否定の not の位置が勝負どころ。"
  },
  {
   "answer": 3,
@@ -936,7 +1995,34 @@ const QUESTIONS = [
   "translation": "1週間雪が降り続いているのだから、明日はスキーをするためのコンディションが理想的なものになるはずだ。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "have been",
+    "meaning": "〜であった（現在完了）",
+    "verdict": "wrong",
+    "reason": "現在完了は明日（tomorrow）という未来の時点の状態には使えない。"
+   },
+   {
+    "t": "are",
+    "meaning": "〜である（現在形）",
+    "verdict": "wrong",
+    "reason": "tomorrow の状態を現在形 are だけでは表せない。未来なら will be、当然の推量なら should be が必要。"
+   },
+   {
+    "t": "should be",
+    "meaning": "〜であるはずだ",
+    "verdict": "correct",
+    "reason": "should の『当然・推量（〜はずだ）』の用法。1週間雪が降り続いたという根拠から、明日のコンディションが理想的になるはずだと推量している。"
+   },
+   {
+    "t": "were",
+    "meaning": "〜であった（過去形）",
+    "verdict": "wrong",
+    "reason": "過去形では『昨日までの話』になり、tomorrow と矛盾する。"
+   }
+  ],
+  "extra": "should には義務の『〜すべきだ』だけでなく、根拠に基づく推量の『〜はずだ』（＝ought to）がある。本問は雪が1週間降ったという根拠→明日の状態の推量なので後者。will be なら単なる未来の断定になるが、選択肢にはない。"
  },
  {
   "answer": 4,
@@ -955,7 +2041,34 @@ const QUESTIONS = [
   "translation": "あなたは何も悪いことはしていない。いったいなぜそんなことを心配するのか。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "may",
+    "meaning": "〜かもしれない／〜してもよい",
+    "verdict": "wrong",
+    "reason": "Why may you worry? という言い方はなく、反語の決まった形にならない。"
+   },
+   {
+    "t": "ought to",
+    "meaning": "〜すべきだ",
+    "verdict": "wrong",
+    "reason": "本書も指摘する通り、Why ought to 〜? に『いったいなぜ〜か』という反語の用法はない。"
+   },
+   {
+    "t": "shall",
+    "meaning": "〜しよう／〜しましょうか",
+    "verdict": "wrong",
+    "reason": "shall は疑問文では Shall I [we] 〜?『〜しましょうか』のように主語が1人称の提案で使うもので、Why shall you 〜? とは言わない。"
+   },
+   {
+    "t": "should",
+    "meaning": "〜すべきだ",
+    "verdict": "correct",
+    "reason": "Why should S + V? は『いったいなぜ〜なのか』という強い疑問・反語の決まった形。"
+   }
+  ],
+  "extra": "この Why should 〜? は文字通りの『なぜすべきか』ではなく反語で、『心配することなんてないのに、なぜ心配するのか』という含み。前文の You've done nothing wrong.（何も悪いことはしていない）が、その根拠になっている。"
  },
  {
   "answer": "will",
@@ -970,7 +2083,9 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "fill",
-  "answerText": "will"
+  "answerText": "will",
+  "choiceNotes": [],
+  "extra": "正解は will。will not [won't] は人だけでなく無生物にも使え、『どうしても〜しようとしない（拒否）』を表す。戸が開かないのを、まるで戸が拒んでいるように表現したもの。間違えやすい would は過去の話の中で使う形（『〜しようとしなかった』）で、この文は現在の戸の状態を述べているので will。『開けることができない』という能力の話ではなく、will の意志・拒否の用法が狙われている。"
  },
  {
   "answer": "would",
@@ -985,7 +2100,9 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "fill",
-  "answerText": "would"
+  "answerText": "would",
+  "choiceNotes": [],
+  "extra": "正解は would。would not は『〜しようとしなかった』という過去の強い意志（拒否）を表す。felt a sharp pain と過去形の文脈で、彼女が痛くても歯医者に行くことを拒んだ、という過去の話なので will ではなく would を使う。will と would の違いは時制：現在の拒否は won't（Q47）、過去の拒否は wouldn't。習慣の would『よく〜したものだ』とは別用法なので、not とセットのときは拒否を疑う。"
  },
  {
   "answer": "would",
@@ -1000,7 +2117,9 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "fill",
-  "answerText": "would"
+  "answerText": "would",
+  "choiceNotes": [],
+  "extra": "正解は would。もとの発言は He will go（行くつもりだ）だが、主節が He said と過去形なので、時制の一致で will → would になる。これは『過去の時点で見た未来』を表す would で、習慣や拒否の would とは別物。間違えやすい点：if節など条件の話ではないので仮定法の would でもない。can → could、may → might も同じ時制の一致のパターンでセットで覚える。"
  },
  {
   "answer": 2,
@@ -1019,7 +2138,33 @@ const QUESTIONS = [
   "translation": "ジョンはオックスフォードに住んでいたころ、よく私に会いに来た。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "ought to",
+    "meaning": "〜すべきだ",
+    "verdict": "wrong",
+    "reason": "義務の意味しかなく、『よく会いに来た』という過去の習慣は表せない。"
+   },
+   {
+    "t": "would",
+    "meaning": "〜したものだ（過去の習慣）",
+    "verdict": "correct",
+    "reason": "would often V で『よくVしたものだ』。When John lived in Oxford という過去の時間枠の中で繰り返された動作を表す。"
+   },
+   {
+    "t": "should",
+    "meaning": "〜すべきだ／〜はずだ",
+    "verdict": "wrong",
+    "reason": "義務・推量の意味で、過去の習慣は表せない。"
+   },
+   {
+    "t": "used to",
+    "meaning": "（以前は）〜したものだ",
+    "verdict": "wrong",
+    "reason": "used to の直後に often を置く形は本問では不適。often がなければ used to も正解になるが、would often が習慣を表す決まった組み合わせ。"
+   }
+  ]
  },
  {
   "answer": 2,
@@ -1038,7 +2183,34 @@ const QUESTIONS = [
   "translation": "私の父は以前は1週間に2回ゴルフをしたが、今はめったにしない。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "might",
+    "meaning": "〜かもしれない",
+    "verdict": "wrong",
+    "reason": "推量を表すだけで、『以前はしていたが今はしない』という過去の習慣と現在の対比は表せない。"
+   },
+   {
+    "t": "used to",
+    "meaning": "（以前は）〜したものだ",
+    "verdict": "correct",
+    "reason": "used to V は現在と対比される過去の習慣・状態を表す。but now seldom plays と今との対比が明示されているのが決め手。"
+   },
+   {
+    "t": "was used to",
+    "meaning": "〜するために使われた",
+    "verdict": "wrong",
+    "reason": "be used to は後ろに名詞・動名詞を取って『〜に慣れている』などの意味になる形で、原形 play を続けることはできない。文意にも合わない。"
+   },
+   {
+    "t": "would",
+    "meaning": "〜したものだ（過去の習慣）",
+    "verdict": "wrong",
+    "reason": "would の習慣用法は過去の時間枠の中で繰り返し起きた場面描写に使い、今との対比を明示する本問では used to を選ぶのが本書の判断。"
+   }
+  ],
+  "extra": "be used to 〜 には2つの顔がある：be used to + 名詞／動名詞で『〜に慣れている』、be used to V（原形）の受動態寄りの形で『〜するために使われる』。どちらも後ろに原形の play は続かない。本問の選択肢はこの形の紛らわしさも狙っている。"
  },
  {
   "answer": 3,
@@ -1057,7 +2229,34 @@ const QUESTIONS = [
   "translation": "あなたは休みを取ったほうがよいと思う。顔色が悪いから。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "you would",
+    "meaning": "あなたは〜するだろう",
+    "verdict": "wrong",
+    "reason": "you would take a rest では単なる推量・意志の話になり、『休んだほうがよい』という助言にはならない。"
+   },
+   {
+    "t": "you ought",
+    "meaning": "（ought の後には to が必要）",
+    "verdict": "wrong",
+    "reason": "ought は ought to V の形で使う助動詞で、to がない you ought take は誤り。"
+   },
+   {
+    "t": "you'd better",
+    "meaning": "あなたは〜したほうがよい",
+    "verdict": "correct",
+    "reason": "'d better = had better で、後ろは原形 take。you look ill という相手の状態を見ての助言に合う。"
+   },
+   {
+    "t": "you'd better to",
+    "meaning": "（better の後に to は不要）",
+    "verdict": "wrong",
+    "reason": "had better の後ろは to のない原形が来る。you'd better to take とはしない。"
+   }
+  ],
+  "extra": "'d better の 'd は would ではなく had の短縮。だから I'd better = I had better で、過去の意味はない。had better は should より強く、『〜しないと困ったことになる』という警告の響きがある点も本書の+α通り。"
  },
  {
   "answer": 4,
@@ -1076,7 +2275,33 @@ const QUESTIONS = [
   "translation": "彼に本当のことを言わないほうがよい。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "had better not to",
+    "meaning": "〜しないほうがよい（to は不要な形）",
+    "verdict": "wrong",
+    "reason": "had better の後ろは原形で、to を入れた had better not to tell は誤り。"
+   },
+   {
+    "t": "hadn't better",
+    "meaning": "（この否定形はない）",
+    "verdict": "wrong",
+    "reason": "had better の否定は hadn't better とは言わない。not を better の後ろに置くのが正しい形。"
+   },
+   {
+    "t": "didn't have better to",
+    "meaning": "（この形はない）",
+    "verdict": "wrong",
+    "reason": "didn't have better という組み合わせ自体が存在しない紛らわしい選択肢。"
+   },
+   {
+    "t": "had better not",
+    "meaning": "〜しないほうがよい",
+    "verdict": "correct",
+    "reason": "had better not + 原形（tell）が正しい否定形。not の位置が狙われている。"
+   }
+  ]
  },
  {
   "answer": 4,
@@ -1095,7 +2320,34 @@ const QUESTIONS = [
   "translation": "",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "can you say",
+    "meaning": "あなたは言えるか",
+    "verdict": "wrong",
+    "reason": "How dare の文は Can you 〜? のような助動詞の倒置をしない。dare が文頭の決まった形を作っている。"
+   },
+   {
+    "t": "do you say",
+    "meaning": "あなたは言うか",
+    "verdict": "wrong",
+    "reason": "do を使った疑問文の語順にはならない。How dare の後ろは平叙文の語順 S + V が続く。"
+   },
+   {
+    "t": "will you say",
+    "meaning": "あなたは言うつもりか",
+    "verdict": "wrong",
+    "reason": "will による倒置もしない。意志を尋ねる文意でもない。"
+   },
+   {
+    "t": "you say",
+    "meaning": "あなたは言う",
+    "verdict": "correct",
+    "reason": "How dare you say 〜?『よくも私にそんなことが言えるね』。主語 you + 原形 say の語順で、相手への憤慨を表す。"
+   }
+  ],
+  "extra": "疑問符が付いていても、How dare S + V? の中身は平叙文の語順（Sの後ろに原形）で、do や can で倒置しないのがポイント。文末は ! になることもあり、意味は疑問ではなく『よくも〜できるね』という怒り。"
  },
  {
   "answer": 1,
@@ -1114,7 +2366,34 @@ const QUESTIONS = [
   "translation": "初めジャネットは刺身が好きではなかったが、今では好きである。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "does",
+    "meaning": "〜である（代動詞・現在形）",
+    "verdict": "correct",
+    "reason": "前の文の like raw fish『刺身が好きだ』を代動詞 does で受けた形。now があるので現在形、主語 she（Janet）に対応する三人称単数の does を使う。"
+   },
+   {
+    "t": "did",
+    "meaning": "〜であった（代動詞・過去形）",
+    "verdict": "wrong",
+    "reason": "did は過去形の代動詞だが、文は now『今では』と現在の状態を述べており、時制が合わない。前半の did not like（過去）と対比されている。"
+   },
+   {
+    "t": "is",
+    "meaning": "〜である（be動詞）",
+    "verdict": "wrong",
+    "reason": "is だけでは like という一般動詞の文を受けられない。is liking のような形にもならず、文が成り立たない。"
+   },
+   {
+    "t": "has",
+    "meaning": "〜したことがある（現在完了の助動詞）",
+    "verdict": "wrong",
+    "reason": "has の後ろには過去分詞が必要で、has だけで『好きである』の代わりにはならない。"
+   }
+  ],
+  "extra": "代動詞 do は、繰り返しを避けて前の一般動詞の代わりをするだけでなく、時制と人称も引き受ける。本問は at first（過去）→ now（現在）の対比なので、過去の did ではなく現在の does を選ぶのが決め手。"
  },
  {
   "answer": 1,
@@ -1133,7 +2412,34 @@ const QUESTIONS = [
   "translation": "眼鏡が見つからない。列車の中に置き忘れたのかもしれない。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "may have left",
+    "meaning": "置き忘れたかもしれない",
+    "verdict": "correct",
+    "reason": "may have + 過去分詞で過去の事柄への推量。眼鏡が今見つからない原因として、電車に置き忘れた過去の出来事を推量している。"
+   },
+   {
+    "t": "may leave",
+    "meaning": "置いていくかもしれない",
+    "verdict": "wrong",
+    "reason": "leave は『（これから）置いていく・出発する』という現在〜未来の推量になり、今見つからない理由の説明にならない。"
+   },
+   {
+    "t": "might be leaving",
+    "meaning": "置いていくところかもしれない",
+    "verdict": "wrong",
+    "reason": "進行形の推量で『今まさに置いていこうとしている』という意味になり、文意に合わない。"
+   },
+   {
+    "t": "might leave",
+    "meaning": "置いていくかもしれない",
+    "verdict": "wrong",
+    "reason": "may leave とほぼ同じ現在〜未来の推量。過去の置き忘れを表すには have + 過去分詞が必要。"
+   }
+  ],
+  "extra": "推量の助動詞で『過去のこと』を言いたいときは、助動詞自体は現在形のままで have + 過去分詞を続ける（may have left）。might have left でもほぼ同義だが本問の選択肢にはない。助動詞を過去形にしても意味は過去の推量にはならない点に注意。"
  },
  {
   "answer": 1,
@@ -1152,7 +2458,34 @@ const QUESTIONS = [
   "translation": "彼女はとても幸せそうに見える。昨日彼女に何かいいことがあったのかもしれない。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "might have happened",
+    "meaning": "（ひょっとしたら）起きたかもしれない",
+    "verdict": "correct",
+    "reason": "might have + 過去分詞で過去への弱い推量。yesterday の出来事について『何かいいことがあったのかもしれない』と推測している。"
+   },
+   {
+    "t": "might happen",
+    "meaning": "起きるかもしれない",
+    "verdict": "wrong",
+    "reason": "have がないと現在〜未来の推量になり、yesterday と合わない。"
+   },
+   {
+    "t": "happen",
+    "meaning": "起きる（原形）",
+    "verdict": "wrong",
+    "reason": "主語 Something good に対して原形のままでは文が成り立たず、時制も表せない。"
+   },
+   {
+    "t": "may happen",
+    "meaning": "起きるかもしれない",
+    "verdict": "wrong",
+    "reason": "might happen と同じく未来・現在の推量で、昨日の話にはならない。"
+   }
+  ],
+  "extra": "決め手は yesterday。過去の出来事への推量は『助動詞 + have + 過去分詞』の形で作る。might は may より確信度が低い『ひょっとしたら』のニュアンス。"
  },
  {
   "answer": 2,
@@ -1171,7 +2504,34 @@ const QUESTIONS = [
   "translation": "彼らの車が見当たらない。彼らは家に帰ったにちがいない。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "should have gone",
+    "meaning": "帰るべきだった（のに帰らなかった）",
+    "verdict": "wrong",
+    "reason": "should have + 過去分詞は『〜すべきだったのにしなかった』という後悔・非難で、車がないことからの推測にはならない。"
+   },
+   {
+    "t": "must have gone",
+    "meaning": "帰ったにちがいない",
+    "verdict": "correct",
+    "reason": "must have + 過去分詞は過去への強い確信。彼らの車が見当たらないという証拠からの断定に合う。"
+   },
+   {
+    "t": "ought to have gone",
+    "meaning": "帰るべきだった（のに帰らなかった）",
+    "verdict": "wrong",
+    "reason": "ought to have + 過去分詞も should have と同じく『すべきだった』で、推測の意味にはならない。"
+   },
+   {
+    "t": "might go",
+    "meaning": "帰るかもしれない",
+    "verdict": "wrong",
+    "reason": "現在〜未来の弱い推量で、すでに帰ったはずだという過去への断定にはならない。"
+   }
+  ],
+  "extra": "同じ have + 過去分詞でも意味は真逆に分かれる：must have は『〜したにちがいない（強い確信）』、should / ought to have は『〜すべきだったのにしなかった（後悔）』。証拠を見て推測している文脈では must have を選ぶ。"
  },
  {
   "answer": 4,
@@ -1190,7 +2550,33 @@ const QUESTIONS = [
   "translation": "君が昨日京都でトムに会ったはずがない。彼はまだイングランドにいるんだ。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "must",
+    "meaning": "〜にちがいない",
+    "verdict": "wrong",
+    "reason": "must have seen は『見たにちがいない』という肯定の強い推量になり、彼はまだイングランドにいるという事実と正反対になる。"
+   },
+   {
+    "t": "may",
+    "meaning": "〜かもしれない",
+    "verdict": "wrong",
+    "reason": "may have seen は『見たかもしれない』という可能性で、会うことが不可能だったという文意にはならない。"
+   },
+   {
+    "t": "shouldn't",
+    "meaning": "〜すべきではない",
+    "verdict": "wrong",
+    "reason": "shouldn't have seen は『見るべきではなかった』という後悔の意味になり、『会ったはずがない』という不可能の推量にはならない。"
+   },
+   {
+    "t": "cannot",
+    "meaning": "〜はずがない",
+    "verdict": "correct",
+    "reason": "cannot [can't] have + 過去分詞で『〜したはずがない』。トムがまだイングランドにいる以上、昨日京都で会うことはあり得ないという断定に合う。"
+   }
+  ]
  },
  {
   "answer": 4,
@@ -1209,7 +2595,33 @@ const QUESTIONS = [
   "translation": "彼女のスピーチの終盤についていけなかった。もっと注意して聴くべきだった。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "t": "would be listened",
+    "meaning": "聴かれるだろう（受動態）",
+    "verdict": "wrong",
+    "reason": "受動態で『私が聴かれる』という意味不明の文になり、文意に合わない。"
+   },
+   {
+    "t": "must have listened",
+    "meaning": "もっと注意して聴いたにちがいない",
+    "verdict": "wrong",
+    "reason": "must have + 過去分詞は『〜したにちがいない』という過去への確信で、『聴かなければならなかった』という意味にはならない。本書も引っかけとして警告している選択肢。"
+   },
+   {
+    "t": "am to be listened",
+    "meaning": "聴かれることになっている（受動態）",
+    "verdict": "wrong",
+    "reason": "be to の受動態で文意に合わず、『べきだった』の後悔も表せない。"
+   },
+   {
+    "t": "should have listened",
+    "meaning": "もっと注意して聴くべきだった",
+    "verdict": "correct",
+    "reason": "should have + 過去分詞は『〜すべきだった（のにしなかった）』。スピーチについていけなかったという結果への後悔を表す。"
+   }
+  ]
  },
  {
   "answer": 4,
@@ -1228,7 +2640,34 @@ const QUESTIONS = [
   "translation": "夕べのパーティはすごく楽しかったです。あなたも来るべきでしたよ。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「（過去に）～しなければならなかった」",
+    "reason": "過去の義務を表すだけで、「来なかったのは残念だ」という後悔の気持ちは表せない。本文は話し手が相手の欠席を残念がる文脈なので不適。",
+    "t": "had to",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「（過去に）～したにちがいない」",
+    "reason": "must have V-ed は過去の事柄への強い推量。話し手は相手が来なかったことを知っているので、「来たにちがいない」という推量は事実と矛盾する。",
+    "t": "must have",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「（過去に）～したかもしれない」",
+    "reason": "might have V-ed は過去の可能性の推量にすぎず、「来るべきだった」という義務・後悔の意味にはならない。",
+    "t": "might have",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～するべきだった（のにしなかった）」",
+    "reason": "ought to have V-ed は should have V-ed と同意で、過去にしなかったことへの後悔を表す。「パーティは楽しかった→あなたも来るべきだったのに（来なかった）」という流れに合う。",
+    "t": "ought to have",
+    "verdict": "correct"
+   }
+  ],
+  "extra": "決め手は文脈。話し手は相手がパーティに来なかったことをすでに知っていて残念がっている。だから推量の must have / might have（したかもしれない・したにちがいない）ではなく、「すべきだったのにしなかった」の ought to have come を選ぶ。last night と過去の話であることも have V-ed（完了形）が必要な根拠になる。"
  },
  {
   "answer": 4,
@@ -1248,7 +2687,33 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "mcq",
-  "extra": "should not have V-ed は「Vするべきではなかった（のに実際はしてしまった）」という後悔・非難の表現。反対の should have V-ed「Vするべきだった（のにしなかった）」とペアで覚える。"
+  "extra": "should not have V-ed は「Vするべきではなかった（のに実際はしてしまった）」という後悔・非難の表現。反対の should have V-ed「Vするべきだった（のにしなかった）」とペアで覚える。",
+  "choiceNotes": [
+   {
+    "meaning": "「なされるべきでない」風の語順",
+    "reason": "should be not done it では後ろに目的語 it が残って文が成り立たない上、受動態になって意味もずれる。語順・形ともに誤り。",
+    "t": "be not done",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「まだしていない」風の語順",
+    "reason": "should have not done では not の位置が誤り。否定は助動詞の直後に入れて should not have V-ed の形にするのが正しい。",
+    "t": "have not done",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「なされるべきではない」",
+    "reason": "should not be done it は受動態の形だが、後ろに目的語 it があるので二重になり文法的に不可。また現在の話になり、過去の行為への非難にもならない。",
+    "t": "not be done",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「（過去に）～するべきではなかった」",
+    "reason": "should not have done で should not have V-ed「Vするべきではなかった（のにした）」になる。not は助動詞 should の直後、have V-ed で過去の行為を指す形が正しい。",
+    "t": "not have done",
+    "verdict": "correct"
+   }
+  ]
  },
  {
   "answer": "ought not to have laughed",
@@ -1269,7 +2734,40 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "order",
-  "answerText": "ought not to have laughed"
+  "answerText": "ought not to have laughed",
+  "choiceNotes": [
+   {
+    "meaning": "「～ない」（否定）",
+    "reason": "ought の直後に置いて ought not to ...「～すべきではない」の否定を作る。had better not と同じく、not は助動詞扱いの ought の後ろに来る。",
+    "t": "not",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「～すること」（to不定詞の to）",
+    "reason": "ought to で1つのまとまり。not の後ろ、have の前に置いて ought not to have ... の骨格を作る。",
+    "t": "to",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「～すべきだ」",
+    "reason": "文の核になる語で、You の直後に置く。ought to V「Vすべきだ」が基本形。",
+    "t": "ought",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「笑った」（laugh の過去分詞）",
+    "reason": "have の後ろに置く過去分詞で、have laughed「笑ってしまった（過去の行為）」を作る。後ろは at his error「彼の誤りを」が続く。",
+    "t": "laughed",
+    "verdict": "part"
+   },
+   {
+    "meaning": "完了形を作る have",
+    "reason": "to の後ろ、laughed の前に置いて have V-ed の完了形を作り、「するべきではなかった（のにした）」という過去への後悔を表す。",
+    "t": "have",
+    "verdict": "part"
+   }
+  ],
+  "extra": "完成文: You ought not to have laughed at his error. 骨格は You + ought not to + have + V-ed（laughed）。ought は助動詞と同じ扱いで not はその直後に入り、ought to の to は落とさない。過去の行為への後悔なので have V-ed を続ける。"
  },
  {
   "answer": 2,
@@ -1288,7 +2786,34 @@ const QUESTIONS = [
   "translation": "彼女はまだ若かったのだから、死ぬ必要なんてなかったのに。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「死ななかっただろう」",
+    "reason": "仮定法過去完了の推量で、「（もし～なら）死ななかっただろう」という条件付きの話になる。needn't have V-ed が持つ「する必要はなかったのに実際はしてしまった」という含意とは違う。",
+    "t": "wouldn't have died",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「死ぬ必要はなかったが、実際は死んでしまった」",
+    "reason": "needn't have died は「死ぬ必要はなかった（のに死んでしまった）」の意味で、言い換えるとこの選択肢になる。実際は死んでしまったという含意がポイント。",
+    "t": "didn't have to die but did",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「死んだはずがない」",
+    "reason": "cannot have V-ed は過去への否定の推量で、彼女が死んだという事実そのものを否定してしまい、文意と矛盾する。",
+    "t": "cannot have died",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「必然的に死んだ」",
+    "reason": "「避けられず死んだ」という正反対の意味になる。needn't have は「する必要がなかった＝死なずにすんだはず」という残念さを表す。",
+    "t": "inevitably died",
+    "verdict": "wrong"
+   }
+  ],
+  "extra": "needn't have V-ed の核心は「実際はしてしまった」という含意。よく似た didn't need to V は「する必要がなく、実際しなかった」という含意になりやすいので対比して覚える。若かったのだから死なずにすんだはずだ、という残念さが文全体の気持ちになる。"
  },
  {
   "answer": 3,
@@ -1307,7 +2832,34 @@ const QUESTIONS = [
   "translation": "「今彼女の家に電話したよ。彼女は1時間以上前に家を出たって」「そうか。じゃあ、もうここに着いているはずだが」",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「～すべきだ・～するはずだ」（現在）",
+    "reason": "後ろに got here が続くため ought to be got here では文が成り立たない。また現在の be では「もう到着しているはず」という完了の意味も出ない。",
+    "t": "ought to be",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～であったはずだ・～されるべきだった」",
+    "reason": "should have been got here では been と got が重なって形が崩れる。到着するという能動の完了は have got で表す。",
+    "t": "should have been",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「（もう）～しているはずだ」",
+    "reason": "should have got here で「もうここに着いているはずだ」。1時間以上前に出たという事実と by now「今ごろはもう」から、到着済みのはずだという推量になる。",
+    "t": "should have",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「～したことがありうる」風の形",
+    "reason": "推量の can はふつう疑問文・否定文で使い、肯定文で「～のはずだ」という推量には使えない。",
+    "t": "can have",
+    "verdict": "wrong"
+   }
+  ],
+  "extra": "should have V-ed には2つの用法がある。①Q61型「Vするべきだった（のにしなかった）」という後悔、②本問型「（もう）Vしているはずだ」という推量。見分けは文脈で、ここでは「1時間以上前に出た」「by now（今ごろはもう）」があるので②の推量になる。"
  },
  {
   "answer": 3,
@@ -1326,7 +2878,34 @@ const QUESTIONS = [
   "translation": "父は私がその場所を見に行くよう主張した。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「～かもしれない」",
+    "reason": "推量の助動詞で、insist「主張する」が求める「行くべきだ」という内容にはならない。",
+    "t": "might",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～すべきだ」",
+    "reason": "意味は近いが、ought の後ろには to が必要（ought to go）。空所の直後は go なので形が合わない。",
+    "t": "ought",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～すべきだ」",
+    "reason": "insist that S (should) V(原形) の文型。that節の中では should + 原形 go となり、この should は省略もできる。",
+    "t": "should",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「～するだろう・～したい」",
+    "reason": "would go では仮定や意志の意味になり、「行くべきだと主張した」という主張の内容を表せない。",
+    "t": "would",
+    "verdict": "wrong"
+   }
+  ],
+  "extra": "この (should) V(原形) 文型を取る動詞は insist のほか suggest・propose・recommend・demand・request・order など「要求・提案・主張」を表すものが中心。本書の助動詞の章でも頻出グループとしてまとめて覚える。that節の should は省略でき、その場合も動詞は原形のまま。"
  },
  {
   "answer": 2,
@@ -1345,7 +2924,34 @@ const QUESTIONS = [
   "translation": "彼は来週もう一度会議を開くよう提案した。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「（過去に）～だった・～された」",
+    "reason": "was held では「（過去に）開かれた」という事実の叙述になり、提案の内容にならない。主節が過去形でも時制の一致は行わないのがこの文型のルール。",
+    "t": "was",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "be動詞の原形",
+    "reason": "propose that S (should) V(原形) の文型で、会議は「開かれる」側なので受動態の原形 be held になる。(should) be held から should を落とした形。",
+    "t": "be",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「～されるだろう」",
+    "reason": "will be held では未来の予定の断定になり、「開くべきだと提案した」という提案の内容を表す文型にならない。",
+    "t": "will be",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～されるだろう（仮定・婉曲）」",
+    "reason": "would be held は時制の一致や仮定の形で、この文型では使わない。提案の that節は原形でそろえる。",
+    "t": "would be",
+    "verdict": "wrong"
+   }
+  ],
+  "extra": "空所は受動態でもある点に注意。another meeting は「開く」ものではなく「開かれる」ものなので be + 過去分詞 held。骨格は (should) be held で、should が省略されて原形 be だけが残っている。主節 proposed が過去形でも that節は原形のまま、という点が時制の一致の例外として狙われる。"
  },
  {
   "answer": 1,
@@ -1364,7 +2970,34 @@ const QUESTIONS = [
   "translation": "彼がそれをすることは必要だ。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「する」（原形）",
+    "reason": "It is necessary that S (should) V(原形) の文型。(should) do から should を落とした原形 do が入る。",
+    "t": "do",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「するかもしれない」",
+    "reason": "推量の might が入ると「必要だ」という文型の骨格から外れ、意味も弱まる。この文型では助動詞は should のみで、それも原形の前だけに置ける。",
+    "t": "might do",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「しなければならない」",
+    "reason": "意味は近く見えるが、It is necessary that ... の that節は (should) + 原形という決まった形を取るため、must は使えない。",
+    "t": "must do",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「するかもしれない・してもよい」",
+    "reason": "推量・許可の may では「彼がそれをすることが必要だ」という意味にならない。形の上でも文型に合わない。",
+    "t": "may do",
+    "verdict": "wrong"
+   }
+  ],
+  "extra": "It is + 形容詞 + that S (should) V(原形) の形で、形容詞には necessary のほか important・essential・urgent・natural など「必要・重要・当然」を表すものが来る。that節の中の動詞は常に原形で、主語が三人称単数でも -s は付かない点もチェックポイント。"
  },
  {
   "answer": 2,
@@ -1383,7 +3016,34 @@ const QUESTIONS = [
   "translation": "彼を見て笑わずにはいられなかった。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「笑うのを抑えられない」",
+    "reason": "cannot help V-ing「Vせずにはいられない」は正しい形なので、これは適切な選択肢であり、不適切なものとして選ばない。",
+    "t": "help laughing",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～せずにはいられない」風の形",
+    "reason": "これが不適切な選択肢。cannot but の後ろは動詞の原形 laugh が正しく、to laugh と to を付けることはできない。",
+    "t": "but to laugh",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「笑わずにはいられない」",
+    "reason": "cannot but V(原形) は文語的だが正しい形なので、適切な選択肢として選ばない。",
+    "t": "but laugh",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「笑わずにはいられない」",
+    "reason": "cannot help but V(原形) も正しい形なので、適切な選択肢として選ばない。",
+    "t": "help but laugh",
+    "verdict": "wrong"
+   }
+  ],
+  "extra": "couldn't は cannot の過去形で、意味の型は同じ。cannot help V-ing の help は「避ける・抑える」という意味で、「笑うのを避けられない＝笑わずにはいられない」となる。3つの形（help V-ing / but V / help but V）はいずれも後ろが V-ing か原形かで決まるので、to が付く形だけが例外的に存在しないと整理すると見分けやすい。"
  },
  {
   "answer": 1,
@@ -1403,7 +3063,33 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "mcq",
-  "extra": "cannot V too ... は「いくらVしてもしすぎることはない」。cannot と too が離れて出てきても、セットでこの意味になる頻出構文。"
+  "extra": "cannot V too ... は「いくらVしてもしすぎることはない」。cannot と too が離れて出てきても、セットでこの意味になる頻出構文。",
+  "choiceNotes": [
+   {
+    "meaning": "「～できない」",
+    "reason": "cannot be too careful で cannot V too ...「いくらVしてもしすぎることはない」。注意しすぎということはない、という強い助言になる。",
+    "t": "cannot",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「～しなければならない」",
+    "reason": "have to be too careful では「注意しすぎなければならない」という不自然な意味になり、助言として成り立たない。",
+    "t": "have to",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～かもしれない」",
+    "reason": "may be too careful では「注意しすぎかもしれない」という推量になり、運転時の心構えを述べる文意に合わない。",
+    "t": "may",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～してはいけない」",
+    "reason": "must not be too careful では「注意しすぎてはいけない」と正反対の意味になってしまう。",
+    "t": "must not",
+    "verdict": "wrong"
+   }
+  ]
  },
  {
   "answer": 3,
@@ -1422,7 +3108,33 @@ const QUESTIONS = [
   "translation": "(a)彼が激怒する十分な理由がある。(b)彼が激怒するのももっともだ。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「（どちらかと言えば）～したほうがましだ」",
+    "reason": "may as well V は他の選択肢との比較の表現で、「激怒する十分な理由がある」という (a) の言い換えにはならない。",
+    "t": "may as well",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「（どちらかと言えば）～したほうがましだ」",
+    "reason": "might as well も意味は may as well と同じ比較の表現で、(a) の has good reason「十分な理由がある」とは対応しない。",
+    "t": "might as well",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～するのももっともだ」",
+    "reason": "may well V = have good reason to V「Vする十分な理由がある・Vするのももっともだ」で、(a) と正確に対応する。",
+    "t": "may well",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "存在しない形",
+    "reason": "may well as という言い方はない。as well as「～もまた」と混同して作られた誤りの形。",
+    "t": "may well as",
+    "verdict": "wrong"
+   }
+  ]
  },
  {
   "answer": 1,
@@ -1441,7 +3153,33 @@ const QUESTIONS = [
   "translation": "もうこれ以上何もすることがない。私たちは今家に帰ったほうがよいだろう。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「（そのほうが）ましに・よく」",
+    "reason": "might as well go home で「家に帰ったほうがよいだろう」。might と as well と原形 go がそろって文型が完成する。",
+    "t": "as well",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「～もまた・～だけでなく」",
+    "reason": "as well as は2つのものを並べる表現で、ここでは後ろに原形 go が直接続く形にならない。might as well V1 as V2 の比較構文の場合にだけ後半の as が現れる。",
+    "t": "as well as",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～するために」",
+    "reason": "目的を表す表現で、might so as to go という形はなく、意味も「帰ったほうがよい」にならない。",
+    "t": "so as to",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "存在しない形",
+    "reason": "so well to という言い方はない。as well と so as to を混ぜた誤りの形。",
+    "t": "so well to",
+    "verdict": "wrong"
+   }
+  ]
  },
  {
   "answer": "2-1-4-6-5-3",
@@ -1463,7 +3201,46 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "order",
-  "answerText": "2-1-4-6-5-3"
+  "answerText": "2-1-4-6-5-3",
+  "choiceNotes": [
+   {
+    "meaning": "「～するくらいなら」の as（比較の接続）",
+    "reason": "might の直後に入り might as well のまとまりを作る第2の語。後半にも as spend ... ともう1つ as があり、V1 as V2 の比較の枠を作る。",
+    "t": "as",
+    "verdict": "part"
+   },
+   {
+    "meaning": "助動詞「～したほうがましだ」の核",
+    "reason": "並びの最初に来る語（本書の番号では②）。You の直後に置いて might as well ... の文型を始める。",
+    "t": "might",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「金」",
+    "reason": "throw your money away「金を捨てる」の目的語で、your の後ろ、away の前に置く。",
+    "t": "money",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「ましに・よく」",
+    "reason": "as の後ろに入り might as well の形を完成させる第3の語。",
+    "t": "well",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「あなたの」",
+    "reason": "money を修飾する所有格で、throw の直後、money の前に置く。",
+    "t": "your",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「投げる・捨てる」（原形）",
+    "reason": "V1 にあたる動詞の原形で、well の後ろに置く。throw your money away「金を捨ててしまう」を作る。",
+    "t": "throw",
+    "verdict": "part"
+   }
+  ],
+  "extra": "完成文: You might as well throw your money away as spend it on gambling. 骨格は might as well V1 as V2「V2するくらいならV1するほうがましだ」。V1 = throw your money away、V2 = spend it on gambling（後半は問題文に固定済み）。V1・V2 ともに動詞は原形でそろえるのが決め手になる。"
  },
  {
   "answer": 4,
@@ -1483,7 +3260,33 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "mcq",
-  "extra": "would rather V は「（どちらかと言えば）Vしたい」という控えめな希望・好み。後ろは動詞の原形が来る。would rather A than B「BよりむしろAしたい」の形も頻出。"
+  "extra": "would rather V は「（どちらかと言えば）Vしたい」という控えめな希望・好み。後ろは動詞の原形が来る。would rather A than B「BよりむしろAしたい」の形も頻出。",
+  "choiceNotes": [
+   {
+    "meaning": "「とどまること」（to不定詞）",
+    "reason": "would rather の後ろは動詞の原形が来る決まりで、to は付けない。",
+    "t": "to stay",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「私がとどまるより」風の形",
+    "reason": "than は比較の相手を導く語で、ここでは空所に主語＋動詞を入れる場所がないため文が成り立たない。would rather A than B の than は A（原形）が入った後ろに来る。",
+    "t": "than I stay",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「とどまっていること」（動名詞）",
+    "reason": "would rather の後ろに V-ing は置けない。助動詞と同じように原形を続ける。",
+    "t": "staying",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「とどまる・いる」（原形）",
+    "reason": "would rather V(原形)「（どちらかと言えば）Vしたい」。I would rather stay here で「できればここにいたい」になる。",
+    "t": "stay",
+    "verdict": "correct"
+   }
+  ]
  },
  {
   "answer": 2,
@@ -1502,7 +3305,33 @@ const QUESTIONS = [
   "translation": "頭が痛い。できればこのパーティには行きたくない。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "not を rather の前に置いた形",
+    "reason": "語順の誤り。否定の not は would rather の後ろに置く。",
+    "t": "not rather",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「（どちらかと言えば）～しないほう」",
+    "reason": "I'd rather not go で would rather not V(原形)「Vしたくない」。not の位置は rather の直後、動詞の原形 go の前が正しい。",
+    "t": "rather not",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "rather not の後ろに to を付けた形",
+    "reason": "would rather の後ろは原形なので to は不要。rather not to go とは言わない。",
+    "t": "rather not to",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "to と not を入れた形",
+    "reason": "to 自体が不要な上、語順も誤り。正しくは rather not + 原形。",
+    "t": "rather to not",
+    "verdict": "wrong"
+   }
+  ]
  },
  {
   "answer": 3,
@@ -1521,7 +3350,34 @@ const QUESTIONS = [
   "translation": "今日の午後、勉強するよりは買い物に出かけたい。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「行きたいと思う」",
+    "reason": "would like to go shopping 自体は文として成り立つが、後ろの than study と呼応する比較の文型にはならないため、この文では不適。",
+    "t": "like to go",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「行ったほうがよい」風の形",
+    "reason": "「～したほうがよい」は had better V で、would better という形は存在しない。",
+    "t": "better go",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「むしろ行きたい」",
+    "reason": "would rather V1 than V2「V2するくらいならV1したい」。go shopping が V1、than の後ろの study が V2 で、どちらも原形で対になっている。",
+    "t": "rather go",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "more を付けた形",
+    "reason": "would more go という言い方はない。比較の意味は rather ... than ... の文型自体が担う。",
+    "t": "more go",
+    "verdict": "wrong"
+   }
+  ],
+  "extra": "than の後ろの study も原形であることが、V1 と V2 を原形でそろえる文型の証拠になる。go shopping は「買い物に行く」という決まった言い方で、ここでは go が V1 本体、shopping はその一部として扱う。"
  },
  {
   "answer": 2,
@@ -1540,7 +3396,33 @@ const QUESTIONS = [
   "translation": "今すぐ帰宅したい。",
   "chapter": 2,
   "chapterTitle": "助動詞",
-  "type": "mcq"
+  "type": "mcq",
+  "choiceNotes": [
+   {
+    "meaning": "「望むだろう」風の形",
+    "reason": "希望を丁寧に言う定型は would like to V。want は直接的な言い方で、この文の「今すぐ帰宅したい」という丁寧な希望の表現としては would like が正解になる。",
+    "t": "would want",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～したいと思う（丁寧）」",
+    "reason": "would like to V = want to V の柔らかい言い方。後ろに to go が続く形と正確に合う。",
+    "t": "would like",
+    "verdict": "correct"
+   },
+   {
+    "meaning": "「（どちらかと言えば）～したい」",
+    "reason": "would rather の後ろは動詞の原形 go で、to go とは続かない。空所の後ろに to があるため形が合わない。",
+    "t": "would rather",
+    "verdict": "wrong"
+   },
+   {
+    "meaning": "「～したい気分だ」",
+    "reason": "feel like の後ろは V-ing（going）か名詞が来るため、to go とは続かない。",
+    "t": "feel like",
+    "verdict": "wrong"
+   }
+  ]
  },
  {
   "answer": "like you to give me",
@@ -1561,7 +3443,40 @@ const QUESTIONS = [
   "chapter": 2,
   "chapterTitle": "助動詞",
   "type": "order",
-  "answerText": "like you to give me"
+  "answerText": "like you to give me",
+  "choiceNotes": [
+   {
+    "meaning": "「与える・（車で）送る」（原形）",
+    "reason": "to の後ろに置く動詞の原形で、give me a ride「私を車に乗せて送る」の本体になる。",
+    "t": "give",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「～すること」（to不定詞の to）",
+    "reason": "like A to V の to で、you の後ろ、give の前に置く。",
+    "t": "to",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「私に・私を」",
+    "reason": "give の後ろに置く相手を表す語で、give me a ride「私に乗せて（送って）」を作る。",
+    "t": "me",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「あなたに」",
+    "reason": "like の目的語 A にあたる語で、like の直後に置く。「あなたに～してもらいたい」の A の位置。",
+    "t": "you",
+    "verdict": "part"
+   },
+   {
+    "meaning": "「～してもらいたいと思う」",
+    "reason": "I'd の直後に置く核の語で、would like A to V の like。",
+    "t": "like",
+    "verdict": "part"
+   }
+  ],
+  "extra": "完成文: I'd like you to give me a ride to the station. 骨格は I would like A to V「AにVしてもらいたい」で、A = you、V = give。後半は give〈人〉a ride「〈人〉を車に乗せて送る」という重要表現で、me がその〈人〉に入り、a ride to the station までが問題文に固定されている。"
  }
 ];
 
@@ -1820,6 +3735,18 @@ function gradeOne(q){
   save(); persistSession();
   return ok;
 }
+
+function explHTML(q){
+  let h = '<h3>📖 統合解説</h3><div class="expl"><b>【本書の解説】</b>\n'+esc(q.explanation)+'</div>';
+  if(q.choiceNotes && q.choiceNotes.length){
+    h += '<div class="expl" style="margin-top:8px"><b>【選択肢の解説】（モモが追加）</b>\n' + q.choiceNotes.map(function(c,i){
+      const mark = c.verdict==="correct" ? "⭕正解" : (c.verdict==="part" ? "▸役割" : "❌不正解");
+      return ["①","②","③","④","⑤","⑥"][i]+' '+esc(c.t)+' ― 意味：'+esc(c.meaning)+' ／ '+mark+'：'+esc(c.reason);
+    }).join("\n") + '</div>';
+  }
+  if(q.extra) h += '<div class="extra"><b>【モモの補足】</b>\n'+esc(q.extra)+'</div>';
+  return h;
+}
 function answerText(q){
 if(q.type==="mcq") return ["①","②","③","④","⑤","⑥"][q.answer-1] + " " + q.choices[q.answer-1];
 if(q.type==="multi") return q.answer.map(i=>["①","②","③","④","⑤","⑥"][i-1]+" "+q.choices[i-1]).join(" と ");
@@ -1838,8 +3765,7 @@ el.innerHTML = '<div style="margin-top:12px"><span class="badge '+(ok?"okb":"ng"
 + ' <b>正解: '+esc(answerText(q))+'</b></div>'
 + (fs? '<p class="muted">完成文: '+esc(fs)+' <button class="chip" onclick="speak(window.__fs)">🔊</button></p>':"")
 + (q.translation? '<p class="muted">訳: '+esc(q.translation)+'</p>':"")
-+ '<h3>📖 解説（本書より）</h3><div class="expl">'+esc(q.explanation)+'</div>'
-+ (q.extra? '<div class="extra"><b></b>\n'+esc(q.extra)+'</div>':"");
++ explHTML(q)
 window.__fs = fs;
 }
 function finishQuiz(){
@@ -1867,7 +3793,7 @@ function finishQuiz(){
     + '<button class="btn sub big" onclick="setTab(\'home\')">ホームへ戻る</button></div>';
   window.__wrong = wrong;
   if(wasTest){
-    h += '<div class="card"><h2>📖 解説まとめ（テスト形式）</h2>' + list.filter(n=>checkedCopy[n]!==undefined).map(n=>{ const q=Q[n]; return '<h3>Q'+n+'（'+esc(q.section)+'） '+(checkedCopy[n]?'⭕':'❌')+'</h3><p><b>正解: '+esc(answerText(q))+'</b></p>'+(q.translation?'<p class="muted">訳: '+esc(q.translation)+'</p>':'')+'<div class="expl">'+esc(q.explanation)+'</div>'+(q.extra?'<div class="extra"><b>【モモの補足】</b>\n'+esc(q.extra)+'</div>':""); }).join("") + '</div>';
+    h += '<div class="card"><h2>📖 解説まとめ（テスト形式）</h2>' + list.filter(n=>checkedCopy[n]!==undefined).map(n=>{ const q=Q[n]; return '<h3>Q'+n+'（'+esc(q.section)+'） '+(checkedCopy[n]?'⭕':'❌')+'</h3><p><b>正解: '+esc(answerText(q))+'</b></p>'+(q.translation?'<p class="muted">訳: '+esc(q.translation)+'</p>':'')+explHTML(q); }).join("") + '</div>';
   }
   app.innerHTML = h;
   document.querySelectorAll("nav.tab button").forEach(b=>b.classList.toggle("on", b.dataset.tab==="home"));
@@ -1937,8 +3863,7 @@ app.innerHTML = '<div class="card"><div class="row" style="justify-content:space
 + (q.choices.length? '<p>'+q.choices.map((c,i)=>["①","②","③","④","⑤","⑥"][i]+' '+esc(c)).join("<br>")+'</p>':"")
 + '<p><b>正解: '+esc(answerText(q))+'</b></p>'
 + (q.translation? '<p class="muted">訳: '+esc(q.translation)+'</p>':"")
-+ '<h3>📖 解説（本書より）</h3><div class="expl">'+esc(q.explanation)+'</div>'
-+ (q.extra? '<div class="extra"><b></b>\n'+esc(q.extra)+'</div>':"")
++ explHTML(q)
 + '<h3>📝 メモ</h3><textarea id="memoBox">'+esc(p.memo||"")+'</textarea>'
 + '<div class="row"><button class="btn" onclick="startQuiz(['+n+'], \'Q'+n+' だけ\')">この1問を解く</button><button class="btn sub" onclick="saveMemo('+n+')">メモ保存</button><button class="btn sub" onclick="toggleFavList('+n+')">'+(p.fav?'⭐ お気に入り中':'☆ お気に入り')+'</button><button class="btn ghost" onclick="setTab(\'list\')">一覧へ戻る</button></div></div>';
 }
