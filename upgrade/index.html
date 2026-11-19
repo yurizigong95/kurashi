@@ -1,0 +1,2006 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="UPGRADE問題集">
+<meta name="theme-color" content="#1f5fa8">
+<link rel="apple-touch-icon" sizes="180x180" href="../icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icon-192.png">
+<title>UPGRADE 英文法・語法問題</title>
+<style>
+:root{--blue:#1f5fa8;--blue2:#2b6c7a;--bg:#f4f7fb;--card:#fff;--text:#1c2b3a;--muted:#6b7c8d;--line:#dbe4ee;--ok:#1a9e54;--ng:#e0483e;--warn:#e8a13a;--pink:#fdf0f3}
+html[data-theme="dark"]{--bg:#141a21;--card:#1e2732;--text:#e8eef4;--muted:#9db0c1;--line:#334252;--pink:#2c2226}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:16px;line-height:1.55}
+header{position:sticky;top:0;z-index:20;background:var(--blue);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px}
+header .t{font-weight:800;font-size:17px}
+header .sub{font-size:11px;opacity:.85}
+header button{margin-left:auto;background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:8px;padding:6px 10px;font-size:13px}
+main{max-width:760px;margin:0 auto;padding:14px 14px 90px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:16px;margin:0 0 10px}
+h3{font-size:14px;margin:14px 0 6px;color:var(--blue)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-block;background:var(--blue);color:#fff;border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:700;cursor:pointer;text-align:center}
+.btn.sub{background:var(--card);color:var(--blue);border:1.5px solid var(--blue)}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.btn:disabled{opacity:.45}
+.btn.big{width:100%;padding:14px;font-size:16px}
+.chip{display:inline-block;border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:7px 13px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+input[type=number],input[type=text],select,textarea{background:var(--card);color:var(--text);border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;font-size:15px}
+input[type=number]{width:84px}
+textarea{width:100%;min-height:56px}
+.muted{color:var(--muted);font-size:13px}
+.bar{height:9px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--blue);border-radius:99px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.stat b{font-size:21px;display:block}
+.stat span{font-size:12px;color:var(--muted)}
+.corner{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;font-size:15px;cursor:pointer;margin-bottom:8px;color:var(--text)}
+.corner b{font-size:17px}
+.badge{display:inline-block;background:#eef3fa;color:var(--blue);border-radius:6px;padding:1px 7px;font-size:12px;font-weight:700}
+html[data-theme="dark"] .badge{background:#26374a}
+.badge.ng{background:#fdeceb;color:var(--ng)}
+.badge.okb{background:#e6f6ec;color:var(--ok)}
+.qsentence{font-size:18px;line-height:1.7;margin:10px 0;white-space:pre-wrap}
+.choice{display:block;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);color:var(--text);border-radius:11px;padding:12px 13px;font-size:16px;margin-bottom:8px;cursor:pointer}
+.choice.sel{border-color:var(--blue);background:#eaf2fb}
+html[data-theme="dark"] .choice.sel{background:#26374a}
+.choice.correct{border-color:var(--ok);background:#e6f6ec;color:#14532d}
+.choice.wrong{border-color:var(--ng);background:#fdeceb;color:#7f1d1d}
+.wordbank{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+.word{border:1.5px solid var(--blue);color:var(--blue);background:var(--card);border-radius:9px;padding:8px 12px;font-size:15px;cursor:pointer}
+.word.used{opacity:.3;pointer-events:none}
+.answerline{min-height:40px;border:1.5px dashed var(--line);border-radius:9px;padding:8px 10px;margin-bottom:8px}
+.expl{background:var(--pink);border-radius:11px;padding:12px;white-space:pre-wrap;font-size:15px}
+.extra{background:#fff7e6;border:1px dashed var(--warn);border-radius:11px;padding:12px;white-space:pre-wrap;font-size:15px;margin-top:8px}
+html[data-theme="dark"] .extra{background:#2c2617}
+nav.tab{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--card);border-top:1px solid var(--line);display:flex}
+nav.tab button{flex:1;background:none;border:0;padding:9px 2px calc(9px + env(safe-area-inset-bottom));font-size:12px;color:var(--muted);cursor:pointer}
+nav.tab button.on{color:var(--blue);font-weight:800}
+.qlist{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:7px;cursor:pointer;color:var(--text);font-size:14px}
+.hidden{display:none!important}
+.timer{font-variant-numeric:tabular-nums;font-weight:800;color:var(--blue)}
+.kbd{font-size:11px;color:var(--muted)}
+.daybar{display:flex;gap:3px;align-items:flex-end;height:52px;margin-top:6px}
+.daybar i{flex:1;background:var(--blue);border-radius:3px 3px 0 0;min-height:2px;opacity:.85}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="t">UPGRADE 英文法・語法問題</div><div class="sub" id="coverageLine">四訂版</div></div>
+  <button id="themeBtn">🌙</button>
+</header>
+<main id="app"></main>
+<nav class="tab">
+  <button data-tab="home" class="on">🏠 ホーム</button>
+  <button data-tab="corners">❌ 間違い</button>
+  <button data-tab="list">📚 一覧・検索</button>
+  <button data-tab="stats">📊 成績</button>
+  <button data-tab="settings">⚙️ 設定</button>
+</nav>
+<script>
+"use strict";
+const QUESTIONS = [
+ {
+  "answer": 1,
+  "choices": [
+   "leave",
+   "am leaving",
+   "was leaving",
+   "will be leaving"
+  ],
+  "explanation": "①：現在の習慣 ⇒ 現在形 ▶ usually「通例，ふつう」があるので，習慣的な動作と考える。本問では現在の習慣を表す現在形の① leave を選ぶ。",
+  "instruction": "",
+  "n": 1,
+  "section": "UPGRADE 1 現在形と現在進行形",
+  "sentence": "I usually (    ) home at around eight o'clock.",
+  "source": "学習院大",
+  "translation": "私はふつう8時ごろに家を出る。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "boils",
+   "is boiling",
+   "was boiling",
+   "used to boil"
+  ],
+  "explanation": "①：不変の真理 ⇒ 現在形",
+  "instruction": "",
+  "n": 2,
+  "section": "UPGRADE 1 現在形と現在進行形",
+  "sentence": "Water (    ) at a temperature of 100 degrees Celsius.",
+  "source": "上智大",
+  "translation": "水は摂氏100度で沸騰する。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq",
+  "extra": "水が100℃で沸騰するのはいつでも成り立つ「不変の真理」なので、過去や未来の話でも現在形 boils を使う。進行形や used to は「今だけ・昔はそうだった」という限定が入るため不可。"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "waited",
+   "waits",
+   "is waiting",
+   "has waited"
+  ],
+  "explanation": "③：現時点で進行中の一時的な動作 ⇒ 現在進行形 ▶「急げ」に続く文として「みんなが君を待っている（から）」と考え，wait という「動作」が現時点で進行中であることを表す③ is waiting を選ぶ。",
+  "instruction": "",
+  "n": 3,
+  "section": "UPGRADE 1 現在形と現在進行形",
+  "sentence": "Hurry up. Everybody (    ) for you.",
+  "source": "駒澤大",
+  "translation": "急ぎなさい。みんなが君を待っているんだ。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "belong",
+   "belongs",
+   "are belonging",
+   "have been belonging"
+  ],
+  "explanation": "①：belong は状態動詞 ⇒ 進行形にできない ▶ belong (to ...)「（…に）属している，（…の）所有物である」は状態動詞なので，進行形の③，④は不可。現在形の① belong を選ぶ。",
+  "instruction": "",
+  "n": 4,
+  "section": "UPGRADE 2 動作動詞と状態動詞",
+  "sentence": "その5匹の犬は私のおじさんが飼っているものです。The five dogs (    ) to my uncle.",
+  "source": "浜松大",
+  "translation": "その5匹の犬は私のおじさんが飼っているものです。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "lunch",
+   "a good car",
+   "a good time"
+  ],
+  "explanation": "②：意味によって動作動詞にも状態動詞にもなる have ▶ ②「…を持っている」の have は状態動詞 ⇒ 進行形にできない。John has a good car. が正しい形だ。▶ ①「…を食べる」，③「（時間を）過ごす」の have は動作動詞 ⇒ 進行形にできる。",
+  "instruction": "(    )に入れるのに不適切なものを選びなさい。",
+  "n": 5,
+  "section": "UPGRADE 2 動作動詞と状態動詞",
+  "sentence": "John is having (    ).",
+  "source": "関西学院大",
+  "translation": "①ジョンは昼食を食べている。③ジョンは楽しい時間を過ごしている。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "has been born",
+   "is born",
+   "had been born",
+   "was born"
+  ],
+  "explanation": "④：過去のある時点の（完結した）動作 ⇒ 過去形 ▶ in 1869 という過去の時を示す副詞句があるので，過去形を選ぶ。誤答 このような特定の過去を示す副詞句は現在完了形と併用できないため，① has been born は不可。",
+  "instruction": "",
+  "n": 6,
+  "section": "UPGRADE 3 過去形と過去進行形",
+  "sentence": "Mahatma Gandhi (    ) in 1869.",
+  "source": "上智大",
+  "translation": "マハトマ・ガンジーは1869年に生まれた。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "crossed",
+   "was crossing",
+   "has been crossing",
+   "had been crossing"
+  ],
+  "explanation": "②：過去のある時点で進行中の一時的な動作 ⇒ 過去進行形 ▶ had a flat tire「タイヤがパンクした」のは「タワーブリッジを横断している最中だった」と考え，過去進行形の② was crossing を選ぶ。",
+  "instruction": "",
+  "n": 7,
+  "section": "UPGRADE 3 過去形と過去進行形",
+  "sentence": "Martha had a flat tire while she (    ) Tower Bridge.",
+  "source": "青山学院大",
+  "translation": "マーサがタワーブリッジを横断中にタイヤがパンクした。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "are dead",
+   "are dying",
+   "had died",
+   "have died"
+  ],
+  "explanation": "②：注意すべき進行形 その1 ― 完結する瞬間への接近「…しかけている」 ▶ die「死ぬ」という一瞬で完結する動作の場合，be dying は「死んでいる」ではなく，「死の瞬間へと近づきつつある＝死にかけている（まだ生きている）」ことを表す。ここでは後続の「水を少しやってくれる？」という発言から，植物がまだ生きていると判断し，現在進行形の② are dying を選ぶ。",
+  "instruction": "",
+  "n": 8,
+  "section": "UPGRADE 4 注意すべき進行形",
+  "sentence": "These plants (    ). Can you give them a little water?",
+  "source": "兵庫医大",
+  "translation": "これらの植物は枯れかけている。少し水をやってくれる？",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "are going to take",
+   "took",
+   "is taking",
+   "has taken"
+  ],
+  "explanation": "③：注意すべき進行形 その2 ― 近未来「…する予定だ」 ▶ 近い未来に予定している行為を表すために，will ... の代わりに現在進行形を使うことがあり，特に会話文では多く見られる。誤答 主語の James が3人称単数なので，①は is going to take なら可。+α be going to V には①「Vするつもりだ」（意図・計画），②「Vしそうだ」（予測）の意味がある。例 It is going to rain.「雨が降りそうだ」（予測）",
+  "instruction": "",
+  "n": 9,
+  "section": "UPGRADE 4 注意すべき進行形",
+  "sentence": "James (    ) an early flight to Paris tomorrow.",
+  "source": "北里大",
+  "translation": "ジェームズは明日パリ行きの早朝便に乗る予定だ。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "once did",
+   "had just finished",
+   "will finish",
+   "have just finished"
+  ],
+  "explanation": "④：現在までの完了 ⇒ 現在完了形〈have＋V-ed〉 ▶ 後半の「くつろいで試合を見ることができる」という現在の状況につながるのは④ have just finished「今（宿題を）終えたところだ」となる。▶ just「ちょうど（…したところだ）」は現在完了形と併用されることが多い。誤答 ①「かつて（宿題を）やった」は過去形（現在と切り離された過去）であるため，現在の「くつろいで…できる」という状況に直接つながらない。",
+  "instruction": "",
+  "n": 10,
+  "section": "UPGRADE 5 現在完了形と現在完了進行形",
+  "sentence": "I (    ) my homework, so I can sit back and watch the game.",
+  "source": "摂南大",
+  "translation": "私はたった今，宿題を終えたので，くつろいで試合を見ることができる。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "has been snowing",
+   "is snowing",
+   "snowed",
+   "will have snowed"
+  ],
+  "explanation": "①：現在までの「動作」の継続 ⇒ 現在完了進行形（have been V-ing） ▶「（今）雪にうんざりしている」ので，「今まで4週間ずっと雪が降り続いている」という意味になる。現在完了進行形の① has been snowing が適切。▶ for ～「～の間（ずっと）」は現在完了（進行）形と併用されることが多い。",
+  "instruction": "",
+  "n": 11,
+  "section": "UPGRADE 5 現在完了形と現在完了進行形",
+  "sentence": "We are all tired of snow. It (    ) for four weeks now.",
+  "source": "明治大",
+  "translation": "私たちは皆，雪にはうんざりだ。もう4週間も雪が降り続いている。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "are knowing",
+   "were known",
+   "have known",
+   "have been knowing"
+  ],
+  "explanation": "③：現在までの「状態」の継続 ⇒ 現在完了形（have＋V-ed） ▶ know は状態動詞（Check 2 p.20）なので，（現在完了）進行形にできない。▶ since ～「～以来（ずっと）」は現在完了（進行）形と併用されることが多い。",
+  "instruction": "",
+  "n": 12,
+  "section": "UPGRADE 5 現在完了形と現在完了進行形",
+  "sentence": "Mike and Ted are good friends. They (    ) each other since childhood.",
+  "source": "埼玉医科大",
+  "translation": "マイクとテッドは親友だ。彼らは幼なじみである［子供のころからの知り合いである］。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "for a long time",
+   "last week",
+   "since January",
+   "today"
+  ],
+  "explanation": "②：last week「先週」は現在完了形と共に使えない ▶ last week のような特定の過去を示す副詞句は過去形と併用する。+α ④ today は文脈次第で，設問に登場した現在完了形のほか，現在形・過去形・未来を表す will ～などとも併用可。",
+  "instruction": "(    )に入れるのに不適切なものを選びなさい。",
+  "n": 13,
+  "section": "UPGRADE 6 現在完了形と共に使えない副詞",
+  "sentence": "I haven't seen him (    ).",
+  "source": "早稲田大",
+  "translation": "私は①長い間／③1月から／④今日，彼に会っていない。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "has",
+   "have",
+   "did",
+   "were"
+  ],
+  "explanation": "③：疑問詞の when「いつ（～か）」は現在完了形と共に使えない ▶ この文では「いつ（日本に来たの）か」という特定の過去の時点が問われていると考え，過去形の③ did (you come) を選ぶ。",
+  "instruction": "",
+  "n": 14,
+  "section": "UPGRADE 6 現在完了形と共に使えない副詞",
+  "sentence": "When (    ) you come to Japan?",
+  "source": "東海大",
+  "translation": "あなたはいつ日本に来たのですか。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "had visited",
+   "have visited",
+   "visited",
+   "have gone to"
+  ],
+  "explanation": "③：接続詞の when 節「する［した］とき」は現在完了形と共に使えない ▶ when I was in Cairo「カイロにいたとき」のような特定の過去を示す副詞節は現在完了形と共に使えない。▶「ピラミッドを（1基）見に行った」のは過去形の I was in Cairo と同時期なので，過去形の③ visited を選ぶ。質問文の Have you visited ...? につられて，現在完了形の経験用法と混同しないこと。",
+  "instruction": "",
+  "n": 15,
+  "section": "UPGRADE 6 現在完了形と共に使えない副詞",
+  "sentence": "\"Have you visited a pyramid?\" \"Yes. I (    ) one when I was in Cairo.\"",
+  "source": "中部大",
+  "translation": "「あなたはピラミッドを見に行ったことがありますか」「はい。カイロにいたとき，（1基）見に行きました」",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "comes",
+   "has been",
+   "has gone",
+   "has arrived"
+  ],
+  "explanation": "③：have gone to A「Aに行ってしまった（ここにはいない）」― 完了［結果］ ▶「メアリは今日は留守だ」に続く文なので，「（北海道に）行ってしまって，今ここにいない」の意になる③が適切。",
+  "instruction": "",
+  "n": 16,
+  "section": "UPGRADE 7 have been to A と have gone to A",
+  "sentence": "Mary is absent today. She (    ) to Hokkaido.",
+  "source": "上智大",
+  "translation": "メアリは今日は留守だ。彼女は北海道に行ってしまった。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "yet gone",
+   "been yet",
+   "already been",
+   "had gone"
+  ],
+  "explanation": "③：have been to A「Aに行ってきたところだ」― 完了 ▶「これから銀行に行く予定ですか？」に対して，No と答えているので，「すでに（銀行に）行ってきたところだ」の意になる③ (I've) already been (to ～) を選ぶ。誤答 yet は現在完了形と併用する場合，原則として否定文・疑問文で用いるので，②は不適切。例 I haven't finished the work yet.「私はまだ仕事を終えていない」／Have you finished the work yet?「あなたはもう仕事を終えたのですか」 +α have been to A, have gone to A には「Aに行ったことがある」（経験）の意味もあるが，この意味では共通なので区別が問われることはない。",
+  "instruction": "",
+  "n": 17,
+  "section": "UPGRADE 7 have been to A と have gone to A",
+  "sentence": "\"Are you going to the bank?\" \"No, I've (    ) to the bank.\"",
+  "source": "京都外語大",
+  "translation": "「あなたはこれから銀行に行く予定ですか」「いや，銀行にはもう行ってきました」",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "has passed",
+   "has been",
+   "was",
+   "passed"
+  ],
+  "explanation": "②：It has been X years since S＋過去形．「Sが…してからX年になる」＝ X years have passed since S＋過去形．「Sが…してからX年が過ぎた」 ▶ この文は，Ten years have passed since I left my hometown.「私が故郷を出てから10年が過ぎた」と書き換えることができる。",
+  "instruction": "",
+  "n": 18,
+  "section": "UPGRADE 8 「…してからX年になる」の表現",
+  "sentence": "It (    ) ten years since I left my hometown.",
+  "source": "日本女子大",
+  "translation": "私が故郷を出てから10年が過ぎた。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [],
+  "explanation": "正解は have passed / dead（＝ He has been dead for three years）。have passed / dead：X years have passed since〈人〉＋died. ＝〈人〉has been dead for X years.「〈人〉が死んでX年になる」 ▶ 下の文の has been dead は be dead「死んでいる」の現在完了形。直訳では「彼は3年間死んでいる」だが，「彼が死んで3年になる」の意で用いる。※本問は選択肢のない穴埋め式で，choices は空，answer は便宜上の1。",
+  "instruction": "",
+  "n": 19,
+  "section": "UPGRADE 8 「…してからX年になる」の表現",
+  "sentence": "彼が死んで3年になる。Three years (    ) (    ) since he died. = He has been (    ) (    ) three years.",
+  "source": "弘前大",
+  "translation": "彼が死んで3年になる。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "fill",
+  "fillRequired": [
+   "have passed",
+   "dead"
+  ],
+  "answerText": "have passed / dead"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "had lived",
+   "was living",
+   "lived",
+   "has lived"
+  ],
+  "explanation": "①：過去のある時点までの「状態」の継続 ⇒ 過去完了形〈had＋V-ed〉 ▶ live は原則として状態動詞であり，「戦争が起こった」という過去の時点までに10年間「彼がパリに住んでいた」という状態が継続していたと考え，過去完了形の① had lived を選ぶ。",
+  "instruction": "",
+  "n": 20,
+  "section": "UPGRADE 9 過去完了形と過去完了進行形",
+  "sentence": "He (    ) in Paris for ten years when the war broke out.",
+  "source": "松山大",
+  "translation": "戦争が起こったとき，彼はパリに10年間住んでいた。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "have once lived",
+   "lived",
+   "had lived",
+   "have been living"
+  ],
+  "explanation": "②：過去と同時 ⇒ 過去形 ▶「ニューヨークに住んでいた」のは (I) was a child「子供だった」のと同時期なので，過去形の② lived を用いる。誤答 過去完了形は「過去より前のこと」にしか用いることができないので，③ had lived はダメ。多くの人がひっかかりやすいワナ問題。機械的に解くのではなく，文脈を考えることが重要。",
+  "instruction": "",
+  "n": 21,
+  "section": "UPGRADE 9 過去完了形と過去完了進行形",
+  "sentence": "I (    ) in New York for three years when I was a child.",
+  "source": "東海大",
+  "translation": "子供のころ，私はニューヨークに3年間住んでいた。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "had been reading",
+   "had read",
+   "have been reading",
+   "was reading"
+  ],
+  "explanation": "①：過去のある時点までの「動作」の継続 ⇒ 過去完了進行形（had been V-ing） ▶ read は動作動詞であり，「彼が入ってきた」という過去の時点までに1時間にわたって「私が本を読んでいた」という「動作」が継続していたと考える。誤答 ② had read は「読んでしまった」という完了の意味で，for an hour「1時間（ずっと）」と共に使うことはできない。",
+  "instruction": "",
+  "n": 22,
+  "section": "UPGRADE 9 過去完了形と過去完了進行形",
+  "sentence": "I (    ) a book for an hour when he entered the room.",
+  "source": "梅花女子大",
+  "translation": "彼が部屋に入ってきたとき，私は1時間本を読んでいた。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "rains",
+   "rained",
+   "has rained",
+   "had rained"
+  ],
+  "explanation": "④：過去の過去＝大過去 ⇒ 過去完了形（had＋V-ed） ▶ was muddy「（道が）ぬかるんでいた」時点よりも，「雨が降った」時点のほうが1日前なので，過去の過去＝大過去と考え，過去完了形を用いる。",
+  "instruction": "",
+  "n": 23,
+  "section": "UPGRADE 9 過去完了形と過去完了進行形",
+  "sentence": "The road was muddy, as it (    ) the day before.",
+  "source": "流通経済大",
+  "translation": "前日に雨が降ったので，道はぬかるんでいた。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "had met",
+   "ago",
+   "thought",
+   "was telling a lie"
+  ],
+  "explanation": "②：「3時間前に」の three hours ago と three hours before ▶ (three hours) ago は「現在から3時間前に」の意味で過去形と併用する表現。本問では，過去完了形 had met と併用されているので，「過去のある時点から3時間前に」の意味の (three hours) before が正しい形だ。",
+  "instruction": "誤りがある部分を選びなさい。",
+  "n": 24,
+  "section": "UPGRADE 9 過去完了形と過去完了進行形",
+  "sentence": "When she said she ① had met him three hours ② ago, I ③ thought she ④ was telling a lie.",
+  "source": "流通経済大",
+  "translation": "3時間前に彼に会ったと彼女が言ったとき，私は彼女がうそをついていると思った。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "know",
+   "will have known",
+   "am knowing",
+   "will have been knowing"
+  ],
+  "explanation": "②：未来のある時点までの（状態の）継続 ⇒ 未来完了形〈will have＋V-ed〉 ▶ know は状態動詞。「来月」という未来の時点まで20年間「私がアリスと知り合いである」という状態が継続することを表す未来完了形を用いる。Q&A 未来完了進行形は存在しないの？ 未来完了進行形（will have been V-ing）は実際の英語ではほとんど使われず，「動作」の継続であっても未来完了形で代用されることが多い。例 Next month I will have worked at the firm for 20 years.「来月で私はこの会社で20年間働いたことになる」ただし，入試では，未来完了進行形がまれに出題されることもある。",
+  "instruction": "",
+  "n": 25,
+  "section": "UPGRADE 10 未来完了形",
+  "sentence": "Next month I (    ) Alice for 20 years.",
+  "source": "慶應大",
+  "translation": "来月でアリスと知り合って20年になる。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [],
+  "explanation": "正解は had, been（the party had really been a success）。had, been：直接話法 ⇔ 間接話法 ▶ 直接話法を間接話法に書き換えるとき，主節が過去形の場合，従属節の動詞は，〈現在形 ⇒ 過去形〉，〈過去形 ⇒ 過去完了形〉になる。（話法は p.204 で詳述。）※本問は選択肢のない穴埋め式で，choices は空，answer は便宜上の1。",
+  "instruction": "",
+  "n": 26,
+  "section": "UPGRADE 11 時制の一致",
+  "sentence": "A friend of mine said to me, \"The party was really a success.\" = A friend of mine told me that the party (    ) really (    ) a success.",
+  "source": "芝浦工業大",
+  "translation": "私の友達の1人が私に「パーティは本当に成功だった」と言った。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "fill",
+  "fillRequired": [
+   "had",
+   "been"
+  ],
+  "answerText": "had, been"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "I arrive",
+   "I arrived",
+   "I will arrive",
+   "I will have arrived"
+  ],
+  "explanation": "①：after「～したあとで」の副詞節中，未来の事柄 ⇒ 現在形で表す",
+  "instruction": "",
+  "n": 27,
+  "section": "UPGRADE 12 時・条件の副詞節中，未来 ⇒ 現在形",
+  "sentence": "I'll phone you after (    ).",
+  "source": "青山学院大",
+  "translation": "到着してから，あなたにお電話します。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq",
+  "extra": "after は「時」を表す接続詞で、副詞節の中では未来のことでも will を使わず現在形で表すのがルール（時・条件の副詞節中の未来は現在形）。主節側は未来形のままでよい点とセットで覚える。"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "get",
+   "gets",
+   "getting",
+   "will get"
+  ],
+  "explanation": "②：by the time「～するまでに」の副詞節中，未来の事柄 ⇒ 現在形で表す ▶ by the time は接続詞であることにも注意。",
+  "instruction": "",
+  "n": 28,
+  "section": "UPGRADE 12 時・条件の副詞節中，未来 ⇒ 現在形",
+  "sentence": "By the time she (    ) there, it will be nearly dark.",
+  "source": "慶應大",
+  "translation": "彼女がそこに到着するころまでに，ほとんど真っ暗になっているだろう。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "will have done",
+   "will do",
+   "have done",
+   "had done"
+  ],
+  "explanation": "③：as soon as「～するとすぐ」の副詞節中，未来完了の事柄 ⇒ 現在完了形で表す",
+  "instruction": "",
+  "n": 29,
+  "section": "UPGRADE 12 時・条件の副詞節中，未来 ⇒ 現在形",
+  "sentence": "Please tell me as soon as you (    ) your homework.",
+  "source": "札幌学院大",
+  "translation": "あなたが宿題を終えたらすぐ私に教えてください。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq",
+  "extra": "as soon as の副詞節中で「未来に完了していること」を表すときは、will have V-ed の代わりに現在完了形 have V-ed を使う。本文は「～するとすぐに（完了した状態で）」という完了のニュアンスがあるため現在形ではなく現在完了形になる。"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "comes",
+   "had come",
+   "will come",
+   "would come"
+  ],
+  "explanation": "①：接続詞 when「～したとき」の副詞節中，未来の事柄 ⇒ 現在形 ▶ I'll tell you ⟨when she comes⟩.",
+  "instruction": "",
+  "n": 30,
+  "section": "UPGRADE 13 when節・if節 ― 副詞節か名詞節か",
+  "sentence": "She told me she would be here about six. Anyway, I'll tell you when she (    ).",
+  "source": "立命館大",
+  "translation": "彼女は私に6時ごろここに来ると言いました。とにかく，彼女が来たらあなたに伝えます。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "returns",
+   "returned",
+   "will return",
+   "has returned"
+  ],
+  "explanation": "③：疑問副詞 when「いつ～か」の名詞節中，未来の事柄 ⇒ 未来を表す形 ▶ when she will return it「いつ彼女がそれを返してくれるのか」という疑問副詞が wonder「～を疑問に思う，～かしら」の目的語の名詞節となり，節中では未来を表す形を用いる。",
+  "instruction": "",
+  "n": 31,
+  "section": "UPGRADE 13 when節・if節 ― 副詞節か名詞節か",
+  "sentence": "\"John, is Mary still using your camera?\" \"Yes, I wonder when she (    ) it.\"",
+  "source": "群馬大",
+  "translation": "「ジョン，メアリはまだあなたのカメラを使っているの？」「うん，いつ返してくれるかなあ」",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "you happen",
+   "you will happen",
+   "you had happened",
+   "should you happened"
+  ],
+  "explanation": "①：接続詞 if「～すれば」の副詞節中，未来の事柄 ⇒ 現在形 ▶ Please give him my best regards ⟨if you happen to see him⟩. 重要表現 give（人）my best regards「（人）によろしく伝える」",
+  "instruction": "",
+  "n": 32,
+  "section": "UPGRADE 13 when節・if節 ― 副詞節か名詞節か",
+  "sentence": "Please give him my best regards if (    ) to see him.",
+  "source": "名古屋外語大",
+  "translation": "彼に会うことがあったら，よろしくお伝えください。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "does come",
+   "comes",
+   "would come",
+   "will come"
+  ],
+  "explanation": "④：接続詞 if「～かどうか」の名詞節中，未来の事柄 ⇒ 未来を表す形 ▶ if he will come back to Japan again「彼が再び日本に戻って来るかどうか」が don't know の目的語の名詞節となる。",
+  "instruction": "",
+  "n": 33,
+  "section": "UPGRADE 13 when節・if節 ― 副詞節か名詞節か",
+  "sentence": "We don't know if he (    ) back to Japan again.",
+  "source": "神奈川大",
+  "translation": "彼が再び日本に戻って来るかどうか，私たちにはわからない。",
+  "chapter": 1,
+  "chapterTitle": "時制",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "mustn't",
+   "will",
+   "won't",
+   "may"
+  ],
+  "explanation": "④：may「…かもしれない」―弱い推量。▶I'm not sure.「（コンサートに行くかどうか）はっきりしない、わからない」に続く内容なので、弱い推量の④may「（行く）かもしれない」が適切。mayは話者の確信度が50％ぐらい。誤答 ②will「（行く）つもりだ」、③won't「（行か）ないつもりだ」は共に意志未来を表す。（→Check 8）",
+  "instruction": "",
+  "n": 34,
+  "section": "UPGRADE 14",
+  "sentence": "\"Are you going to the concert?\" \"I'm not sure. I (    ) go.\"",
+  "source": "桃山学院大",
+  "translation": "「コンサートに行くつもりなの？」「わからない。行くかもしれない」",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "may",
+   "can",
+   "will",
+   "must"
+  ],
+  "explanation": "④：must「…にちがいない」―強い推量。▶I'm sure that S+V.「きっとSはVするだろう」≒ S must V.",
+  "instruction": "",
+  "n": 35,
+  "section": "UPGRADE 14",
+  "sentence": "(a) I am sure that he is sick. = (b) He (    ) be sick.",
+  "source": "鶴見大",
+  "translation": "(a)彼はきっと病気だろう。(b)彼は病気にちがいない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "should",
+   "may",
+   "can't",
+   "must"
+  ],
+  "explanation": "③：cannot [can't]「…はずがない」―否定の推量。▶「昼食を食べたばかり」なのだから、「空腹であるはずがない」と考える。",
+  "instruction": "",
+  "n": 36,
+  "section": "UPGRADE 14",
+  "sentence": "\"Can I have some sweets? I'm hungry.\" \"You (    ) be hungry. You've just had lunch.\"",
+  "source": "東洋大",
+  "translation": "「お菓子を食べていい？腹ペコなんだ」「腹ペコなはずはない。昼食を食べたばかりだ」",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": [
+   1,
+   2
+  ],
+  "choices": [
+   "might",
+   "could",
+   "shall"
+  ],
+  "explanation": "①,②：推量のmightとcould「（ひょっとしたら）…かもしれない」。▶mightとcouldはそれぞれ、mayとcanの過去形だが、現在（〜未来）の推量で「（ひょっとしたら）…かもしれない」という意味を持つ。▶特に会話文では、弱い推量の意味でcouldが最もよく用いられる。誤答 ③shallは本来should（→43, 45）の現在形だが、現代英語では相手の意志を聞くShall I...?「（私が）…しましょうか」、Shall we...?「（いっしょに）…しましょうか」以外で使われることは少ない。例 Shall I call you a cab?「タクシーをお呼びしましょうか」／Shall we have some coffee?「コーヒーでも飲みましょうか」＋α これは仮定法過去（→UPGRADE 33）から派生した用法で、may「…かもしれない」、can「…ことがある」とほぼ同意だが、さらに確信度が低くなる（→Check 6）。過去の意味を持たないことに注意。",
+  "instruction": "適切なものを選びなさい。（1つとはかぎらない）",
+  "n": 37,
+  "section": "UPGRADE 15",
+  "sentence": "Will you answer the door? It (    ) be the postman.",
+  "source": "早稲田大",
+  "translation": "玄関に出てくれない？郵便屋さんかもしれない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "multi"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "Should",
+   "Would",
+   "Can",
+   "May"
+  ],
+  "explanation": "④：May S V(原形)!「SがVしますように」（文語的）。▶選択肢の中で、文末に“!”（感嘆符）を置くことができるのは、祈願文の④Mayのみ。",
+  "instruction": "",
+  "n": 38,
+  "section": "UPGRADE 16",
+  "sentence": "(    ) you live long and die happy!",
+  "source": "芝浦工業大",
+  "translation": "あなたが長生きして、最期は幸せでありますように。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "must have gotten",
+   "have to get",
+   "had to get",
+   "must get"
+  ],
+  "explanation": "③：had to V「Vしなければならなかった」―過去の義務・必要。誤答 ①は「（タクシーに）乗ったにちがいない」の意（→58）で文意に合わない。",
+  "instruction": "",
+  "n": 39,
+  "section": "UPGRADE 17",
+  "sentence": "The car broke down, and we (    ) a taxi.",
+  "source": "慶應大",
+  "translation": "車が故障したので、私たちはタクシーに乗らなければならなかった。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "needn't",
+   "mustn't",
+   "don't have to",
+   "haven't to"
+  ],
+  "explanation": "②：must not [mustn't]「…してはいけない」―強い禁止",
+  "instruction": "",
+  "n": 40,
+  "section": "UPGRADE 18",
+  "sentence": "The opera starts at seven. We (    ) be late.",
+  "source": "専修大",
+  "translation": "オペラは7時に開演する。私たちは遅れてはいけない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq",
+  "extra": "must not は「強い禁止（～してはいけない）」。これと混同しやすい need not / don't have to は「～しなくてよい（禁止ではなく不要）」で意味が正反対に近いので注意。"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "must not",
+   "may not",
+   "don't have to",
+   "have not to"
+  ],
+  "explanation": "③：don't [doesn't] have to V「Vしなくてもよい」。▶have to V「Vしなければならない」の否定形。誤答 ②may notは「…してはいけない」の意（→Check 7）。許可のmayの否定形なので「…することは許可されない」というニュアンスで、must notよりは弱い。",
+  "instruction": "",
+  "n": 41,
+  "section": "UPGRADE 18",
+  "sentence": "We (    ) hurry. There are still thirty minutes before the train leaves.",
+  "source": "札幌大",
+  "translation": "私たちは急がなくてもよい。列車が出るまでにまだ30分ある。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": "need",
+  "choices": [],
+  "explanation": "need：need not [needn't] V「Vする必要がない、Vしなくてもよい」＝don't [doesn't] have to V。＋α なお、本動詞のneedを使って以下のような言い換えもできる。例 You need not worry.「心配しなくてもいいよ」＝You don't need to worry.／Need she come?「彼女は来る必要があるの？」＝Does she need to come?",
+  "instruction": "",
+  "n": 42,
+  "section": "UPGRADE 19",
+  "sentence": "We don't have to move this bookshelf. = We (    ) not move this bookshelf.",
+  "source": "日本工業大",
+  "translation": "私たちはこの本棚を移動させる必要はない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "fill",
+  "answerText": "need"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "should",
+   "have to",
+   "might",
+   "ought to"
+  ],
+  "explanation": "③：should「…するべきだ」（義務）＝ought to V。▶「時間を守りたいなら、11時までにそこに着く（　）」の空所補充と考える。should, ought to「…するべきだ」、have to「…しなければならない」は義務の意味で、文意に合う。③mightに義務の意味はない。",
+  "instruction": "（　）に入れるのに不適切なものを選びなさい。",
+  "n": 43,
+  "section": "UPGRADE 20",
+  "sentence": "If you want to be on time, you (    ) be there by 11 o'clock.",
+  "source": "上智大",
+  "translation": "時間を守りたいなら、11時までにそこに到着すべきだ。（have toの場合は「到着しなければならない」）",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": "not to",
+  "choices": [],
+  "explanation": "not to：ought not to V「Vするべきではない」（義務）＝should not [shouldn't]。▶ought to Vの否定形がought not to Vとなることに注意。頻出ポイントだ。",
+  "instruction": "",
+  "n": 44,
+  "section": "UPGRADE 20",
+  "sentence": "This is a very important meeting. You ought (    ) (    ) miss it.",
+  "source": "慶應大",
+  "translation": "これはとても重要な会議だ。あなたは欠席すべきではありません。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "fill",
+  "answerText": "not to"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "have been",
+   "are",
+   "should be",
+   "were"
+  ],
+  "explanation": "③：should「…するはずだ」（当然・推量）＝ought to V。▶「1週間雪が降り続いている」のだから、「明日はスキーをするコンディションが理想的なものになるはずだ」と考える。",
+  "instruction": "",
+  "n": 45,
+  "section": "UPGRADE 20",
+  "sentence": "Since it has been snowing for a week, skiing conditions (    ) ideal tomorrow.",
+  "source": "亜細亜大",
+  "translation": "1週間雪が降り続いているのだから、明日はスキーをするためのコンディションが理想的なものになるはずだ。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "may",
+   "ought to",
+   "shall",
+   "should"
+  ],
+  "explanation": "④：Why should S+V?「いったいなぜ〜か」―強い疑問・反語。誤答 ②ought toにこの用法はない。",
+  "instruction": "",
+  "n": 46,
+  "section": "UPGRADE 21",
+  "sentence": "You've done nothing wrong. Why (    ) you worry about it?",
+  "source": "國學院大",
+  "translation": "あなたは何も悪いことはしていない。いったいなぜそんなことを心配するのか。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": "will",
+  "choices": [],
+  "explanation": "will：will not [won't]「…しようとしない」―現在の強い意志（拒否）。▶この用法は主に否定文で用いる。本問のように無生物を主語にすることも多い。",
+  "instruction": "",
+  "n": 47,
+  "section": "UPGRADE 22",
+  "sentence": "この戸はどうしても開かない。This door (    ) not open.",
+  "source": "朝日大",
+  "translation": "",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "fill",
+  "answerText": "will"
+ },
+ {
+  "answer": "would",
+  "choices": [],
+  "explanation": "would：would not [wouldn't]「…しようとしなかった」―過去の強い意志（拒否）",
+  "instruction": "",
+  "n": 48,
+  "section": "UPGRADE 22",
+  "sentence": "彼女はいくら痛くても歯医者に行こうとしなかった。She (    ) not go to the dentist, even though she felt a sharp pain.",
+  "source": "学習院大",
+  "translation": "",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "fill",
+  "answerText": "would"
+ },
+ {
+  "answer": "would",
+  "choices": [],
+  "explanation": "would：過去における未来のwould。▶「（彼は）行くつもりだ」は意志未来のwillを用いて(he) will go...であるが、主節の動詞が過去形(said)なので「時制の一致」でwill⇒wouldとなる。＋α will⇒would以外にも、can⇒could, may⇒mightに注意。",
+  "instruction": "",
+  "n": 49,
+  "section": "UPGRADE 23",
+  "sentence": "雨が降っているが行くつもりだ、と彼は言った。He said that he (    ) go though it was raining.",
+  "source": "駒澤大",
+  "translation": "",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "fill",
+  "answerText": "would"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "ought to",
+   "would",
+   "should",
+   "used to"
+  ],
+  "explanation": "②：would often V「よくVしたものだ」―過去の習慣。▶「過去の習慣」を表すwouldはwould oftenの形でよく使われる。▶本問では直後にoftenがなければ④used toも可。＋α「以前…だった」という過去の状態にはused toを用い、wouldは不可。例 There used to [×would] be a castle here.「以前ここに城があった」（現在は城がないことを含意）",
+  "instruction": "",
+  "n": 50,
+  "section": "UPGRADE 24",
+  "sentence": "When John lived in Oxford, he (    ) often come to see me.",
+  "source": "桜美林大",
+  "translation": "ジョンはオックスフォードに住んでいたころ、よく私に会いに来た。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "might",
+   "used to",
+   "was used to",
+   "would"
+  ],
+  "explanation": "②：used to V「（以前は）よくVしたものだ」―現在と対比される過去の習慣。▶現在と対比される過去にはused toを用いる。動作であってもwouldは使えないので注意。誤答 ③was used to Vは「Vするために使われた」の意で文意に合わない。",
+  "instruction": "",
+  "n": 51,
+  "section": "UPGRADE 24",
+  "sentence": "My father (    ) play golf twice a week, but now seldom plays at all.",
+  "source": "近畿大",
+  "translation": "私の父は以前は1週間に2回ゴルフをしたが、今はめったにしない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "you would",
+   "you ought",
+   "you'd better",
+   "you'd better to"
+  ],
+  "explanation": "③：had better V(原形)「Vしたほうがよい、Vしたほうが身のためだ」。＋α You had better [You'd better] ....は警告や、時には脅し文句になる。",
+  "instruction": "",
+  "n": 52,
+  "section": "UPGRADE 25",
+  "sentence": "I think (    ) take a rest; you look ill.",
+  "source": "立教大",
+  "translation": "あなたは休みを取ったほうがよいと思う。顔色が悪いから。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "had better not to",
+   "hadn't better",
+   "didn't have better to",
+   "had better not"
+  ],
+  "explanation": "④：had better not V(原形)「Vしないほうがよい、Vしないほうが身のためだ」。▶had betterの否定形がhad better not V(原形)となることに注意。notの位置と後ろにV(原形)が来ることがねらわれる。",
+  "instruction": "",
+  "n": 53,
+  "section": "UPGRADE 25",
+  "sentence": "You (    ) tell him the truth.",
+  "source": "関東学院大",
+  "translation": "彼に本当のことを言わないほうがよい。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "can you say",
+   "do you say",
+   "will you say",
+   "you say"
+  ],
+  "explanation": "④：How dare S+V(原形)?「よくも（図々しくも）SはVできるね」。▶Sに対する憤慨を表す。文末は？（疑問符）の代わりに！（感嘆符）も用いられる。＋α 助動詞のdareは現代英語ではこの用法以外ほぼ使われず、まれにdare not V(原形)「Vする勇気がない、あえてVしない」が見受けられるのみ。",
+  "instruction": "",
+  "n": 54,
+  "section": "UPGRADE 26",
+  "sentence": "よくも私にそんなことが言えるね。How dare (    ) that to me?",
+  "source": "立命館大",
+  "translation": "",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "does",
+   "did",
+   "is",
+   "has"
+  ],
+  "explanation": "①：代動詞のdo [does]。▶likes raw fish「（今は）刺身が好きだ」をdoesで代用している。",
+  "instruction": "",
+  "n": 55,
+  "section": "UPGRADE 27",
+  "sentence": "At first Janet did not like raw fish but now she (    ).",
+  "source": "名城大",
+  "translation": "初めジャネットは刺身が好きではなかったが、今では好きである。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "may have left",
+   "may leave",
+   "might be leaving",
+   "might leave"
+  ],
+  "explanation": "①：may have+V-ed「Vしたかもしれない」。▶文意から過去の事柄の推量と考えて、①may have left「（眼鏡を）置き忘れたかもしれない」を選ぶ。誤答 ④might leaveは現在〜未来の事柄の推量で、②may leaveとほぼ同意。（→Check 6 p.35）",
+  "instruction": "",
+  "n": 56,
+  "section": "UPGRADE 28",
+  "sentence": "I can't find my glasses. I (    ) them behind in the train.",
+  "source": "東北学院大",
+  "translation": "眼鏡が見つからない。列車の中に置き忘れたのかもしれない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "might have happened",
+   "might happen",
+   "happen",
+   "may happen"
+  ],
+  "explanation": "①：might have+V-ed「（ひょっとしたら）Vしたかもしれない」。▶〈may have+V-ed〉とほぼ同意。",
+  "instruction": "",
+  "n": 57,
+  "section": "UPGRADE 28",
+  "sentence": "She looks very happy. Something good (    ) to her yesterday.",
+  "source": "関西外語大",
+  "translation": "彼女はとても幸せそうに見える。昨日彼女に何かいいことがあったのかもしれない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "should have gone",
+   "must have gone",
+   "ought to have gone",
+   "might go"
+  ],
+  "explanation": "②：must have+V-ed「Vしたにちがいない」。誤答 ①、③は共に「家に帰るべきだった（のに帰らなかった）」の意になり、文意に合わない。（→UPGRADE 29, Check 10）",
+  "instruction": "",
+  "n": 58,
+  "section": "UPGRADE 28",
+  "sentence": "I don't see their car. They (    ) home.",
+  "source": "青山学院大",
+  "translation": "彼らの車が見当たらない。彼らは家に帰ったにちがいない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "must",
+   "may",
+   "shouldn't",
+   "cannot"
+  ],
+  "explanation": "④：cannot [can't] have+V-ed「Vしたはずはない」。▶〈could not [couldn't] have+V-ed〉もほぼ同意。",
+  "instruction": "",
+  "n": 59,
+  "section": "UPGRADE 28",
+  "sentence": "You (    ) have seen Tom in Kyoto yesterday. He is still in England.",
+  "source": "西南学院大",
+  "translation": "君が昨日京都でトムに会ったはずがない。彼はまだイングランドにいるんだ。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "would be listened",
+   "must have listened",
+   "am to be listened",
+   "should have listened"
+  ],
+  "explanation": "④：should have [should've] +V-ed「Vするべきだった（のにしなかった）」。▶「ついていけなかった」に続く内容として「（注意が足りなかった→）もっと注意して聴くべきだった」と考え、過去の事実の反対を表す④を選ぶ。誤答 ②must have listenedは「聴いたにちがいない」の意で、「聴かなければならなかった」ではない（→58）。引っかけの選択肢として要注意。",
+  "instruction": "",
+  "n": 60,
+  "section": "UPGRADE 29",
+  "sentence": "I couldn't follow the last part of her speech. I (    ) more carefully.",
+  "source": "青山学院大",
+  "translation": "彼女のスピーチの終盤についていけなかった。もっと注意して聴くべきだった。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "had to",
+   "must have",
+   "might have",
+   "ought to have"
+  ],
+  "explanation": "④：ought to have+V-ed「Vするべきだった（のにしなかった）」。▶〈should have+V-ed〉と同意。",
+  "instruction": "",
+  "n": 61,
+  "section": "UPGRADE 29",
+  "sentence": "We had a great time at the party last night. You (    ) come.",
+  "source": "上智大",
+  "translation": "夕べのパーティはすごく楽しかったです。あなたも来るべきでしたよ。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "be not done",
+   "have not done",
+   "not be done",
+   "not have done"
+  ],
+  "explanation": "④：should not [shouldn't] have+V-ed「Vするべきではなかった（のにした）」",
+  "instruction": "",
+  "n": 62,
+  "section": "UPGRADE 29",
+  "sentence": "You should (    ) it without my permission.",
+  "source": "関西学院大",
+  "translation": "あなたは私の許可なくそれをするべきではなかったよ。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq",
+  "extra": "should not have V-ed は「Vするべきではなかった（のに実際はしてしまった）」という後悔・非難の表現。反対の should have V-ed「Vするべきだった（のにしなかった）」とペアで覚える。"
+ },
+ {
+  "answer": "ought not to have laughed",
+  "choices": [
+   "not",
+   "to",
+   "ought",
+   "laughed",
+   "have"
+  ],
+  "explanation": "ought not to have laughed：ought not to have+V-ed「Vするべきではなかった（のにした）」。▶ought not to have+V-edも、ought not to Vと同様にnotの位置に注意。",
+  "instruction": "",
+  "n": 63,
+  "section": "UPGRADE 29",
+  "sentence": "君は彼の誤りを笑うべきではなかった。You [ not / to / ought / laughed / have ] at his error.",
+  "source": "愛媛大",
+  "translation": "",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "order",
+  "answerText": "ought not to have laughed"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "wouldn't have died",
+   "didn't have to die but did",
+   "cannot have died",
+   "inevitably died"
+  ],
+  "explanation": "②：need not [needn't] have+V-ed「Vする必要はなかった（のにした）」。▶needn't have diedは「死ぬ必要はなかった（のに死んでしまった）」の意。",
+  "instruction": "",
+  "n": 64,
+  "section": "UPGRADE 29",
+  "sentence": "Since she was still young, she needn't have died.",
+  "source": "獨協大",
+  "translation": "彼女はまだ若かったのだから、死ぬ必要なんてなかったのに。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "ought to be",
+   "should have been",
+   "should have",
+   "can have"
+  ],
+  "explanation": "③：should [ought to] have+V-ed「（もうそろそろ）Vしているはずだ」。▶「彼女は1時間以上前に家を出た」のだから、③should have (got here)「もうそろそろここに到着しているはずだ」と考える。▶この用法はby now「今ごろはもう」とセットで用いられることが多い。",
+  "instruction": "",
+  "n": 65,
+  "section": "UPGRADE 29",
+  "sentence": "\"I just called her home. She left over an hour ago.\" \"Well, she (    ) got here by now, then.\"",
+  "source": "立教大",
+  "translation": "「今彼女の家に電話したよ。彼女は1時間以上前に家を出たって」「そうか。じゃあ、もうここに着いているはずだが」",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "might",
+   "ought",
+   "should",
+   "would"
+  ],
+  "explanation": "③：insist that S (should)+V(原形)「SがVするよう［SがVするべきだと］主張する」。秘伝 これは「…すべき」のshouldと考えると頭に入りやすい。",
+  "instruction": "",
+  "n": 66,
+  "section": "UPGRADE 30",
+  "sentence": "My father insisted I (    ) go to see the place.",
+  "source": "千葉商科大",
+  "translation": "父は私がその場所を見に行くよう主張した。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "was",
+   "be",
+   "will be",
+   "would be"
+  ],
+  "explanation": "②：propose that S (should)+V(原形)「SがVするよう［SがVするべきだと］提案する」。▶ここでは原形の②be (held)を選ぶ。▶主節が過去形(proposed)でも「時制の一致」を行わず、原形のまま用いる。",
+  "instruction": "",
+  "n": 67,
+  "section": "UPGRADE 30",
+  "sentence": "He proposed that another meeting (    ) held next week.",
+  "source": "慶應大",
+  "translation": "彼は来週もう一度会議を開くよう提案した。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "do",
+   "might do",
+   "must do",
+   "may do"
+  ],
+  "explanation": "①：It is necessary that S (should)+V(原形)「SがVするのは必要だ」。▶原形の①doを選ぶ。",
+  "instruction": "",
+  "n": 68,
+  "section": "UPGRADE 31",
+  "sentence": "It is necessary that he (    ) it.",
+  "source": "青山学院大",
+  "translation": "彼がそれをすることは必要だ。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "help laughing",
+   "but to laugh",
+   "but laugh",
+   "help but laugh"
+  ],
+  "explanation": "②：cannot [can't] help V-ing「Vせずにはいられない」＝cannot [can't] but V(原形)―文語的 ＝cannot [can't] help but V(原形)",
+  "instruction": "（　）に入れるのに不適切なものを選びなさい。",
+  "n": 69,
+  "section": "UPGRADE 32",
+  "sentence": "I couldn't (    ) at him.",
+  "source": "福岡大",
+  "translation": "彼を見て笑わずにはいられなかった。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "cannot",
+   "have to",
+   "may",
+   "must not"
+  ],
+  "explanation": "①：cannot [can't] V too...「いくらVしてもしすぎることはない」",
+  "instruction": "",
+  "n": 70,
+  "section": "UPGRADE 32",
+  "sentence": "You (    ) be too careful when you drive a car.",
+  "source": "",
+  "translation": "車を運転する際には、いくら注意してもしすぎることはない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq",
+  "extra": "cannot V too ... は「いくらVしてもしすぎることはない」。cannot と too が離れて出てきても、セットでこの意味になる頻出構文。"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "may as well",
+   "might as well",
+   "may well",
+   "may well as"
+  ],
+  "explanation": "③：may [might] well V「Vするのももっともだ」＝have good reason to V。▶may [might] well Vには「①Vするのももっともだ ②たぶんVするだろう」の2つの意味がある。文法問題では①のほうがねらわれるが、②は長文中で出現することが多い。②の意味は次の文で確認しておこう。例 The rumor may well be true.「そのうわさはたぶん本当だろう」",
+  "instruction": "",
+  "n": 71,
+  "section": "UPGRADE 32",
+  "sentence": "(a) He has good reason to get very angry. = (b) He (    ) get very angry.",
+  "source": "明治大",
+  "translation": "(a)彼が激怒する十分な理由がある。(b)彼が激怒するのももっともだ。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 1,
+  "choices": [
+   "as well",
+   "as well as",
+   "so as to",
+   "so well to"
+  ],
+  "explanation": "①：may [might] as well V「どちらかと言えばVしたほうがよいだろう」。▶had better V「Vしたほうがよい」よりも控えめな表現。",
+  "instruction": "",
+  "n": 72,
+  "section": "UPGRADE 32",
+  "sentence": "There's nothing more to do. We might (    ) go home now.",
+  "source": "実践女子大",
+  "translation": "もうこれ以上何もすることがない。私たちは今家に帰ったほうがよいだろう。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": "2-1-4-6-5-3",
+  "choices": [
+   "as",
+   "might",
+   "money",
+   "well",
+   "your",
+   "throw"
+  ],
+  "explanation": "2-1-4-6-5-3：might as well V1 as V2「V2するくらいならV1するほうがましだ」。▶You might as well throw your money away as spend it on gambling. ▶V1, V2には共に原形が来る。現実味の少ない事柄に用いることが多い。ここでも「金を捨てる」という非現実的な行為が引き合いに出されている。▶may as well V1 as V2「V2するよりはV1するほうがよい」は、より現実的な事柄に用いられる。例 We may as well wait as leave now.「今出発するより待つほうがよい」",
+  "instruction": "",
+  "n": 73,
+  "section": "UPGRADE 32",
+  "sentence": "賭け事に金を使うくらいなら捨ててしまうほうがましだ。You [ ① as / ② might / ③ money / ④ well / ⑤ your / ⑥ throw ] away as spend it on gambling.",
+  "source": "四天王寺大",
+  "translation": "",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "order",
+  "answerText": "2-1-4-6-5-3"
+ },
+ {
+  "answer": 4,
+  "choices": [
+   "to stay",
+   "than I stay",
+   "staying",
+   "stay"
+  ],
+  "explanation": "④：would rather V(原形)「（どちらかと言えば）Vしたい」",
+  "instruction": "",
+  "n": 74,
+  "section": "UPGRADE 32",
+  "sentence": "I would rather (    ) here.",
+  "source": "上智大",
+  "translation": "できれば私はここにいたい。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq",
+  "extra": "would rather V は「（どちらかと言えば）Vしたい」という控えめな希望・好み。後ろは動詞の原形が来る。would rather A than B「BよりむしろAしたい」の形も頻出。"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "not rather",
+   "rather not",
+   "rather not to",
+   "rather to not"
+  ],
+  "explanation": "②：would rather not V(原形)「（どちらかと言えば）Vしたくない」。▶notの位置に注意。had better notと同様に、would ratherを1つの助動詞と捉えて、助動詞の後ろにnotを置くと考えるとよい。",
+  "instruction": "",
+  "n": 75,
+  "section": "UPGRADE 32",
+  "sentence": "I have a headache; I'd (    ) go to this party.",
+  "source": "慶應大",
+  "translation": "頭が痛い。できればこのパーティには行きたくない。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 3,
+  "choices": [
+   "like to go",
+   "better go",
+   "rather go",
+   "more go"
+  ],
+  "explanation": "③：would rather V1 than V2「V2するくらいならV1したい」。▶V1, V2には共に原形を用いる。",
+  "instruction": "",
+  "n": 76,
+  "section": "UPGRADE 32",
+  "sentence": "I would (    ) shopping than study this afternoon.",
+  "source": "広島修道大",
+  "translation": "今日の午後、勉強するよりは買い物に出かけたい。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": 2,
+  "choices": [
+   "would want",
+   "would like",
+   "would rather",
+   "feel like"
+  ],
+  "explanation": "②：would like to V「Vしたいと思う」。▶want to Vより柔らかい表現。I want to VよりI would like to V [I'd like to V]のほうがよく使われる。誤答 ③would ratherは後ろが原形のgoなら可。（→74）④はfeel like V-ing「Vしたい気分だ」（→185）の形で用いるので、後ろがgoingなら可。",
+  "instruction": "",
+  "n": 77,
+  "section": "UPGRADE 32",
+  "sentence": "I (    ) to go home right now.",
+  "source": "鶴見大",
+  "translation": "今すぐ帰宅したい。",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "mcq"
+ },
+ {
+  "answer": "like you to give me",
+  "choices": [
+   "give",
+   "to",
+   "me",
+   "you",
+   "like"
+  ],
+  "explanation": "like you to give me：would like A to V「AにVしてもらいたいと思う」。▶would like A to Vはwant A to Vとほぼ同意のSVOC文型。重要表現 give〈人〉a ride「〈人〉を車に乗せ（て送）る」（＝give〈人〉a lift）",
+  "instruction": "",
+  "n": 78,
+  "section": "UPGRADE 32",
+  "sentence": "駅まで車に乗せてもらいたいのですが。I'd [ give / to / me / you / like ] a ride to the station.",
+  "source": "名城大",
+  "translation": "",
+  "chapter": 2,
+  "chapterTitle": "助動詞",
+  "type": "order",
+  "answerText": "like you to give me"
+ }
+];
+
+/* ---------- state ---------- */
+const LS_KEY = "upgradeQuiz.v1";
+let DB = load();
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem(LS_KEY)); if(d && d.per) return d; }catch(e){}
+  return { per:{}, sessions:[], settings:{showTrans:true, timer:true, font:16, theme:"light", dailyGoal:20, testMode:false}, session:null };
+}
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+function per(n){ if(!DB.per[n]) DB.per[n] = {att:0, ok:0, miss:0, streak:0, fav:false, memo:"", last:null, mastered:false}; return DB.per[n]; }
+const Q = {}; QUESTIONS.forEach(q=>Q[q.n]=q);
+const CHAPTERS = [...new Map(QUESTIONS.map(q=>[q.chapter, q.chapterTitle])).entries()];
+const SECTIONS = [...new Set(QUESTIONS.map(q=>q.section))];
+document.getElementById("coverageLine").textContent = "四訂版 ／ 収録: " + CHAPTERS.map(c=>"第"+c[0]+"章 "+c[1]).join("・") + "（Q" + QUESTIONS[0].n + "〜" + QUESTIONS[QUESTIONS.length-1].n + "・全" + QUESTIONS.length + "問）";
+if(DB.settings.theme==="dark") document.documentElement.dataset.theme="dark";
+document.body.style.fontSize = (DB.settings.font||16) + "px";
+
+const app = document.getElementById("app");
+let view = "home";
+let quiz = null; // {list:[n], idx, answers:{}, label, startedAt, perQStart, elapsed:{}}
+let listFilter = {text:"", chapter:"all", status:"all"};
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function todayStr(d){ d=d||new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function norm(s){ return String(s||"").toLowerCase().replace(/[.,'’"!?;:\-]/g," ").replace(/\s+/g," ").trim(); }
+function accuracy(ns){ let a=0,o=0; ns.forEach(n=>{const p=DB.per[n]; if(p){a+=p.att; o+=p.ok;}}); return a? Math.round(o/a*100): null; }
+function missList(pred){ return QUESTIONS.filter(q=>{ const p=DB.per[q.n]; return p && pred(p); }).map(q=>q.n); }
+function shuffle(a){ a=[...a]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function speak(text){ try{ const u=new SpeechSynthesisUtterance(String(text).replace(/\(\s*\)/g," blank ")); u.lang="en-US"; u.rate=0.92; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch(e){} }
+function setTab(v){ view=v; document.querySelectorAll("nav.tab button").forEach(b=>b.classList.toggle("on", b.dataset.tab===v)); render(); window.scrollTo(0,0); }
+document.querySelectorAll("nav.tab button").forEach(b=>b.addEventListener("click", ()=>setTab(b.dataset.tab)));
+document.getElementById("themeBtn").addEventListener("click", ()=>{ const d=document.documentElement; const dark = d.dataset.theme!=="dark"; d.dataset.theme = dark?"dark":"light"; DB.settings.theme = dark?"dark":"light"; save(); });
+
+/* ---------- render root ---------- */
+function render(){
+  if(quiz){ renderQuiz(); return; }
+  if(view==="home") renderHome();
+  else if(view==="corners") renderCorners();
+  else if(view==="list") renderList();
+  else if(view==="stats") renderStats();
+  else if(view==="settings") renderSettings();
+}
+
+/* ---------- home ---------- */
+function todayCount(){ const t=todayStr(); return DB.sessions.filter(s=>s.date===t).reduce((a,s)=>a+s.total,0) + (quiz?0:0); }
+function streakDays(){ const days=new Set(DB.sessions.map(s=>s.date)); let n=0; const d=new Date(); if(!days.has(todayStr(d))) d.setDate(d.getDate()-1); while(days.has(todayStr(d))){ n++; d.setDate(d.getDate()-1);} return n; }
+function renderHome(){
+  const totalAtt = QUESTIONS.reduce((a,q)=>a+(DB.per[q.n]?DB.per[q.n].att:0),0);
+  const mastered = QUESTIONS.filter(q=>DB.per[q.n] && DB.per[q.n].mastered).length;
+  const due = missList(p=>p.miss>0 && !p.mastered);
+  let h = "";
+  if(DB.session && DB.session.list && DB.session.idx < DB.session.list.length){
+    h += '<div class="card" style="border-color:var(--warn)"><h2>⏸ 中断中の回があります</h2><p class="muted">'+esc(DB.session.label)+' ・ '+(DB.session.idx)+'問目まで進行</p><div class="row"><button class="btn" onclick="resumeSession()">続きから再開</button><button class="btn ghost" onclick="discardSession()">破棄する</button></div></div>';
+  }
+  h += '<div class="grid2">'
+    + '<div class="stat"><b>'+todayCount()+'問</b><span>今日解いた数（目標 '+DB.settings.dailyGoal+'問）</span></div>'
+    + '<div class="stat"><b>'+streakDays()+'日</b><span>連続学習</span></div>'
+    + '<div class="stat"><b>'+totalAtt+'回</b><span>総回答数</span></div>'
+    + '<div class="stat"><b>'+mastered+' / '+QUESTIONS.length+'</b><span>マスター済み（2回連続正解）</span></div></div>'
+    + '<div class="card"><h2>🎯 今日の復習セット</h2><p class="muted">間違えた問題（マスター未達）が '+due.length+' 問あります。ここを潰すのが一番効きます。</p><button class="btn big" '+(due.length?"":"disabled")+' onclick="startQuiz(window.__due, \'今日の復習セット\')">復習をはじめる（'+due.length+'問）</button></div>';
+  window.__due = due;
+  h += '<div class="card"><h2>📖 範囲を決めて解く</h2>'
+    + '<h3>章で選ぶ</h3><div class="row" id="chChips">'
+    + CHAPTERS.map(c=>{ const ns=QUESTIONS.filter(q=>q.chapter===c[0]).map(q=>q.n); const ac=accuracy(ns); return '<button class="chip on" data-ch="'+c[0]+'">第'+c[0]+'章 '+esc(c[1])+'（'+ns.length+'問'+(ac!=null?'・正答率'+ac+'%':'')+'）</button>'; }).join("")
+    + '</div><h3>問題番号で選ぶ</h3><div class="row"><input type="number" id="rngFrom" min="'+QUESTIONS[0].n+'" max="'+QUESTIONS[QUESTIONS.length-1].n+'" placeholder="最初"> 〜 <input type="number" id="rngTo" min="'+QUESTIONS[0].n+'" max="'+QUESTIONS[QUESTIONS.length-1].n+'" placeholder="最後"> <span class="muted">空欄なら章の選択が優先</span></div>'
+    + '<h3>UPGRADEの項目で選ぶ</h3><select id="secSel" style="width:100%"><option value="">指定なし</option>' + SECTIONS.map(s=>'<option>'+esc(s)+'</option>').join("") + '</select>'
+    + '<h3>出題の仕方</h3><div class="row" id="modeChips"><button class="chip on" data-m="seq">順番通り</button><button class="chip" data-m="rand">シャッフル</button></div>'
+    + '<div class="row" id="cntChips" style="margin-top:8px"><button class="chip" data-c="10">10問</button><button class="chip" data-c="20">20問</button><button class="chip" data-c="30">30問</button><button class="chip on" data-c="0">全部</button></div>'
+    + '<div class="row" style="margin-top:10px"><label><input type="checkbox" id="onlyNew"> 未挑戦だけ</label><label><input type="checkbox" id="testMode" '+(DB.settings.testMode?"checked":"")+'> テスト形式（解説は最後にまとめて）</label></div>'
+    + '<p><button class="btn big" onclick="startFromHome()">この範囲でスタート</button></p>'
+    + '<p class="muted">同じ本の問題をそのまま出します。問題番号は本の通し番号です。</p></div>';
+  app.innerHTML = h;
+  chipGroup("chChips", true); chipGroup("modeChips", false); chipGroup("cntChips", false);
+}
+function chipGroup(id, multi){
+  const el=document.getElementById(id); if(!el) return;
+  el.addEventListener("click", e=>{ const b=e.target.closest(".chip"); if(!b) return; if(multi) b.classList.toggle("on"); else { el.querySelectorAll(".chip").forEach(c=>c.classList.remove("on")); b.classList.add("on"); } });
+}
+function selectedIn(id){ const el=document.getElementById(id); return el? [...el.querySelectorAll(".chip.on")].map(b=>b.dataset): []; }
+function startFromHome(){
+  const from = parseInt(document.getElementById("rngFrom").value,10), to = parseInt(document.getElementById("rngTo").value,10);
+  const sec = document.getElementById("secSel").value;
+  let ns;
+  if(!isNaN(from)||!isNaN(to)){ ns = QUESTIONS.filter(q=>(isNaN(from)||q.n>=from)&&(isNaN(to)||q.n<=to)).map(q=>q.n); }
+  else { const chs = selectedIn("chChips").map(d=>+d.ch); ns = QUESTIONS.filter(q=>chs.includes(q.chapter)).map(q=>q.n); }
+  if(sec) ns = ns.filter(n=>Q[n].section===sec);
+  if(document.getElementById("onlyNew").checked) ns = ns.filter(n=>!(DB.per[n]&&DB.per[n].att>0));
+  DB.settings.testMode = document.getElementById("testMode").checked; save();
+  const mode = (selectedIn("modeChips")[0]||{}).m || "seq";
+  const cnt = +((selectedIn("cntChips")[0]||{}).c || 0);
+  if(mode==="rand") ns = shuffle(ns);
+  if(cnt>0) ns = ns.slice(0,cnt);
+  if(!ns.length){ alert("その範囲には問題がありません"); return; }
+  startQuiz(ns, "範囲指定（"+ns.length+"問）");
+}
+
+/* ---------- corners ---------- */
+function cornerDefs(){
+return [
+{key:"m1", label:"1回間違いコーナー", ns: missList(p=>p.miss===1)},
+{key:"m2", label:"2回間違いコーナー", ns: missList(p=>p.miss===2)},
+{key:"m3", label:"3回間違いコーナー", ns: missList(p=>p.miss===3)},
+{key:"m4", label:"4回以上間違いコーナー", ns: missList(p=>p.miss>=4)},
+{key:"mall", label:"間違えた問題ぜんぶ", ns: missList(p=>p.miss>0)},
+{key:"fav", label:"⭐ お気に入り", ns: QUESTIONS.filter(q=>DB.per[q.n]&&DB.per[q.n].fav).map(q=>q.n)},
+{key:"new", label:"🆕 まだ解いてない問題", ns: QUESTIONS.filter(q=>!(DB.per[q.n]&&DB.per[q.n].att>0)).map(q=>q.n)},
+{key:"weak", label:"🎯 苦手な項目だけ（正答率60%未満の項目）", ns: weakSections()},
+];
+}
+function weakSections(){
+const bySec = {};
+QUESTIONS.forEach(q=>{ (bySec[q.section]=bySec[q.section]||[]).push(q.n);});
+let out=[];
+Object.entries(bySec).forEach(([s,ns])=>{ const a=accuracy(ns); if(a!=null && a<60) out=out.concat(ns);});
+return out;
+}
+function renderCorners(){
+let h = '<div class="card"><h2>❌ 間違いコーナー</h2><p class="muted">間違えた回数ごとに自動で分かれます。同じ問題を正解すると回数は減りませんが、2回連続で正解すると「マスター」になって今日の復習セットから外れます。</p></div>';
+cornerDefs().forEach((c,i)=>{
+h += '<button class="corner" '+(c.ns.length?"":"disabled style=opacity:.45")+' onclick="startQuiz(window.__corners['+i+'].ns, window.__corners['+i+'].label)"><span>'+esc(c.label)+'</span><b>'+c.ns.length+'問</b></button>';
+});
+window.__corners = cornerDefs();
+app.innerHTML = h;
+}
+
+/* ---------- quiz engine ---------- */
+function startQuiz(ns, label){
+if(!ns ||!ns.length){ alert("問題がありません"); return;}
+quiz = { list:[...ns], idx:0, answers:{}, label:label||"クイズ", startedAt:Date.now(), perQStart:Date.now(), checked:{}, orderSel:[], multiSel:[], testMode: DB.settings.testMode};
+persistSession(); render();
+}
+function persistSession(){ if(quiz){ DB.session = { list:quiz.list, idx:quiz.idx, answers:quiz.answers, label:quiz.label, checked:quiz.checked};} else DB.session = null; save();}
+function resumeSession(){ const s=DB.session; if(!s) return; quiz = { list:s.list, idx:s.idx, answers:s.answers||{}, label:s.label, startedAt:Date.now(), perQStart:Date.now(), checked:s.checked||{}, orderSel:[], multiSel:[], testMode: DB.settings.testMode}; render();}
+function discardSession(){ DB.session=null; save(); render();}
+function quitQuiz(){ persistSession(); quiz=null; setTab("home");}
+
+let timerInt = null;
+function renderQuiz(){
+clearInterval(timerInt);
+const q = Q[quiz.list[quiz.idx]];
+const p = per(q.n);
+const done =!!quiz.checked[q.n];
+const total = quiz.list.length;
+let h = '<div class="card">'
++ '<div class="row" style="justify-content:space-between"><span class="badge">'+esc(quiz.label)+'</span><span class="muted">'+(quiz.idx+1)+' / '+total+'問</span></div>'
++ '<div class="bar" style="margin:8px 0"><i style="width:'+Math.round(quiz.idx/total*100)+'%"></i></div>'
++ '<div class="row" style="justify-content:space-between"><span><b>Q'+q.n+'</b> <span class="badge">'+esc(q.section)+'</span> <span class="muted">第'+q.chapter+'章 '+esc(q.chapterTitle)+(q.source?' ・ '+esc(q.source):'')+'</span></span>'
++ '<span class="row"><span class="timer" id="qtimer"></span><button class="chip" onclick="toggleFav('+q.n+')">'+(p.fav?'⭐':'☆')+'</button></span></div>'
++ (p.miss? '<p><span class="badge ng">これまで '+p.miss+' 回間違えた問題</span>'+(p.mastered?' <span class="badge okb">マスター済み</span>':'')+'</p>':'')
++ (q.instruction? '<p class="muted">'+esc(q.instruction)+'</p>':'')
++ '<div class="qsentence">'+esc(q.sentence)+'</div>'
++ '<div class="row"><button class="chip" onclick="speak(Q['+q.n+'].sentence)">🔊 英文を聞く</button>'
++ '<button class="chip" onclick="toggleTrans()">訳文 '+(quiz.showTrans===undefined? (DB.settings.showTrans?'表示':'非表示'): (quiz.showTrans?'表示':'非表示'))+'</button></div>'
++ '<div id="transBox" class="muted" style="margin-top:6px">'+(((quiz.showTrans===undefined? DB.settings.showTrans: quiz.showTrans) && q.translation)? esc(q.translation):"")+'</div>'
++ '<div id="answerArea" style="margin-top:12px">' + answerAreaHTML(q, done) + '</div>'
++ '<div id="feedback"></div>'
++ '<div class="row" style="margin-top:12px">'
++ (done? '<button class="btn" style="flex:1" onclick="nextQ()">'+(quiz.idx+1>=total?'結果を見る':'次の問題へ')+'</button>': '<button class="btn sub" onclick="skipQ()">スキップ</button>')
++ '<button class="btn ghost" onclick="quitQuiz()">中断する</button></div>'
++ '<p class="kbd">PCでは 1〜4 キーで選択、Enterで次へ進めます</p>'
++ '</div>'
++ '<div class="card"><h3>📝 この問題のメモ</h3><textarea id="memoBox" placeholder="覚え方のコツなど">'+esc(p.memo||"")+'</textarea><button class="btn sub" onclick="saveMemo('+q.n+')">メモを保存</button></div>';
+app.innerHTML = h;
+if(DB.settings.timer &&!done){
+const tick = ()=>{ const el=document.getElementById("qtimer"); if(!el){ clearInterval(timerInt); return;} const s=Math.floor((Date.now()-quiz.perQStart)/1000); el.textContent = "⏱ "+Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
+tick(); timerInt = setInterval(tick, 500);
+}
+if(done) showFeedback(q, true);
+}
+function toggleTrans(){ const cur = quiz.showTrans===undefined? DB.settings.showTrans: quiz.showTrans; quiz.showTrans =!cur; renderQuiz();}
+function toggleFav(n){ per(n).fav =!per(n).fav; save(); renderQuiz();}
+function saveMemo(n){ per(n).memo = document.getElementById("memoBox").value; save(); alert("保存しました");}
+
+function answerAreaHTML(q, done){
+const prev = quiz.answers[q.n];
+if(q.type==="mcq"){
+return q.choices.map((c,i)=>{
+let cls = "choice";
+if(done){ if(i+1===q.answer) cls+=" correct"; else if(prev===i+1) cls+=" wrong";}
+else if(prev===i+1) cls += " sel";
+return '<button class="'+cls+'" onclick="pickMCQ('+q.n+','+(i+1)+')">'+["①","②","③","④","⑤","⑥"][i]+' '+esc(c)+'</button>';
+}).join("") + (done?"":'<button class="btn big" onclick="checkCurrent()">答え合わせ</button>');
+}
+if(q.type==="multi"){
+const sel = done? (prev||[]): quiz.multiSel;
+return q.choices.map((c,i)=>'<button class="choice'+(sel.includes(i+1)?" sel":"")+'" onclick="pickMulti('+(i+1)+')">'+["①","②","③","④","⑤","⑥"][i]+' '+esc(c)+'</button>').join("")
++ '<p class="muted">当てはまるものを全部選んでください</p>' + (done?"":'<button class="btn big" onclick="checkCurrent()">答え合わせ</button>');
+}
+if(q.type==="fill"){
+return '<input type="text" id="fillInput" style="width:100%" placeholder="空所に入る語句を入力（複数の空所はスペースやカンマで区切る）" value="'+(done? esc(prev||""):"")+'" '+(done?"disabled":"")+'>'
++ (done?"":'<p style="margin-top:10px"><button class="btn big" onclick="checkCurrent()">答え合わせ</button></p>');
+}
+if(q.type==="order"){
+const sel = done? (prev||[]): quiz.orderSel;
+const chips = q.choices.map((c,i)=>{ const used = sel.includes(i); return '<button class="word'+(used?" used":"")+'" onclick="pickWord('+i+')">'+(q.n===73? ["①","②","③","④","⑤","⑥"][i]+" ":"")+esc(c)+'</button>';}).join("");
+const line = sel.map(i=> q.n===73? String(i+1): q.choices[i]).join(q.n===73? " - ": " ");
+return '<div class="answerline">'+esc(line||"（下の語句を順番にタップ）")+'</div><div class="wordbank">'+chips+'</div>'
++ '<div class="row"><button class="btn ghost" onclick="undoWord()">1つ戻す</button>'+(done?"":'<button class="btn" onclick="checkCurrent()">答え合わせ</button>')+'</div>';
+}
+return "";
+}
+function pickMCQ(n, i){ if(quiz.checked[n]) return; quiz.answers[n]=i; if(DB.settings.testMode){ nextQAuto();} else renderQuiz();}
+function pickMulti(i){ const n=quiz.list[quiz.idx]; if(quiz.checked[n]) return; const a=quiz.multiSel; const k=a.indexOf(i); if(k>=0) a.splice(k,1); else a.push(i); renderQuiz();}
+function pickWord(i){ const n=quiz.list[quiz.idx]; if(quiz.checked[n]) return; if(!quiz.orderSel.includes(i)) quiz.orderSel.push(i); renderQuiz();}
+function undoWord(){ quiz.orderSel.pop(); renderQuiz();}
+function skipQ(){ quiz.answers[quiz.list[quiz.idx]] = quiz.answers[quiz.list[quiz.idx]]?? null; advance();}
+function nextQAuto(){ advance();}
+function advance(){
+if(quiz.idx+1 >= quiz.list.length){ finishQuiz(); return;}
+quiz.idx++; quiz.perQStart=Date.now(); quiz.orderSel=[]; quiz.multiSel=[];
+persistSession(); renderQuiz(); window.scrollTo(0,0);
+}
+function nextQ(){ advance();}
+
+function judge(q){
+const a = quiz.answers[q.n];
+if(q.type==="mcq") return a === q.answer;
+if(q.type==="multi"){ const got=[...(a||[])].sort(), want=[...q.answer].sort(); return JSON.stringify(got)===JSON.stringify(want);}
+if(q.type==="fill"){
+const got = norm(a);
+if(q.fillRequired) return q.fillRequired.every(r=> got.includes(norm(r)));
+return got === norm(q.answerText);
+}
+if(q.type==="order"){
+const sel = quiz.orderSel;
+if(q.n===73) return sel.map(i=>i+1).join("-") === q.answerText;
+return norm(sel.map(i=>q.choices[i]).join(" ")) === norm(q.answerText);
+}
+return false;
+}
+function collectAnswer(q){
+if(q.type==="multi") quiz.answers[q.n] = [...quiz.multiSel];
+else if(q.type==="fill"){ const el=document.getElementById("fillInput"); quiz.answers[q.n] = el? el.value: "";}
+else if(q.type==="order") quiz.answers[q.n] = [...quiz.orderSel];
+}
+function checkCurrent(){
+  const q = Q[quiz.list[quiz.idx]];
+  collectAnswer(q);
+  if(q.type==="mcq" && quiz.answers[q.n]==null){ alert("選択肢を選んでください"); return; }
+  if(q.type==="multi" && !(quiz.answers[q.n]||[]).length){ alert("1つ以上選んでください"); return; }
+  if(q.type==="order" && !(quiz.answers[q.n]||[]).length){ alert("語句をタップして並べてください"); return; }
+  if(q.type==="fill" && !String(quiz.answers[q.n]||"").trim()){ alert("答えを入力してください"); return; }
+  if(quiz.testMode){ advance(); return; }
+  gradeOne(q);
+  renderQuiz();
+}
+function gradeOne(q){
+  const ok = judge(q);
+  const p = per(q.n);
+  p.att++; p.last = todayStr();
+  if(ok){ p.ok++; p.streak++; if(p.streak>=2) p.mastered = true; }
+  else { p.miss++; p.streak = 0; p.mastered = false; }
+  quiz.checked[q.n] = ok;
+  save(); persistSession();
+  return ok;
+}
+function answerText(q){
+if(q.type==="mcq") return ["①","②","③","④","⑤","⑥"][q.answer-1] + " " + q.choices[q.answer-1];
+if(q.type==="multi") return q.answer.map(i=>["①","②","③","④","⑤","⑥"][i-1]+" "+q.choices[i-1]).join(" と ");
+return q.answerText || "";
+}
+function filledSentence(q){
+if(q.type!=="mcq" && q.type!=="multi") return "";
+const ans = q.type==="mcq"? q.choices[q.answer-1]: q.answer.map(i=>q.choices[i-1]).join(" / ");
+return q.sentence.replace(/\(\s*\)/, "( "+ans+")");
+}
+function showFeedback(q, replay){
+const ok = quiz.checked[q.n];
+const el = document.getElementById("feedback"); if(!el) return;
+const fs = filledSentence(q);
+el.innerHTML = '<div style="margin-top:12px"><span class="badge '+(ok?"okb":"ng")+'" style="font-size:15px">'+(ok?"⭕ 正解！":"❌ 不正解")+'</span>'
++ ' <b>正解: '+esc(answerText(q))+'</b></div>'
++ (fs? '<p class="muted">完成文: '+esc(fs)+' <button class="chip" onclick="speak(window.__fs)">🔊</button></p>':"")
++ (q.translation? '<p class="muted">訳: '+esc(q.translation)+'</p>':"")
++ '<h3>📖 解説（本書より）</h3><div class="expl">'+esc(q.explanation)+'</div>'
++ (q.extra? '<div class="extra"><b></b>\n'+esc(q.extra)+'</div>':"");
+window.__fs = fs;
+}
+function finishQuiz(){
+  const list = quiz.list;
+  const wasTest = quiz.testMode;
+  if(wasTest){
+    list.forEach(n=>{ const q=Q[n]; if(quiz.answers[n]!=null && quiz.checked[n]===undefined){ 
+      // order answers were stored as index arrays in quiz.answers; judge() reads orderSel for order type, so adapt:
+      if(q.type==="order"){ const keep=quiz.orderSel; quiz.orderSel = quiz.answers[n]; gradeOneSilent(q); quiz.orderSel = keep; }
+      else gradeOneSilent(q);
+    }});
+  }
+  let okCount = 0; const wrong = [];
+  list.forEach(n=>{ if(quiz.checked[n]===true) okCount++; else if(quiz.checked[n]===false) wrong.push(n); });
+  const answered = Object.keys(quiz.checked).length;
+  DB.sessions.push({ date: todayStr(), label: quiz.label, total: answered, ok: okCount, at: Date.now() });
+  const label = quiz.label;
+  const checkedCopy = {...quiz.checked};
+  DB.session = null; save();
+  quiz = null;
+  let h = '<div class="card" style="text-align:center"><h2>🎉 おつかれさま</h2>'
+    + '<p style="font-size:26px"><b>'+okCount+' / '+answered+' 問正解</b>（'+(answered?Math.round(okCount/answered*100):0)+'%）</p>'
+    + '<p class="muted">'+esc(label)+'</p>'
+    + (wrong.length? '<button class="btn big" onclick="startQuiz(window.__wrong, \'間違えた問題だけ解き直し\')">間違えた '+wrong.length+' 問だけ解き直す</button><p></p>':"")
+    + '<button class="btn sub big" onclick="setTab(\'home\')">ホームへ戻る</button></div>';
+  window.__wrong = wrong;
+  if(wasTest){
+    h += '<div class="card"><h2>📖 解説まとめ（テスト形式）</h2>' + list.filter(n=>checkedCopy[n]!==undefined).map(n=>{ const q=Q[n]; return '<h3>Q'+n+'（'+esc(q.section)+'） '+(checkedCopy[n]?'⭕':'❌')+'</h3><p><b>正解: '+esc(answerText(q))+'</b></p>'+(q.translation?'<p class="muted">訳: '+esc(q.translation)+'</p>':'')+'<div class="expl">'+esc(q.explanation)+'</div>'+(q.extra?'<div class="extra"><b>【モモの補足】</b>\n'+esc(q.extra)+'</div>':""); }).join("") + '</div>';
+  }
+  app.innerHTML = h;
+  document.querySelectorAll("nav.tab button").forEach(b=>b.classList.toggle("on", b.dataset.tab==="home"));
+}
+function gradeOneSilent(q){
+  const ok = judge(q);
+  const p = per(q.n);
+  p.att++; p.last = todayStr();
+  if(ok){ p.ok++; p.streak++; if(p.streak>=2) p.mastered = true; }
+  else { p.miss++; p.streak = 0; p.mastered = false; }
+  quiz.checked[q.n] = ok;
+  return ok;
+}
+document.addEventListener("keydown", e=>{
+if(!quiz) return;
+const q = Q[quiz.list[quiz.idx]]; if(!q) return;
+if(quiz.checked[q.n]!==undefined && e.key==="Enter"){ nextQ(); return;}
+if(q.type==="mcq" && ["1","2","3","4","5","6"].includes(e.key)){ const i=+e.key; if(i<=q.choices.length) pickMCQ(q.n, i);}
+});
+
+/* ---------- list / search / study ---------- */
+function renderList(){
+let h = '<div class="card"><h2>📚 一覧・検索</h2>'
++ '<div class="row"><input type="text" id="qSearch" placeholder="キーワード・問題番号・英文" value="'+esc(listFilter.text)+'" style="flex:1">'
++ '<select id="qCh"><option value="all">全ての章</option>'+CHAPTERS.map(c=>'<option value="'+c[0]+'"'+(listFilter.chapter==String(c[0])?" selected":"")+'>第'+c[0]+'章 '+esc(c[1])+'</option>').join("")+'</select>'
++ '<select id="qStatus"><option value="all">状態: 全部</option><option value="miss">間違えたことあり</option><option value="fav">お気に入り</option><option value="new">未挑戦</option><option value="mastered">マスター済み</option></select></div>'
++ '<p class="muted">タップすると問題と解説が見られます（見るだけでは成績に記録されません）。この条件で一括出題もできます。</p>'
++ '<button class="btn" onclick="quizFromList()">この条件の問題を全部解く</button></div><div id="listBox"></div>';
+app.innerHTML = h;
+const upd = ()=>{ listFilter.text = document.getElementById("qSearch").value; listFilter.chapter = document.getElementById("qCh").value; listFilter.status = document.getElementById("qStatus").value; drawList();};
+document.getElementById("qSearch").addEventListener("input", upd);
+document.getElementById("qCh").addEventListener("change", upd);
+document.getElementById("qStatus").addEventListener("change", upd);
+document.getElementById("qStatus").value = listFilter.status;
+drawList();
+}
+function filteredQuestions(){
+const t = norm(listFilter.text);
+return QUESTIONS.filter(q=>{
+if(listFilter.chapter!=="all" && q.chapter!==+listFilter.chapter) return false;
+const p = DB.per[q.n];
+if(listFilter.status==="miss" &&!(p&&p.miss>0)) return false;
+if(listFilter.status==="fav" &&!(p&&p.fav)) return false;
+if(listFilter.status==="new" && (p&&p.att>0)) return false;
+if(listFilter.status==="mastered" &&!(p&&p.mastered)) return false;
+if(t &&!(norm(q.sentence).includes(t) || norm(q.section).includes(t) || String(q.n)===listFilter.text.trim())) return false;
+return true;
+});
+}
+function drawList(){
+const box = document.getElementById("listBox"); if(!box) return;
+const fs = filteredQuestions();
+box.innerHTML = '<p class="muted">'+fs.length+'問</p>' + fs.map(q=>{
+const p = DB.per[q.n];
+return '<button class="qlist" onclick="openDetail('+q.n+')"><b>Q'+q.n+'</b> <span class="badge">'+esc(q.section)+'</span> '
++ (p&&p.miss? '<span class="badge ng">×'+p.miss+'</span>':"") + (p&&p.mastered? '<span class="badge okb">マスター</span>':"") + (p&&p.fav?' ⭐':"")
++ '<br>'+esc(q.sentence.slice(0,90))+'</button>';
+}).join("");
+}
+function quizFromList(){ const fs = filteredQuestions(); if(!fs.length){ alert("問題がありません"); return;} startQuiz(fs.map(q=>q.n), "一覧から出題（"+fs.length+"問）");}
+function openDetail(n){
+const q = Q[n]; const p = per(n);
+app.innerHTML = '<div class="card"><div class="row" style="justify-content:space-between"><b>Q'+q.n+'</b><span class="badge">'+esc(q.section)+'</span></div>'
++ '<p class="muted">第'+q.chapter+'章 '+esc(q.chapterTitle)+(q.source?' ・ '+esc(q.source):'')+' ／ 回答'+p.att+'回・正解'+p.ok+'回・間違い'+p.miss+'回</p>'
++ (q.instruction? '<p class="muted">'+esc(q.instruction)+'</p>':"")
++ '<div class="qsentence">'+esc(q.sentence)+'</div>'
++ (q.choices.length? '<p>'+q.choices.map((c,i)=>["①","②","③","④","⑤","⑥"][i]+' '+esc(c)).join("<br>")+'</p>':"")
++ '<p><b>正解: '+esc(answerText(q))+'</b></p>'
++ (q.translation? '<p class="muted">訳: '+esc(q.translation)+'</p>':"")
++ '<h3>📖 解説（本書より）</h3><div class="expl">'+esc(q.explanation)+'</div>'
++ (q.extra? '<div class="extra"><b></b>\n'+esc(q.extra)+'</div>':"")
++ '<h3>📝 メモ</h3><textarea id="memoBox">'+esc(p.memo||"")+'</textarea>'
++ '<div class="row"><button class="btn" onclick="startQuiz(['+n+'], \'Q'+n+' だけ\')">この1問を解く</button><button class="btn sub" onclick="saveMemo('+n+')">メモ保存</button><button class="btn sub" onclick="toggleFavList('+n+')">'+(p.fav?'⭐ お気に入り中':'☆ お気に入り')+'</button><button class="btn ghost" onclick="setTab(\'list\')">一覧へ戻る</button></div></div>';
+}
+function toggleFavList(n){ per(n).fav=!per(n).fav; save(); openDetail(n);}
+
+/* ---------- stats ---------- */
+function renderStats(){
+const totalAtt = QUESTIONS.reduce((a,q)=>a+(DB.per[q.n]?DB.per[q.n].att:0),0);
+const totalOk = QUESTIONS.reduce((a,q)=>a+(DB.per[q.n]?DB.per[q.n].ok:0),0);
+let h = '<div class="card"><h2>📊 成績</h2><div class="grid2">'
++ '<div class="stat"><b>'+totalAtt+'</b><span>総回答数</span></div>'
++ '<div class="stat"><b>'+(totalAtt? Math.round(totalOk/totalAtt*100):0)+'%</b><span>全体の正答率</span></div>'
++ '<div class="stat"><b>'+streakDays()+'日</b><span>連続学習</span></div>'
++ '<div class="stat"><b>'+DB.sessions.length+'回</b><span>学習セッション数</span></div></div></div>';
+h += '<div class="card"><h2>章ごと</h2>' + CHAPTERS.map(c=>{
+const ns = QUESTIONS.filter(q=>q.chapter===c[0]).map(q=>q.n);
+const a = accuracy(ns); const att = ns.reduce((s,n)=>s+(DB.per[n]?DB.per[n].att:0),0);
+return '<p style="margin:6px 0">第'+c[0]+'章 '+esc(c[1])+' <span class="muted">回答'+att+'回・正答率 '+(a==null?"—":a+"%")+'</span></p><div class="bar"><i style="width:'+(a||0)+'%"></i></div>';
+}).join("") + '</div>';
+h += '<div class="card"><h2>項目（UPGRADE）ごとの正答率</h2>' + SECTIONS.map(s=>{
+const ns = QUESTIONS.filter(q=>q.section===s).map(q=>q.n); const a = accuracy(ns);
+return '<p style="margin:5px 0;font-size:14px">'+esc(s)+' <span class="muted">'+(a==null?"未挑戦":a+"%")+'</span></p><div class="bar"><i style="width:'+(a||0)+'%;'+(a!=null&&a<60?'background:var(--ng)':'')+'"></i></div>';
+}).join("") + '</div>';
+// last 14 days
+const days=[]; for(let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); const ds=todayStr(d); const tot=DB.sessions.filter(s=>s.date===ds).reduce((a,s)=>a+s.total,0); days.push({ds, tot});}
+const mx = Math.max(1,...days.map(d=>d.tot));
+h += '<div class="card"><h2>直近14日の学習量</h2><div class="daybar">' + days.map(d=>'<i style="height:'+Math.max(4, Math.round(d.tot/mx*48))+'px" title="'+d.ds+': '+d.tot+'問"></i>').join("") + '</div><p class="muted">'+days[0].ds+' 〜 '+days[13].ds+'</p></div>';
+h += '<div class="card"><h2>🗒 間違いノート</h2><p class="muted">間違えた問題を回数が多い順に並べています。印刷して眺める用にも。</p>'
++ missList(p=>p.miss>0).sort((a,b)=>DB.per[b].miss-DB.per[a].miss).map(n=>{ const q=Q[n]; return '<p style="font-size:14px"><b>Q'+n+'</b> <span class="badge ng">×'+DB.per[n].miss+'</span> '+esc(q.sentence.slice(0,80))+'<br><span class="muted">正解: '+esc(answerText(q))+'</span></p>';}).join("")
++ (missList(p=>p.miss>0).length? '<button class="btn sub" onclick="window.print()">印刷する</button>':'<p class="muted">まだ間違いはありません</p>') + '</div>';
+h += '<div class="card"><h2>最近のセッション</h2>' + (DB.sessions.slice(-10).reverse().map(s=>'<p style="font-size:14px;margin:4px 0">'+esc(s.date)+' ・ '+esc(s.label)+' ・ '+s.ok+'/'+s.total+'問正解</p>').join("") || '<p class="muted">まだありません</p>') + '</div>';
+app.innerHTML = h;
+}
+
+/* ---------- settings ---------- */
+function renderSettings(){
+app.innerHTML = '<div class="card"><h2>⚙️ 設定</h2>'
++ '<p><label><input type="checkbox" id="setTimer" '+(DB.settings.timer?"checked":"")+'> 1問ごとのタイマーを表示</label></p>'
++ '<p><label><input type="checkbox" id="setTrans" '+(DB.settings.showTrans?"checked":"")+'> 訳文を最初から表示する</label></p>'
++ '<p>1日の目標問数 <input type="number" id="setGoal" value="'+DB.settings.dailyGoal+'" min="1" max="200"></p>'
++ '<p>文字サイズ <select id="setFont"><option value="15">小</option><option value="16">標準</option><option value="18">大</option><option value="20">特大</option></select></p>'
++ '<button class="btn" onclick="saveSettings()">設定を保存</button></div>'
++ '<div class="card"><h2>💾 データのバックアップ</h2><p class="muted">成績・間違い回数・メモはこの端末のブラウザに保存されています。機種変更やブラウザを変えるときは書き出して移してください。</p>'
++ '<div class="row"><button class="btn sub" onclick="exportData()">書き出す（コピー）</button><button class="btn sub" onclick="importData()">読み込む</button></div>'
++ '<textarea id="dataBox" placeholder="ここにデータが表示されます／読み込むときはここに貼り付け"></textarea></div>'
++ '<div class="card"><h2>⚠️ リセット</h2><button class="btn ghost" onclick="resetData()">成績データを全部消す</button></div>'
++ '<div class="card"><h2>このアプリについて</h2><p class="muted">UPGRADE 英文法・語法問題 四訂版（ユーザーの本のスキャン）から作成。収録範囲: '+esc(document.getElementById("coverageLine").textContent)+'。解説は本書の文をそのまま掲載し、補足はと明記しています。記述式・並べ替え形式の問題も本書通りの形式で収録しています。</p></div>';
+document.getElementById("setFont").value = String(DB.settings.font||16);
+}
+function saveSettings(){
+DB.settings.timer = document.getElementById("setTimer").checked;
+DB.settings.showTrans = document.getElementById("setTrans").checked;
+DB.settings.dailyGoal = Math.max(1, parseInt(document.getElementById("setGoal").value,10)||20);
+DB.settings.font = +document.getElementById("setFont").value;
+document.body.style.fontSize = DB.settings.font + "px";
+save(); alert("保存しました");
+}
+function exportData(){ document.getElementById("dataBox").value = JSON.stringify(DB); document.getElementById("dataBox").select(); try{ navigator.clipboard.writeText(document.getElementById("dataBox").value);}catch(e){}}
+function importData(){ try{ const d = JSON.parse(document.getElementById("dataBox").value); if(!d.per) throw 0; DB = d; save(); alert("読み込みました"); setTab("home");}catch(e){ alert("読み込めませんでした");}}
+function resetData(){ if(confirm("成績・間違い回数・メモを全部消します。よろしいですか？")){ localStorage.removeItem(LS_KEY); DB = load(); save(); setTab("home");}}
+
+render();
+</script>
+</body>
+</html>
