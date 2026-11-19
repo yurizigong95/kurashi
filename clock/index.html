@@ -71,21 +71,21 @@
     CX=w/2; CY=h/2;
     if(w>=h){ RX=w/2-m; RY=h/2-m; }        // 横向き: 画面いっぱいの楕円。数字は内側に収めて切らない
     else { RX=RY=w/2-m; }                  // 縦向き: 横幅に収まる正円
-    var fs=Math.min(RY*0.30, RX*0.17);
-    var dy=RY-fs*0.62, dx=RX-fs*0.40;
+    var fs=Math.min(RY*0.27, RX*0.15);
+    var dy=RY*0.58, dx=RX*0.63;
     place(nums[12], CX, CY-dy, fs); place(nums[6], CX, CY+dy, fs);
     place(nums[3], CX+dx, CY, fs);  place(nums[9], CX-dx, CY, fs);
-    dateEl.setAttribute('x', CX+RX*0.44); dateEl.setAttribute('y', CY);
+    dateEl.setAttribute('x', CX+RX*0.40); dateEl.setAttribute('y', CY);
     dateEl.setAttribute('font-size', Math.max(13, Math.min(RY*0.115, 46)));
     for(i=0;i<60;i++){
-      var a=i*Math.PI/30, hr=i%5===0, k=hr?0.70:0.945, sa=Math.sin(a), ca=Math.cos(a);
+      var a=i*Math.PI/30, hr=i%5===0, cardinal=i%15===0, k=hr?(cardinal?0.85:0.62):0.93, sa=Math.sin(a), ca=Math.cos(a);
       l=tickLines[i];
       l.setAttribute('x1', CX+sa*RX*k); l.setAttribute('y1', CY-ca*RY*k);
       l.setAttribute('x2', CX+sa*RX);   l.setAttribute('y2', CY-ca*RY);
       l.setAttribute('stroke-width', hr?Math.max(2.5,RY*0.011):Math.max(1.5,RY*0.008));
       l.setAttribute('opacity', hr?0.95:0.55);
     }
-    hourEl.setAttribute('stroke-width', Math.max(7, RY*0.052));
+    hourEl.setAttribute('stroke-width', Math.max(7, RY*0.058));
     minEl.setAttribute('stroke-width', Math.max(5, RY*0.040));
     secEl.setAttribute('stroke-width', Math.max(2, RY*0.011));
     pin.setAttribute('cx',CX); pin.setAttribute('cy',CY);
@@ -104,7 +104,7 @@
   function frame(){
     var now=new Date(), ms=now.getMilliseconds();
     var s=now.getSeconds()+ms/1000, m=now.getMinutes()+s/60, h=(now.getHours()%12)+m/60;
-    setHand(secEl, s*6, 0.90, 0.90); setHand(minEl, m*6, 0.80, 0.80); setHand(hourEl, h*30, 0.50, 0.50);
+    setHand(secEl, s*6, 0.40, 0.40); setHand(minEl, m*6, 0.34, 0.34); setHand(hourEl, h*30, 0.22, 0.22);
     var key=now.getDate()+'-'+now.getDay();
     if(key!==lastDate){ lastDate=key; dateEl.textContent=now.getDate()+'日('+'日月火水木金土'[now.getDay()]+')'; }
     requestAnimationFrame(frame);
