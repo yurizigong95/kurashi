@@ -38,58 +38,82 @@
 </head>
 <body>
 <div id="stage">
-  <svg id="clock" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-label="アナログ時計">
+  <svg id="clock" aria-label="アナログ時計">
     <g id="ticks"></g>
-    <text class="num" x="500" y="88"  font-size="92">12</text>
-    <text class="num" x="918" y="300" font-size="92">3</text>
-    <text class="num" x="500" y="512" font-size="92">6</text>
-    <text class="num" x="82"  y="300" font-size="92">9</text>
-    <text id="date" x="690" y="300" font-size="40"></text>
-    <line id="hour"   x1="500" y1="300" x2="500" y2="185" stroke="#fff" stroke-width="17" stroke-linecap="round"/>
-    <line id="minute" x1="500" y1="300" x2="500" y2="105" stroke="#fff" stroke-width="13" stroke-linecap="round"/>
-    <line id="second" x1="500" y1="345" x2="500" y2="78"  stroke="#f5a623" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="500" cy="300" r="11" fill="#000" stroke="#f5a623" stroke-width="5"/>
+    <text class="num" id="n12">12</text>
+    <text class="num" id="n3">3</text>
+    <text class="num" id="n6">6</text>
+    <text class="num" id="n9">9</text>
+    <text id="date"></text>
+    <line id="hour"   stroke="#fff" stroke-linecap="round"/>
+    <line id="minute" stroke="#fff" stroke-linecap="round"/>
+    <line id="second" stroke="#f5a623" stroke-linecap="round"/>
+    <circle id="pin" fill="#000" stroke="#f5a623"/>
   </svg>
 </div>
 <div id="hint">タップで全画面</div>
 <script>
 (function(){
-  var cx=500, cy=300, ticks=document.getElementById('ticks'), NS='http://www.w3.org/2000/svg';
-  for (var i=0;i<60;i++){
-    var a=i*Math.PI/30, hour=i%5===0;
-    var r1=hour?392:408, r0=438;
-    var l=document.createElementNS(NS,'line');
-    l.setAttribute('x1', cx+Math.sin(a)*r1); l.setAttribute('y1', cy-Math.cos(a)*r1);
-    l.setAttribute('x2', cx+Math.sin(a)*r0); l.setAttribute('y2', cy-Math.cos(a)*r0);
-    l.setAttribute('stroke','#fff'); l.setAttribute('stroke-width', hour?6:3);
-    l.setAttribute('stroke-linecap','round'); l.setAttribute('opacity', hour?0.95:0.55);
-    ticks.appendChild(l);
-  }
+  var NS='http://www.w3.org/2000/svg';
+  var svg=document.getElementById('clock'), ticks=document.getElementById('ticks');
   var hourEl=document.getElementById('hour'), minEl=document.getElementById('minute'),
-      secEl=document.getElementById('second'), dateEl=document.getElementById('date'),
-      stage=document.getElementById('stage'), lastDate='';
-  function rot(el,deg){ el.setAttribute('transform','rotate('+deg+' 500 300)'); }
+      secEl=document.getElementById('second'), pin=document.getElementById('pin'),
+      dateEl=document.getElementById('date'),
+      nums={12:document.getElementById('n12'),3:document.getElementById('n3'),
+            6:document.getElementById('n6'),9:document.getElementById('n9')},
+      stage=document.getElementById('stage');
+  var tickLines=[], i, l;
+  for(i=0;i<60;i++){ l=document.createElementNS(NS,'line'); l.setAttribute('stroke','#fff'); l.setAttribute('stroke-linecap','round'); ticks.appendChild(l); tickLines.push(l); }
+  var CX=0, CY=0, R=100;
+  function layout(){
+    var w=window.innerWidth, h=window.innerHeight;
+    svg.setAttribute('viewBox','0 0 '+w+' '+h);
+    CX=w/2; CY=h/2;
+    if(w>=h){ R=Math.min(h*0.74, w*0.44); } else { R=w*0.44; }
+    var d=R*0.76, fs=R*0.24;
+    place(nums[12], CX, CY-d, fs); place(nums[6], CX, CY+d, fs);
+    place(nums[3], CX+d, CY, fs);  place(nums[9], CX-d, CY, fs);
+    dateEl.setAttribute('x', CX+R*0.44); dateEl.setAttribute('y', CY);
+    dateEl.setAttribute('font-size', Math.max(13, R*0.095));
+    for(i=0;i<60;i++){
+      var a=i*Math.PI/30, hr=i%5===0, r1=hr?R*0.90:R*0.945;
+      l=tickLines[i];
+      l.setAttribute('x1', CX+Math.sin(a)*r1); l.setAttribute('y1', CY-Math.cos(a)*r1);
+      l.setAttribute('x2', CX+Math.sin(a)*R);  l.setAttribute('y2', CY-Math.cos(a)*R);
+      l.setAttribute('stroke-width', hr?Math.max(3,R*0.014):Math.max(1.5,R*0.007));
+      l.setAttribute('opacity', hr?0.95:0.55);
+    }
+    hourEl.setAttribute('stroke-width', Math.max(7, R*0.045));
+    minEl.setAttribute('stroke-width', Math.max(5, R*0.034));
+    secEl.setAttribute('stroke-width', Math.max(2, R*0.010));
+    pin.setAttribute('cx',CX); pin.setAttribute('cy',CY);
+    pin.setAttribute('r', Math.max(5, R*0.028)); pin.setAttribute('stroke-width', Math.max(2.5, R*0.012));
+  }
+  function place(el,x,y,fs){ el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('font-size',fs); }
+  function setHand(el,deg,len){
+    var a=deg*Math.PI/180, tail=len*0.16;
+    el.setAttribute('x1', CX-Math.sin(a)*tail); el.setAttribute('y1', CY+Math.cos(a)*tail);
+    el.setAttribute('x2', CX+Math.sin(a)*len);  el.setAttribute('y2', CY-Math.cos(a)*len);
+  }
+  layout();
+  window.addEventListener('resize', layout);
+  window.addEventListener('orientationchange', function(){ setTimeout(layout, 60); });
+  var lastDate='';
   function frame(){
     var now=new Date(), ms=now.getMilliseconds();
     var s=now.getSeconds()+ms/1000, m=now.getMinutes()+s/60, h=(now.getHours()%12)+m/60;
-    rot(secEl, s*6); rot(minEl, m*6); rot(hourEl, h*30);
+    setHand(secEl, s*6, R*0.88); setHand(minEl, m*6, R*0.78); setHand(hourEl, h*30, R*0.52);
     var key=now.getDate()+'-'+now.getDay();
-    if(key!==lastDate){
-      lastDate=key;
-      dateEl.textContent='日月火水木金土'[now.getDay()]+' '+now.getDate();
-    }
+    if(key!==lastDate){ lastDate=key; dateEl.textContent='日月火水木金土'[now.getDay()]+' '+now.getDate(); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  // 焼き付き防止: 1分ごとに数pxずらす
   var shifts=[[0,0],[3,1],[-2,2],[1,-3],[-3,-1],[2,3]], si=0;
   setInterval(function(){ si=(si+1)%shifts.length; stage.style.transform='translate('+shifts[si][0]+'px,'+shifts[si][1]+'px)'; },60000);
-  // スリープ防止
   var wakeLock=null;
   function keepAwake(){ if('wakeLock' in navigator){ navigator.wakeLock.request('screen').then(function(w){ wakeLock=w; }).catch(function(){}); } }
   keepAwake();
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') keepAwake(); });
-  // タップで全画面 + ヒント消去
   var hint=document.getElementById('hint');
   setTimeout(function(){ hint.classList.add('hide'); }, 5000);
   document.addEventListener('click', function(){
