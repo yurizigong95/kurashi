@@ -78,11 +78,11 @@
     dateEl.setAttribute('x', CX+RX*0.44); dateEl.setAttribute('y', CY);
     dateEl.setAttribute('font-size', Math.max(13, Math.min(RY*0.115, 46)));
     for(i=0;i<60;i++){
-      var a=i*Math.PI/30, hr=i%5===0, k=hr?0.895:0.945, sa=Math.sin(a), ca=Math.cos(a);
+      var a=i*Math.PI/30, hr=i%5===0, k=hr?0.70:0.945, sa=Math.sin(a), ca=Math.cos(a);
       l=tickLines[i];
       l.setAttribute('x1', CX+sa*RX*k); l.setAttribute('y1', CY-ca*RY*k);
       l.setAttribute('x2', CX+sa*RX);   l.setAttribute('y2', CY-ca*RY);
-      l.setAttribute('stroke-width', hr?Math.max(3,RY*0.016):Math.max(1.5,RY*0.008));
+      l.setAttribute('stroke-width', hr?Math.max(2.5,RY*0.011):Math.max(1.5,RY*0.008));
       l.setAttribute('opacity', hr?0.95:0.55);
     }
     hourEl.setAttribute('stroke-width', Math.max(7, RY*0.052));
@@ -106,7 +106,7 @@
     var s=now.getSeconds()+ms/1000, m=now.getMinutes()+s/60, h=(now.getHours()%12)+m/60;
     setHand(secEl, s*6, 0.90, 0.90); setHand(minEl, m*6, 0.80, 0.80); setHand(hourEl, h*30, 0.50, 0.50);
     var key=now.getDate()+'-'+now.getDay();
-    if(key!==lastDate){ lastDate=key; dateEl.textContent='日月火水木金土'[now.getDay()]+' '+now.getDate(); }
+    if(key!==lastDate){ lastDate=key; dateEl.textContent=now.getDate()+'日('+'日月火水木金土'[now.getDay()]+')'; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

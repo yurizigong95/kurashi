@@ -1,4 +1,4 @@
-const CACHE = 'analog-clock-v3';
+const CACHE = 'analog-clock-v4';
 const FILES = ['./index.html', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
